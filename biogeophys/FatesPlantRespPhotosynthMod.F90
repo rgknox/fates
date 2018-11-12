@@ -63,7 +63,7 @@ contains
   
   !--------------------------------------------------------------------------------------
   
-  subroutine FatesPlantRespPhotosynthDrive (nsites, sites,bc_in,bc_out,dtime)
+  subroutine FatesPlantRespPhotosynthDrive (nsites, sites,bc_in,bc_out,dtime,ilevel)
 
     ! -----------------------------------------------------------------------------------
     ! !DESCRIPTION:
@@ -106,6 +106,7 @@ contains
     type(bc_in_type),intent(in)             :: bc_in(nsites)
     type(bc_out_type),intent(inout)         :: bc_out(nsites)
     real(r8),intent(in)                     :: dtime
+    integer,intent(in)                      :: ilevel   ! What iteration counter is this
 
 
     ! LOCAL VARIABLES:
@@ -512,6 +513,7 @@ contains
                                                         mm_ko2,                             &  ! in
                                                         co2_cpoint,                         &  ! in
                                                         lmr_z(iv,ft,cl),                    &  ! in
+                                                        ilevel,                             &  ! in
                                                         currentPatch%psn_z(cl,ft,iv),       &  ! out
                                                         rs_z(iv,ft,cl),                     &  ! out
                                                         anet_av_z(iv,ft,cl))                   ! out
@@ -810,6 +812,7 @@ contains
                                      mm_ko2,            &  ! in
                                      co2_cpoint,        &  ! in
                                      lmr,               &  ! in
+                                     ilevel,            &  ! in
                                      psn_out,           &  ! out
                                      rstoma_out,        &  ! out
                                      anet_av_out)          ! out
@@ -863,7 +866,7 @@ contains
    real(r8), intent(in) :: mm_ko2          ! Michaelis-Menten constant for O2 (Pa)
    real(r8), intent(in) :: co2_cpoint      ! CO2 compensation point (Pa)
    real(r8), intent(in) :: lmr             ! Leaf Maintenance Respiration  (umol CO2/m**2/s)
-   
+   integer,  intent(in) :: ilevel          ! outer loop stability iteration count
    real(r8), intent(out) :: psn_out        ! carbon assimilated in this leaf layer umolC/m2/s
    real(r8), intent(out) :: rstoma_out     ! stomatal resistance (1/gs_lsl) (s/m)
    real(r8), intent(out) :: anet_av_out    ! net leaf photosynthesis (umol CO2/m**2/s) 
@@ -981,7 +984,9 @@ contains
               aquad = theta_psii
               bquad = -(qabs + jmax)
               cquad = qabs * jmax
-              call quadratic_f (aquad, bquad, cquad, r1, r2)
+
+              ! NEGATIVE ONLY...
+              call quadratic_neg_fast (aquad, bquad, cquad, r1, r2)
               je = min(r1,r2)
 
               ! Initialize intercellular co2
@@ -1049,6 +1054,7 @@ contains
                  agross = min(r1,r2)
 
                  ! Net carbon assimilation. Exit iteration if an < 0
+
                  anet = agross  - lmr
                  if (anet < 0._r8) then
                     loop_continue = .false.
@@ -1057,6 +1063,7 @@ contains
                  ! Quadratic gs_mol calculation with an known. Valid for an >= 0.
                  ! With an <= 0, then gs_mol = bbb
                  
+
                  leaf_co2_ppress = can_co2_ppress- 1.4_r8/gb_mol * anet * can_press 
                  leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
                  aquad = leaf_co2_ppress
@@ -1076,9 +1083,20 @@ contains
                  ! convergence criteria of +/- 1 x 10**-6 ppm is met OR if at least ten 
                  ! iterations (niter=10) are completed
                  
-                 if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
-                       .or. niter == 5) then
+!                 if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
+!                       .or. niter == 5) then
+
+                 if ((abs(co2_inter_c-co2_inter_c_old)/can_co2_ppress <=  1.e-05_r8) &
+                      .or. niter == 20) then
+
                     loop_continue = .false.
+                    write(fates_log(),*) "ilevel, ",ilevel," ,iter, ",niter, &
+                         " ,(ci2-ci1)/p, ", &
+                         abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8, &
+                         " ,(ci2-ci1)/cp, ", &
+                         abs(co2_inter_c-co2_inter_c_old)/can_co2_ppress, & 
+                         " ,cp, ",can_co2_ppress, &
+                         " ,ci, ",co2_inter_c
                  end if
               end do !iteration loop
               
@@ -1442,6 +1460,43 @@ contains
    !  end if
      
    end subroutine quadratic_fast
+
+   subroutine quadratic_neg_fast (a, b, c, r1, r2)
+     !
+     ! !DESCRIPTION:
+     !==============================================================================!
+     !----------------- Solve quadratic equation for its two roots -----------------!
+     ! THIS METHOD SIMPLY REMOVES THE DIV0 CHECK AND ERROR REPORTING                !
+     ! AND... IT ALSO KNOWS THE SIGN OF THE B TERM (NEGATIVE)
+     !==============================================================================!
+     ! Solution from Press et al (1986) Numerical Recipes: The Art of Scientific
+     ! Computing (Cambridge University Press, Cambridge), pp. 145.
+     !
+     ! !REVISION HISTORY:
+     ! 4/5/10: Adapted from /home/bonan/ecm/psn/An_gs_iterative.f90 by Keith Oleson
+     ! 7/23/16: Copied over from CLM by Ryan Knox
+     !
+     ! !USES:
+     !
+     ! !ARGUMENTS:
+     real(r8), intent(in)  :: a,b,c       ! Terms for quadratic equation
+     real(r8), intent(out) :: r1,r2       ! Roots of quadratic equation
+     !
+     ! !LOCAL VARIABLES:
+     real(r8) :: q                        ! Temporary term for quadratic solution
+     !------------------------------------------------------------------------------
+    
+     q = -0.5_r8 * (b - sqrt(b*b - 4._r8*a*c))
+   
+     r1 = q / a
+
+   !  if (q /= 0._r8) then
+     r2 = c / q
+   !  else
+   !     r2 = 1.e36_r8
+   !  end if
+     
+   end subroutine quadratic_neg_fast
 
 
    ! ====================================================================================
