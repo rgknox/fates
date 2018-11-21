@@ -59,6 +59,32 @@ module FATESPlantRespPhotosynthMod
    
    logical   ::  debug = .false.
 
+   ! quadratic result definition
+   integer, parameter :: upper_root = 1
+   integer, parameter :: lower_root = 2
+
+
+   ! ------------------------------------------------------------------------
+   ! Fraction of light absorbed by non-photosynthetic pigments
+   real(r8),parameter :: fnps = 0.15_r8       
+   
+   ! empirical curvature parameter for electron transport rate
+   real(r8),parameter :: theta_psii = 0.7_r8   
+   
+   ! First guess on ratio between intercellular co2 and the atmosphere
+   ! an iterator converges on actual
+   real(r8),parameter :: init_a2l_co2_c3 = 0.7_r8
+   real(r8),parameter :: init_a2l_co2_c4 = 0.4_r8
+
+   ! quantum efficiency, used only for C4 (mol CO2 / mol photons) (index 0)
+   real(r8),parameter,dimension(0:1) :: quant_eff = [0.05_r8,0.0_r8]
+
+   ! empirical curvature parameter for ac, aj photosynthesis co-limitation
+   real(r8),parameter,dimension(0:1) :: theta_cj  = [0.80_r8,0.98_r8]
+
+   ! empirical curvature parameter for ap photosynthesis co-limitation
+   real(r8),parameter :: theta_ip = 0.95_r8
+
 contains
   
   !--------------------------------------------------------------------------------------
@@ -896,27 +922,7 @@ contains
    real(r8) :: ai                ! intermediate co-limited photosynthesis (umol CO2/m**2/s)
    real(r8) :: leaf_co2_ppress   ! CO2 partial pressure at leaf surface (Pa)
    real(r8) :: init_co2_inter_c  ! First guess intercellular co2 specific to C path
-   ! Parameters
-   ! ------------------------------------------------------------------------
-   ! Fraction of light absorbed by non-photosynthetic pigments
-   real(r8),parameter :: fnps = 0.15_r8       
-
-   ! empirical curvature parameter for electron transport rate
-   real(r8),parameter :: theta_psii = 0.7_r8   
    
-   ! First guess on ratio between intercellular co2 and the atmosphere
-   ! an iterator converges on actual
-   real(r8),parameter :: init_a2l_co2_c3 = 0.7_r8
-   real(r8),parameter :: init_a2l_co2_c4 = 0.4_r8
-
-   ! quantum efficiency, used only for C4 (mol CO2 / mol photons) (index 0)
-   real(r8),parameter,dimension(0:1) :: quant_eff = [0.05_r8,0.0_r8]
-
-   ! empirical curvature parameter for ac, aj photosynthesis co-limitation
-   real(r8),parameter,dimension(0:1) :: theta_cj  = [0.80_r8,0.98_r8]
-
-   ! empirical curvature parameter for ap photosynthesis co-limitation
-   real(r8),parameter :: theta_ip = 0.95_r8
 
    associate( bb_slope  => EDPftvarcon_inst%BB_slope)    ! slope of BB relationship
 
@@ -940,19 +946,14 @@ contains
         
      else ! day time (a little bit more complicated ...)
         
-!        if ( debug ) write(fates_log(),*) 'EDphot 594 ',laisun_lsl
-!        if ( debug ) write(fates_log(),*) 'EDphot 595 ',laisha_lsl
-
         !is there leaf area? - (NV can be larger than 0 with only stem area if deciduous)
         if ( laisun_lsl + laisha_lsl > 0._r8 ) then 
 
-!           if ( debug ) write(fates_log(),*) '600 in laisun, laisha loop '
-           
            !Loop aroun shaded and unshaded leaves          
            psn_out     = 0._r8    ! psn is accumulated across sun and shaded leaves. 
            rstoma_out  = 0._r8    ! 1/rs is accumulated across sun and shaded leaves. 
            anet_av_out = 0._r8
-           gstoma  = 0._r8
+           gstoma      = 0._r8
            
            do  sunsha = 1,2      
               ! Electron transport rate for C3 plants. 
@@ -1036,17 +1037,19 @@ contains
                  end if
 
                  ! Gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
-                 aquad = theta_cj(c3c4_path_index)
-                 bquad = -(ac + aj)
-                 cquad = ac * aj
-                 call quadratic_f (aquad, bquad, cquad, r1, r2)
-                 ai = min(r1,r2)
+!                 aquad = theta_cj(c3c4_path_index)
+!                 bquad = -(ac + aj)
+!                 cquad = ac * aj
+!                 call quadratic_f (aquad, bquad, cquad, r1, r2)
+!                 ai = min(r1,r2)
 
-                 aquad = theta_ip
-                 bquad = -(ai + ap)
-                 cquad = ai * ap
-                 call quadratic_f (aquad, bquad, cquad, r1, r2)
-                 agross = min(r1,r2)
+!                 aquad = theta_ip
+!                 bquad = -(ai + ap)
+!                 cquad = ai * ap
+!                 call quadratic_f (aquad, bquad, cquad, r1, r2)
+!                 agross = min(r1,r2)
+
+                 agross = SmoothLimitCollatz1991(ac,aj,ap,c3c4_path_index)
 
                  ! Net carbon assimilation. Exit iteration if an < 0
                  anet = agross  - lmr
@@ -1871,5 +1874,398 @@ contains
 
 
     end subroutine lowstorage_maintresp_reduction
+
+    
+    ! ===================================================================================
+
+    ! Variable Definitions from MAAT (state)
+    !
+    ! environmental state
+    !  oi = numeric(1),                 # atmospheric & internal O2  (kPa)
+    !  ca = numeric(1),                 # atmospheric CO2            ( Pa)
+    !  cb = numeric(1),                 # boundary layer CO2         ( Pa)
+    !  ci = numeric(1),                 # leaf internal CO2          ( Pa) 
+    !  cc = numeric(1),                 # chloroplast CO2            ( Pa)
+    !  leaf_temp = numeric(1),          # leaf temperature           (oC)
+      
+    !  #leaf state - calculated by canopy object so need initialisation
+    !  leafN_area = 2,                  # leaf N per unit area       (g N m-2)
+    !  fwdw_ratio = 5,                  # fresh weight dry weight ratio, used for Sphagnum conductance term 
+      
+    !  #calculated state
+    !  J   = numeric(1),                # electron transport rate                            (umol electrons m-2 s-1) 
+    !  Acg = numeric(1),                # Carboxylaton limited rate of net asssimilation     (umol m-2 s-1)
+    !  Ajg = numeric(1),                # light limited rate of carboxylation                (umol m-2 s-1)
+    !  Apg = numeric(1),                # TPU limited rate of carboxylation                  (umol m-2 s-1)
+    !  A   = numeric(1),                # actual rate of carboxylation                       (umol m-2 s-1)
+    !  rd  = numeric(1),                # actual rate of respiration                         (umol m-2 s-1)
+    !  lim = numeric(1),                # flag indicationg limitation state of assimilation, wc = wc limited, wj = wj limited, wp = wp limited
+    !  # diagnostic state
+    !  A_ana_rbzero   = numeric(1),     # rate of carboxylation assuming zero boundary layer resistance to CO2 diffusion (umol m-2 s-1)
+    !  A_ana_rbg0zero = numeric(1),     # rate of carboxylation assuming zero boundary layer resistance & zero minimum stomatal conductance to CO2 diffusion (umol m-2 s-1)
+    !  aguess    = numeric(4),          # value of three guesses and solution from semi-analytical solver  (umol m-2 s-1)
+    !  faguess   = numeric(4),          # value of solver function on three guesses and solution from semi-analytical solver  (umol m-2 s-1)
+    !  iter      = numeric(1),          # number of iterations to solve solver function in Brent uniroot
+    !  estimprec = numeric(1),          # estimated precision of solve from uniroot solver function 
+    !  assim     = numeric(2),          # roots of fitted quadratic in semi-analytical solver
+    !  fA_ana_final   = numeric(2),     # value of solver function for final gusee from semi-analytical solver  (umol m-2 s-1)
+    !  A_noR          = numeric(1),     # rate of carboxylation assuming zero resistance to CO2 diffusion (umol m-2 s-1)
+    !  transition     = numeric(1)      # cc at the transition point where wc = wj                        (Pa)
+
+
+    function quad_sol(a,b,c,root_type) result(root)
+       
+       real(r8), intent(in) :: a
+       real(r8), intent(in) :: b
+       real(r8), intent(in) :: c
+       integer,  intent(in) :: root_type
+       
+       real(r8) :: q
+       real(r8) :: root1
+       real(r8) :: root2
+
+       q     = -0.5 * ( b + b/abs(b) * sqrt(b*b - 4*a*c) )
+
+       root1 = q / a
+       if (q /= 0._r8) then
+          root2 = c / q
+       else
+          root2 = 1.e36_r8
+       end if
+       
+       if(root_type.eq.upper_root) then
+          root = max(root1,root2)
+       elseif(root_type.eq.lower_root) then
+          root = min(root1,root2)
+       end if
+       
+       
+       return
+    end function quad_sol
+
+    ! ===================================================================================
+
+    function SmoothLimitCollatz1991(a_cbox, a_rupb, a_prod, c3c4_path_index ) return(a_gross)
+
+       ! --------------------------------------------------------------------------------
+       ! Fine a smoothed solution of all three possible limiting states
+       ! via Collatz et al. 1991
+       ! --------------------------------------------------------------------------------
+
+       real(r8), intent(in) :: a_cbox          ! Rubisco-limited (carboxylation) gross 
+                                               ! photosynthesis (assimilate) (umol m-2 s-1)
+       real(r8), intent(in) :: a_rubp          ! RuBP-limited gross photosynthesis    
+                                               ! (umol m-2 s-1)
+       real(r8), intent(in) :: a_prod          ! product-limited (C3) or CO2-limited  
+                                               ! (umol m-2 s-1)
+                                               ! (C4) gross photosynthesis
+       integer,  intent(in) :: c3c4_path_index ! C3 = 1
+                                               ! C4 = 0
+       ! Output
+       real(r8)             :: a_gross  ! Gross co-limited photosynthesis (umol m-2 s-1)
+
+       real(r8) :: a, b, c    ! quadratic terms
+
+       ! Find smooth solution for just light and carboxylation limitations first...
+       
+       a  = theta_cj(c3c4_path_index)
+       b  = -(a_cbox + a_rubp)
+       c  = a_cbox * a_rubp
+       
+       a_gross = quad_sol(a,b,c,lower_root)
+
+       ! If product limited assimilation is available, combine that with the other two
+       
+       if( a_prod > 0._r8 ) then
+          
+          a =  theta_ip
+          b =  -(a_prod + a_gross)
+          c =  a_prod * a_gross
+          
+          a_gross = quad_sol(a,b,c,lower_root)
+
+       end if
+       
+    end function SmoothLimitCollatz1991
+
+    ! ===================================================================================
+    
+    function RStomaMedlyn2011Fe(vpd,co2_can )  return(gsd)
+       
+       ! f(e) component of rs from Medlyn 2011  
+       
+       real(r8), intent(in) :: vpd       ! Vapor pressure deficit (Pa)
+       real(r8), intent(in) :: co2_can   ! Canopy co2 partial pressure (Pa)
+       
+       real(r8) :: gsd                           ! Stomatal Conductance (molm-2 s-1) ???
+       real(r8), parameter :: g1_medlyn = 6._r8  ! Medlyn 2011 gs slope (kPa^0.5)
+       
+       
+       gsd = ( 1._r8 + g1_medlyn / sqrt(vpd) ) / co2_can
+     
+       
+    end function RStomaMedlyn2011Fe
+
+    ! ===================================================================================
+
+    subroutine AnalyticalQuad(press_can, co2_can, o2_can, vpd, vcmax,  )
+
+       ! --------------------------------------------------------------------------------
+       ! - finds the analytical solution assuming rb and ri are zero
+       ! 
+       ! Anthony Walker, 2018  (converted over from MAAT by Ryan Knox)
+       !
+       ! Original function: f_A_r_leaf_analytical_quad
+       !
+       ! For more on MAAT: https://github.com/walkeranthonyp/MAAT
+       ! 
+       ! ---------------------------------------------------------------------------------
+
+       real(r8), intent(in) :: co2_can         ! co2 concentration of canopy air space (Pa)
+       real(r8), intent(in) :: o2_can          ! o2 concentration of canopy air space (Pa)
+       real(r8), intent(in) :: press_can       ! Air pressure NEAR the surface of the leaf (Pa)
+       real(r8), intent(in) :: vpd             ! Vapor pressure deficit (units = ?)
+       real(r8), intent(in) :: vcmax           ! Temperature corrected vcmax
+
+       real(r8) :: co2_blayer                   ! boundary layer CO2         ( Pa)
+
+       real(r8), parameter :: min_gs = 0.01_r8  ! Medlyn 2011 min stomatal cond (molm-2s-1)
+
+       real(r8), intent(in) :: a_cbox          ! Rubisco-limited (carboxylation) gross 
+                                               ! photosynthesis (assimilate) (umol m-2 s-1)
+       real(r8), intent(in) :: a_rubp          ! RuBP-limited gross photosynthesis    
+                                               ! (umol m-2 s-1)
+       real(r8), intent(in) :: a_prod          ! product-limited (C3) or CO2-limited  
+                                               ! (umol m-2 s-1)
+                                               ! (C4) gross photosynthesis
+       integer,  intent(in) :: c3c4_path_index ! C3 = 1
+                                               ! C4 = 0
+
+       real(r8) :: mm_km                       ! An intermediate term that
+                                               ! contains the Michaeles Menten parameters
+
+       real(r8) :: rd                          ! Actual rate of respiration                         (umol m-2 s-1)
+
+       !  oi = numeric(1),                 # atmospheric & internal O2  (kPa)
+       !  ca = numeric(1),                 # atmospheric CO2            ( Pa)
+       !  cb = numeric(1),                 # boundary layer CO2         ( Pa)
+       !  ci = numeric(1),                 # leaf internal CO2          ( Pa) 
+       !  cc = numeric(1),                 # chloroplast CO2            ( Pa)
+       !  leaf_temp = numeric(1),          # leaf temperature           (oC)
+       
+
+
+       ! combines A, rs, ci, cc eqs to a single f(), 
+       ! combines all rate limiting processes
+
+       co2_blayer = co2_can
+
+       mm_km = mm_kco2 * (1._r8 + o2_can/mm_ko2)
+
+       ! .$state_pars$Kc * (1+(.$state$oi/.$state_pars$Ko))
+
+
+  ! calculate coefficients of quadratic to solve A
+  assim_quad_soln <- function(., V, K ) {
+    gsd <- get(paste0(.$fnames$rs,'_fe'))(.) / .$state$ca
+    p   <- .$env$atm_press*1e-6
+    a   <- p*( 1.6 - gsd*(.$state$ca + K) )
+    b   <- p*gsd*( .$state$ca*(V - .$state$rd) - .$state$rd*K - V*.$state_pars$gstar ) - min_gs * (.$state$ca + K) + 1.6*p*(.$state$rd - V)
+    c   <- min_gs*( V*(.$state$ca - .$state_pars$gstar) - .$state$rd*(K + .$state$ca) )
+ 
+    ! return A 
+    quad_sol(a,b,c,'upper')
+  }
+
+  
+
+ 
+
+
+  .$state$Acg[] <- assim_quad_soln(., V=.$state_pars$vcmaxlt, K=.$state_pars$Km )
+  .$state$Ajg[] <- assim_quad_soln(., V=(.$state$J/4),        K=(2*.$state_pars$gstar) )
+  .$state$Apg[] <- assim_quad_soln(., V=(3*.$state_pars$tpu), K=(-(1+3*.$pars$Apg_alpha)*.$state_pars$gstar) )
+
+  ! C3: Rubisco-limited photosynthesis
+  ac = vcmax * max(co2_inter_c-co2_cpoint, 0._r8) / &
+                          (co2_inter_c+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
+  
+  ! C3: RuBP-limited photosynthesis
+  aj = je * max(co2_inter_c-co2_cpoint, 0._r8) / &
+        (4._r8*co2_inter_c+8._r8*co2_cpoint)
+  
+  ! C3: Product-limited photosynthesis 
+  ap = 3._r8 * tpu
+
+
+  gsd = RStomaMedlyn2011Fe(vpd,co2_can)     ! Provide alternatives
+
+  p  = press_can*1e-6   ! Unit conversion?
+  a  = p * ( 1.6 - gsd*(co2_can + mm_km ) )
+  b  = p * gsd * ( co2_can*(vcmax - rd) - &
+        rd * mm_km  - vcmax * .$state_pars$gstar ) - min_gs * ( co2_can + mm_km ) + 1.6*p*(rd - vcmax)
+  c  = min_gs*( vcmax * ( co2_can - .$state_pars$gstar) - .$state$rd*( mm_km  + co2_can) )
+
+
+
+  a_cbox = quad_sol(a,b,c,upper_root)
+
+  # determine rate limiting cycle - this is done based on carboxylation, not net assimilation (Gu etal 2010).
+  Amin        <- get(.$fnames$Alim)(.) 
+  
+  agross  = SmoothLimitCollatz1991(a_cbox, a_rupb, a_prod, c3c4_path_index
+
+
+  # determine cc/ci based on Amin
+  # calculate rs
+  #.$pars$g0[]     <- g0_hold 
+  .$state_pars$rs[] <- get(.$fnames$rs)(.,A=Amin)
+  .$state$cc[] <-.$state$ci[] <- f_ficks_ci(., A=Amin, r=1.6*.$state_pars$rs )
+    
+  # recalculate Ag for each limiting process
+  # necessary if Alim is Collatz smoothing as it reduces A, decoupling A from cc calculated in the quadratic solution 
+  .$state$Acg[] <- get(.$fnames$Acg)(.) * .$state$cc
+  .$state$Ajg[] <- get(.$fnames$Ajg)(.) * .$state$cc
+  .$state$Apg[] <- get(.$fnames$Apg)(.) * .$state$cc
+
+  # return net A
+  Amin
+}
+
+return
+end subroutine AnalyticalQuad
+
+    ! ===================================================================================
+
+    subroutine SemiAnalyticalQuad( )
+
+       ! --------------------------------------------------------------------------------
+       ! - finds the analytical solution assuming rb and ri are zero to use as first 
+       !   guess (a1)
+       ! - make a second guess (a2) by calculating Cc using a1 and actual values of
+       !   rb and ri   
+       ! - make a third guess (a3) by taking the mean of a1 and a2  
+       ! - calculate residual function value for these three guesses (fa1, fa2, fa3) 
+       ! - check fa1 and fa2 span the root
+       ! - if not, sequentially add 0.01 to the third guess (a3) until fa1 and fa3 
+       !   span the root
+       ! - fit a quadratic through the three sets of co-ordinates to find the root 
+       ! 
+       ! Anthony Walker, 2018  (converted over from MAAT by Ryan Knox)
+       !
+       ! Original function: f_A_r_leaf_semiana_quad <- function(.) {}
+       !
+       ! For more on MAAT: https://github.com/walkeranthonyp/MAAT
+       ! 
+       ! ---------------------------------------------------------------------------------
+
+       ! find the analytical solution assuming rb and ri are zero to use as first guess (a1)
+
+       
+       .$state$aguess[1]  <- .$state$A_ana_rbzero <- f_A_r_leaf_analytical_quad(.)
+       .$state$faguess[1] <- f_A_r_leaf(., .$state$aguess[1] ) 
+   ! reporting for development 
+  if(is.na(.$state$faguess[1])) {
+    print('')
+    print(c(.$state$aguess[1],.$state$faguess[1]))
+    print(unlist(.$fnames)); print(unlist(.$pars)); print(unlist(.$state_pars)); print(unlist(.$state)); print(unlist(.$env)) 
+  }
+ 
+  if(abs(.$state$faguess[1]) < 1e-6) return(.$state$aguess[1])
+  else {
+ 
+    ! second guess, also analytical
+    .$state$cc[] <- get(.$fnames$gas_diff)( . , .$state$aguess[1] , 
+      r=( 1.4*.$state_pars$rb + 1.6*get(.$fnames$rs)(.,A=.$state$aguess[1],c=get(.$fnames$gas_diff)(.,.$state$aguess[1])) + .$state_pars$ri ) )
+    .$state$aguess[2]  <- f_assimilation(.) 
+    .$state$faguess[2] <- get(.$fnames$solver_func)(., .$state$aguess[2] ) 
+  }
+   ! if both a1 and a2 are below zero then return -1 and leafsys routine will calculate A assuming gs = g0
+  if(.$state$aguess[1]<0 & .$state$aguess[2]<0) return(-1.01)
+  else {
+     ! third guess
+    .$state$aguess[3]  <- mean(.$state$aguess[1:2])  
+    .$state$faguess[3] <- get(.$fnames$solver_func)(., .$state$aguess[3] ) 
+     ! check that fa2 and fa1 span 0, if not reguess for fa3 until it and fa1 span zero and then take the mean a1 and a3 to find a2
+    ! under conditions tested so far this is only necessary for Ball-Berry gs
+    if(prod(.$state$faguess[1:2]) > 0) {
+      print('')
+      print('fa1 and fa2 do not span zero')
+      print(c('faguess 1-3:',round(.$state$faguess[1:3],4)))
+      print(c( 'aguess 1-3:',round(.$state$aguess[1:3],4)))
+     
+       if(.$state$faguess[1] > 0 ) { 
+        while(.$state$faguess[3]>0) {
+          .$state$aguess[3]  <- .$state$aguess[3] + 0.01  
+          .$state$faguess[3] <- get(.$fnames$solver_func)(., .$state$aguess[3] ) 
+        }
+      } else {
+        while(.$state$faguess[3] < 0) {
+          .$state$aguess[3]  <- .$state$aguess[3] - 0.01  
+          .$state$faguess[3] <- get(.$fnames$solver_func)(., .$state$aguess[3] ) 
+        }
+      }
+       .$state$aguess[2]  <- mean(.$state$aguess[c(1,3)])
+      .$state$faguess[2] <- get(.$fnames$solver_func)(., .$state$aguess[2] ) 
+       ! reporting for development 
+      a  <- seq(.$state$aguess[1]-2,.$state$aguess[1]+2,0.1 )
+      resid <- numeric(length(a))
+      for( i in 1:length(a) ) {
+        resid[i] <- f_A_r_leaf(., A=a[i] )
+      }
+      print(c('faguess 1-3:',round(.$state$faguess[1:3],4)))
+      print(c( 'aguess 1-3:',round(.$state$aguess[1:3],4)))
+      print(cbind(a,resid))
+       ! over-cautious safety - with while condition above should be no way that this condition is true
+      if(prod(.$state$faguess[c(1,3)]) > 0) stop('failed')
+    }
+     ! check f(guesses) span the root, if not print diagnostics and stop
+    if( min(.$state$faguess[1:3]) * max(.$state$faguess[1:3]) >= 0 ) {
+      print(unlist(.$fnames)); print(unlist(.$pars)); print(unlist(.$state_pars)); print(unlist(.$env)) 
+      print(c('faguess 1-3,',round(.$state$faguess[1:3],4),'aguess 1-3,',round(.$state$aguess[1:3],4)))
+      sinput <- seq(.$state$aguess[1]-2,.$state$aguess[1]+2,0.1 )
+      out    <- numeric(length(sinput))
+      for( i in 1:length(sinput) ) {
+        out[i] <- f_A_r_leaf(., A=sinput[i] )
+      }
+      print(cbind(sinput,out))
+      stop(paste('Solver error'))
+    } 
+   
+    ! fit a quadratic through the three sets of co-ordinates a la Lomas (one step of Muller's method) 
+    ! Muller, David E., "A Method for Solving Algebraic Equations Using an Automatic Computer," Mathematical Tables and Other Aids to Computation, 10 (1956)    
+    !bx <- ((a1+a0)*(fa2-fa1)/(a2-a1)-(a2+a1)*(fa1-fa0)/(a1-a0))/(a0-a2)
+    !ax <- (fa2-fa1-bx*(a2-a1))/(a2**2-a1**2)
+    !cx <- fa1-bx*a1-ax*a1**2
+     bx <- ((.$state$aguess[2]+.$state$aguess[1])*(.$state$faguess[3]-.$state$faguess[2]) / 
+      (.$state$aguess[3]-.$state$aguess[2])-(.$state$aguess[3]+.$state$aguess[2])*(.$state$faguess[2]-.$state$faguess[1])/(.$state$aguess[2]-.$state$aguess[1])) / 
+      (.$state$aguess[1]-.$state$aguess[3])
+    ax <- (.$state$faguess[3]-.$state$faguess[2]-bx*(.$state$aguess[3]-.$state$aguess[2]))/(.$state$aguess[3]**2-.$state$aguess[2]**2)
+    cx <- .$state$faguess[2]-bx*.$state$aguess[2]-ax*.$state$aguess[2]**2
+ 
+    ! find the root of the quadratic that lies between guesses 
+    .$state$assim[] <- quad_sol(ax,bx,cx,'both')
+    ss <- which(.$state$assim>min(.$state$aguess[1:3])&.$state$assim<max(.$state$aguess[1:3]))
+ 
+    ! reporting for development 
+    .$state$fA_ana_final[1] <- get(.$fnames$solver_func)(., .$state$assim[1] ) 
+    .$state$fA_ana_final[2] <- get(.$fnames$solver_func)(., .$state$assim[2] ) 
+    .$state$aguess[4]  <- .$state$assim[ss]  
+    .$state$faguess[4] <- get(.$fnames$solver_func)(., .$state$assim[ss]) 
+    
+    ! catch potential errors
+    if(length(ss)==0)      stop('no solution,',.$state$assim,'; within initial 3 guesses,',.$state$aguess[1:3],'fguesses,',.$state$faguess[1:3] ) 
+    else if(length(ss)==2) stop('both solutions,',.$state$assim,'; within initial 3 guesses,',.$state$aguess[1:3],'fguesses,',.$state$faguess[1:3] ) 
+    else return(.$state$assim[ss])
+  }
+}
+       
+
+
+
+       return
+    end subroutine SemiAnalyticalQuad
+
+
 
  end module FATESPlantRespPhotosynthMod
