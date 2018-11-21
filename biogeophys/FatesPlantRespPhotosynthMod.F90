@@ -2140,6 +2140,9 @@ end subroutine AnalyticalQuad
     subroutine SemiAnalyticalQuad( )
 
        ! --------------------------------------------------------------------------------
+       !  IF THIS PRODUCES A NEGATIVE A< THIS ROUTINE NEEDS TO BE CALLED
+       !  WITH A REDUCED CONDUCTANCE.
+       !
        ! - finds the analytical solution assuming rb and ri are zero to use as first 
        !   guess (a1)
        ! - make a second guess (a2) by calculating Cc using a1 and actual values of
@@ -2157,27 +2160,136 @@ end subroutine AnalyticalQuad
        !
        ! For more on MAAT: https://github.com/walkeranthonyp/MAAT
        ! 
+       ! Carbon Assimilation is the solved quantity
+       !
        ! ---------------------------------------------------------------------------------
 
        ! find the analytical solution assuming rb and ri are zero to use as first guess (a1)
-
+       ! rb is boundary layer resistance
+       ! ri is internal resistance 
        
+       ! umol Co2 m-2 s-1 
        .$state$aguess[1]  <- .$state$A_ana_rbzero <- f_A_r_leaf_analytical_quad(.)
+
+       ! This is a solver function  (residual umol Co2 m-2 s-1
        .$state$faguess[1] <- f_A_r_leaf(., .$state$aguess[1] ) 
-   ! reporting for development 
-  if(is.na(.$state$faguess[1])) {
-    print('')
-    print(c(.$state$aguess[1],.$state$faguess[1]))
-    print(unlist(.$fnames)); print(unlist(.$pars)); print(unlist(.$state_pars)); print(unlist(.$state)); print(unlist(.$env)) 
-  }
- 
+
+       ! reporting for development 
+       if(is.na(.$state$faguess[1])) {
+       print('')
+       print(c(.$state$aguess[1],.$state$faguess[1]))
+       print(unlist(.$fnames)); print(unlist(.$pars)); print(unlist(.$state_pars)); print(unlist(.$state)); print(unlist(.$env)) 
+       }
+       
+       
   if(abs(.$state$faguess[1]) < 1e-6) return(.$state$aguess[1])
+  ! If the residual is true, leave the solveer and return Aguess
+
   else {
  
     ! second guess, also analytical
+    ! get chloroplast CO2, using previous guess of A, 
+
     .$state$cc[] <- get(.$fnames$gas_diff)( . , .$state$aguess[1] , 
       r=( 1.4*.$state_pars$rb + 1.6*get(.$fnames$rs)(.,A=.$state$aguess[1],c=get(.$fnames$gas_diff)(.,.$state$aguess[1])) + .$state_pars$ri ) )
+
+      ! Step 1 calculate the leaf boundary as a function of Aguess and can_co2
+
+      ! f_ficks_ci( across boundary)
+
+      ! Step 2 calculate stomatal resistance
+
+      f_rs_medlyn2011
+      f_rs_ball1987
+
+
+      ! Step 3 calculate cc
+
+      !  THIS IS BEING CALLED
+      !  f_ficks_ci <- function(., A=.$state$A, r=1.4*.$state_pars$rb, c=.$state$ca ) {
+      !  # can be used to calculate cc, ci or cb (boundary CO2 conc) from either ri, rs or rb respectively
+      !  # by default calculates cb from ca and rb
+      !  # c units in Pa (co2 concentration outside the boundary layer)
+      !  # A units umol m-2 s-1
+      !  # r units  m2 s mol-1
+      
+      ! c-A*r*.$env$atm_press*1e-6
+      ! }
+
     .$state$aguess[2]  <- f_assimilation(.) 
+    
+    ! f_assimilation 
+! Calculate assimilation for a given cc (.$state$cc)
+! - code block common to all assimilation solvers
+! - calculates Ag/cc, determines limiting rate, calculates and returns net A
+!f_assimilation <- function(.) {
+ 
+!  # calculate Ag / cc for each limiting process
+!  .$state$Acg[] <- get(.$fnames$Acg)(.)
+!  .$state$Ajg[] <- get(.$fnames$Ajg)(.)
+!  .$state$Apg[] <- get(.$fnames$Apg)(.)
+  
+!  # determine rate limiting cycle - this is done based on carboxylation, not net assimilation (Gu etal 2010).
+!  Amin <- get(.$fnames$Alim)(.) 
+  
+!  # calculate & return net A
+!  Amin*.$state$cc - Amin*.$state_pars$gstar - .$state$rd
+!}
+
+!f_Acg_farquhar1980 <- function(., cc=.$state$cc ) {   
+!  # Farquhar 1980 eq to calculate RuBisCO limited photosynthetic rate
+!  # umol m-2 s-1
+  
+!  # dvars
+!  # Ci (or Cc but vcmax needs adjusting)   
+  
+!  # params
+!  # Vcmax maximum carboxylation rate of RuBisCO  (umol m-2 s-1)
+!  # Ko Michaelis constant for O2 mbar            (kPa)
+!  # Kc Michaelis constant for CO2                ( Pa) 
+  
+!  # Ko and O must be in same units
+!  # Kc, Ci and Gamma must be in same units
+  
+!  # calculate gross CO2 limited carboxylation rate / cc 
+!  .$state_pars$vcmaxlt /
+!    (cc + .$state_pars$Km)
+!}
+
+
+!f_Ajg_generic <- function(., cc=.$state$cc ) { 
+!  # generic eq to calculate light limited photosynthetic rate 
+!  # currently no other formulation exists (other than slighly different parameters in the denominator)
+!  # umol m-2 s-1
+!  # 4: number of fully transported e needed to fix 1 co2 molecule
+!  
+!  # calculate gross electron transport limited carboxylation rate / cc 
+!  .$state$J / (4*(cc+2*.$state_pars$gstar))     
+
+!
+! USE FARQUARWONG1984 TO CALCULATE J BEFORE WE ITERATE
+!
+!}
+
+! TPU limitation
+! triose phosphate limitation from vonCaemmerer 2000 as corrected in Gu 2010
+!f_Apg_vonc2000 <- function(., cc=.$state$cc ) {
+!  # this is derived from Harley & Sharkey 1991
+!  # the difference is that Harley & Sharkey iteratively solved to find tpu, while here tpu is set independently
+  
+!  # As described in Gu 2010, the collatz 1991 function for TPU limitation is a special case of this one where:
+!  # alpha = 0, tpu = vcmax/6
+!  # and tpu temperature scaling is identical to vcmax
+  
+!  # calculate gross TPU limited carboxylation rate / cc 
+!  ifelse( cc <= $state_pars$gstar, NA,
+!          3*.$state_pars$tpu / ( cc-.$state_pars$gstar ) 
+!          )
+!}
+
+! NOTE $state_pars$gstar  co2_cpoint
+! pars$Apg_alpha   = 
+
     .$state$faguess[2] <- get(.$fnames$solver_func)(., .$state$aguess[2] ) 
   }
    ! if both a1 and a2 are below zero then return -1 and leafsys routine will calculate A assuming gs = g0
