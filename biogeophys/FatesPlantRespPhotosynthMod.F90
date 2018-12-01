@@ -20,27 +20,29 @@ module FATESPlantRespPhotosynthMod
    
    ! !USES:
 
-   use FatesGlobals, only      : endrun => fates_endrun
-   use FatesGlobals, only      : fates_log
+   use FatesGlobals,      only : endrun => fates_endrun
+   use FatesGlobals,      only : fates_log
    use FatesConstantsMod, only : r8 => fates_r8
    use FatesConstantsMod, only : itrue
+   use FatesConstantsMod, only : mol_per_umol
    use FatesInterfaceMod, only : hlm_use_planthydro
    use FatesInterfaceMod, only : hlm_parteh_mode
    use FatesInterfaceMod, only : numpft
-   use EDTypesMod, only        : maxpft
-   use EDTypesMod, only        : nlevleaf
-   use EDTypesMod, only        : nclmax
+   use EDPftvarcon,       only : EDPftvarcon_inst 
+   use EDTypesMod,        only : maxpft
+   use EDTypesMod,        only : nlevleaf
+   use EDTypesMod,        only : nclmax
 
-   use PRTGenericMod,          only : prt_carbon_allom_hyp
-   use PRTGenericMod,          only : prt_cnp_flex_allom_hyp 
-   use PRTGenericMod,          only : all_carbon_elements
-   use PRTGenericMod,          only : nitrogen_element
-   use PRTGenericMod,          only : leaf_organ
-   use PRTGenericMod,          only : fnrt_organ
-   use PRTGenericMod,          only : sapw_organ
-   use PRTGenericMod,          only : store_organ
-   use PRTGenericMod,          only : repro_organ
-   use PRTGenericMod,          only : struct_organ
+   use PRTGenericMod,     only : prt_carbon_allom_hyp
+   use PRTGenericMod,     only : prt_cnp_flex_allom_hyp 
+   use PRTGenericMod,     only : all_carbon_elements
+   use PRTGenericMod,     only : nitrogen_element
+   use PRTGenericMod,     only : leaf_organ
+   use PRTGenericMod,     only : fnrt_organ
+   use PRTGenericMod,     only : sapw_organ
+   use PRTGenericMod,     only : store_organ
+   use PRTGenericMod,     only : repro_organ
+   use PRTGenericMod,     only : struct_organ
 
    ! CIME Globals
    use shr_log_mod , only      : errMsg => shr_log_errMsg
@@ -85,6 +87,16 @@ module FATESPlantRespPhotosynthMod
    ! empirical curvature parameter for ap photosynthesis co-limitation
    real(r8),parameter :: theta_ip = 0.95_r8
 
+   ! Ratio of H2O/CO2 gas diffusion in stomatal airspace (approximate)
+   real(r8),parameter :: h2o_co2_stoma_diffuse_ratio = 1.6_r8
+   
+   ! Ratio of H2O/CO2 gass diffusion in the leaf boundary layer (approximate) 
+   real(r8),parameter :: h2o_co2_bl_diffuse_ratio = 1.4_r8
+
+   ! THIS SHOULD BE A UNIFIED un_initialized in fates constants
+   real(r8),parameter :: un_initialized = -9.9e32_r8
+
+
 contains
   
   !--------------------------------------------------------------------------------------
@@ -101,7 +113,7 @@ contains
 
     ! !USES:
 
-    use EDPftvarcon         , only : EDPftvarcon_inst 
+    
 
     use FatesSynchronizedParamsMod , only : FatesSynchronizedParamsInst
     use EDTypesMod        , only : ed_patch_type
@@ -179,6 +191,7 @@ contains
    
     real(r8) :: mm_kco2            ! Michaelis-Menten constant for CO2 (Pa)
     real(r8) :: mm_ko2             ! Michaelis-Menten constant for O2 (Pa)
+    real(r8) :: mm_km              ! Michaelis-menten combo term applied in Farquar 1980
     real(r8) :: co2_cpoint         ! CO2 compensation point (Pa)
     real(r8) :: btran_eff          ! effective transpiration wetness factor (0 to 1) 
     real(r8) :: bbb                ! Ball-Berry minimum leaf conductance (umol H2O/m**2/s)
@@ -240,6 +253,13 @@ contains
     integer  :: cl,s,iv,j,ps,ft,ifp ! indices
     integer  :: nv                  ! number of leaf layers
     integer  :: NCL_p               ! number of canopy layers in patch
+
+    ! Choose between the to photosynthesis solvers 
+    integer, parameter :: iterative_quad    = 1
+    integer, parameter :: semianalytic_quad = 2
+
+    integer, parameter :: photo_solver = iterative_quad
+
 
     ! Parameters
     ! -----------------------------------------------------------------------
@@ -328,6 +348,7 @@ contains
                                            bc_in(s)%rb_pa(ifp),      & ! in
                                            mm_kco2,                  & ! out              
                                            mm_ko2,                   & ! out
+                                           mm_km,                    & ! out
                                            co2_cpoint,               & ! out
                                            cf,                       & ! out
                                            gb_mol,                   & ! out
@@ -513,6 +534,9 @@ contains
                               ! Part IX: This call calculates the actual photosynthesis for the 
                               ! leaf layer, as well as the stomatal resistance and the net assimilated carbon.
 
+                              select case(photo_solver)
+                              
+                              case(iterative_quad)
                               call LeafLayerPhotosynthesis(currentPatch%f_sun(cl,ft,iv),    &  ! in
                                                         currentPatch%ed_parsun_z(cl,ft,iv), &  ! in
                                                         currentPatch%ed_parsha_z(cl,ft,iv), &  ! in
@@ -541,6 +565,36 @@ contains
                                                         currentPatch%psn_z(cl,ft,iv),       &  ! out
                                                         rs_z(iv,ft,cl),                     &  ! out
                                                         anet_av_z(iv,ft,cl))                   ! out
+
+                              case(semianalytic_quad)
+                              call SemiAnalyticalQuad(bc_in(s)%forc_pbot,                 &
+                                                      bc_in(s)%cair_pa(ifp),              &  ! in
+                                                      bc_in(s)%oair_pa(ifp),              &  ! in
+                                                      mm_km,                              &  ! in
+                                                      bc_in(s)%esat_tv_pa(ifp) - ceair,   &  ! vpd
+                                                      gb_mol,                             &  ! in
+                                                      cf,                                 &  ! in
+                                                      vcmax_z,                            &  ! in
+                                                      jmax_z,                             &  ! in
+                                                      tpu_z,                              &  ! in
+                                                      co2_cpoint,                         &  ! in
+                                                      lmr_z(iv,ft,cl),                    &  ! in
+                                                      currentPatch%ed_parsun_z(cl,ft,iv), &  ! in
+                                                      currentPatch%ed_parsha_z(cl,ft,iv), &  ! in
+                                                      currentPatch%ed_laisun_z(cl,ft,iv), &  ! in
+                                                      currentPatch%ed_laisha_z(cl,ft,iv), &  ! in
+                                              currentPatch%canopy_area_profile(cl,ft,iv), &  ! in
+                                                      currentPatch%f_sun(cl,ft,iv),    &  ! in
+                                                      ft,                                 &  ! in
+                                                      anet_av_z(iv,ft,cl),                &  ! out
+                                                      currentPatch%psn_z(cl,ft,iv),       &  ! out
+                                                      rs_z(iv,ft,cl))
+
+                              case default
+                                 write(fates_log(),*) 'A photo solver was chosen that DNE'
+                                 call endrun(msg=errMsg(sourcefile, __LINE__))
+                              end select
+
 
                               rate_mask_z(iv,ft,cl) = .true.
                            end if
@@ -849,8 +903,6 @@ contains
     ! Other arguments or variables may be indicative of scales broader than the LSL.
     ! ------------------------------------------------------------------------------------
     
-    use EDPftvarcon       , only : EDPftvarcon_inst
-    
     ! Arguments
     ! ------------------------------------------------------------------------------------
     real(r8), intent(in) :: f_sun_lsl         ! 
@@ -867,6 +919,8 @@ contains
     real(r8), intent(in) :: veg_tempk         ! vegetation temperature
     real(r8), intent(in) :: veg_esat          ! saturation vapor pressure at veg_tempk (Pa)
     
+    
+
     ! Important Note on the following gas pressures.  This photosynthesis scheme will iteratively
     ! solve for the co2 partial pressure at the leaf surface (ie in the stomata). The reference
     ! point for these input values are NOT within that boundary layer that separates the stomata from
@@ -1037,19 +1091,19 @@ contains
                  end if
 
                  ! Gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
-!                 aquad = theta_cj(c3c4_path_index)
-!                 bquad = -(ac + aj)
-!                 cquad = ac * aj
-!                 call quadratic_f (aquad, bquad, cquad, r1, r2)
-!                 ai = min(r1,r2)
+                 aquad = theta_cj(c3c4_path_index)
+                 bquad = -(ac + aj)
+                 cquad = ac * aj
+                 call quadratic_f (aquad, bquad, cquad, r1, r2)
+                 ai = min(r1,r2)
 
-!                 aquad = theta_ip
-!                 bquad = -(ai + ap)
-!                 cquad = ai * ap
-!                 call quadratic_f (aquad, bquad, cquad, r1, r2)
-!                 agross = min(r1,r2)
+                 aquad = theta_ip
+                 bquad = -(ai + ap)
+                 cquad = ai * ap
+                 call quadratic_f (aquad, bquad, cquad, r1, r2)
+                 agross = min(r1,r2)
 
-                 agross = SmoothLimitCollatz1991(ac,aj,ap,c3c4_path_index)
+!                 agross = SmoothLimitCollatz1991(ac,aj,ap,c3c4_path_index)
 
                  ! Net carbon assimilation. Exit iteration if an < 0
                  anet = agross  - lmr
@@ -1072,7 +1126,7 @@ contains
                  
                  ! Derive new estimate for co2_inter_c
                  co2_inter_c = can_co2_ppress - anet * can_press * &
-                       (1.4_r8*gs_mol+1.6_r8*gb_mol) / (gb_mol*gs_mol)
+                       (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
 
                  ! Check for co2_inter_c convergence. Delta co2_inter_c/pair = mol/mol. 
                  ! Multiply by 10**6 to convert to umol/mol (ppm). Exit iteration if 
@@ -1095,7 +1149,7 @@ contains
               leaf_co2_ppress = can_co2_ppress - 1.4_r8/gb_mol * anet * can_press
               leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
               co2_inter_c = can_co2_ppress - anet * can_press * &
-                            (1.4_r8*gs_mol+1.6_r8*gb_mol) / (gb_mol*gs_mol)
+                            (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
               
               ! Convert gs_mol (umol /m**2/s) to gs (m/s) and then to rs (s/m)
               gs = gs_mol / cf
@@ -1522,7 +1576,7 @@ contains
    ! ====================================================================================
    
    subroutine GetCanopyGasParameters(can_press, &
-                                     can_o2_partialpress, &
+                                     can_o2_ppress, &
                                      veg_tempk, &
                                      air_tempk, &
                                      air_vpress, &
@@ -1530,6 +1584,7 @@ contains
                                      rb,        &
                                      mm_kco2,   &
                                      mm_ko2,    &
+                                     mm_km,      &
                                      co2_cpoint, &
                                      cf,         &
                                      gb_mol, &
@@ -1547,7 +1602,7 @@ contains
 
       ! Arguments
       real(r8), intent(in) :: can_press           ! Air pressure within the canopy (Pa)
-      real(r8), intent(in) :: can_o2_partialpress ! Partial press of o2 in the canopy (Pa)
+      real(r8), intent(in) :: can_o2_ppress      ! Partial press of o2 in the canopy (Pa)
       real(r8), intent(in) :: veg_tempk           ! The temperature of the vegetation (K)
       real(r8), intent(in) :: air_tempk           ! Temperature of canopy air (K)
       real(r8), intent(in) :: air_vpress          ! Vapor pressure of canopy air (Pa)
@@ -1555,7 +1610,8 @@ contains
       real(r8), intent(in) :: rb                  ! Leaf Boundary layer resistance (s/m)
 
       real(r8), intent(out) :: mm_kco2       ! Michaelis-Menten constant for CO2 (Pa)
-      real(r8), intent(out) :: mm_ko2        !  Michaelis-Menten constant for O2 (Pa)
+      real(r8), intent(out) :: mm_ko2        ! Michaelis-Menten constant for O2 (Pa)
+      real(r8), intent(out) :: mm_km         ! Michaelis-Menten combo term 
       real(r8), intent(out) :: co2_cpoint    !  CO2 compensation point (Pa)
       real(r8), intent(out) :: cf            ! conversion factor between molar form and velocity form
                                              ! of conductance and resistance: [umol/m3] 
@@ -1598,7 +1654,7 @@ contains
       kc25 = ( mm_kc25_umol_per_mol / umol_per_mol ) * can_press
       ko25 = ( mm_ko25_mmol_per_mol / mmol_per_mol ) * can_press
       sco  = 0.5_r8 * 0.209_r8 / (co2_cpoint_umol_per_mol / umol_per_mol )
-      cp25 = 0.5_r8 * can_o2_partialpress / sco
+      cp25 = 0.5_r8 * can_o2_ppress / sco
       
       if( veg_tempk.gt.150_r8 .and. veg_tempk.lt.350_r8 )then
          mm_kco2       = kc25 * ft1_f(veg_tempk, kcha)
@@ -1610,6 +1666,11 @@ contains
          co2_cpoint = 1.0_r8
       end if
       
+      ! Combined term from Michaeles Menten used in Farquar 1980 Gross
+      ! photosynthesis calculation
+      
+      mm_km = mm_kco2 * (1._r8 + can_o2_ppress / mm_ko2 )
+
       ! ---------------------------------------------------------------------------------
       !
       ! cf is the conversion factor between molar form and velocity form
@@ -1655,7 +1716,6 @@ contains
                                               lmr)
 
       use FatesConstantsMod, only : tfrz => t_water_freeze_k_1atm
-      use EDPftvarcon         , only : EDPftvarcon_inst
  
       ! Arguments
       real(r8), intent(in)  :: lmr25top_ft  ! canopy top leaf maint resp rate at 25C 
@@ -1726,7 +1786,6 @@ contains
       ! co2_rcurve_islope: initial slope of CO2 response curve (C4 plants)
       ! ---------------------------------------------------------------------------------
 
-      use EDPftvarcon         , only : EDPftvarcon_inst
       use FatesConstantsMod, only : tfrz => t_water_freeze_k_1atm
 
       ! Arguments
@@ -1836,7 +1895,6 @@ contains
       ! and the curvature of the function is determined by a parameter.
 
       ! Uses
-      use EDPftvarcon         , only : EDPftvarcon_inst 
 
       ! Arguments
       ! ------------------------------------------------------------------------------
@@ -1913,16 +1971,24 @@ contains
     !  transition     = numeric(1)      # cc at the transition point where wc = wj                        (Pa)
 
 
-    function quad_sol(a,b,c,root_type) result(root)
+    function quad_sol(a,b,c,root_type_in) result(root)
        
        real(r8), intent(in) :: a
        real(r8), intent(in) :: b
        real(r8), intent(in) :: c
-       integer,  intent(in) :: root_type
+       integer,  optional, intent(in) :: root_type_in
        
+       integer  :: root_type
        real(r8) :: q
        real(r8) :: root1
        real(r8) :: root2
+       real(r8) :: root
+
+       if( present(root_type_in)) then
+          root_type = root_type_in
+       else
+          root_type = lower_root
+       end if
 
        q     = -0.5 * ( b + b/abs(b) * sqrt(b*b - 4*a*c) )
 
@@ -1939,13 +2005,11 @@ contains
           root = min(root1,root2)
        end if
        
-       
-       return
-    end function quad_sol
+     end function quad_sol
 
     ! ===================================================================================
 
-    function SmoothLimitCollatz1991(a_cbox, a_rupb, a_prod, c3c4_path_index ) return(a_gross)
+     function SmoothLimitCollatz1991(a_cbox, a_rubp, a_prod, c3c4_path_index ) result(a_gross)
 
        ! --------------------------------------------------------------------------------
        ! Fine a smoothed solution of all three possible limiting states
@@ -1983,32 +2047,293 @@ contains
           c =  a_prod * a_gross
           
           a_gross = quad_sol(a,b,c,lower_root)
-
+          
        end if
        
-    end function SmoothLimitCollatz1991
+     end function SmoothLimitCollatz1991
 
     ! ===================================================================================
     
-    function RStomaMedlyn2011Fe(vpd,co2_can )  return(gsd)
+    function RStomaH2OMedlyn2011Fe(vpd) result(r_stomata_fe)
        
-       ! f(e) component of rs from Medlyn 2011  
+      ! f(e) component of rs from Medlyn 2011  
+      
+      real(r8), intent(in) :: vpd                ! Vapor pressure deficit (Pa)
+      real(r8)             :: r_stomata_fe       ! Stomatal Conductance (molm-2 s-1)
+      real(r8), parameter  :: g1_medlyn = 6._r8  ! Medlyn 2011 gs slope (kPa^0.5)
        
-       real(r8), intent(in) :: vpd       ! Vapor pressure deficit (Pa)
-       real(r8), intent(in) :: co2_can   ! Canopy co2 partial pressure (Pa)
-       
-       real(r8) :: gsd                           ! Stomatal Conductance (molm-2 s-1) ???
-       real(r8), parameter :: g1_medlyn = 6._r8  ! Medlyn 2011 gs slope (kPa^0.5)
-       
-       
-       gsd = ( 1._r8 + g1_medlyn / sqrt(vpd) ) / co2_can
-     
-       
-    end function RStomaMedlyn2011Fe
+      r_stomata_fe = ( 1._r8 + g1_medlyn / sqrt(vpd) )
+
+    end function RStomaH2OMedlyn2011Fe
 
     ! ===================================================================================
 
-    subroutine AnalyticalQuad(press_can, co2_can, o2_can, vpd, vcmax,  )
+    function RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net) result(r_stomata)
+
+      ! This function calculates the stomatal conductance to water vapor
+      ! following Medlyn et al. 2011
+
+      real(r8) :: vpd            ! vapor pressure deficit [Pa]
+      real(r8) :: can_co2_ppress ! canopy co2 partial pressure [Pa]
+      real(r8) :: can_press      ! atmospheric pressure in the canopy [Pa]
+      real(r8) :: a_net          ! net assimilation rate [umol m-2 s-1]
+      real(r8) :: r_stomata      ! Stomatal resistance to h2o [m2 s mol-1 h2o]
+      real(r8), parameter :: g_stomata_min = 0.01 ! Medlyn 2011 minimum stomatal cond
+                                                  ! [mol h2o m-2 s-1]
+      
+      r_stomata = 1.0_r8 / ( g_stomata_min + &
+           RStomaH2OMedlyn2011Fe(vpd) * a_net * can_press * &
+           mol_per_umol / can_co2_ppress )  
+
+      return
+    end function RStomaH2OMedlyn2011
+
+    ! ===================================================================================
+
+    function FicksLawDiffusion(c_co2_in,a_net,press,resis) result(c_co2)
+
+      ! This function is used to calculate CO2 partial pressure (concentration)
+      ! of the chloroplast, intercellular space, or the boundary layer, based on 
+      ! Ficks Law diffusion given a concentration on one side of a resistance pathway.
+
+      real(r8) :: c_co2_in     ! known co2 concentration on other
+                               ! side of boundary/resistor [Pa]
+      real(r8) :: a_net        ! net assimilation        [umol m-2 s-1]
+      real(r8) :: press        ! air pressure in the 
+                               ! vicinity of the leaf      [Pa]
+      real(r8) :: resis        ! resistance of the boundary
+                               ! of interest               [m2 s mol-1]
+                               ! could be either: 1 boundary layer resistance
+                               !                  2 stomatal resistance
+                               !       or         3 their series
+      real(r8) :: c_co2        ! co2 concentration at the point of interest
+
+
+      ! [Pa CO2] = [Pa CO2] - [umol CO2 m-2 s-1] * 
+      !            [m2 s mol-1 air] * [Pa air] * [mol / umol]
+
+      c_co2 = c_co2_in - a_net * resis * press * mol_per_umol
+
+    end function FicksLawDiffusion
+
+    ! ===================================================================================
+    
+    function AGrossFarquhar1980(vcmax,cplast_co2,mm_km) result(a_cbox)
+      
+      real(r8) :: vcmax  ! Maximum Carboxylation rate of RuBisCO [umol m-2 s-1]
+                         ! functional on temp, and water stress
+      
+      real(r8) :: cplast_co2 ! Chloroplast CO2 partial pressure [Pa]
+
+      real(r8) :: mm_km      ! Michaeles-Menten combined term that incorporates
+                             ! the MM coefficients, the co2 compensation point
+                             ! and the o2 partial pressure
+
+      real(r8) :: a_cbox     ! Gross carboxylation limited assimilation 
+                             ! [umol m-2 s-1 pa-1]
+                             ! Normalized by chloroplastic co2 concentration
+
+      a_cbox = vcmax / (cplast_co2 + mm_km)
+      
+    end function AGrossFarquhar1980
+
+    ! ===================================================================================
+
+    function AGrossRuBPLim(je,cplast_co2,co2_cpoint) result(a_rubp)
+      
+      !  Generic method calculate light limited photosynthetic rate 
+      !  currently no other formulation exists (other than slighly 
+      !  different parameters in the denominator)
+           
+      real(r8) :: je         ! electron transport rate [umol electrons m-2 s-1]
+      real(r8) :: cplast_co2 ! chloroplast co2 concentration [Pa]
+      real(r8) :: co2_cpoint ! CO2 compensation point [Pa]
+           
+      real(r8) :: a_rubp     ! Gross RuBp limited assimilation [umol m-2 s-1 pa-1]
+                             ! Normalized by chloroplastic co2 concentration
+      
+      real(r8), parameter :: e_per_co2_fix = 4.0_r8  ! number of fully transported
+                                                     ! e needed to fix 1 co2 molecule
+      
+      a_rubp = je / (4._r8*(cplast_co2 + 2._r8 * co2_cpoint))
+      
+      
+    end function AGrossRuBPLim
+
+    ! ===================================================================================
+    
+    function ERateLimFarquharWong1984(par,jmax) result(je)
+      
+      ! calculates the electron transport rate given Jmax
+      ! I - irradiance & alpha - electrons transported per photon
+      
+      ! in von Caemmerer 2000    - qabs = par*a*(1-f)/2
+      ! where a is leaf light absorptance, 1-f corrects for spectral 
+      ! quality and light not absorbed by photosystems, and /2 accounts 
+      ! for the 2 photons needed to fully tranport 1 electron 
+      ! this is presumably the same as I * alpha
+      ! if so von C 2000's alpha is 0.36125
+      
+      ! Convert par from W/m2 to umol photons/m**2/s using the factor 4.6
+      
+      real(r8) :: par                  ! Absorbed photosynthetically active 
+                                       ! radiation by the leaf tissues [W/m2]
+      real(r8) :: jmax                 !
+      real(r8) :: qabs                 ! Absorbed photosynthetically active radiation
+                                       ! by photosystem 2 [umol photons/m**2/s]
+      real(r8) :: aquad, bquad, cquad  ! quadratic smooth terms
+      real(r8) :: je                   ! electron transport rate 
+    
+      qabs = par * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
+      
+      aquad   = theta_psii
+      bquad   = -(qabs + jmax)
+      cquad   = qabs * jmax
+      
+      je = quad_sol(aquad,bquad,cquad)
+      
+    end function ERateLimFarquharWong1984
+
+    ! ===================================================================================
+
+    function AGrossTPU(tpu,cplast_co2,co2_cpoint ) result(a_prod)
+
+      real(r8) :: cplast_co2 ! chloroplast co2 concentration [Pa]
+      real(r8) :: co2_cpoint ! CO2 compensation point [Pa]
+      real(r8) :: tpu        ! Triose phosphate utilization rate 
+                             ! (umol CO2/m**2/s)
+
+      real(r8) :: a_prod     ! Gross product limited assimilation
+                             ! [umol m-2 s-1 pa-1]
+
+      ! SHOULD THIS BE MULT BY 3?
+
+
+      if (cplast_co2 < co2_cpoint) then
+         a_prod = un_initialized
+      else
+         a_prod = tpu / ( cplast_co2-co2_cpoint)
+      end if
+    
+    end function AGrossTPU
+
+
+    ! ==============================================================================
+    
+    subroutine GetResidualFromAnet(a_net_in, r_blayer_co2, vpd, can_press, &
+                                   can_co2_ppress, vcmax, je, tpu, mm_km,  &
+                                   co2_cpoint, c3c4_path_index, lmr, a_net_resid, cplast_co2)
+      
+      ! combines A, rs, ri, ci & cc eqs to a single f(A), 
+      ! combines all rate limiting processes
+      !  -- for use with uniroot solver
+      !  -- A is pased to this equation by the uniroot solver and is solved to find the root of this equation
+      
+      ! calculate cc from ca, rb, rs, and ri
+      ! total resistance of a set of resistors in series is simply their sum 
+      ! assumes boundary layer and stomatal resistance terms are in h2o units
+      ! assumes mesophyll resistance is in co2 units
+      
+      real(r8),intent(in)  :: a_net_in
+      real(r8),intent(in)  :: r_blayer_co2
+      real(r8),intent(in)  :: vpd
+      real(r8),intent(in)  :: can_press
+      real(r8),intent(in)  :: can_co2_ppress
+      real(r8),intent(in)  :: vcmax
+      real(r8),intent(in)  :: je
+      real(r8),intent(in)  :: tpu
+      real(r8),intent(in)  :: mm_km
+      real(r8),intent(in)  :: co2_cpoint
+      integer,intent(in)   :: c3c4_path_index
+      real(r8),intent(in)  :: lmr
+      
+      real(r8),intent(out) :: a_net_resid
+      real(r8),intent(out) :: cplast_co2
+      
+      real(r8) :: r_stomata_co2
+      real(r8) :: a_net_out  
+      
+      r_stomata_co2 = h2o_co2_stoma_diffuse_ratio * &
+           RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net_in)
+      
+      ! Use ficks law to estimate the chloroplast CO2 concentration
+      
+      cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net_in, &
+                                     can_press,r_stomata_co2+r_blayer_co2)
+
+
+      ! Re-calculate co-limited CO2 assimilation with the updated co2 concentration
+      call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km,co2_cpoint,lmr,c3c4_path_index,a_net_out)
+
+
+      ! The residual is the difference, the re-calculated rate minus the input rate
+      a_net_resid = a_net_out - a_net_in
+
+
+      return
+    end subroutine GetResidualFromAnet
+
+    ! ===================================================================================
+    
+    subroutine CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+                                     co2_cpoint,lmr,c3c4_path_index,a_net_out)
+
+      ! ---------------------------------------------------------------------------------
+      ! DESCRIPTION
+      ! ---------------------------------------------------------------------------------
+      
+      real(r8),intent(in) :: cplast_co2
+      real(r8),intent(in) :: vcmax
+      real(r8),intent(in) :: je
+      
+      real(r8),intent(in) :: tpu             ! Triose phosphate utilization rate 
+                                             ! (umol CO2/m**2/s)
+      real(r8),intent(in) :: mm_km           ! Michaelis-Menten O2 dependent
+                                             ! combined term.
+      real(r8),intent(in) :: co2_cpoint      ! CO2 compensation point (Pa)
+      real(r8),intent(in) :: lmr             ! Leaf Maintenance Respiration (umol CO2 m-2 s-1)
+      integer,intent(in)  :: c3c4_path_index ! C3 = 1, C4 = 0
+
+      real(r8),intent(out) :: a_net_out      ! Net carbon assimilation (umol CO2 m-2 s-1)
+
+      ! Locals
+      real(r8) :: a_cbox         ! Rubisco-limited (carboxylation) gross 
+                                 ! photosynthesis (assimilate) (umol m-2 s-1 pa-1)
+      real(r8) :: a_rubp         ! RuBP-limited gross photosynthesis    
+                                 ! (umol m-2 s-1 pa-1)
+      real(r8) :: a_prod         ! product-limited (C3) or CO2-limited  
+                                 ! (umol m-2 s-1 pa-1)
+                                 ! (C4) gross photosynthesis
+      real(r8) :: a_gross_min    ! Co-limited gross assimilation
+                                 ! normalized by co2 
+
+         
+      ! Rubisco-limited (carboxylation) gross photosynthesis
+      
+      a_cbox = AGrossFarquhar1980(vcmax,cplast_co2,mm_km)
+      
+      ! RuBP-limited gross photosynthesis
+      
+      a_rubp = AGrossRuBPLim(je,cplast_co2,co2_cpoint) 
+
+      ! product-limited (C3) or CO2-limited 
+      
+      a_prod = AGrossTPU(tpu,cplast_co2,co2_cpoint)
+      
+      ! Use quadratic smoothing to find a co-limited product
+      a_gross_min = SmoothLimitCollatz1991(a_cbox, a_rubp, a_prod, c3c4_path_index )
+
+      ! Convert to net assimilation [umol co2 m-2 s-1]
+      a_net_out = a_gross_min * (cplast_co2 - co2_cpoint) - lmr
+
+
+      return
+    end subroutine CoLimitedAssimilation
+
+
+    ! ===================================================================================
+
+    subroutine AnalyticalQuad(press_can, co2_can, o2_can, vpd, vcmax, a_net )
 
        ! --------------------------------------------------------------------------------
        ! - finds the analytical solution assuming rb and ri are zero
@@ -2031,353 +2356,386 @@ contains
 
        real(r8), parameter :: min_gs = 0.01_r8  ! Medlyn 2011 min stomatal cond (molm-2s-1)
 
-       real(r8), intent(in) :: a_cbox          ! Rubisco-limited (carboxylation) gross 
+       real(r8) :: a_cbox          ! Rubisco-limited (carboxylation) gross 
                                                ! photosynthesis (assimilate) (umol m-2 s-1)
-       real(r8), intent(in) :: a_rubp          ! RuBP-limited gross photosynthesis    
+       real(r8) :: a_rubp          ! RuBP-limited gross photosynthesis    
                                                ! (umol m-2 s-1)
-       real(r8), intent(in) :: a_prod          ! product-limited (C3) or CO2-limited  
+       real(r8) :: a_prod          ! product-limited (C3) or CO2-limited  
                                                ! (umol m-2 s-1)
                                                ! (C4) gross photosynthesis
-       integer,  intent(in) :: c3c4_path_index ! C3 = 1
-                                               ! C4 = 0
+       integer  :: c3c4_path_index ! C3 = 1
+                                   ! C4 = 0
+
+       real(r8), intent(out) :: a_net          ! Net assimilation (umol m-2 s-1)
+
 
        real(r8) :: mm_km                       ! An intermediate term that
                                                ! contains the Michaeles Menten parameters
 
        real(r8) :: rd                          ! Actual rate of respiration                         (umol m-2 s-1)
 
-       !  oi = numeric(1),                 # atmospheric & internal O2  (kPa)
-       !  ca = numeric(1),                 # atmospheric CO2            ( Pa)
-       !  cb = numeric(1),                 # boundary layer CO2         ( Pa)
-       !  ci = numeric(1),                 # leaf internal CO2          ( Pa) 
-       !  cc = numeric(1),                 # chloroplast CO2            ( Pa)
-       !  leaf_temp = numeric(1),          # leaf temperature           (oC)
-       
+       real(r8), parameter :: g0=0._r8         ! Minimum conductance (~0)
 
 
-       ! combines A, rs, ci, cc eqs to a single f(), 
-       ! combines all rate limiting processes
-
-       co2_blayer = co2_can
-
-       mm_km = mm_kco2 * (1._r8 + o2_can/mm_ko2)
-
-       ! .$state_pars$Kc * (1+(.$state$oi/.$state_pars$Ko))
-
-
-  ! calculate coefficients of quadratic to solve A
-  assim_quad_soln <- function(., V, K ) {
-    gsd <- get(paste0(.$fnames$rs,'_fe'))(.) / .$state$ca
-    p   <- .$env$atm_press*1e-6
-    a   <- p*( 1.6 - gsd*(.$state$ca + K) )
-    b   <- p*gsd*( .$state$ca*(V - .$state$rd) - .$state$rd*K - V*.$state_pars$gstar ) - min_gs * (.$state$ca + K) + 1.6*p*(.$state$rd - V)
-    c   <- min_gs*( V*(.$state$ca - .$state_pars$gstar) - .$state$rd*(K + .$state$ca) )
- 
-    ! return A 
-    quad_sol(a,b,c,'upper')
-  }
-
-  
-
- 
-
-
-  .$state$Acg[] <- assim_quad_soln(., V=.$state_pars$vcmaxlt, K=.$state_pars$Km )
-  .$state$Ajg[] <- assim_quad_soln(., V=(.$state$J/4),        K=(2*.$state_pars$gstar) )
-  .$state$Apg[] <- assim_quad_soln(., V=(3*.$state_pars$tpu), K=(-(1+3*.$pars$Apg_alpha)*.$state_pars$gstar) )
-
-  ! C3: Rubisco-limited photosynthesis
-  ac = vcmax * max(co2_inter_c-co2_cpoint, 0._r8) / &
-                          (co2_inter_c+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
-  
-  ! C3: RuBP-limited photosynthesis
-  aj = je * max(co2_inter_c-co2_cpoint, 0._r8) / &
-        (4._r8*co2_inter_c+8._r8*co2_cpoint)
-  
-  ! C3: Product-limited photosynthesis 
-  ap = 3._r8 * tpu
-
-
-  gsd = RStomaMedlyn2011Fe(vpd,co2_can)     ! Provide alternatives
-
-  p  = press_can*1e-6   ! Unit conversion?
-  a  = p * ( 1.6 - gsd*(co2_can + mm_km ) )
-  b  = p * gsd * ( co2_can*(vcmax - rd) - &
-        rd * mm_km  - vcmax * .$state_pars$gstar ) - min_gs * ( co2_can + mm_km ) + 1.6*p*(rd - vcmax)
-  c  = min_gs*( vcmax * ( co2_can - .$state_pars$gstar) - .$state$rd*( mm_km  + co2_can) )
-
-
-
-  a_cbox = quad_sol(a,b,c,upper_root)
-
-  # determine rate limiting cycle - this is done based on carboxylation, not net assimilation (Gu etal 2010).
-  Amin        <- get(.$fnames$Alim)(.) 
-  
-  agross  = SmoothLimitCollatz1991(a_cbox, a_rupb, a_prod, c3c4_path_index
-
-
-  # determine cc/ci based on Amin
-  # calculate rs
-  #.$pars$g0[]     <- g0_hold 
-  .$state_pars$rs[] <- get(.$fnames$rs)(.,A=Amin)
-  .$state$cc[] <-.$state$ci[] <- f_ficks_ci(., A=Amin, r=1.6*.$state_pars$rs )
-    
-  # recalculate Ag for each limiting process
-  # necessary if Alim is Collatz smoothing as it reduces A, decoupling A from cc calculated in the quadratic solution 
-  .$state$Acg[] <- get(.$fnames$Acg)(.) * .$state$cc
-  .$state$Ajg[] <- get(.$fnames$Ajg)(.) * .$state$cc
-  .$state$Apg[] <- get(.$fnames$Apg)(.) * .$state$cc
-
-  # return net A
-  Amin
-}
-
-return
-end subroutine AnalyticalQuad
-
-    ! ===================================================================================
-
-    subroutine SemiAnalyticalQuad( )
-
-       ! --------------------------------------------------------------------------------
-       !  IF THIS PRODUCES A NEGATIVE A< THIS ROUTINE NEEDS TO BE CALLED
-       !  WITH A REDUCED CONDUCTANCE.
-       !
-       ! - finds the analytical solution assuming rb and ri are zero to use as first 
-       !   guess (a1)
-       ! - make a second guess (a2) by calculating Cc using a1 and actual values of
-       !   rb and ri   
-       ! - make a third guess (a3) by taking the mean of a1 and a2  
-       ! - calculate residual function value for these three guesses (fa1, fa2, fa3) 
-       ! - check fa1 and fa2 span the root
-       ! - if not, sequentially add 0.01 to the third guess (a3) until fa1 and fa3 
-       !   span the root
-       ! - fit a quadratic through the three sets of co-ordinates to find the root 
-       ! 
-       ! Anthony Walker, 2018  (converted over from MAAT by Ryan Knox)
-       !
-       ! Original function: f_A_r_leaf_semiana_quad <- function(.) {}
-       !
-       ! For more on MAAT: https://github.com/walkeranthonyp/MAAT
-       ! 
-       ! Carbon Assimilation is the solved quantity
-       !
-       ! ---------------------------------------------------------------------------------
-
-       ! find the analytical solution assuming rb and ri are zero to use as first guess (a1)
-       ! rb is boundary layer resistance
-       ! ri is internal resistance 
-       
-       ! umol Co2 m-2 s-1 
-       .$state$aguess[1]  <- .$state$A_ana_rbzero <- f_A_r_leaf_analytical_quad(.)
-
-       ! This is a solver function  (residual umol Co2 m-2 s-1
-       .$state$faguess[1] <- f_A_r_leaf(., .$state$aguess[1] ) 
-
-       ! reporting for development 
-       if(is.na(.$state$faguess[1])) {
-       print('')
-       print(c(.$state$aguess[1],.$state$faguess[1]))
-       print(unlist(.$fnames)); print(unlist(.$pars)); print(unlist(.$state_pars)); print(unlist(.$state)); print(unlist(.$env)) 
-       }
-       
-       
-  if(abs(.$state$faguess[1]) < 1e-6) return(.$state$aguess[1])
-  ! If the residual is true, leave the solveer and return Aguess
-
-  else {
- 
-    ! second guess, also analytical
-    ! get chloroplast CO2, using previous guess of A, 
-
-    .$state$cc[] <- get(.$fnames$gas_diff)( . , .$state$aguess[1] , 
-      r=( 1.4*.$state_pars$rb + 1.6*get(.$fnames$rs)(.,A=.$state$aguess[1],c=get(.$fnames$gas_diff)(.,.$state$aguess[1])) + .$state_pars$ri ) )
-
-      ! Step 1 calculate the leaf boundary as a function of Aguess and can_co2
-
-      ! f_ficks_ci( across boundary)
-
-      ! Step 2 calculate stomatal resistance
-
-      f_rs_medlyn2011
-      f_rs_ball1987
-
-
-      ! Step 3 calculate cc
-
-      !  THIS IS BEING CALLED
-      !  f_ficks_ci <- function(., A=.$state$A, r=1.4*.$state_pars$rb, c=.$state$ca ) {
-      !  # can be used to calculate cc, ci or cb (boundary CO2 conc) from either ri, rs or rb respectively
-      !  # by default calculates cb from ca and rb
-      !  # c units in Pa (co2 concentration outside the boundary layer)
-      !  # A units umol m-2 s-1
-      !  # r units  m2 s mol-1
-      
-      ! c-A*r*.$env$atm_press*1e-6
-      ! }
-
-    .$state$aguess[2]  <- f_assimilation(.) 
-    
-    ! f_assimilation 
-! Calculate assimilation for a given cc (.$state$cc)
-! - code block common to all assimilation solvers
-! - calculates Ag/cc, determines limiting rate, calculates and returns net A
-!f_assimilation <- function(.) {
- 
-!  # calculate Ag / cc for each limiting process
-!  .$state$Acg[] <- get(.$fnames$Acg)(.)
-!  .$state$Ajg[] <- get(.$fnames$Ajg)(.)
-!  .$state$Apg[] <- get(.$fnames$Apg)(.)
-  
-!  # determine rate limiting cycle - this is done based on carboxylation, not net assimilation (Gu etal 2010).
-!  Amin <- get(.$fnames$Alim)(.) 
-  
-!  # calculate & return net A
-!  Amin*.$state$cc - Amin*.$state_pars$gstar - .$state$rd
-!}
-
-!f_Acg_farquhar1980 <- function(., cc=.$state$cc ) {   
-!  # Farquhar 1980 eq to calculate RuBisCO limited photosynthetic rate
-!  # umol m-2 s-1
-  
-!  # dvars
-!  # Ci (or Cc but vcmax needs adjusting)   
-  
-!  # params
-!  # Vcmax maximum carboxylation rate of RuBisCO  (umol m-2 s-1)
-!  # Ko Michaelis constant for O2 mbar            (kPa)
-!  # Kc Michaelis constant for CO2                ( Pa) 
-  
-!  # Ko and O must be in same units
-!  # Kc, Ci and Gamma must be in same units
-  
-!  # calculate gross CO2 limited carboxylation rate / cc 
-!  .$state_pars$vcmaxlt /
-!    (cc + .$state_pars$Km)
-!}
-
-
-!f_Ajg_generic <- function(., cc=.$state$cc ) { 
-!  # generic eq to calculate light limited photosynthetic rate 
-!  # currently no other formulation exists (other than slighly different parameters in the denominator)
-!  # umol m-2 s-1
-!  # 4: number of fully transported e needed to fix 1 co2 molecule
-!  
-!  # calculate gross electron transport limited carboxylation rate / cc 
-!  .$state$J / (4*(cc+2*.$state_pars$gstar))     
-
-!
-! USE FARQUARWONG1984 TO CALCULATE J BEFORE WE ITERATE
-!
-!}
-
-! TPU limitation
-! triose phosphate limitation from vonCaemmerer 2000 as corrected in Gu 2010
-!f_Apg_vonc2000 <- function(., cc=.$state$cc ) {
-!  # this is derived from Harley & Sharkey 1991
-!  # the difference is that Harley & Sharkey iteratively solved to find tpu, while here tpu is set independently
-  
-!  # As described in Gu 2010, the collatz 1991 function for TPU limitation is a special case of this one where:
-!  # alpha = 0, tpu = vcmax/6
-!  # and tpu temperature scaling is identical to vcmax
-  
-!  # calculate gross TPU limited carboxylation rate / cc 
-!  ifelse( cc <= $state_pars$gstar, NA,
-!          3*.$state_pars$tpu / ( cc-.$state_pars$gstar ) 
-!          )
-!}
-
-! NOTE $state_pars$gstar  co2_cpoint
-! pars$Apg_alpha   = 
-
-    .$state$faguess[2] <- get(.$fnames$solver_func)(., .$state$aguess[2] ) 
-  }
-   ! if both a1 and a2 are below zero then return -1 and leafsys routine will calculate A assuming gs = g0
-  if(.$state$aguess[1]<0 & .$state$aguess[2]<0) return(-1.01)
-  else {
-     ! third guess
-    .$state$aguess[3]  <- mean(.$state$aguess[1:2])  
-    .$state$faguess[3] <- get(.$fnames$solver_func)(., .$state$aguess[3] ) 
-     ! check that fa2 and fa1 span 0, if not reguess for fa3 until it and fa1 span zero and then take the mean a1 and a3 to find a2
-    ! under conditions tested so far this is only necessary for Ball-Berry gs
-    if(prod(.$state$faguess[1:2]) > 0) {
-      print('')
-      print('fa1 and fa2 do not span zero')
-      print(c('faguess 1-3:',round(.$state$faguess[1:3],4)))
-      print(c( 'aguess 1-3:',round(.$state$aguess[1:3],4)))
-     
-       if(.$state$faguess[1] > 0 ) { 
-        while(.$state$faguess[3]>0) {
-          .$state$aguess[3]  <- .$state$aguess[3] + 0.01  
-          .$state$faguess[3] <- get(.$fnames$solver_func)(., .$state$aguess[3] ) 
-        }
-      } else {
-        while(.$state$faguess[3] < 0) {
-          .$state$aguess[3]  <- .$state$aguess[3] - 0.01  
-          .$state$faguess[3] <- get(.$fnames$solver_func)(., .$state$aguess[3] ) 
-        }
-      }
-       .$state$aguess[2]  <- mean(.$state$aguess[c(1,3)])
-      .$state$faguess[2] <- get(.$fnames$solver_func)(., .$state$aguess[2] ) 
-       ! reporting for development 
-      a  <- seq(.$state$aguess[1]-2,.$state$aguess[1]+2,0.1 )
-      resid <- numeric(length(a))
-      for( i in 1:length(a) ) {
-        resid[i] <- f_A_r_leaf(., A=a[i] )
-      }
-      print(c('faguess 1-3:',round(.$state$faguess[1:3],4)))
-      print(c( 'aguess 1-3:',round(.$state$aguess[1:3],4)))
-      print(cbind(a,resid))
-       ! over-cautious safety - with while condition above should be no way that this condition is true
-      if(prod(.$state$faguess[c(1,3)]) > 0) stop('failed')
-    }
-     ! check f(guesses) span the root, if not print diagnostics and stop
-    if( min(.$state$faguess[1:3]) * max(.$state$faguess[1:3]) >= 0 ) {
-      print(unlist(.$fnames)); print(unlist(.$pars)); print(unlist(.$state_pars)); print(unlist(.$env)) 
-      print(c('faguess 1-3,',round(.$state$faguess[1:3],4),'aguess 1-3,',round(.$state$aguess[1:3],4)))
-      sinput <- seq(.$state$aguess[1]-2,.$state$aguess[1]+2,0.1 )
-      out    <- numeric(length(sinput))
-      for( i in 1:length(sinput) ) {
-        out[i] <- f_A_r_leaf(., A=sinput[i] )
-      }
-      print(cbind(sinput,out))
-      stop(paste('Solver error'))
-    } 
-   
-    ! fit a quadratic through the three sets of co-ordinates a la Lomas (one step of Muller's method) 
-    ! Muller, David E., "A Method for Solving Algebraic Equations Using an Automatic Computer," Mathematical Tables and Other Aids to Computation, 10 (1956)    
-    !bx <- ((a1+a0)*(fa2-fa1)/(a2-a1)-(a2+a1)*(fa1-fa0)/(a1-a0))/(a0-a2)
-    !ax <- (fa2-fa1-bx*(a2-a1))/(a2**2-a1**2)
-    !cx <- fa1-bx*a1-ax*a1**2
-     bx <- ((.$state$aguess[2]+.$state$aguess[1])*(.$state$faguess[3]-.$state$faguess[2]) / 
-      (.$state$aguess[3]-.$state$aguess[2])-(.$state$aguess[3]+.$state$aguess[2])*(.$state$faguess[2]-.$state$faguess[1])/(.$state$aguess[2]-.$state$aguess[1])) / 
-      (.$state$aguess[1]-.$state$aguess[3])
-    ax <- (.$state$faguess[3]-.$state$faguess[2]-bx*(.$state$aguess[3]-.$state$aguess[2]))/(.$state$aguess[3]**2-.$state$aguess[2]**2)
-    cx <- .$state$faguess[2]-bx*.$state$aguess[2]-ax*.$state$aguess[2]**2
- 
-    ! find the root of the quadratic that lies between guesses 
-    .$state$assim[] <- quad_sol(ax,bx,cx,'both')
-    ss <- which(.$state$assim>min(.$state$aguess[1:3])&.$state$assim<max(.$state$aguess[1:3]))
- 
-    ! reporting for development 
-    .$state$fA_ana_final[1] <- get(.$fnames$solver_func)(., .$state$assim[1] ) 
-    .$state$fA_ana_final[2] <- get(.$fnames$solver_func)(., .$state$assim[2] ) 
-    .$state$aguess[4]  <- .$state$assim[ss]  
-    .$state$faguess[4] <- get(.$fnames$solver_func)(., .$state$assim[ss]) 
-    
-    ! catch potential errors
-    if(length(ss)==0)      stop('no solution,',.$state$assim,'; within initial 3 guesses,',.$state$aguess[1:3],'fguesses,',.$state$faguess[1:3] ) 
-    else if(length(ss)==2) stop('both solutions,',.$state$assim,'; within initial 3 guesses,',.$state$aguess[1:3],'fguesses,',.$state$faguess[1:3] ) 
-    else return(.$state$assim[ss])
-  }
-}
        
 
 
 
        return
-    end subroutine SemiAnalyticalQuad
+     end subroutine AnalyticalQuad
 
+    ! ===================================================================================
+
+    subroutine SemiAnalyticalQuad(can_press,       &
+                                  can_co2_ppress,  &
+                                  can_o2_ppress,   & 
+                                  mm_km,           & 
+                                  vpd,             & 
+                                  g_blayer_h2o,    &   ! aka gb_mol
+                                  cf,              &
+                                  vcmax,           & 
+                                  jmax,            &
+                                  tpu,             &
+                                  co2_cpoint,      &
+                                  lmr,             &
+                                  parsun_lsl,      &
+                                  parsha_lsl,      &
+                                  laisun_lsl,      &
+                                  laisha_lsl,      &
+                                  canopy_area_lsl, &
+                                  f_sun_lsl,       &
+                                  ipft,            &
+                                  a_net_out,       &
+                                  psn_out,         &
+                                  r_stomata_out)
+
+      ! --------------------------------------------------------------------------------
+      !  IF THIS PRODUCES A NEGATIVE A< THIS ROUTINE NEEDS TO BE CALLED
+      !  WITH A REDUCED CONDUCTANCE.
+      !
+      ! - finds the analytical solution assuming rb and ri are zero to use as first 
+      !   guess (a1)
+      ! - make a second guess (a2) by calculating Cc using a1 and actual values of
+      !   rb and ri   
+      ! - make a third guess (a3) by taking the mean of a1 and a2  
+      ! - calculate residual function value for these three guesses (fa1, fa2, fa3) 
+      ! - check fa1 and fa2 span the root
+      ! - if not, sequentially add 0.01 to the third guess (a3) until fa1 and fa3 
+      !   span the root
+      ! - fit a quadratic through the three sets of co-ordinates to find the root 
+      ! 
+      ! Anthony Walker, 2018  (converted over from MAAT w/ Ryan Knox)
+      !
+      ! Original function: f_A_r_leaf_semiana_quad <- function(.) {}
+      !
+      ! For more on MAAT: https://github.com/walkeranthonyp/MAAT
+      ! 
+      ! Carbon Assimilation is the solved quantity
+      !
+      ! ---------------------------------------------------------------------------------
+      
+      ! Input Arguments
+      real(r8),intent(in) :: can_press       ! Canopy atmospheric Pressure [Pa]
+      real(r8),intent(in) :: can_co2_ppress  ! Canopy co2 partial pressure [Pa]
+      real(r8),intent(in) :: can_o2_ppress   ! Canopy o2 partial pressure  [Pa]
+      real(r8),intent(in) :: mm_km           ! Michaelis-Menten O2 dependent
+                                             ! combined term.
+      real(r8),intent(in) :: vpd             ! Vapor pressure deficit [Pa]
+      real(r8),intent(in) :: g_blayer_h2o    ! Leaf boundary layer conductance of 
+                                             ! H2O  [mol h2o m-2 s-1]
+      real(r8),intent(in) :: cf              ! ideal gas conversion factor between
+                                             ! molar and velocity form conductance
+      real(r8),intent(in) :: vcmax           !
+      real(r8),intent(in) :: jmax            !
+      real(r8),intent(in) :: tpu             ! Triose phosphate utilization rate 
+                                             ! (umol CO2/m**2/s)
+      real(r8),intent(in) :: co2_cpoint      ! CO2 compensation point (Pa)
+      real(r8),intent(in) :: lmr             ! Leaf Maintenance Respiration (umol CO2 m-2 s-1)
+      real(r8),intent(in) :: parsun_lsl      !
+      real(r8),intent(in) :: parsha_lsl      !
+      real(r8),intent(in) :: laisun_lsl      !
+      real(r8),intent(in) :: laisha_lsl      !
+      real(r8),intent(in) :: canopy_area_lsl !
+      real(r8),intent(in) :: f_sun_lsl       ! fraction of leaves exposed to direct sun
+      integer,intent(in)  :: ipft            ! PFT Index
+
+      ! Output Arguments
+      real(r8),intent(out) :: a_net_out       ! Net carbon assimilation (umol CO2 m-2 s-1)
+      real(r8)             :: a_net_resid_out ! Weighted sun/shaded residual of a_net_out's
+      real(r8),intent(out) :: psn_out         ! carbon assimilated in this leaf layer umolC/m2/s
+      real(r8),intent(out) :: r_stomata_out   ! stomatal resistance (1/gs_lsl) (s/m)
+
+      ! Locals
+      integer  :: c3c4_path_index            ! C3 = 1, C4  = 0
+      integer  :: sunsha                     ! counting index for sunlit/shaded calcs
+      real(r8) :: qabs                       ! absorbed PAR by leaf tissues [W/m2]
+      real(r8) :: je                         ! electron transport rate (umol electrons/m**2/s)
+      real(r8) :: r_stomata_h2o              ! stomatal resistance to h2o [m2 s mol-1 h2o]
+      real(r8) :: r_stomata_co2              ! stomatal resistance to co2 [m2 s mol-1 co2]
+      real(r8) :: g_stomata_h2o              ! weighted average of final stomatal conductance
+                                             ! of across sunlit/shaded leaves [m/s]
+      real(r8) :: r_blayer_co2               ! boundary layer resistance to co2 [mol co2 m-2 s-1]
+      real(r8) :: cplast_co2                 ! CO2 concentration in the chloroplast [Pa]
+      real(r8) :: a_net(3)                   ! Net photosynthesis (assimilation) for the
+                                             ! 3 intermediate steps (umol m-2 s-1)
+      real(r8) :: a_net_resid(3)             ! Residual of each 3 net photosynthesis
+                                             ! calculations (umol m-2 s-1)
+      real(r8) :: a_net_final                ! final net photosynthesis of each sun/shade
+      real(r8) :: a_net_temp                 ! temp a_net for final residual 
+      real(r8) :: r1,r2                      ! temporary, roots from quadratic
+      real(r8) :: ax,bx,cx                   ! intermediate smoothing terms 
+                                             ! via Muller's method
+      
+      ! photosynthetic pathway: 0. = c4, 1. = c3
+      c3c4_path_index = nint(EDPftvarcon_inst%c3psn(ipft))
+
+
+      ! Solve for trivial case ... no light!
+      ! ---------------------------------------------------------------------------------
+      if ( parsun_lsl <= 0._r8 ) then  ! night time
+         a_net_out       = -lmr
+         psn_out         = 0._r8
+         a_net_resid_out = un_initialized
+         r_stomata_out   = min(rsmax0, &
+                               RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8)   * cf)
+         return
+      end if
+      
+      ! Solve for trivial case ... no leaves!
+      ! ---------------------------------------------------------------------------------
+      if ( (laisun_lsl + laisha_lsl) <= 0._r8 ) then 
+         a_net_out       = 0._r8
+         a_net_resid_out = un_initialized
+         psn_out         = 0._r8
+         ! This stomatal resistance is really just
+         ! an initialization. It will not effect
+         ! canopy conductance since it will be multiplied
+         ! by zero leaf area.
+         r_stomata_out  = min(rsmax0, &
+              RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8)  * cf)
+         return
+      end if
+      
+      ! ---------------------------------------------------------------------------------
+      ! Non-trival case.  Leaves and light exist.
+      ! Photosynthesis calculations are performed on both the
+      ! sunlit and shaded portions of this leaf layer
+      ! ---------------------------------------------------------------------------------
+
+      ! Convert leaf boundary layer resistance units to
+      ! diffusion of CO2 from H2O
+      r_blayer_co2  = h2o_co2_bl_diffuse_ratio * 1._r8/g_blayer_h2o
+
+
+      ! These values are accumulated over the sunlit and shaded portions. Initialize 0
+      psn_out         = 0._r8
+      a_net_out       = 0._r8
+      g_stomata_h2o   = 0._r8
+      a_net_resid_out = 0._r8
+      
+      do  sunsha = 1,2      
+
+         ! Initialize the net photosynthesis intermediates
+         a_net(1:3)       = un_initialized
+         a_net_resid(1:3) = un_initialized
+         
+
+         ! First Step
+         ! Convert from units of par absorbed per unit ground area to par 
+         ! absorbed per unit leaf area. 
+         
+         if(sunsha == 1)then !sunlit
+            if(( laisun_lsl * canopy_area_lsl) > 0.0000000001_r8)then
+               qabs = parsun_lsl / (laisun_lsl * canopy_area_lsl )   
+            else
+               qabs = 0._r8
+            end if
+         else
+            if ((laisha_lsl * canopy_area_lsl) > 0.0000000001_r8) then
+               qabs = parsha_lsl / (laisha_lsl * canopy_area_lsl)  
+            else
+               qabs = 0._r8
+            end if
+         end if
+
+         ! Update the electron transport rate (light limited) for C3 plants
+         ! Determine electron transport rate, this does not need to be iterated, as
+         ! it is not dependent on the chloroplast CO2 concentration or transport
+         ! resistances.
+         
+         je = ERateLimFarquharWong1984(qabs,jmax)
+
+         ! ---------------------------------------------------------------------------------
+         ! Get first guess (or upper bound for net photosynthesis)
+         ! ---------------------------------------------------------------------------------
+
+         ! find the analytical solution assuming rb and ri are zero to use as first guess (a1)
+         ! rb is boundary layer resistance
+         ! ri is internal resistance 
+         ! umol Co2 m-2 s-1 
+      
+!!         call AnalyticalQuad(can_press, co2_can, o2_can, vpd, vcmax, a_net(1) )
+
+         ! ---------------------------------------------------------------------------------
+         ! HACK UNTIL ANALYTICAL QUAD IS CODED UP
+         ! USE HIGH RESISTANCE AND LOW CPLAST_CO2 FOR FIRST GUESS
+         ! ---------------------------------------------------------------------------------
+      
+         ! Calculate the stomatal resistance of co2
+         ! Stomatal conductance submodels report in resistance to h2o, so
+         ! convert from resistance of h2o to co2
+         
+         ! Using a_net = 8 generates the minimum stomatal conductance
+         r_stomata_h2o =  RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8)
+         r_stomata_co2 =  r_stomata_h2o * h2o_co2_stoma_diffuse_ratio 
+             
+         ! Use ficks law to estimate the chloroplast CO2 concentration
+         
+         cplast_co2 = can_co2_ppress * 0.5         
+
+         ! Update our assimilation rate based on our new cplast_co2 [umol m-2 s-1]
+         
+         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+                                    co2_cpoint,lmr,c3c4_path_index,a_net(1))
+         
+         
+         
+         ! Determine the convergence residual of this first guess (residual umol CO2 m-2 s-1 )
+
+         call GetResidualFromAnet(a_net(1), r_blayer_co2, vpd, can_press, &
+                                  can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
+                                  c3c4_path_index, lmr, a_net_resid(1), cplast_co2)
+         
+         if ( abs(a_net_resid(1)) < 1.e-8_r8 ) then
+            a_net_out = a_net(1)
+            return
+         end if
+      
+      
+         ! ---------------------------------------------------------------------------------
+         ! Get second guess (or lower bound that brackets solution
+         ! ---------------------------------------------------------------------------------
+      
+         ! Calculate the stomatal resistance of co2
+         ! Stomatal conductance submodels report in resistance to h2o, so
+         ! convert from resistance of h2o to co2
+         
+         r_stomata_h2o =  RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net(1))
+         r_stomata_co2 =  r_stomata_h2o * h2o_co2_stoma_diffuse_ratio 
+             
+         ! Use ficks law to estimate the chloroplast CO2 concentration
+         
+         cplast_co2 = FicksLawDiffusion(can_co2_ppress, &
+                                        a_net(1),       &
+                                        can_press,      &
+                                        r_stomata_co2 + r_blayer_co2)
+         
+
+         ! Update our assimilation rate based on our new cplast_co2 [umol m-2 s-1]
+         
+         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+                                    co2_cpoint,lmr,c3c4_path_index,a_net(2))
+         
+         
+         ! Calculate the 2nd residual
+         
+         call GetResidualFromAnet(a_net(2), r_blayer_co2, vpd, can_press, &
+                                  can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
+                                  c3c4_path_index, lmr, a_net_resid(2), cplast_co2)
+
+         ! if both a1 and a2 are below zero then 
+         ! return -1 and leafsys routine will calculate A assuming gs = g0
+         if( (a_net(1)<0.0_r8 .and. a_net(2)<0.0_r8) .or. &
+              (a_net_resid(1)*a_net_resid(2)) > 0.0_r8 ) then
+            write(fates_log(),*) 'The semi-analytical photosynthesis solver did not generate'
+            write(fates_log(),*) ' reasonable starting bounds to the solution. Exiting'
+            write(fates_log(),*) ' a_net[1] = ',a_net(1)
+            write(fates_log(),*) ' a_net_resid[1] = ',a_net_resid(1)
+            write(fates_log(),*) ' a_net[2] = ',a_net(2)
+            write(fates_log(),*) ' a_net_resid[2] = ',a_net_resid(2)
+            call endrun(msg=errMsg(sourcefile, __LINE__))
+         end if
+      
+         ! ---------------------------------------------------------------------------------
+         ! Calculate the 3rd bracketed guess
+         ! ---------------------------------------------------------------------------------
+         
+         ! Calculate the mean of net photosynthesis of the two edge cases
+         a_net(3) = 0.5_r8 * (a_net(1) + a_net(2))
+
+         call GetResidualFromAnet(a_net(3), r_blayer_co2, vpd, can_press, &
+                                  can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
+                                  c3c4_path_index, lmr, a_net_resid(3), cplast_co2)
+      
+         ! ---------------------------------------------------------------------------------
+         ! fit a quadratic through the three sets of co-ordinates a la Lomas 
+         ! (one step of Muller's method) 
+         ! Muller, David E., "A Method for Solving Algebraic Equations Using an Automatic 
+         ! Computer," Mathematical Tables and Other Aids to Computation, 10 (1956)    
+         ! bx <- ((a1+a0)*(fa2-fa1)/(a2-a1)-(a2+a1)*(fa1-fa0)/(a1-a0))/(a0-a2)
+         ! ax <- (fa2-fa1-bx*(a2-a1))/(a2**2-a1**2)
+         ! cx <- fa1-bx*a1-ax*a1**2
+         ! ---------------------------------------------------------------------------------
+         
+         bx = ( (a_net(2)+a_net(1))*(a_net_resid(3)-a_net_resid(2)) / (a_net(3)-a_net(2)) - &
+              (a_net(3)+a_net(2))*(a_net_resid(2)-a_net_resid(1))/(a_net(2)-a_net(1)) ) / & 
+              (a_net(1)-a_net(3))
+         
+         ax = ( a_net_resid(3) - a_net_resid(2) - bx * (a_net(3)-a_net(2))) / &
+              (a_net(3)**2._r8 - a_net(2)**2._r8)
+         cx = a_net_resid(2)-bx*a_net(2)-ax*a_net(2)**2._r8
+      
+         ! find the root of the quadratic that lies between guesses 
+         call quadratic_f(ax,bx,cx,r1,r2)
+         
+         a_net_final = max(r1,r2)
+
+         ! Calculate stomatal conductance baesd on final a_net
+         r_stomata_co2 = h2o_co2_stoma_diffuse_ratio * &
+              RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net_final)
+      
+         ! Use ficks law to estimate the chloroplast CO2 concentration
+         cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net_final,can_press,r_stomata_co2+r_blayer_co2)
+
+         
+         ! Re-calculate co-limited CO2 assimilation one last time
+         ! to estimate the residual
+         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+                                    co2_cpoint,lmr,c3c4_path_index,a_net_temp)
+         
+         
+         ! The residual is the difference, the re-calculated rate minus the input rate
+         a_net_resid = a_net_temp - a_net_final
+
+         
+         ! Update averages of the sun/shaded weighted 
+         ! photosynthes, net assimilation and conductance output variables
+         
+         if(sunsha == 1)then
+            psn_out         = psn_out  + (a_net_final+lmr) * f_sun_lsl
+            a_net_out       = a_net_out + a_net_final * f_sun_lsl
+            a_net_resid_out = a_net_resid_out + (a_net_temp - a_net_final) * f_sun_lsl
+            g_stomata_h2o   = g_stomata_h2o + f_sun_lsl * &
+                 (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net_out) * cf))
+         else
+            psn_out         = psn_out + (a_net_final+lmr) * (1._r8-f_sun_lsl)
+            a_net_out       = a_net_out + a_net_final * (1._r8-f_sun_lsl) 
+            a_net_resid_out = a_net_resid_out + (a_net_temp - a_net_final) * (1._r8-f_sun_lsl)
+            g_stomata_h2o   = g_stomata_h2o + (1._r8-f_sun_lsl) * &
+                 (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net_out) * cf))
+         end if
+         
+         
+      end do
+      
+      
+      ! The resistance passed back is in units [s/m].
+      r_stomata_out = 1._r8 / g_stomata_h2o
+      
+      
+      return
+    end subroutine SemiAnalyticalQuad
+    
 
 
  end module FATESPlantRespPhotosynthMod

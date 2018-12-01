@@ -79,6 +79,9 @@ module FatesConstantsMod
   ! Conversion factor: umols per kilomole
   real(fates_r8), parameter :: umol_per_kmol = 1.0E9_fates_r8
 
+  ! Conversion factor: mols per micro-mole
+  real(fates_r8), parameter :: mol_per_umol  = 1.0E-6_fates_r8
+
   ! Conversion factor: m2 per ha
   real(fates_r8), parameter :: m2_per_ha = 1.0e4_fates_r8
 
