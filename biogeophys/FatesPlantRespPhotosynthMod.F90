@@ -25,9 +25,12 @@ module FATESPlantRespPhotosynthMod
    use FatesConstantsMod, only : r8 => fates_r8
    use FatesConstantsMod, only : itrue
    use FatesConstantsMod, only : mol_per_umol
+   use FatesConstantsMod, only : umol_per_mol
+   use FatesConstantsMod, only : kpa_per_pa
    use FatesInterfaceMod, only : hlm_use_planthydro
    use FatesInterfaceMod, only : hlm_parteh_mode
    use FatesInterfaceMod, only : numpft
+   use FatesConstantsMod, only : nearzero
    use EDPftvarcon,       only : EDPftvarcon_inst 
    use EDTypesMod,        only : maxpft
    use EDTypesMod,        only : nlevleaf
@@ -203,7 +206,7 @@ contains
     real(r8) :: leaf_frac          ! ratio of to leaf biomass to total alive biomass
     real(r8) :: tcsoi              ! Temperature response function for root respiration. 
     real(r8) :: tcwood             ! Temperature response function for wood
-    
+    real(r8) :: vpd_kpa            ! Vapor Pressure Deficit (kPa)
     real(r8) :: elai               ! exposed LAI (patch scale)
     real(r8) :: live_stem_n        ! Live stem (above-ground sapwood) 
                                    ! nitrogen content (kgN/plant)
@@ -258,7 +261,7 @@ contains
     integer, parameter :: iterative_quad    = 1
     integer, parameter :: semianalytic_quad = 2
 
-    integer, parameter :: photo_solver = iterative_quad
+    integer, parameter :: photo_solver = semianalytic_quad
 
 
     ! Parameters
@@ -534,9 +537,9 @@ contains
                               ! Part IX: This call calculates the actual photosynthesis for the 
                               ! leaf layer, as well as the stomatal resistance and the net assimilated carbon.
 
-                              select case(photo_solver)
+!                              select case(photo_solver)
                               
-                              case(iterative_quad)
+!                              case(iterative_quad)
                               call LeafLayerPhotosynthesis(currentPatch%f_sun(cl,ft,iv),    &  ! in
                                                         currentPatch%ed_parsun_z(cl,ft,iv), &  ! in
                                                         currentPatch%ed_parsha_z(cl,ft,iv), &  ! in
@@ -566,12 +569,18 @@ contains
                                                         rs_z(iv,ft,cl),                     &  ! out
                                                         anet_av_z(iv,ft,cl))                   ! out
 
-                              case(semianalytic_quad)
+!                              case(semianalytic_quad)
+
+                              print*,"esat: ", bc_in(s)%esat_tv_pa(ifp)
+                              print*,"ceair: ",ceair
+
+                              ! The medlyn model likes vpd in kpa
+                              vpd_kpa = (bc_in(s)%esat_tv_pa(ifp) - ceair) * kpa_per_pa
+
                               call SemiAnalyticalQuad(bc_in(s)%forc_pbot,                 &
                                                       bc_in(s)%cair_pa(ifp),              &  ! in
-                                                      bc_in(s)%oair_pa(ifp),              &  ! in
                                                       mm_km,                              &  ! in
-                                                      bc_in(s)%esat_tv_pa(ifp) - ceair,   &  ! vpd
+                                                      vpd_kpa,                            &  ! vpd
                                                       gb_mol,                             &  ! in
                                                       cf,                                 &  ! in
                                                       vcmax_z,                            &  ! in
@@ -590,10 +599,10 @@ contains
                                                       currentPatch%psn_z(cl,ft,iv),       &  ! out
                                                       rs_z(iv,ft,cl))
 
-                              case default
-                                 write(fates_log(),*) 'A photo solver was chosen that DNE'
-                                 call endrun(msg=errMsg(sourcefile, __LINE__))
-                              end select
+!                              case default
+!                                 write(fates_log(),*) 'A photo solver was chosen that DNE'
+!                                 call endrun(msg=errMsg(sourcefile, __LINE__))
+!                              end select
 
 
                               rate_mask_z(iv,ft,cl) = .true.
@@ -994,7 +1003,7 @@ contains
      
      if ( parsun_lsl <= 0._r8 ) then  ! night time
 
-        anet_av_out = 0._r8
+        anet_av_out = -lmr
         psn_out     = 0._r8
         rstoma_out  = min(rsmax0, 1._r8/bbb * cf)
         
@@ -1019,14 +1028,18 @@ contains
                  if(( laisun_lsl * canopy_area_lsl) > 0.0000000001_r8)then
 
                     qabs = parsun_lsl / (laisun_lsl * canopy_area_lsl )   
+
+                    print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
                     qabs = qabs * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
                     
                  else
                     qabs = 0.0_r8
+                    print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
                  end if
               else
 
                  qabs = parsha_lsl / (laisha_lsl * canopy_area_lsl)  
+                 print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
                  qabs = qabs * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
 
               end if
@@ -1038,6 +1051,9 @@ contains
               cquad = qabs * jmax
               call quadratic_f (aquad, bquad, cquad, r1, r2)
               je = min(r1,r2)
+
+             
+              print*,"je: ",je,jmax
 
               ! Initialize intercellular co2
               co2_inter_c = init_co2_inter_c
@@ -1110,6 +1126,9 @@ contains
                  if (anet < 0._r8) then
                     loop_continue = .false.
                  end if
+
+                 print*,"cc = ",co2_inter_c
+                 print*,"anet(1) = ",anet
 
                  ! Quadratic gs_mol calculation with an known. Valid for an >= 0.
                  ! With an <= 0, then gs_mol = bbb
@@ -1595,7 +1614,6 @@ contains
       ! and O2, as well as the CO2 compentation point.
       ! ---------------------------------------------------------------------------------
       
-      use FatesConstantsMod, only: umol_per_mol
       use FatesConstantsMod, only: mmol_per_mol
       use FatesConstantsMod, only: umol_per_kmol
       use FatesConstantsMod, only : rgas => rgas_J_K_kmol
@@ -2058,7 +2076,7 @@ contains
        
       ! f(e) component of rs from Medlyn 2011  
       
-      real(r8), intent(in) :: vpd                ! Vapor pressure deficit (Pa)
+      real(r8), intent(in) :: vpd                ! Vapor pressure deficit (kPa)
       real(r8)             :: r_stomata_fe       ! Stomatal Conductance (molm-2 s-1)
       real(r8), parameter  :: g1_medlyn = 6._r8  ! Medlyn 2011 gs slope (kPa^0.5)
        
@@ -2073,7 +2091,7 @@ contains
       ! This function calculates the stomatal conductance to water vapor
       ! following Medlyn et al. 2011
 
-      real(r8) :: vpd            ! vapor pressure deficit [Pa]
+      real(r8) :: vpd            ! vapor pressure deficit [kPa]
       real(r8) :: can_co2_ppress ! canopy co2 partial pressure [Pa]
       real(r8) :: can_press      ! atmospheric pressure in the canopy [Pa]
       real(r8) :: a_net          ! net assimilation rate [umol m-2 s-1]
@@ -2081,9 +2099,14 @@ contains
       real(r8), parameter :: g_stomata_min = 0.01 ! Medlyn 2011 minimum stomatal cond
                                                   ! [mol h2o m-2 s-1]
       
+      real(r8) :: mol_frac       ! molar fraction of co2/air [umol/mol]
+                                 ! this is equal to the partial pressure / total pressure
+      
+      mol_frac = can_co2_ppress / can_press * umol_per_mol
+      
+
       r_stomata = 1.0_r8 / ( g_stomata_min + &
-           RStomaH2OMedlyn2011Fe(vpd) * a_net * can_press * &
-           mol_per_umol / can_co2_ppress )  
+           RStomaH2OMedlyn2011Fe(vpd) * a_net / mol_frac)
 
       return
     end function RStomaH2OMedlyn2011
@@ -2236,7 +2259,7 @@ contains
       
       real(r8),intent(in)  :: a_net_in
       real(r8),intent(in)  :: r_blayer_co2
-      real(r8),intent(in)  :: vpd
+      real(r8),intent(in)  :: vpd                ! Vapor Pressure Deficit [kpa]
       real(r8),intent(in)  :: can_press
       real(r8),intent(in)  :: can_co2_ppress
       real(r8),intent(in)  :: vcmax
@@ -2333,10 +2356,11 @@ contains
 
     ! ===================================================================================
 
-    subroutine AnalyticalQuad(press_can, co2_can, o2_can, vpd, vcmax, a_net )
+    subroutine AnalyticalZeroG(can_co2_ppress, vpd, vcmax, &
+                               je, tpu, mm_km, co2_cpoint, lmr, c3c4_path_index, a_net )
 
        ! --------------------------------------------------------------------------------
-       ! - finds the analytical solution assuming rb and ri are zero
+       ! - finds the analytical solution assuming rb and rs are zero
        ! 
        ! Anthony Walker, 2018  (converted over from MAAT by Ryan Knox)
        !
@@ -2346,49 +2370,57 @@ contains
        ! 
        ! ---------------------------------------------------------------------------------
 
-       real(r8), intent(in) :: co2_can         ! co2 concentration of canopy air space (Pa)
-       real(r8), intent(in) :: o2_can          ! o2 concentration of canopy air space (Pa)
-       real(r8), intent(in) :: press_can       ! Air pressure NEAR the surface of the leaf (Pa)
-       real(r8), intent(in) :: vpd             ! Vapor pressure deficit (units = ?)
+       real(r8), intent(in) :: can_co2_ppress   ! co2 concentration of canopy air space (Pa)
+       real(r8), intent(in) :: vpd             ! Vapor pressure deficit (kPa)
        real(r8), intent(in) :: vcmax           ! Temperature corrected vcmax
-
-       real(r8) :: co2_blayer                   ! boundary layer CO2         ( Pa)
-
-       real(r8), parameter :: min_gs = 0.01_r8  ! Medlyn 2011 min stomatal cond (molm-2s-1)
-
-       real(r8) :: a_cbox          ! Rubisco-limited (carboxylation) gross 
-                                               ! photosynthesis (assimilate) (umol m-2 s-1)
-       real(r8) :: a_rubp          ! RuBP-limited gross photosynthesis    
-                                               ! (umol m-2 s-1)
-       real(r8) :: a_prod          ! product-limited (C3) or CO2-limited  
-                                               ! (umol m-2 s-1)
-                                               ! (C4) gross photosynthesis
-       integer  :: c3c4_path_index ! C3 = 1
-                                   ! C4 = 0
+       real(r8), intent(in) :: je
+       real(r8), intent(in) :: tpu
+       real(r8), intent(in) :: mm_km
+       real(r8), intent(in) :: co2_cpoint
+       real(r8), intent(in) :: lmr
+       integer,intent(in)   :: c3c4_path_index ! C3 = 1
+                                               ! C4 = 0
 
        real(r8), intent(out) :: a_net          ! Net assimilation (umol m-2 s-1)
 
 
-       real(r8) :: mm_km                       ! An intermediate term that
-                                               ! contains the Michaeles Menten parameters
-
-       real(r8) :: rd                          ! Actual rate of respiration                         (umol m-2 s-1)
-
-       real(r8), parameter :: g0=0._r8         ! Minimum conductance (~0)
+       ! Locals
+       real(r8) :: r_stomata_fe 
+       real(r8) :: cplast_co2
 
 
+       ! Approximation of chloroplastic CO2
+       ! --------------------------------------------------------------------------------
+
+       print*,"vpd: ",vpd
        
+       r_stomata_fe = RStomaH2OMedlyn2011Fe(vpd)
+
+       print*,"rs:",r_stomata_fe
+       
+       if (r_stomata_fe < h2o_co2_stoma_diffuse_ratio) then
+          write(fates_log(),*) 'Stomatal conductance environmental term is bogus'
+          call endrun(msg=errMsg(sourcefile, __LINE__))
+       end if
+
+       cplast_co2 = can_co2_ppress * (1._r8 - (h2o_co2_stoma_diffuse_ratio/r_stomata_fe))
+
+       print*,"cc = ",cplast_co2
+       
+       call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+                                  co2_cpoint,lmr,c3c4_path_index,a_net)
 
 
+       ! WHY CALCULATE RS?
+       ! .$state_pars$rs <- .$state$ca / (fe * Anet * .$env$atm_press*1e-6) 
 
        return
-     end subroutine AnalyticalQuad
+    end subroutine AnalyticalZeroG
 
     ! ===================================================================================
 
     subroutine SemiAnalyticalQuad(can_press,       &
                                   can_co2_ppress,  &
-                                  can_o2_ppress,   & 
                                   mm_km,           & 
                                   vpd,             & 
                                   g_blayer_h2o,    &   ! aka gb_mol
@@ -2437,7 +2469,6 @@ contains
       ! Input Arguments
       real(r8),intent(in) :: can_press       ! Canopy atmospheric Pressure [Pa]
       real(r8),intent(in) :: can_co2_ppress  ! Canopy co2 partial pressure [Pa]
-      real(r8),intent(in) :: can_o2_ppress   ! Canopy o2 partial pressure  [Pa]
       real(r8),intent(in) :: mm_km           ! Michaelis-Menten O2 dependent
                                              ! combined term.
       real(r8),intent(in) :: vpd             ! Vapor pressure deficit [Pa]
@@ -2492,7 +2523,7 @@ contains
 
       ! Solve for trivial case ... no light!
       ! ---------------------------------------------------------------------------------
-      if ( parsun_lsl <= 0._r8 ) then  ! night time
+      if ( parsun_lsl <= nearzero ) then  ! night time
          a_net_out       = -lmr
          psn_out         = 0._r8
          a_net_resid_out = un_initialized
@@ -2503,7 +2534,7 @@ contains
       
       ! Solve for trivial case ... no leaves!
       ! ---------------------------------------------------------------------------------
-      if ( (laisun_lsl + laisha_lsl) <= 0._r8 ) then 
+      if ( (laisun_lsl + laisha_lsl) <= nearzero ) then 
          a_net_out       = 0._r8
          a_net_resid_out = un_initialized
          psn_out         = 0._r8
@@ -2560,10 +2591,13 @@ contains
 
          ! Update the electron transport rate (light limited) for C3 plants
          ! Determine electron transport rate, this does not need to be iterated, as
-         ! it is not dependent on the chloroplast CO2 concentration or transport
+         ! it is not dependent on the chloroplast CO2 concentration or stomatal
          ! resistances.
          
          je = ERateLimFarquharWong1984(qabs,jmax)
+
+         print*,"photo1", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
+         print*,"je: ",je,jmax
 
          ! ---------------------------------------------------------------------------------
          ! Get first guess (or upper bound for net photosynthesis)
@@ -2573,33 +2607,15 @@ contains
          ! rb is boundary layer resistance
          ! ri is internal resistance 
          ! umol Co2 m-2 s-1 
-      
-!!         call AnalyticalQuad(can_press, co2_can, o2_can, vpd, vcmax, a_net(1) )
 
-         ! ---------------------------------------------------------------------------------
-         ! HACK UNTIL ANALYTICAL QUAD IS CODED UP
-         ! USE HIGH RESISTANCE AND LOW CPLAST_CO2 FOR FIRST GUESS
-         ! ---------------------------------------------------------------------------------
-      
-         ! Calculate the stomatal resistance of co2
-         ! Stomatal conductance submodels report in resistance to h2o, so
-         ! convert from resistance of h2o to co2
-         
-         ! Using a_net = 8 generates the minimum stomatal conductance
-         r_stomata_h2o =  RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8)
-         r_stomata_co2 =  r_stomata_h2o * h2o_co2_stoma_diffuse_ratio 
-             
-         ! Use ficks law to estimate the chloroplast CO2 concentration
-         
-         cplast_co2 = can_co2_ppress * 0.5         
 
-         ! Update our assimilation rate based on our new cplast_co2 [umol m-2 s-1]
+         call AnalyticalZeroG(can_co2_ppress, vpd, vcmax, &
+                              je, tpu, mm_km, co2_cpoint, lmr, c3c4_path_index, a_net(1) )
+
+      
          
-         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
-                                    co2_cpoint,lmr,c3c4_path_index,a_net(1))
-         
-         
-         
+         print*,"anet(1): ",a_net(1)
+
          ! Determine the convergence residual of this first guess (residual umol CO2 m-2 s-1 )
 
          call GetResidualFromAnet(a_net(1), r_blayer_co2, vpd, can_press, &
@@ -2645,8 +2661,7 @@ contains
 
          ! if both a1 and a2 are below zero then 
          ! return -1 and leafsys routine will calculate A assuming gs = g0
-         if( (a_net(1)<0.0_r8 .and. a_net(2)<0.0_r8) .or. &
-              (a_net_resid(1)*a_net_resid(2)) > 0.0_r8 ) then
+         if( (a_net_resid(1)*a_net_resid(2)) > 0.0_r8 ) then
             write(fates_log(),*) 'The semi-analytical photosynthesis solver did not generate'
             write(fates_log(),*) ' reasonable starting bounds to the solution. Exiting'
             write(fates_log(),*) ' a_net[1] = ',a_net(1)
