@@ -243,8 +243,8 @@ contains
                                    ! above the leaf layer of interest
     real(r8) :: lai_current        ! the LAI in the current leaf layer
     real(r8) :: cumulative_lai     ! the cumulative LAI, top down, to the leaf layer of interest
-
-
+    
+    real(r8) :: a_net_temp
     
     ! -----------------------------------------------------------------------------------
     ! Keeping these two definitions in case they need to be added later
@@ -567,12 +567,9 @@ contains
                                                         lmr_z(iv,ft,cl),                    &  ! in
                                                         currentPatch%psn_z(cl,ft,iv),       &  ! out
                                                         rs_z(iv,ft,cl),                     &  ! out
-                                                        anet_av_z(iv,ft,cl))                   ! out
+                                                        a_net_temp)
+!                                                        anet_av_z(iv,ft,cl))                   ! out
 
-!                              case(semianalytic_quad)
-
-                              print*,"esat: ", bc_in(s)%esat_tv_pa(ifp)
-                              print*,"ceair: ",ceair
 
                               ! The medlyn model likes vpd in kpa
                               vpd_kpa = max(nearzero,(bc_in(s)%esat_tv_pa(ifp) - ceair)) * kpa_per_pa
@@ -1029,17 +1026,17 @@ contains
 
                     qabs = parsun_lsl / (laisun_lsl * canopy_area_lsl )   
 
-                    print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
-                    qabs = qabs * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
+!                    print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
+!                    qabs = qabs * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
                     
                  else
                     qabs = 0.0_r8
-                    print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
+!                    print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
                  end if
               else
 
                  qabs = parsha_lsl / (laisha_lsl * canopy_area_lsl)  
-                 print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
+!                 print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
                  qabs = qabs * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
 
               end if
@@ -1053,7 +1050,7 @@ contains
               je = min(r1,r2)
 
              
-              print*,"je: ",je,jmax
+!              print*,"je: ",je,jmax
 
               ! Initialize intercellular co2
               co2_inter_c = init_co2_inter_c
@@ -1127,8 +1124,8 @@ contains
                     loop_continue = .false.
                  end if
 
-                 print*,"cc = ",co2_inter_c
-                 print*,"anet(1) = ",anet
+!                 print*,"cc = ",co2_inter_c
+!                 print*,"anet(1) = ",anet
 
                  ! Quadratic gs_mol calculation with an known. Valid for an >= 0.
                  ! With an <= 0, then gs_mol = bbb
@@ -2080,7 +2077,7 @@ contains
       real(r8)             :: r_stomata_fe       ! Stomatal Conductance (molm-2 s-1)
       real(r8), parameter  :: g1_medlyn = 6._r8  ! Medlyn 2011 gs slope (kPa^0.5)
        
-      print*,"VPD:",vpd
+!      print*,"VPD:",vpd
 
       r_stomata_fe = ( 1._r8 + g1_medlyn / sqrt(vpd) )
 
@@ -2231,13 +2228,11 @@ contains
       real(r8) :: a_prod     ! Gross product limited assimilation
                              ! [umol m-2 s-1 pa-1]
 
-      ! SHOULD THIS BE MULT BY 3?
-
 
       if (cplast_co2 < co2_cpoint) then
          a_prod = un_initialized
       else
-         a_prod = tpu / ( cplast_co2-co2_cpoint)
+         a_prod = 3._r8 * tpu / ( cplast_co2-co2_cpoint)
       end if
     
     end function AGrossTPU
@@ -2247,7 +2242,7 @@ contains
     
     subroutine GetResidualFromAnet(a_net_in, r_blayer_co2, vpd, can_press, &
                                    can_co2_ppress, vcmax, je, tpu, mm_km,  &
-                                   co2_cpoint, c3c4_path_index, lmr, a_net_resid, cplast_co2)
+                                   co2_cpoint, c3c4_path_index, lmr, a_net_resid, r_stomata_co2)
       
       ! combines A, rs, ri, ci & cc eqs to a single f(A), 
       ! combines all rate limiting processes
@@ -2273,26 +2268,45 @@ contains
       real(r8),intent(in)  :: lmr
       
       real(r8),intent(out) :: a_net_resid
-      real(r8),intent(out) :: cplast_co2
+      real(r8),intent(out) :: r_stomata_co2       ! Stomatal resistance to CO2 flux     
+      real(r8)             :: cplast_co2
+      real(r8)             :: cplast_co2_v2
       
-      real(r8) :: r_stomata_co2
-      real(r8) :: a_net_out  
+      real(r8) :: blayer_co2          ! Boundary layer CO2 partial pressure [Pa]
       
+      real(r8) :: a_net               ! Net assimilation used for residual  [umol m-2 -s]
+
+
+      ! Calculate the CO2 concentration at the edge of the stomata (which is the
+      ! the boundary layer)
+      blayer_co2 = FicksLawDiffusion(can_co2_ppress,a_net_in, &
+                                     can_press,r_blayer_co2)
+
+      ! Use the boundary layer concentration to calculate the stomatal resistance.
       r_stomata_co2 = h2o_co2_stoma_diffuse_ratio * &
-           RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net_in)
+           RStomaH2OMedlyn2011(vpd, blayer_co2, can_press, a_net_in)
       
+
       ! Use ficks law to estimate the chloroplast CO2 concentration
       
       cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net_in, &
                                      can_press,r_stomata_co2+r_blayer_co2)
 
+      cplast_co2_v2 = FicksLawDiffusion(blayer_co2,a_net_in, &
+                                     can_press,r_stomata_co2)
+
+      if(abs(cplast_co2 - cplast_co2_v2)>1.e-8_r8) then
+         print*,"FICKS vs Medlyn... hmmm."
+         print*,cplast_co2,cplast_co2_v2
+         stop
+      end if
 
       ! Re-calculate co-limited CO2 assimilation with the updated co2 concentration
-      call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km,co2_cpoint,lmr,c3c4_path_index,a_net_out)
+      call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km,co2_cpoint,lmr,c3c4_path_index,a_net)
 
 
       ! The residual is the difference, the re-calculated rate minus the input rate
-      a_net_resid = a_net_out - a_net_in
+      a_net_resid = a_net - a_net_in
 
 
       return
@@ -2394,11 +2408,7 @@ contains
        ! Approximation of chloroplastic CO2
        ! --------------------------------------------------------------------------------
 
-       print*,"vpd: ",vpd
-       
        r_stomata_fe = RStomaH2OMedlyn2011Fe(vpd)
-
-       print*,"rs:",r_stomata_fe
        
        if (r_stomata_fe < h2o_co2_stoma_diffuse_ratio) then
           write(fates_log(),*) 'Stomatal conductance environmental term is bogus'
@@ -2406,8 +2416,6 @@ contains
        end if
 
        cplast_co2 = can_co2_ppress * (1._r8 - (h2o_co2_stoma_diffuse_ratio/r_stomata_fe))
-
-       print*,"cc = ",cplast_co2
        
        call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
                                   co2_cpoint,lmr,c3c4_path_index,a_net)
@@ -2506,6 +2514,7 @@ contains
       ! Locals
       integer  :: c3c4_path_index            ! C3 = 1, C4  = 0
       integer  :: sunsha                     ! counting index for sunlit/shaded calcs
+      real(r8) :: sunsha_frac
       real(r8) :: qabs                       ! absorbed PAR by leaf tissues [W/m2]
       real(r8) :: je                         ! electron transport rate (umol electrons/m**2/s)
       real(r8) :: r_stomata_h2o              ! stomatal resistance to h2o [m2 s mol-1 h2o]
@@ -2514,6 +2523,7 @@ contains
                                              ! of across sunlit/shaded leaves [m/s]
       real(r8) :: r_blayer_co2               ! boundary layer resistance to co2 [mol co2 m-2 s-1]
       real(r8) :: cplast_co2                 ! CO2 concentration in the chloroplast [Pa]
+      real(r8) :: blayer_co2                 ! CO2 concentration in the boundary layer [Pa]
       real(r8) :: a_net(3)                   ! Net photosynthesis (assimilation) for the
                                              ! 3 intermediate steps (umol m-2 s-1)
       real(r8) :: a_net_resid(3)             ! Residual of each 3 net photosynthesis
@@ -2577,18 +2587,21 @@ contains
          a_net(1:3)       = un_initialized
          a_net_resid(1:3) = un_initialized
          
-
          ! First Step
          ! Convert from units of par absorbed per unit ground area to par 
          ! absorbed per unit leaf area. 
          
          if(sunsha == 1)then !sunlit
+
+            sunsha_frac = f_sun_lsl
             if(( laisun_lsl * canopy_area_lsl) > 0.0000000001_r8)then
                qabs = parsun_lsl / (laisun_lsl * canopy_area_lsl )   
             else
                qabs = 0._r8
             end if
          else
+
+            sunsha_frac = 1._r8 - f_sun_lsl
             if ((laisha_lsl * canopy_area_lsl) > 0.0000000001_r8) then
                qabs = parsha_lsl / (laisha_lsl * canopy_area_lsl)  
             else
@@ -2598,13 +2611,11 @@ contains
 
          if(qabs<nearzero) then
              psn_out         = psn_out  + 0._r8
-             a_net_out       = a_net_out - lmr*f_sun_lsl
-             a_net_resid_out = a_net_resid_out + 0._r8
-             g_stomata_h2o   = g_stomata_h2o + f_sun_lsl * &
+             a_net_out       = a_net_out - lmr*sunsha_frac
+             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * &
                   (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press,0._r8) * cf))
             cycle    ! Go to 
          end if
-
 
          ! Update the electron transport rate (light limited) for C3 plants
          ! Determine electron transport rate, this does not need to be iterated, as
@@ -2613,8 +2624,8 @@ contains
          
          je = ERateLimFarquharWong1984(qabs,jmax)
 
-         print*,"photo1", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
-         print*,"je: ",je,jmax
+!         print*,"photo1", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
+!         print*,"je: ",je,jmax
 
          ! ---------------------------------------------------------------------------------
          ! Get first guess (or upper bound for net photosynthesis)
@@ -2628,76 +2639,72 @@ contains
 
          call AnalyticalZeroG(can_co2_ppress, vpd, vcmax, &
                               je, tpu, mm_km, co2_cpoint, lmr, c3c4_path_index, a_net(1) )
-
-      
          
-         print*,"anet(1): ",a_net(1)
-
          if( a_net(1) < 0._r8 ) then
-            psn_out         = psn_out  + a_net(1)
-            a_net_out       = a_net_out + a_net(1)*f_sun_lsl
-            a_net_resid_out = a_net_resid_out + un_initialized
-            g_stomata_h2o   = g_stomata_h2o + f_sun_lsl * &
+            psn_out         = psn_out + (a_net(1)+lmr)*sunsha_frac
+            a_net_out       = a_net_out + a_net(1)*sunsha_frac
+            g_stomata_h2o   = g_stomata_h2o + sunsha_frac * &
                  (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8) * cf))
             cycle
          end if
          
+         ! ------------------------------------------------------------------------------
+         ! Second Guess (uses a_net of first guess to update the stomatal resistance)
+         ! ------------------------------------------------------------------------------
 
-         ! Determine the convergence residual of this first guess (residual umol CO2 m-2 s-1 )
+         ! Calculate the CO2 concentration at the edge of the stomata (which is the
+         ! the boundary layer)
 
-         call GetResidualFromAnet(a_net(1), r_blayer_co2, vpd, can_press, &
-                                  can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
-                                  c3c4_path_index, lmr, a_net_resid(1), cplast_co2)
+         blayer_co2 = FicksLawDiffusion(can_co2_ppress,a_net(1), &
+              can_press,r_blayer_co2)
+
+         ! Use the boundary layer concentration to calculate the stomatal resistance.
+         r_stomata_co2 = h2o_co2_stoma_diffuse_ratio * &
+              RStomaH2OMedlyn2011(vpd, blayer_co2, can_press, a_net(1))
+      
+         
+         ! Use ficks law to estimate the chloroplast CO2 concentration
+         cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net(1), &
+              can_press,r_stomata_co2+r_blayer_co2)
+
+
+         ! Calculate co-limited CO2 assimilation with the updated co2 concentration
+         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+              co2_cpoint,lmr,c3c4_path_index,a_net(2))
 
          
-         if(abs(a_net_resid(1)) < 1.e-8_r8 ) then
-             psn_out         = psn_out  + a_net(1)
-             a_net_out       = a_net_out + a_net(1)*f_sun_lsl
-             a_net_resid_out = a_net_resid_out + a_net_resid(1)
-             g_stomata_h2o   = g_stomata_h2o + f_sun_lsl * &
-                  (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net(1)) * cf))
+         ! The residual is the difference, the re-calculated rate minus the input rate
+         a_net_resid(1) = a_net(2) - a_net(1)
+         
+         ! Check the residual, if it is small enough, accept the current answer
+         if( abs(a_net_resid(1)) < 1.e-8_r8 ) then
+            psn_out           = psn_out  + (a_net(1)+lmr)*sunsha_frac
+            a_net_out         = a_net_out + a_net(1)*sunsha_frac
+            g_stomata_h2o     = g_stomata_h2o + sunsha_frac * &
+                                (1._r8 / (r_stomata_co2 * cf))
             cycle
          end if
-      
-         ! ---------------------------------------------------------------------------------
-         ! Get second guess (or lower bound that brackets solution
-         ! ---------------------------------------------------------------------------------
-         
-      
-         ! Calculate the stomatal resistance of co2
-         ! Stomatal conductance submodels report in resistance to h2o, so
-         ! convert from resistance of h2o to co2
-
-         a_net(2) = a_net(1) + a_net_resid(1)
-         
-!!         r_stomata_h2o =  RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net(1))
-!!         r_stomata_co2 =  r_stomata_h2o * h2o_co2_stoma_diffuse_ratio 
-             
-         ! Use ficks law to estimate the chloroplast CO2 concentration
-         
-!!         cplast_co2 = FicksLawDiffusion(can_co2_ppress, &
-!!                                        a_net(1),       &
-!!                                        can_press,      &
-!!                                        r_stomata_co2 + r_blayer_co2)
-         
-
-         ! Update our assimilation rate based on our new cplast_co2 [umol m-2 s-1]
-         
-!!         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
-!!                                    co2_cpoint,lmr,c3c4_path_index,a_net(2))
          
 
          if( a_net(2) < 0._r8 ) then
-            write(fates_log(),*) ' this was unexpected'
+            write(fates_log(),*) 'a_net(1) is > 0 , but a_net(2) is not...?'
             call endrun(msg=errMsg(sourcefile, __LINE__))
          end if
 
          
          ! Calculate the 2nd residual
-         
          call GetResidualFromAnet(a_net(2), r_blayer_co2, vpd, can_press, &
                                   can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
-                                  c3c4_path_index, lmr, a_net_resid(2), cplast_co2)
+                                  c3c4_path_index, lmr, a_net_resid(2), r_stomata_co2)
+
+         if( abs(a_net_resid(2)) < 1.e-8_r8 ) then
+             psn_out           = psn_out  + (a_net(2)+lmr)*sunsha_frac
+             a_net_out         = a_net_out + a_net(2)*sunsha_frac
+             g_stomata_h2o     = g_stomata_h2o + sunsha_frac * &
+                  (1._r8 / (r_stomata_co2 * cf))
+            cycle
+         end if
+
 
          ! if both a1 and a2 are below zero then 
          ! return -1 and leafsys routine will calculate A assuming gs = g0
@@ -2720,8 +2727,11 @@ contains
 
          call GetResidualFromAnet(a_net(3), r_blayer_co2, vpd, can_press, &
                                   can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
-                                  c3c4_path_index, lmr, a_net_resid(3), cplast_co2)
+                                  c3c4_path_index, lmr, a_net_resid(3), r_stomata_co2)
       
+!         print*,"ax terms = ",ax, a_net_resid(3), a_net_resid(2), bx,a_net(3)-a_net(2),  &
+!              (a_net(3)**2._r8 - a_net(2)**2._r8)
+
          ! ---------------------------------------------------------------------------------
          ! fit a quadratic through the three sets of co-ordinates a la Lomas 
          ! (one step of Muller's method) 
@@ -2745,9 +2755,12 @@ contains
          
          a_net_final = max(r1,r2)
 
+         ! Use ficks law to estimate the chloroplast CO2 concentration
+         blayer_co2 = FicksLawDiffusion(can_co2_ppress,a_net_final,can_press,r_blayer_co2)
+
          ! Calculate stomatal conductance baesd on final a_net
          r_stomata_co2 = h2o_co2_stoma_diffuse_ratio * &
-              RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net_final)
+              RStomaH2OMedlyn2011(vpd, blayer_co2, can_press, a_net_final)
       
          ! Use ficks law to estimate the chloroplast CO2 concentration
          cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net_final,can_press,r_stomata_co2+r_blayer_co2)
@@ -2755,31 +2768,21 @@ contains
          
          ! Re-calculate co-limited CO2 assimilation one last time
          ! to estimate the residual
-         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
-                                    co2_cpoint,lmr,c3c4_path_index,a_net_temp)
+!         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+!                                    co2_cpoint,lmr,c3c4_path_index,a_net_temp)
+!         
          
-         
-         ! The residual is the difference, the re-calculated rate minus the input rate
-         a_net_resid = a_net_temp - a_net_final
+!         ! The residual is the difference, the re-calculated rate minus the input rate
+!         a_net_resid = a_net_temp - a_net_final
 
          
          ! Update averages of the sun/shaded weighted 
          ! photosynthes, net assimilation and conductance output variables
          
-         if(sunsha == 1)then
-            psn_out         = psn_out  + (a_net_final+lmr) * f_sun_lsl
-            a_net_out       = a_net_out + a_net_final * f_sun_lsl
-            a_net_resid_out = a_net_resid_out + (a_net_temp - a_net_final) * f_sun_lsl
-            g_stomata_h2o   = g_stomata_h2o + f_sun_lsl * &
-                 (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net_out) * cf))
-         else
-            psn_out         = psn_out + (a_net_final+lmr) * (1._r8-f_sun_lsl)
-            a_net_out       = a_net_out + a_net_final * (1._r8-f_sun_lsl) 
-            a_net_resid_out = a_net_resid_out + (a_net_temp - a_net_final) * (1._r8-f_sun_lsl)
-            g_stomata_h2o   = g_stomata_h2o + (1._r8-f_sun_lsl) * &
-                 (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net_out) * cf))
-         end if
-         
+         psn_out         = psn_out  + (a_net_final+lmr) * sunsha_frac
+         a_net_out       = a_net_out + a_net_final * sunsha_frac
+         g_stomata_h2o   = g_stomata_h2o + sunsha_frac * (1._r8 / (r_stomata_co2 * cf))
+                  
          
       end do
       
