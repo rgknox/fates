@@ -575,7 +575,7 @@ contains
                               print*,"ceair: ",ceair
 
                               ! The medlyn model likes vpd in kpa
-                              vpd_kpa = (bc_in(s)%esat_tv_pa(ifp) - ceair) * kpa_per_pa
+                              vpd_kpa = max(nearzero,(bc_in(s)%esat_tv_pa(ifp) - ceair)) * kpa_per_pa
 
                               call SemiAnalyticalQuad(bc_in(s)%forc_pbot,                 &
                                                       bc_in(s)%cair_pa(ifp),              &  ! in
@@ -2080,6 +2080,8 @@ contains
       real(r8)             :: r_stomata_fe       ! Stomatal Conductance (molm-2 s-1)
       real(r8), parameter  :: g1_medlyn = 6._r8  ! Medlyn 2011 gs slope (kPa^0.5)
        
+      print*,"VPD:",vpd
+
       r_stomata_fe = ( 1._r8 + g1_medlyn / sqrt(vpd) )
 
     end function RStomaH2OMedlyn2011Fe
@@ -2464,6 +2466,11 @@ contains
       ! 
       ! Carbon Assimilation is the solved quantity
       !
+      !
+      ! TO-DO: IS THERE ANY PRE-PROCESSING THAT NEEDS TO HAPPEN TO THE 
+      ! FINAL CONDUCTANCE AFTER A_NET IS DETERMINED?
+      !
+      ! TO-DO: CHECK TPU...
       ! ---------------------------------------------------------------------------------
       
       ! Input Arguments
@@ -2589,6 +2596,16 @@ contains
             end if
          end if
 
+         if(qabs<nearzero) then
+             psn_out         = psn_out  + 0._r8
+             a_net_out       = a_net_out - lmr*f_sun_lsl
+             a_net_resid_out = a_net_resid_out + 0._r8
+             g_stomata_h2o   = g_stomata_h2o + f_sun_lsl * &
+                  (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press,0._r8) * cf))
+            cycle    ! Go to 
+         end if
+
+
          ! Update the electron transport rate (light limited) for C3 plants
          ! Determine electron transport rate, this does not need to be iterated, as
          ! it is not dependent on the chloroplast CO2 concentration or stomatal
@@ -2616,42 +2633,65 @@ contains
          
          print*,"anet(1): ",a_net(1)
 
+         if( a_net(1) < 0._r8 ) then
+            psn_out         = psn_out  + a_net(1)
+            a_net_out       = a_net_out + a_net(1)*f_sun_lsl
+            a_net_resid_out = a_net_resid_out + un_initialized
+            g_stomata_h2o   = g_stomata_h2o + f_sun_lsl * &
+                 (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8) * cf))
+            cycle
+         end if
+         
+
          ! Determine the convergence residual of this first guess (residual umol CO2 m-2 s-1 )
 
          call GetResidualFromAnet(a_net(1), r_blayer_co2, vpd, can_press, &
                                   can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
                                   c3c4_path_index, lmr, a_net_resid(1), cplast_co2)
+
          
-         if ( abs(a_net_resid(1)) < 1.e-8_r8 ) then
-            a_net_out = a_net(1)
-            return
+         if(abs(a_net_resid(1)) < 1.e-8_r8 ) then
+             psn_out         = psn_out  + a_net(1)
+             a_net_out       = a_net_out + a_net(1)*f_sun_lsl
+             a_net_resid_out = a_net_resid_out + a_net_resid(1)
+             g_stomata_h2o   = g_stomata_h2o + f_sun_lsl * &
+                  (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net(1)) * cf))
+            cycle
          end if
-      
       
          ! ---------------------------------------------------------------------------------
          ! Get second guess (or lower bound that brackets solution
          ! ---------------------------------------------------------------------------------
+         
       
          ! Calculate the stomatal resistance of co2
          ! Stomatal conductance submodels report in resistance to h2o, so
          ! convert from resistance of h2o to co2
+
+         a_net(2) = a_net(1) + a_net_resid(1)
          
-         r_stomata_h2o =  RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net(1))
-         r_stomata_co2 =  r_stomata_h2o * h2o_co2_stoma_diffuse_ratio 
+!!         r_stomata_h2o =  RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net(1))
+!!         r_stomata_co2 =  r_stomata_h2o * h2o_co2_stoma_diffuse_ratio 
              
          ! Use ficks law to estimate the chloroplast CO2 concentration
          
-         cplast_co2 = FicksLawDiffusion(can_co2_ppress, &
-                                        a_net(1),       &
-                                        can_press,      &
-                                        r_stomata_co2 + r_blayer_co2)
+!!         cplast_co2 = FicksLawDiffusion(can_co2_ppress, &
+!!                                        a_net(1),       &
+!!                                        can_press,      &
+!!                                        r_stomata_co2 + r_blayer_co2)
          
 
          ! Update our assimilation rate based on our new cplast_co2 [umol m-2 s-1]
          
-         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
-                                    co2_cpoint,lmr,c3c4_path_index,a_net(2))
+!!         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+!!                                    co2_cpoint,lmr,c3c4_path_index,a_net(2))
          
+
+         if( a_net(2) < 0._r8 ) then
+            write(fates_log(),*) ' this was unexpected'
+            call endrun(msg=errMsg(sourcefile, __LINE__))
+         end if
+
          
          ! Calculate the 2nd residual
          
