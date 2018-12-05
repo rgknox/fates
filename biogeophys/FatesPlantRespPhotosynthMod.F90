@@ -2385,12 +2385,18 @@ contains
     
     ! =======================================================================
 
-    subroutine AnalyticalQuad(can_co2_ppress,can_press,vpd,vcmax,je,tpu,mm_km, &
-                                     co2_cpoint,lmr,c3c4_path_index,a_net)
+    subroutine AnalyticalQuadR0(can_co2_ppress,can_press,r_blayer_co2,vcmax,je,tpu,mm_km, &
+                                     co2_cpoint,lmr,c3c4_path_index,a_net,r_stomata_h2o)
+
+       ! --------------------------------------------------------------------------------
+       ! This method solves net assimilation using the quadratic by assuming
+       ! stomatal conductance is at minimum
+       ! --------------------------------------------------------------------------------
 
        real(r8), intent(in) :: can_co2_ppress   ! co2 concentration of canopy air space (Pa)
        real(r8), intent(in) :: can_press        ! air pressure (Pa)
-       real(r8), intent(in) :: vpd             ! Vapor pressure deficit (kPa)
+       real(r8), intent(in) :: r_blayer_co2     ! boundary layer resistance to CO2 transport
+                                                ! (umol-1 co2 m2 s)
 
        real(r8),intent(in) :: vcmax
        real(r8),intent(in) :: je
@@ -2402,60 +2408,51 @@ contains
        real(r8),intent(in) :: co2_cpoint      ! CO2 compensation point (Pa)
        real(r8),intent(in) :: lmr             ! Leaf Maintenance Respiration (umol CO2 m-2 s-1)
        integer,intent(in)  :: c3c4_path_index ! C3 = 1, C4 = 0
+       
        real(r8),intent(out) :: a_net          ! Net carbon assimilation (umol CO2 m-2 s-1)
+       real(r8),intent(out) :: r_stomata_h2o  ! The trivial stomatal resistance rate to h2o
+                                              ! (ie the minimum conductance) (umol-1 h2o m2 s)
 
+       ! Locals
+       real(r8) :: r_total_co2                ! Total resistance of co2 flux from canopy to chloroplast
+       real(r8) :: a_quad, b_quad, c_quad     ! Terms in quadratic solver
+       real(r8) :: a_cbox                     ! Net assimilation from carboxylation limited [umol m-2 s-1]
+       real(r8) :: a_rubp                     ! Net assimilation Rubp limited  [umol m-2 s-1]
+       real(r8) :: a_prod                     ! Net assimilation TPU limited   [umol m-2 s-1]
 
-       real(r8) :: gsd   ! conductance?
-       real(r8) :: gs_min ! minimum conductance
-
-       can_press = can_press * mol_per_umol
+       r_stomata_h2o = 1._r8/gsmin_medlyn2011
        
-       gs_min = gsmin_medlyn2011
+       r_total_co2 = h2o_co2_stoma_diffuse_ratio*r_stomata_h2o + r_blayer_co2
+
+       ! The first quadratic term is the same for each of three limiting processes
+       a_quad  = -can_press * mol_per_umol * r_total_co2
        
-       gsd = RStomaH2OMedlyn2011Fe(vpd)/can_co2_ppress
 
-       ! calculate coefficients of quadratic to solve A
-
-       ! Carboxylation limited
-       aquad = can_press*( 1.6_r8 - gsd*(can_co2_ppress + mm_km) )
-       bquad = can_press*gsd*( can_co2_ppress*(vcmax - lmr) - lmr * mm_km - vcmax*co2_cpoint ) - &
-               gs_min*(can_co2_ppress + mm_km) + 1.6*can_press*(lmr - vcmax)
-       cquad = gs_min*( vcmax*(can_co2_ppress - co2_cpoint) - lmr*(mm_km + can_co2_ppress) )
-
-       a_cbox = quad_sol(aquad,bquad,cquad,upper_root)
-
-       ! RuBP Limited
-       aquad = can_press*( 1.6_r8 - gsd*(can_co2_ppress + 2._r8*co2_cpoint) )
-       bquad = can_press*gsd*( can_co2_ppress*(0.25_r8*je - lmr) - lmr*2*co2_cpoint - 0.25_r8*je*co2_cpoint ) - &
-               gs_min*(can_co2_ppress + 2._r8*co2_cpoint) + 1.6*can_press*(lmr - 0.25_r8*je)
-       cquad = gs_min*( 0.25_r8*je*(can_co2_ppress - co2_cpoint) - lmr*(2._r8*co2_cpoint + can_co2_ppress) )
+       ! Rubisco-limited (carboxylation) gross photosynthesis [umol co2 m-2 s-1 Pa-1]
        
-       a_rubp = quad_sol(aquad,bquad,cquad,upper_root)
+       b_quad   = can_co2_ppress + mm_km - lmr*can_press*mol_per_umol*r_total_co2 + vcmax*can_press*mol_per_umol*r_total_co2
+       c_quad   = can_co2_ppress*(lmr-vcmax) + lmr*mm_km + vcmax*co2_cpoint
+       a_cbox = quad_sol(a_quad,b_quad,c_quad,upper_root)
 
-       ! TPU Limited
-       aquad = can_press*( 1.6_r8 - gsd*(can_co2_ppress + (-co2_cpoint)) )
-       bquad = can_press*gsd*( can_co2_ppress*(3._r8*tpu - lmr) - lmr*(-co2_cpoint) - 3._r8*tpu*co2_cpoint ) - &
-             gs_min*(can_co2_ppress + (-co2_cpoint)) + 1.6*can_press*(lmr - 3._r8*tpu)
-       cquad = gs_min*( 3._r8*tpu*(can_co2_ppress - co2_cpoint) - lmr*((-co2_cpoint) + can_co2_ppress) )
        
-       a_tpu = quad_sol(aquad,bquad,cquad,upper_root)
+       ! RuBP-limited gross photosynthesis [umol co2 m-2 s-1 Pa-1]
+       b_quad   = can_co2_ppress + 2._r8 * co2_cpoint - lmr*can_press*mol_per_umol*r_total_co2 + 0.25_r8 * je*can_press*mol_per_umol*r_total_co2
+       c_quad   = can_co2_ppress*(lmr-0.25_r8 * je) + lmr*2._r8 * co2_cpoint + 0.25_r8 * je*co2_cpoint
+       a_rubp = quad_sol(a_quad,b_quad,c_quad,upper_root)
+       
+       ! product-limited (C3) or CO2-limited  [umol co2 m-2 s-1 Pa-1]
+       
+       b_quad   = can_co2_ppress + (-co2_cpoint) - lmr*can_press*mol_per_umol*r_total_co2 + 3._r8 * tpu*can_press*mol_per_umol*r_total_co2
+       c_quad   = can_co2_ppress*(lmr-3._r8 * tpu) + lmr*(-co2_cpoint) + 3._r8 * tpu*co2_cpoint
+       a_prod = quad_sol(a_quad,b_quad,c_quad,upper_root)
+
 
        ! Use quadratic smoothing to find a co-limited product
-       a_gross_min = SmoothLimitCollatz1991(a_cbox, a_rubp, a_prod, c3c4_path_index )
-
-       
-       r_stomata_co2 = h2o_co2_stoma_diffuse_ratio * &
-                       RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_gross_min)
-
-       cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_gross_min, &
-                                      can_press,r_stomata_co2)
-
-       call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
-                                     co2_cpoint,lmr,c3c4_path_index,a_net)
+       a_net = SmoothLimitCollatz1991(a_cbox, a_rubp, a_prod, c3c4_path_index )
 
 
        return
-    end subroutine AnalyticalQuad
+    end subroutine AnalyticalQuadR0
 
 
     ! ===================================================================================
@@ -2597,7 +2594,7 @@ contains
       real(r8),intent(out) :: a_net_out       ! Net carbon assimilation (umol CO2 m-2 s-1)
       real(r8)             :: a_net_resid_out ! Weighted sun/shaded residual of a_net_out's
       real(r8),intent(out) :: psn_out         ! carbon assimilated in this leaf layer umolC/m2/s
-      real(r8),intent(out) :: r_stomata_out   ! stomatal resistance (1/gs_lsl) (s/m)
+      real(r8),intent(out) :: r_stomata_out   ! stomatal resistance to H2O (1/gs_lsl) (s/m)
 
       ! Locals
       integer  :: c3c4_path_index            ! C3 = 1, C4  = 0
@@ -2627,16 +2624,6 @@ contains
       c3c4_path_index = nint(EDPftvarcon_inst%c3psn(ipft))
 
 
-      ! Solve for trivial case ... no light!
-      ! ---------------------------------------------------------------------------------
-      if ( parsun_lsl <= nearzero ) then  ! night time
-         a_net_out       = -lmr
-         psn_out         = 0._r8
-         r_stomata_out   = min(rsmax0, &
-                               RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8)   * cf)
-         return
-      end if
-      
       ! Solve for trivial case ... no leaves!
       ! ---------------------------------------------------------------------------------
       if ( (laisun_lsl + laisha_lsl) <= nearzero ) then 
@@ -2646,8 +2633,7 @@ contains
          ! an initialization. It will not effect
          ! canopy conductance since it will be multiplied
          ! by zero leaf area.
-         r_stomata_out  = min(rsmax0, &
-              RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8)  * cf)
+         r_stomata_out  = (1._r8/gsmin_medlyn2011) * cf
          return
       end if
       
@@ -2696,11 +2682,12 @@ contains
             end if
          end if
 
+
+         ! Trivial solution, no light, no gross assimilation
          if(qabs<nearzero) then
              psn_out         = psn_out       + 0._r8
              a_net_out       = a_net_out     - lmr*sunsha_frac
-             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * &
-                  (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press,0._r8) * cf))
+             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * gsmin_medlyn2011/cf
              cycle    ! Go to 
          end if
 
@@ -2720,15 +2707,21 @@ contains
          ! ri is internal resistance 
          ! umol Co2 m-2 s-1 
 
-
          call AnalyticalZeroG(can_co2_ppress, vpd, vcmax, &
-                              je, tpu, mm_km, co2_cpoint, lmr, c3c4_path_index, a_net(1) )
+                               je, tpu, mm_km, co2_cpoint, lmr, c3c4_path_index, a_net(1) )
          
+         ! If the first guess is negative, then we resort to the simplified model
+         ! that uses minimimum stomatal conductance.
+
          if( a_net(1) < 0._r8 ) then
-            psn_out         = psn_out + (a_net(1)+lmr)*sunsha_frac
-            a_net_out       = a_net_out + a_net(1)*sunsha_frac
+            
+            call AnalyticalQuadR0(can_co2_ppress,can_press,r_blayer_co2,vcmax,je,tpu,mm_km, &
+                                  co2_cpoint,lmr,c3c4_path_index,a_net_final,r_stomata_h2o)
+
+            psn_out         = psn_out + (a_net_final+lmr)*sunsha_frac
+            a_net_out       = a_net_out + a_net_final*sunsha_frac
             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * &
-                 (1._r8 / (RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, 0._r8) * cf))
+                              (1._r8 / (r_stomata_h2o * cf))
             cycle
          end if
          
@@ -2857,12 +2850,13 @@ contains
          cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net_final,can_press,r_stomata_co2+r_blayer_co2)
 
          
-         ! Re-calculate co-limited CO2 assimilation one last time
-         ! to estimate the residual
+         ! Re-calculate co-limited CO2 assimilation one last time to estimate the residual
+         ! This is only for checking our results.
+
          call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
                co2_cpoint,lmr,c3c4_path_index,a_net_temp)
          
-!         ! The residual is the difference, the re-calculated rate minus the input rate
+         ! The residual is the difference, the re-calculated rate minus the input rate
          a_net_resid_final = a_net_temp - a_net_final
 
          if( abs(a_net_resid_final/a_net_final) > 1.e-2_r8 ) then
