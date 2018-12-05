@@ -2537,8 +2537,6 @@ contains
                                   r_stomata_out)
 
       ! --------------------------------------------------------------------------------
-      !  IF THIS PRODUCES A NEGATIVE A< THIS ROUTINE NEEDS TO BE CALLED
-      !  WITH A REDUCED CONDUCTANCE.
       !
       ! - finds the analytical solution assuming rb and ri are zero to use as first 
       !   guess (a1)
@@ -2562,8 +2560,6 @@ contains
       !
       ! TO-DO: IS THERE ANY PRE-PROCESSING THAT NEEDS TO HAPPEN TO THE 
       ! FINAL CONDUCTANCE AFTER A_NET IS DETERMINED?
-      !
-      ! TO-DO: CHECK TPU...
       ! ---------------------------------------------------------------------------------
       
       ! Input Arguments
