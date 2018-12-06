@@ -264,7 +264,7 @@ contains
     integer, parameter :: iterative_quad    = 1
     integer, parameter :: semianalytic_quad = 2
 
-    integer, parameter :: photo_solver = semianalytic_quad
+    integer, parameter :: photo_solver = iterative_quad
 
 
     ! Parameters
@@ -543,10 +543,9 @@ contains
                               ! The medlyn model likes vpd in kpa
                               vpd_kpa = max(nearzero,(bc_in(s)%esat_tv_pa(ifp) - ceair)) * kpa_per_pa
 
-!                              select case(photo_solver)
+                              select case(photo_solver)
 
-
-!                              case(iterative_quad)
+                              case(iterative_quad)
                               call LeafLayerPhotosynthesis(currentPatch%f_sun(cl,ft,iv),    &  ! in
                                                         currentPatch%ed_parsun_z(cl,ft,iv), &  ! in
                                                         currentPatch%ed_parsha_z(cl,ft,iv), &  ! in
@@ -574,9 +573,8 @@ contains
                                                         co2_cpoint,                         &  ! in
                                                         lmr_z(iv,ft,cl),                    &  ! in
                                                         currentPatch%psn_z(cl,ft,iv),       &  ! out
-                                                        rs_temp,                            &  ! out
-                                                        a_net_temp)
-!                                                        anet_av_z(iv,ft,cl))                   ! out
+                                                        rs_z(iv,ft,cl),                     &  ! out
+                                                        anet_av_z(iv,ft,cl))                   ! out
 
 
                               
@@ -605,13 +603,13 @@ contains
 
                               !print*,"Anets, ",a_net_temp,", ",anet_av_z(iv,ft,cl)
                               !print*,"Rstomas, ",rs_temp,", ",rs_z(iv,ft,cl)
-                              print*,"ADEL:",anet_av_z(iv,ft,cl) - a_net_temp
+                              !print*,"ADEL:",anet_av_z(iv,ft,cl) - a_net_temp
                               ! print*,"RDEL: ",rs_z(iv,ft,cl) - rs_temp
                               
-!                              case default
-!                                 write(fates_log(),*) 'A photo solver was chosen that DNE'
-!                                 call endrun(msg=errMsg(sourcefile, __LINE__))
-!                              end select
+                              case default
+                                 write(fates_log(),*) 'A photo solver was chosen that DNE'
+                                 call endrun(msg=errMsg(sourcefile, __LINE__))
+                              end select
 
 
                               rate_mask_z(iv,ft,cl) = .true.
@@ -1000,7 +998,7 @@ contains
    real(r8) :: gs_mol_min        ! Minimum stomatal conductance, model dependant (umol h2o m-2 s-1)
 
 
-   logical, parameter :: bb_not_medlyn = .false.
+   logical, parameter :: bb_not_medlyn = .true.
 
 
    associate( bb_slope  => EDPftvarcon_inst%BB_slope)    ! slope of BB relationship
