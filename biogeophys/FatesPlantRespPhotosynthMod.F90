@@ -264,7 +264,7 @@ contains
     integer, parameter :: iterative_quad    = 1
     integer, parameter :: semianalytic_quad = 2
 
-    integer, parameter :: photo_solver = iterative_quad
+    integer, parameter :: photo_solver = semianalytic_quad
 
 
     ! Parameters
@@ -577,7 +577,7 @@ contains
                                                         anet_av_z(iv,ft,cl))                   ! out
 
 
-                              
+                              case(semianalytic_quad)
 
                               call SemiAnalyticalQuad(bc_in(s)%forc_pbot,                 &
                                                       bc_in(s)%cair_pa(ifp),              &  ! in
@@ -998,7 +998,7 @@ contains
    real(r8) :: gs_mol_min        ! Minimum stomatal conductance, model dependant (umol h2o m-2 s-1)
 
 
-   logical, parameter :: bb_not_medlyn = .true.
+   logical, parameter :: bb_not_medlyn = .false.
 
 
    associate( bb_slope  => EDPftvarcon_inst%BB_slope)    ! slope of BB relationship
