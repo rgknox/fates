@@ -247,7 +247,8 @@ contains
     real(r8) :: cumulative_lai     ! the cumulative LAI, top down, to the leaf layer of interest
     
     real(r8) :: a_net_temp
-    
+    real(r8) :: rs_temp
+
     ! -----------------------------------------------------------------------------------
     ! Keeping these two definitions in case they need to be added later
     !
@@ -539,8 +540,12 @@ contains
                               ! Part IX: This call calculates the actual photosynthesis for the 
                               ! leaf layer, as well as the stomatal resistance and the net assimilated carbon.
 
+                              ! The medlyn model likes vpd in kpa
+                              vpd_kpa = max(nearzero,(bc_in(s)%esat_tv_pa(ifp) - ceair)) * kpa_per_pa
+
 !                              select case(photo_solver)
-                              
+
+
 !                              case(iterative_quad)
                               call LeafLayerPhotosynthesis(currentPatch%f_sun(cl,ft,iv),    &  ! in
                                                         currentPatch%ed_parsun_z(cl,ft,iv), &  ! in
@@ -563,18 +568,18 @@ contains
                                                         cf,                                 &  ! in
                                                         gb_mol,                             &  ! in
                                                         ceair,                              &  ! in
+                                                        vpd_kpa,                            &  ! in
                                                         mm_kco2,                            &  ! in
                                                         mm_ko2,                             &  ! in
                                                         co2_cpoint,                         &  ! in
                                                         lmr_z(iv,ft,cl),                    &  ! in
                                                         currentPatch%psn_z(cl,ft,iv),       &  ! out
-                                                        rs_z(iv,ft,cl),                     &  ! out
+                                                        rs_temp,                            &  ! out
                                                         a_net_temp)
 !                                                        anet_av_z(iv,ft,cl))                   ! out
 
 
-                              ! The medlyn model likes vpd in kpa
-                              vpd_kpa = max(nearzero,(bc_in(s)%esat_tv_pa(ifp) - ceair)) * kpa_per_pa
+                              
 
                               call SemiAnalyticalQuad(bc_in(s)%forc_pbot,                 &
                                                       bc_in(s)%cair_pa(ifp),              &  ! in
@@ -598,13 +603,11 @@ contains
                                                       currentPatch%psn_z(cl,ft,iv),       &  ! out
                                                       rs_z(iv,ft,cl))
 
-!                              print*,"Anets, ",a_net_temp,", ",anet_av_z(iv,ft,cl)
-
-                              if( (abs(a_net_temp-anet_av_z(iv,ft,cl))/abs(a_net_temp) > 1._r8) .and. &
-                                  (anet_av_z(iv,ft,cl) > 0._r8 )   ) then
-                                 print*,"Rel Difference: ",abs(a_net_temp-anet_av_z(iv,ft,cl))/abs(a_net_temp),anet_av_z(iv,ft,cl)
-                              end if
-
+                              !print*,"Anets, ",a_net_temp,", ",anet_av_z(iv,ft,cl)
+                              !print*,"Rstomas, ",rs_temp,", ",rs_z(iv,ft,cl)
+                              print*,"ADEL:",anet_av_z(iv,ft,cl) - a_net_temp
+                              ! print*,"RDEL: ",rs_z(iv,ft,cl) - rs_temp
+                              
 !                              case default
 !                                 write(fates_log(),*) 'A photo solver was chosen that DNE'
 !                                 call endrun(msg=errMsg(sourcefile, __LINE__))
@@ -901,6 +904,7 @@ contains
                                      cf,                &  ! in
                                      gb_mol,            &  ! in
                                      ceair,             &  ! in
+                                     vpd_kpa,           &  ! in
                                      mm_kco2,           &  ! in
                                      mm_ko2,            &  ! in
                                      co2_cpoint,        &  ! in
@@ -954,6 +958,7 @@ contains
    real(r8), intent(in) :: cf              ! s m**2/umol -> s/m (ideal gas conversion) [umol/m3]
    real(r8), intent(in) :: gb_mol          ! leaf boundary layer conductance (umol /m**2/s)
    real(r8), intent(in) :: ceair           ! vapor pressure of air, constrained (Pa)
+   real(r8), intent(in) :: vpd_kpa         ! vapor pressure deficit (kPa)
    real(r8), intent(in) :: mm_kco2         ! Michaelis-Menten constant for CO2 (Pa)
    real(r8), intent(in) :: mm_ko2          ! Michaelis-Menten constant for O2 (Pa)
    real(r8), intent(in) :: co2_cpoint      ! CO2 compensation point (Pa)
@@ -991,7 +996,12 @@ contains
    real(r8) :: ai                ! intermediate co-limited photosynthesis (umol CO2/m**2/s)
    real(r8) :: leaf_co2_ppress   ! CO2 partial pressure at leaf surface (Pa)
    real(r8) :: init_co2_inter_c  ! First guess intercellular co2 specific to C path
-   
+   real(r8) :: sunsha_frac       ! applied fraction of sun-shade of the current iteration (0-1)
+   real(r8) :: gs_mol_min        ! Minimum stomatal conductance, model dependant (umol h2o m-2 s-1)
+
+
+   logical, parameter :: bb_not_medlyn = .false.
+
 
    associate( bb_slope  => EDPftvarcon_inst%BB_slope)    ! slope of BB relationship
 
@@ -1004,236 +1014,258 @@ contains
         init_co2_inter_c = init_a2l_co2_c4 * can_co2_ppress
      end if
 
+     ! Set the minimal conductance depending on the model
+     if(bb_not_medlyn) then
+        gs_mol_min = bbb
+     else
+        gs_mol_min = gsmin_medlyn2011
+     end if
+
+
      ! Part III: Photosynthesis and Conductance
      ! ----------------------------------------------------------------------------------
      
-     if ( parsun_lsl <= 0._r8 ) then  ! night time
+     ! Solve for trivial case ... no leaves!
+     ! ---------------------------------------------------------------------------------
+     if ( (laisun_lsl + laisha_lsl) <= nearzero ) then 
+        anet_av_out     = 0._r8
+        psn_out         = 0._r8
+        ! This stomatal resistance is really just
+        ! an initialization. It will not effect
+        ! canopy conductance since it will be multiplied
+        ! by zero leaf area.
+        rstoma_out  = (1._r8/gs_mol_min) * cf
+        return
+     end if
+     
+      ! ---------------------------------------------------------------------------------
+      ! Non-trival case.  Leaves and light exist.
+      ! Photosynthesis calculations are performed on both the
+      ! sunlit and shaded portions of this leaf layer
+      ! ---------------------------------------------------------------------------------
 
-        anet_av_out = -lmr
-        psn_out     = 0._r8
-        rstoma_out  = min(rsmax0, 1._r8/bbb * cf)
+      ! These values are accumulated over the sunlit and shaded portions. Initialize 0
+
+      psn_out     = 0._r8    ! psn is accumulated across sun and shaded leaves. 
+      rstoma_out  = 0._r8    ! 1/rs is accumulated across sun and shaded leaves. 
+      gstoma      = 0._r8
+      anet_av_out = 0._r8
+
+      do  sunsha = 1,2      
+
+         ! First Step
+         ! Convert from units of par absorbed per unit ground area to par 
+         ! absorbed per unit leaf area. 
+         
+         if(sunsha == 1)then !sunlit
+
+            sunsha_frac = f_sun_lsl
+            if(( laisun_lsl * canopy_area_lsl) > 0.0000000001_r8)then
+               qabs = parsun_lsl / (laisun_lsl * canopy_area_lsl )   
+            else
+               qabs = 0._r8
+            end if
+         else
+
+            sunsha_frac = 1._r8 - f_sun_lsl
+            if ((laisha_lsl * canopy_area_lsl) > 0.0000000001_r8) then
+               qabs = parsha_lsl / (laisha_lsl * canopy_area_lsl)  
+            else
+               qabs = 0._r8
+            end if
+         end if
+
+
+         ! Trivial solution, no light, no gross assimilation
+         ! cycle to the next
+         if(qabs<nearzero) then
+             psn_out        = psn_out       + 0._r8
+             anet_av_out    = anet_av_out  - lmr*sunsha_frac
+             gstoma         = gstoma + sunsha_frac * gsmin_medlyn2011/cf    
+             cycle
+         end if
+
+         ! Convert to the energy absorbed by PS2
+         qabs = qabs * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
+
+
+         aquad = theta_psii
+         bquad = -(qabs + jmax)
+         cquad = qabs * jmax
+         call quadratic_f (aquad, bquad, cquad, r1, r2)
+         je = min(r1,r2)
+         
+         ! Initialize intercellular co2
+         co2_inter_c = init_co2_inter_c
+         
+         niter = 0
+         loop_continue = .true.
+         do while(loop_continue)                 
+            ! Increment iteration counter. Stop if too many iterations
+            niter = niter + 1
+            
+            ! Save old co2_inter_c
+            co2_inter_c_old = co2_inter_c
+            
+            ! Photosynthesis limitation rate calculations 
+            if (c3c4_path_index == 1)then    
+               
+               ! C3: Rubisco-limited photosynthesis
+               ac = vcmax * max(co2_inter_c-co2_cpoint, 0._r8) / &
+                     (co2_inter_c+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
+               
+               ! C3: RuBP-limited photosynthesis
+               aj = je * max(co2_inter_c-co2_cpoint, 0._r8) / &
+                     (4._r8*co2_inter_c+8._r8*co2_cpoint)
+               
+               ! C3: Product-limited photosynthesis 
+               ap = 3._r8 * tpu
+               
+            else
+               
+               ! C4: Rubisco-limited photosynthesis
+               ac = vcmax
+               
+               ! C4: RuBP-limited photosynthesis
+               if(sunsha == 1)then !sunlit
+                  !guard against /0's in the night.
+                  if((laisun_lsl * canopy_area_lsl) > 0.0000000001_r8) then   
+                     aj = quant_eff(c3c4_path_index) * parsun_lsl * 4.6_r8
+                     !convert from per cohort to per m2 of leaf)
+                     aj = aj / (laisun_lsl * canopy_area_lsl)
+                  else
+                     aj = 0._r8
+                  end if
+               else
+                  aj = quant_eff(c3c4_path_index) * parsha_lsl * 4.6_r8
+                  aj = aj / (laisha_lsl * canopy_area_lsl)
+               end if
+               
+               ! C4: PEP carboxylase-limited (CO2-limited)
+               ap = co2_rcurve_islope * max(co2_inter_c, 0._r8) / can_press  
+               
+            end if
+            
+            ! Gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
+            aquad = theta_cj(c3c4_path_index)
+            bquad = -(ac + aj)
+            cquad = ac * aj
+            call quadratic_f (aquad, bquad, cquad, r1, r2)
+            ai = min(r1,r2)
+            
+            aquad = theta_ip
+            bquad = -(ai + ap)
+            cquad = ai * ap
+            call quadratic_f (aquad, bquad, cquad, r1, r2)
+            agross = min(r1,r2)
+
+            
+            ! Net carbon assimilation. Exit iteration if an < 0
+            anet = agross  - lmr
+            if (anet < 0._r8) then
+               loop_continue = .false.
+            end if
+            
+            ! Quadratic gs_mol calculation with an known. Valid for an >= 0.
+            ! With an <= 0, then gs_mol = bbb
+            ! This is actually boundary layer
+
+            ! Use ficks law of diffusion to estimate the co2 concentration
+            ! inside the boundary layer.
+            leaf_co2_ppress = can_co2_ppress- 1.4_r8/gb_mol * anet * can_press 
+            leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
+            
+            if(bb_not_medlyn) then
+               aquad = leaf_co2_ppress
+               bquad = leaf_co2_ppress*(gb_mol - bbb) - bb_slope(ft) * anet * can_press
+               cquad = -gb_mol*(leaf_co2_ppress*bbb + &
+                     bb_slope(ft)*anet*can_press * ceair/ veg_esat )
+               
+               call quadratic_f (aquad, bquad, cquad, r1, r2)
+               gs_mol = max(r1,r2)
+            else
+               gs_mol = 1._r8/RStomaH2OMedlyn2011(vpd_kpa, leaf_co2_ppress, can_press, anet)
+            end if
+            
+            
+            ! Derive new estimate for co2_inter_c
+            co2_inter_c = can_co2_ppress - anet * can_press * &
+                  (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
+
+            ! Same as this:
+            ! co2_inter_c = can_co2_ppress - anet * can_press * &
+            !  (h2o_co2_stoma_diffuse_ratio/gs_mol + h2o_co2_bl_diffuse_ratio/gb_mol)
+
+            ! Ficks law...
+            ! c_co2 = c_co2_in - a_net * resis * press * mol_per_umol
+            ! (a*x + b*y)/(x*y) = (b/x + a/y) 
+            ! (a*x + b*y) =       (b*y + a*x)
+            
+            ! Check for co2_inter_c convergence. Delta co2_inter_c/pair = mol/mol. 
+            ! Multiply by 10**6 to convert to umol/mol (ppm). Exit iteration if 
+            ! convergence criteria of +/- 1 x 10**-6 ppm is met OR if at least ten 
+            ! iterations (niter=10) are completed
+                 
+            if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
+                  .or. niter == 5) then
+               loop_continue = .false.
+            end if
+         end do !iteration loop
+              
+         ! End of co2_inter_c iteration.  Check for an < 0, in which case gs_mol = bbb
+         if (anet < 0._r8) then
+            if(bb_not_medlyn) then
+               gs_mol = bbb
+            else
+               gs_mol = gsmin_medlyn2011
+            end if
+         end if
+         
+         ! Final estimates for leaf_co2_ppress and co2_inter_c 
+         ! (needed for early exit of co2_inter_c iteration when an < 0)
+         leaf_co2_ppress = can_co2_ppress - 1.4_r8/gb_mol * anet * can_press
+         leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
+         
+         co2_inter_c = can_co2_ppress - anet * can_press * &
+               (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
+         
+         ! Make sure that we didn't generate a negative stomatal conductance
+         if (gs_mol < 0._r8) then
+            write (fates_log(),*)'Negative stomatal conductance:'
+            write (fates_log(),*)'gs_mol= ',gs_mol
+            call endrun(msg=errMsg(sourcefile, __LINE__))
+         end if
+         
+
+         ! Convert gs_mol (umol /m**2/s) to gs (m/s) and then to rs (s/m)
+         gs = max(gs_mol_min,gs_mol) / cf
+         
+         ! Accumulate total photosynthesis umol/m2 ground/s-1. 
+         ! weight per unit sun and sha leaves.
+         
+         psn_out     = psn_out + agross * sunsha_frac
+         anet_av_out = anet_av_out + anet * sunsha_frac
+         gstoma      = gstoma + gs * sunsha_frac
+         
+         ! Compare with Ball-Berry model: gs_mol = m * an * hs/leaf_co2_ppress p + b
+         if(bb_not_medlyn) then
+            hs = (gb_mol*ceair + gs_mol* veg_esat ) / ((gb_mol+gs_mol)*veg_esat )
+            gs_mol_err = bb_slope(ft)*max(anet, 0._r8)*hs/leaf_co2_ppress*can_press + bbb
+            
+            if (abs(gs_mol-gs_mol_err) > 1.e-01_r8) then
+               write (fates_log(),*) 'CF: Ball-Berry error check - stomatal conductance error:'
+               write (fates_log(),*) gs_mol, gs_mol_err
+            end if
+         end if
+              
+      enddo !sunsha loop
+
+      ! This is the stomatal resistance of the leaf layer
+      rstoma_out = 1._r8/gstoma
         
-     else ! day time (a little bit more complicated ...)
-        
-        !is there leaf area? - (NV can be larger than 0 with only stem area if deciduous)
-        if ( laisun_lsl + laisha_lsl > 0._r8 ) then 
-
-           !Loop aroun shaded and unshaded leaves          
-           psn_out     = 0._r8    ! psn is accumulated across sun and shaded leaves. 
-           rstoma_out  = 0._r8    ! 1/rs is accumulated across sun and shaded leaves. 
-           anet_av_out = 0._r8
-           gstoma      = 0._r8
-           
-           do  sunsha = 1,2      
-              ! Electron transport rate for C3 plants. 
-              ! Convert par from W/m2 to umol photons/m**2/s using the factor 4.6
-              ! Convert from units of par absorbed per unit ground area to par 
-              ! absorbed per unit leaf area. 
-              
-              if(sunsha == 1)then !sunlit
-                 if(( laisun_lsl * canopy_area_lsl) > 0.0000000001_r8)then
-
-                    qabs = parsun_lsl / (laisun_lsl * canopy_area_lsl )   
-
-!                    print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
-!                    qabs = qabs * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
-                    
-                 else
-                    qabs = 0.0_r8
-!                    print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
-                 end if
-              else
-
-                 qabs = parsha_lsl / (laisha_lsl * canopy_area_lsl)  
-!                 print*,"photo0", sunsha, qabs,parsun_lsl,laisun_lsl,canopy_area_lsl
-                 qabs = qabs * 0.5_r8 * (1._r8 - fnps) *  4.6_r8 
-
-              end if
-
-              !convert the absorbed par into absorbed par per m2 of leaf, 
-              ! so it is consistant with the vcmax and lmr numbers. 
-              aquad = theta_psii
-              bquad = -(qabs + jmax)
-              cquad = qabs * jmax
-              call quadratic_f (aquad, bquad, cquad, r1, r2)
-              je = min(r1,r2)
-
-             
-!              print*,"je: ",je,jmax
-
-              ! Initialize intercellular co2
-              co2_inter_c = init_co2_inter_c
-
-              niter = 0
-              loop_continue = .true.
-              do while(loop_continue)                 
-                 ! Increment iteration counter. Stop if too many iterations
-                 niter = niter + 1
-                 
-                 ! Save old co2_inter_c
-                 co2_inter_c_old = co2_inter_c
-                 
-                 ! Photosynthesis limitation rate calculations 
-                 if (c3c4_path_index == 1)then    
-
-                    ! C3: Rubisco-limited photosynthesis
-                    ac = vcmax * max(co2_inter_c-co2_cpoint, 0._r8) / &
-                          (co2_inter_c+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
-
-                    ! C3: RuBP-limited photosynthesis
-                    aj = je * max(co2_inter_c-co2_cpoint, 0._r8) / &
-                          (4._r8*co2_inter_c+8._r8*co2_cpoint)
-                 
-                    ! C3: Product-limited photosynthesis 
-                    ap = 3._r8 * tpu
-                 
-                 else
-                    
-                    ! C4: Rubisco-limited photosynthesis
-                    ac = vcmax
-
-                    ! C4: RuBP-limited photosynthesis
-                    if(sunsha == 1)then !sunlit
-                       !guard against /0's in the night.
-                       if((laisun_lsl * canopy_area_lsl) > 0.0000000001_r8) then   
-                          aj = quant_eff(c3c4_path_index) * parsun_lsl * 4.6_r8
-                          !convert from per cohort to per m2 of leaf)
-                          aj = aj / (laisun_lsl * canopy_area_lsl)
-                       else
-                          aj = 0._r8
-                       end if
-                    else
-                       aj = quant_eff(c3c4_path_index) * parsha_lsl * 4.6_r8
-                       aj = aj / (laisha_lsl * canopy_area_lsl)
-                    end if
-
-                    ! C4: PEP carboxylase-limited (CO2-limited)
-                    ap = co2_rcurve_islope * max(co2_inter_c, 0._r8) / can_press  
-                    
-                 end if
-
-                 ! Gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
-                 aquad = theta_cj(c3c4_path_index)
-                 bquad = -(ac + aj)
-                 cquad = ac * aj
-                 call quadratic_f (aquad, bquad, cquad, r1, r2)
-                 ai = min(r1,r2)
-
-                 aquad = theta_ip
-                 bquad = -(ai + ap)
-                 cquad = ai * ap
-                 call quadratic_f (aquad, bquad, cquad, r1, r2)
-                 agross = min(r1,r2)
-
-!                 agross = SmoothLimitCollatz1991(ac,aj,ap,c3c4_path_index)
-
-                 ! Net carbon assimilation. Exit iteration if an < 0
-                 anet = agross  - lmr
-                 if (anet < 0._r8) then
-                    loop_continue = .false.
-                 end if
-
-!                 print*,"cc = ",co2_inter_c
-!                 print*,"anet(1) = ",anet
-
-                 ! Quadratic gs_mol calculation with an known. Valid for an >= 0.
-                 ! With an <= 0, then gs_mol = bbb
-                 
-                 leaf_co2_ppress = can_co2_ppress- 1.4_r8/gb_mol * anet * can_press 
-                 leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
-                 aquad = leaf_co2_ppress
-                 bquad = leaf_co2_ppress*(gb_mol - bbb) - bb_slope(ft) * anet * can_press
-                 cquad = -gb_mol*(leaf_co2_ppress*bbb + &
-                                  bb_slope(ft)*anet*can_press * ceair/ veg_esat )
-
-                 call quadratic_f (aquad, bquad, cquad, r1, r2)
-                 gs_mol = max(r1,r2)
-                 
-                 ! Derive new estimate for co2_inter_c
-                 co2_inter_c = can_co2_ppress - anet * can_press * &
-                       (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
-
-                 ! Check for co2_inter_c convergence. Delta co2_inter_c/pair = mol/mol. 
-                 ! Multiply by 10**6 to convert to umol/mol (ppm). Exit iteration if 
-                 ! convergence criteria of +/- 1 x 10**-6 ppm is met OR if at least ten 
-                 ! iterations (niter=10) are completed
-                 
-                 if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
-                       .or. niter == 5) then
-                    loop_continue = .false.
-                 end if
-              end do !iteration loop
-              
-              ! End of co2_inter_c iteration.  Check for an < 0, in which case gs_mol = bbb
-              if (anet < 0._r8) then
-                 gs_mol = bbb
-              end if
-              
-              ! Final estimates for leaf_co2_ppress and co2_inter_c 
-              ! (needed for early exit of co2_inter_c iteration when an < 0)
-              leaf_co2_ppress = can_co2_ppress - 1.4_r8/gb_mol * anet * can_press
-              leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
-              co2_inter_c = can_co2_ppress - anet * can_press * &
-                            (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
-              
-              ! Convert gs_mol (umol /m**2/s) to gs (m/s) and then to rs (s/m)
-              gs = gs_mol / cf
-              
-!              if ( debug ) write(fates_log(),*) 'EDPhoto 737 ', psn_out
-!              if ( debug ) write(fates_log(),*) 'EDPhoto 738 ', agross
-!              if ( debug ) write(fates_log(),*) 'EDPhoto 739 ', f_sun_lsl
-
-              ! Accumulate total photosynthesis umol/m2 ground/s-1. 
-              ! weight per unit sun and sha leaves.
-              if(sunsha == 1)then !sunlit       
-                 psn_out     = psn_out + agross * f_sun_lsl
-                 anet_av_out = anet_av_out + anet * f_sun_lsl
-                 gstoma  = gstoma + 1._r8/(min(1._r8/gs, rsmax0)) * f_sun_lsl
-              else
-                 psn_out = psn_out + agross * (1.0_r8-f_sun_lsl)                 
-                 anet_av_out = anet_av_out + anet * (1.0_r8-f_sun_lsl) 
-                 gstoma  = gstoma + &
-                       1._r8/(min(1._r8/gs, rsmax0)) * (1.0_r8-f_sun_lsl) 
-              end if
-
-!              if ( debug ) write(fates_log(),*) 'EDPhoto 758 ', psn_out
-!              if ( debug ) write(fates_log(),*) 'EDPhoto 759 ', agross
-!              if ( debug ) write(fates_log(),*) 'EDPhoto 760 ', f_sun_lsl
-              
-              ! Make sure iterative solution is correct
-              if (gs_mol < 0._r8) then
-                 write (fates_log(),*)'Negative stomatal conductance:'
-                 write (fates_log(),*)'gs_mol= ',gs_mol
-                 call endrun(msg=errMsg(sourcefile, __LINE__))
-              end if
-              
-              ! Compare with Ball-Berry model: gs_mol = m * an * hs/leaf_co2_ppress p + b
-              hs = (gb_mol*ceair + gs_mol* veg_esat ) / ((gb_mol+gs_mol)*veg_esat )
-              gs_mol_err = bb_slope(ft)*max(anet, 0._r8)*hs/leaf_co2_ppress*can_press + bbb
-              
-              if (abs(gs_mol-gs_mol_err) > 1.e-01_r8) then
-                 write (fates_log(),*) 'CF: Ball-Berry error check - stomatal conductance error:'
-                 write (fates_log(),*) gs_mol, gs_mol_err
-              end if
-              
-           enddo !sunsha loop
-
-           ! This is the stomatal resistance of the leaf layer
-           rstoma_out = 1._r8/gstoma
-           
-        else
-           !No leaf area. This layer is present only because of stems. 
-           ! (leaves are off, or have reduced to 0)
-           psn_out = 0._r8
-           rstoma_out = min(rsmax0, 1._r8/bbb * cf)
-           
-        end if !is there leaf area? 
-        
-        
-     end if    ! night or day 
-   end associate
-   return
-  end subroutine LeafLayerPhotosynthesis
+    end associate
+    return
+ end subroutine LeafLayerPhotosynthesis
  
   ! =====================================================================================
 
@@ -1879,12 +1911,12 @@ contains
       jmaxc  = fth25_f(jmaxhd, jmaxse)
       tpuc   = fth25_f(tpuhd, tpuse)
 
-      if ( parsun_lsl <= 0._r8) then           ! night time
-         vcmax             = 0._r8
-         jmax              = 0._r8
-         tpu               = 0._r8
-         co2_rcurve_islope = 0._r8
-      else                                     ! day time
+!      if ( parsun_lsl <= 0._r8) then           ! night time
+!         vcmax             = 0._r8
+!         jmax              = 0._r8
+!         tpu               = 0._r8
+!         co2_rcurve_islope = 0._r8
+!      else                                     ! day time
          vcmax25 = vcmax25top_ft * nscaler
          jmax25  = jmax25top_ft * nscaler
          tpu25   = tpu25top_ft * nscaler
@@ -1902,7 +1934,7 @@ contains
          end if
          !q10 response of product limited psn. 
          co2_rcurve_islope = co2_rcurve_islope25 * 2._r8**((veg_tempk-(tfrz+25._r8))/10._r8) 
-      end if
+!      end if
       
       ! Adjust for water limitations 
       vcmax = vcmax * btran
@@ -2086,21 +2118,19 @@ contains
       real(r8)             :: r_stomata_fe       ! Stomatal Conductance (molm-2 s-1)
       real(r8), parameter  :: g1_medlyn = 6._r8  ! Medlyn 2011 gs slope (kPa^0.5)
        
-!      print*,"VPD:",vpd
-
       r_stomata_fe = ( 1._r8 + g1_medlyn / sqrt(vpd) )
 
     end function RStomaH2OMedlyn2011Fe
 
     ! ===================================================================================
 
-    function RStomaH2OMedlyn2011(vpd, can_co2_ppress, can_press, a_net) result(r_stomata)
+    function RStomaH2OMedlyn2011(vpd, blayer_co2_ppress, can_press, a_net) result(r_stomata)
 
       ! This function calculates the stomatal conductance to water vapor
       ! following Medlyn et al. 2011
 
       real(r8) :: vpd            ! vapor pressure deficit [kPa]
-      real(r8) :: can_co2_ppress ! canopy co2 partial pressure [Pa]
+      real(r8) :: blayer_co2_ppress ! co2 partial pressure inside the leaf boundary layer [Pa]
       real(r8) :: can_press      ! atmospheric pressure in the canopy [Pa]
       real(r8) :: a_net          ! net assimilation rate [umol m-2 s-1]
       real(r8) :: r_stomata      ! Stomatal resistance to h2o [m2 s mol-1 h2o]
@@ -2109,7 +2139,7 @@ contains
       real(r8) :: mol_frac       ! molar fraction of co2/air [umol/mol]
                                  ! this is equal to the partial pressure / total pressure
       
-      mol_frac = can_co2_ppress / can_press * umol_per_mol
+      mol_frac = blayer_co2_ppress / can_press * umol_per_mol
       
 
       r_stomata = 1.0_r8 / ( gsmin_medlyn2011 + &
@@ -2462,7 +2492,14 @@ contains
 
        ! --------------------------------------------------------------------------------
        ! - finds the analytical solution assuming rb and rs are zero
-       ! 
+       !
+       ! This method substitutes the medlyn stomatal resistance equation into fick's law,
+       ! where in this case, since r_blayer = 0, min stomatal conductance is also 0, and
+       ! blayer_co2 = can_co2, net assimilation rate drops out and is not required to 
+       ! estimate chloroplastic co2
+       ! That chloroplastic co2 is then used to estimate net assimilation, which is the
+       ! upper bound, assuming almost no resistance for the semi-analytical solver
+       !
        ! Anthony Walker, 2018  (converted over from MAAT by Ryan Knox)
        !
        ! Original function: f_A_r_leaf_analytical_quad
@@ -2495,12 +2532,19 @@ contains
 
        r_stomata_fe = RStomaH2OMedlyn2011Fe(vpd)
        
+       ! If this value is less than the diffusion ratio,
+       ! we will generate a negative CC, in this
+       ! case we surely should solve with the quadratic analytical solution.
+       ! to to this, we pass back a negative net assimilation.
        if (r_stomata_fe < h2o_co2_stoma_diffuse_ratio) then
-          write(fates_log(),*) 'Stomatal conductance environmental term is bogus'
-          call endrun(msg=errMsg(sourcefile, __LINE__))
+          a_net = -1._r8
+          return
        end if
 
        cplast_co2 = can_co2_ppress * (1._r8 - (h2o_co2_stoma_diffuse_ratio/r_stomata_fe))
+
+!       print*,"zero-g terms",vpd,r_stomata_fe,cplast_co2,vcmax,je,tpu,mm_km, &
+!                                  co2_cpoint,lmr,c3c4_path_index
 
        call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
                                   co2_cpoint,lmr,c3c4_path_index,a_net)
@@ -2616,6 +2660,12 @@ contains
       real(r8) :: ax,bx,cx                   ! intermediate smoothing terms 
                                              ! via Muller's method
       
+
+      real(r8), parameter :: residual_tolerance = 0.2  ! If the residual between one solution
+                                                       ! and the next guess is less than this
+                                                       ! many umol m-2 s-1, can leave early
+
+
       ! photosynthetic pathway: 0. = c4, 1. = c3
       c3c4_path_index = nint(EDPftvarcon_inst%c3psn(ipft))
 
@@ -2749,7 +2799,7 @@ contains
          a_net_resid(1) = a_net(2) - a_net(1)
          
          ! Check the residual, if it is small enough, accept the current answer
-         if( abs(a_net_resid(1)) < 1.e-8_r8 ) then
+         if( abs(a_net_resid(1)) < residual_tolerance ) then
             psn_out           = psn_out  + (a_net(1)+lmr)*sunsha_frac
             a_net_out         = a_net_out + a_net(1)*sunsha_frac
             g_stomata_h2o     = g_stomata_h2o + sunsha_frac * &
@@ -2768,7 +2818,7 @@ contains
                                   can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
                                   c3c4_path_index, lmr, a_net_resid(2), r_stomata_co2)
 
-         if( abs(a_net_resid(2)) < 1.e-8_r8 ) then
+         if( abs(a_net_resid(2)) < residual_tolerance ) then
              psn_out           = psn_out  + (a_net(2)+lmr)*sunsha_frac
              a_net_out         = a_net_out + a_net(2)*sunsha_frac
              g_stomata_h2o     = g_stomata_h2o + sunsha_frac * &
@@ -2781,7 +2831,7 @@ contains
          ! return -1 and leafsys routine will calculate A assuming gs = g0
          if( (a_net_resid(1)*a_net_resid(2)) > 0.0_r8 ) then
             write(fates_log(),*) 'The semi-analytical photosynthesis solver did not generate'
-            write(fates_log(),*) ' reasonable starting bounds to the solution. Exiting'
+            write(fates_log(),*) ' 2 residuals that span zero. Exiting'
             write(fates_log(),*) ' a_net[1] = ',a_net(1)
             write(fates_log(),*) ' a_net_resid[1] = ',a_net_resid(1)
             write(fates_log(),*) ' a_net[2] = ',a_net(2)
@@ -2855,11 +2905,10 @@ contains
          ! The residual is the difference, the re-calculated rate minus the input rate
          a_net_resid_final = a_net_temp - a_net_final
 
-         if( abs(a_net_resid_final/a_net_final) > 1.e-2_r8 ) then
-            print*,"High Residual",a_net_resid_final
+         if( abs(a_net_resid_final) > residual_tolerance ) then
+            print*,"High final Residual",a_net_resid_final
             stop
          end if
-
 
          
          ! Update averages of the sun/shaded weighted 
