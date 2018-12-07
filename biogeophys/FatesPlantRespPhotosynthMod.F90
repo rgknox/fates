@@ -264,7 +264,8 @@ contains
     integer, parameter :: iterative_quad    = 1
     integer, parameter :: semianalytic_quad = 2
 
-    integer, parameter :: photo_solver = semianalytic_quad
+    integer, parameter :: photo_solver = iterative_quad
+!    integer, parameter :: photo_solver = semianalytic_quad
 
 
     ! Parameters
@@ -998,7 +999,7 @@ contains
    real(r8) :: gs_mol_min        ! Minimum stomatal conductance, model dependant (umol h2o m-2 s-1)
 
 
-   logical, parameter :: bb_not_medlyn = .false.
+   logical, parameter :: bb_not_medlyn = .true.
 
 
    associate( bb_slope  => EDPftvarcon_inst%BB_slope)    ! slope of BB relationship
@@ -1032,7 +1033,7 @@ contains
         ! an initialization. It will not effect
         ! canopy conductance since it will be multiplied
         ! by zero leaf area.
-        rstoma_out  = (1._r8/gs_mol_min) * cf
+        rstoma_out  = min(rsmax0,(1._r8/gs_mol_min) * cf)
         return
      end if
      
@@ -1079,7 +1080,7 @@ contains
          if(qabs<nearzero) then
              psn_out        = psn_out       + 0._r8
              anet_av_out    = anet_av_out  - lmr*sunsha_frac
-             gstoma         = gstoma + sunsha_frac * gsmin_medlyn2011/cf    
+             gstoma         = gstoma + sunsha_frac * max(1._r8/rsmax0,gs_mol_min/cf)
              cycle
          end if
 
@@ -1243,7 +1244,7 @@ contains
          
          psn_out     = psn_out + agross * sunsha_frac
          anet_av_out = anet_av_out + anet * sunsha_frac
-         gstoma      = gstoma + gs * sunsha_frac
+         gstoma      = gstoma + 1._r8/(min(1._r8/gs, rsmax0)) * sunsha_frac
          
          ! Compare with Ball-Berry model: gs_mol = m * an * hs/leaf_co2_ppress p + b
          if(bb_not_medlyn) then
