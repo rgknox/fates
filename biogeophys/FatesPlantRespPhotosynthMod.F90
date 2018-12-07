@@ -100,8 +100,8 @@ module FATESPlantRespPhotosynthMod
    real(r8),parameter :: un_initialized = -9.9e32_r8
 
    
-   real(r8), parameter :: gsmin_medlyn2011 = 0.01 ! Medlyn 2011 minimum stomatal cond
-                                                  ! [mol h2o m-2 s-1]
+   real(r8), parameter :: gsmin_medlyn2011 = 0.01_r8 ! Medlyn 2011 minimum stomatal cond
+                                                     ! [mol h2o m-2 s-1]
 contains
   
   !--------------------------------------------------------------------------------------
@@ -264,8 +264,8 @@ contains
     integer, parameter :: iterative_quad    = 1
     integer, parameter :: semianalytic_quad = 2
 
-    integer, parameter :: photo_solver = iterative_quad
-!    integer, parameter :: photo_solver = semianalytic_quad
+!    integer, parameter :: photo_solver = iterative_quad
+    integer, parameter :: photo_solver = semianalytic_quad
 
 
     ! Parameters
@@ -999,7 +999,7 @@ contains
    real(r8) :: gs_mol_min        ! Minimum stomatal conductance, model dependant (umol h2o m-2 s-1)
 
 
-   logical, parameter :: bb_not_medlyn = .true.
+   logical, parameter :: bb_not_medlyn = .false.
 
 
    associate( bb_slope  => EDPftvarcon_inst%BB_slope)    ! slope of BB relationship
@@ -1017,7 +1017,7 @@ contains
      if(bb_not_medlyn) then
         gs_mol_min = bbb
      else
-        gs_mol_min = gsmin_medlyn2011
+        gs_mol_min = gsmin_medlyn2011*umol_per_mol
      end if
 
 
@@ -1174,6 +1174,8 @@ contains
             leaf_co2_ppress = can_co2_ppress- 1.4_r8/gb_mol * anet * can_press 
             leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
             
+            ! c_co2 = c_co2_in - a_net * resis * press * mol_per_umol
+
             if(bb_not_medlyn) then
                aquad = leaf_co2_ppress
                bquad = leaf_co2_ppress*(gb_mol - bbb) - bb_slope(ft) * anet * can_press
@@ -1183,10 +1185,9 @@ contains
                call quadratic_f (aquad, bquad, cquad, r1, r2)
                gs_mol = max(r1,r2)
             else
-               gs_mol = 1._r8/RStomaH2OMedlyn2011(vpd_kpa, leaf_co2_ppress, can_press, anet)
+               gs_mol = umol_per_mol/RStomaH2OMedlyn2011(vpd_kpa, leaf_co2_ppress, can_press, anet)
             end if
-            
-            
+
             ! Derive new estimate for co2_inter_c
             co2_inter_c = can_co2_ppress - anet * can_press * &
                   (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
@@ -1213,11 +1214,7 @@ contains
               
          ! End of co2_inter_c iteration.  Check for an < 0, in which case gs_mol = bbb
          if (anet < 0._r8) then
-            if(bb_not_medlyn) then
-               gs_mol = bbb
-            else
-               gs_mol = gsmin_medlyn2011
-            end if
+               gs_mol = gs_mol_min
          end if
          
          ! Final estimates for leaf_co2_ppress and co2_inter_c 
@@ -2114,7 +2111,7 @@ contains
       ! f(e) component of rs from Medlyn 2011  
       
       real(r8), intent(in) :: vpd                ! Vapor pressure deficit (kPa)
-      real(r8)             :: r_stomata_fe       ! Stomatal Conductance (molm-2 s-1)
+      real(r8)             :: r_stomata_fe       ! Stomatal Conductance (mol m-2 s-1)
       real(r8), parameter  :: g1_medlyn = 6._r8  ! Medlyn 2011 gs slope (kPa^0.5)
        
       r_stomata_fe = ( 1._r8 + g1_medlyn / sqrt(vpd) )
@@ -2139,10 +2136,8 @@ contains
                                  ! this is equal to the partial pressure / total pressure
       
       mol_frac = blayer_co2_ppress / can_press * umol_per_mol
-      
 
-      r_stomata = 1.0_r8 / ( gsmin_medlyn2011 + &
-           RStomaH2OMedlyn2011Fe(vpd) * a_net / mol_frac)
+      r_stomata = 1._r8 / ( gsmin_medlyn2011 + RStomaH2OMedlyn2011Fe(vpd) * a_net / mol_frac)
 
       return
     end function RStomaH2OMedlyn2011
@@ -2330,14 +2325,14 @@ contains
       cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net_in, &
                                      can_press,r_stomata_co2+r_blayer_co2)
 
-      cplast_co2_v2 = FicksLawDiffusion(blayer_co2,a_net_in, &
-                                     can_press,r_stomata_co2)
+!      cplast_co2_v2 = FicksLawDiffusion(blayer_co2,a_net_in, &
+!                                     can_press,r_stomata_co2)
 
-      if(abs(cplast_co2 - cplast_co2_v2)>1.e-8_r8) then
-         print*,"FICKS vs Medlyn... hmmm."
-         print*,cplast_co2,cplast_co2_v2
-         stop
-      end if
+!      if(abs(cplast_co2 - cplast_co2_v2)>1.e-8_r8) then
+!         print*,"FICKS vs Medlyn... hmmm."
+!         print*,cplast_co2,cplast_co2_v2
+!         stop
+!      end if
 
       ! Re-calculate co-limited CO2 assimilation with the updated co2 concentration
       call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km,co2_cpoint,lmr,c3c4_path_index,a_net)
@@ -2425,7 +2420,7 @@ contains
        real(r8), intent(in) :: can_co2_ppress   ! co2 concentration of canopy air space (Pa)
        real(r8), intent(in) :: can_press        ! air pressure (Pa)
        real(r8), intent(in) :: r_blayer_co2     ! boundary layer resistance to CO2 transport
-                                                ! (umol-1 co2 m2 s)
+                                                ! (mol-1 co2 m2 s)
 
        real(r8),intent(in) :: vcmax
        real(r8),intent(in) :: je
@@ -2440,7 +2435,7 @@ contains
        
        real(r8),intent(out) :: a_net          ! Net carbon assimilation (umol CO2 m-2 s-1)
        real(r8),intent(out) :: r_stomata_h2o  ! The trivial stomatal resistance rate to h2o
-                                              ! (ie the minimum conductance) (umol-1 h2o m2 s)
+                                              ! (ie the minimum conductance) (mol-1 h2o m2 s)
 
        ! Locals
        real(r8) :: r_total_co2                ! Total resistance of co2 flux from canopy to chloroplast
@@ -2449,7 +2444,7 @@ contains
        real(r8) :: a_rubp                     ! Net assimilation Rubp limited  [umol m-2 s-1]
        real(r8) :: a_prod                     ! Net assimilation TPU limited   [umol m-2 s-1]
 
-       r_stomata_h2o = 1._r8/gsmin_medlyn2011
+       r_stomata_h2o = 1._r8/(gsmin_medlyn2011)
        
        r_total_co2 = h2o_co2_stoma_diffuse_ratio*r_stomata_h2o + r_blayer_co2
 
@@ -2612,7 +2607,7 @@ contains
                                              ! combined term.
       real(r8),intent(in) :: vpd             ! Vapor pressure deficit [Pa]
       real(r8),intent(in) :: g_blayer_h2o    ! Leaf boundary layer conductance of 
-                                             ! H2O  [mol h2o m-2 s-1]
+                                             ! H2O  [umol h2o m-2 s-1]
       real(r8),intent(in) :: cf              ! ideal gas conversion factor between
                                              ! molar and velocity form conductance
       real(r8),intent(in) :: vcmax           !
@@ -2678,7 +2673,7 @@ contains
          ! an initialization. It will not effect
          ! canopy conductance since it will be multiplied
          ! by zero leaf area.
-         r_stomata_out  = (1._r8/gsmin_medlyn2011) * cf
+         r_stomata_out  = (mol_per_umol/gsmin_medlyn2011) * cf
          return
       end if
       
@@ -2689,8 +2684,8 @@ contains
       ! ---------------------------------------------------------------------------------
 
       ! Convert leaf boundary layer resistance units to
-      ! diffusion of CO2 from H2O
-      r_blayer_co2  = h2o_co2_bl_diffuse_ratio * 1._r8/g_blayer_h2o
+      ! diffusion of CO2 from H2O, also convert from umol to mol
+      r_blayer_co2  = h2o_co2_bl_diffuse_ratio * umol_per_mol/g_blayer_h2o
 
 
       ! These values are accumulated over the sunlit and shaded portions. Initialize 0
@@ -2732,7 +2727,7 @@ contains
          if(qabs<nearzero) then
              psn_out         = psn_out       + 0._r8
              a_net_out       = a_net_out     - lmr*sunsha_frac
-             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * gsmin_medlyn2011/cf
+             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * umol_per_mol*gsmin_medlyn2011/cf
              cycle    ! Go to 
          end if
 
@@ -2766,7 +2761,7 @@ contains
             psn_out         = psn_out + (a_net_final+lmr)*sunsha_frac
             a_net_out       = a_net_out + a_net_final*sunsha_frac
             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * &
-                              (1._r8 / (r_stomata_h2o * cf))
+                              (1._r8 / (mol_per_umol*r_stomata_h2o * cf))
             cycle
          end if
          
@@ -2783,7 +2778,7 @@ contains
          ! Use the boundary layer concentration to calculate the stomatal resistance.
          r_stomata_co2 = h2o_co2_stoma_diffuse_ratio * &
               RStomaH2OMedlyn2011(vpd, blayer_co2, can_press, a_net(1))
-      
+
          
          ! Use ficks law to estimate the chloroplast CO2 concentration
          cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net(1), &
@@ -2802,7 +2797,7 @@ contains
             psn_out           = psn_out  + (a_net(1)+lmr)*sunsha_frac
             a_net_out         = a_net_out + a_net(1)*sunsha_frac
             g_stomata_h2o     = g_stomata_h2o + sunsha_frac * &
-                                (1._r8 / (r_stomata_co2 * cf))
+                                (1._r8 / (mol_per_umol*r_stomata_co2 * cf))
             cycle
          end if
          
@@ -2821,7 +2816,7 @@ contains
              psn_out           = psn_out  + (a_net(2)+lmr)*sunsha_frac
              a_net_out         = a_net_out + a_net(2)*sunsha_frac
              g_stomata_h2o     = g_stomata_h2o + sunsha_frac * &
-                  (1._r8 / (r_stomata_co2 * cf))
+                  (1._r8 / (mol_per_umol*r_stomata_co2 * cf))
             cycle
          end if
 
@@ -2915,7 +2910,7 @@ contains
          
          psn_out         = psn_out  + (a_net_final+lmr) * sunsha_frac
          a_net_out       = a_net_out + a_net_final * sunsha_frac
-         g_stomata_h2o   = g_stomata_h2o + sunsha_frac * (1._r8 / (r_stomata_co2 * cf))
+         g_stomata_h2o   = g_stomata_h2o + sunsha_frac * (1._r8 / (mol_per_umol*r_stomata_co2 * cf))
                   
          
       end do
