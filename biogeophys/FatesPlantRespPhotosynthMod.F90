@@ -542,7 +542,8 @@ contains
                               ! leaf layer, as well as the stomatal resistance and the net assimilated carbon.
 
                               ! The medlyn model likes vpd in kpa
-                              vpd_kpa = max(nearzero,(bc_in(s)%esat_tv_pa(ifp) - ceair)) * kpa_per_pa
+!                              print*,"esat:",bc_in(s)%esat_tv_pa(ifp)-ceair
+                              vpd_kpa = max(1._r8,(bc_in(s)%esat_tv_pa(ifp) - ceair)) * kpa_per_pa
 
                               select case(photo_solver)
 
@@ -999,7 +1000,7 @@ contains
    real(r8) :: gs_mol_min        ! Minimum stomatal conductance, model dependant (umol h2o m-2 s-1)
 
 
-   logical, parameter :: bb_not_medlyn = .false.
+   logical, parameter :: bb_not_medlyn = .true.
 
 
    associate( bb_slope  => EDPftvarcon_inst%BB_slope)    ! slope of BB relationship
@@ -2130,8 +2131,6 @@ contains
       real(r8) :: can_press      ! atmospheric pressure in the canopy [Pa]
       real(r8) :: a_net          ! net assimilation rate [umol m-2 s-1]
       real(r8) :: r_stomata      ! Stomatal resistance to h2o [m2 s mol-1 h2o]
-     
-      
       real(r8) :: mol_frac       ! molar fraction of co2/air [umol/mol]
                                  ! this is equal to the partial pressure / total pressure
       
@@ -2392,11 +2391,6 @@ contains
       
       a_prod = AGrossTPU(tpu,cplast_co2,co2_cpoint)
       
-      if( cplast_co2 < co2_cpoint) then
-         print*,"cplast co2 lower than compensation point", cplast_co2,co2_cpoint
-         stop
-      end if
-
       ! Use quadratic smoothing to find a co-limited product
       a_gross_min = SmoothLimitCollatz1991(a_cbox, a_rubp, a_prod, c3c4_path_index )
 
@@ -2673,7 +2667,7 @@ contains
          ! an initialization. It will not effect
          ! canopy conductance since it will be multiplied
          ! by zero leaf area.
-         r_stomata_out  = (mol_per_umol/gsmin_medlyn2011) * cf
+         r_stomata_out  = mol_per_umol/gsmin_medlyn2011 * cf
          return
       end if
       
@@ -2727,7 +2721,7 @@ contains
          if(qabs<nearzero) then
              psn_out         = psn_out       + 0._r8
              a_net_out       = a_net_out     - lmr*sunsha_frac
-             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * umol_per_mol*gsmin_medlyn2011/cf
+             g_stomata_h2o   = g_stomata_h2o + sunsha_frac * (umol_per_mol*gsmin_medlyn2011)/cf
              cycle    ! Go to 
          end if
 
@@ -2757,11 +2751,9 @@ contains
             
             call AnalyticalQuadR0(can_co2_ppress,can_press,r_blayer_co2,vcmax,je,tpu,mm_km, &
                                   co2_cpoint,lmr,c3c4_path_index,a_net_final,r_stomata_h2o)
-
             psn_out         = psn_out + (a_net_final+lmr)*sunsha_frac
             a_net_out       = a_net_out + a_net_final*sunsha_frac
-            g_stomata_h2o   = g_stomata_h2o + sunsha_frac * &
-                              (1._r8 / (mol_per_umol*r_stomata_h2o * cf))
+            g_stomata_h2o   = g_stomata_h2o + sunsha_frac / (mol_per_umol*r_stomata_h2o * cf)
             cycle
          end if
          
@@ -2778,7 +2770,7 @@ contains
          ! Use the boundary layer concentration to calculate the stomatal resistance.
          r_stomata_co2 = h2o_co2_stoma_diffuse_ratio * &
               RStomaH2OMedlyn2011(vpd, blayer_co2, can_press, a_net(1))
-
+   
          
          ! Use ficks law to estimate the chloroplast CO2 concentration
          cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net(1), &
@@ -2796,8 +2788,8 @@ contains
          if( abs(a_net_resid(1)) < residual_tolerance ) then
             psn_out           = psn_out  + (a_net(1)+lmr)*sunsha_frac
             a_net_out         = a_net_out + a_net(1)*sunsha_frac
-            g_stomata_h2o     = g_stomata_h2o + sunsha_frac * &
-                                (1._r8 / (mol_per_umol*r_stomata_co2 * cf))
+            g_stomata_h2o     = g_stomata_h2o + sunsha_frac * h2o_co2_stoma_diffuse_ratio &
+                                / (mol_per_umol*r_stomata_co2*cf)
             cycle
          end if
          
@@ -2812,13 +2804,13 @@ contains
                                   can_co2_ppress, vcmax, je, tpu, mm_km, co2_cpoint, &
                                   c3c4_path_index, lmr, a_net_resid(2), r_stomata_co2)
 
-         if( abs(a_net_resid(2)) < residual_tolerance ) then
-             psn_out           = psn_out  + (a_net(2)+lmr)*sunsha_frac
-             a_net_out         = a_net_out + a_net(2)*sunsha_frac
-             g_stomata_h2o     = g_stomata_h2o + sunsha_frac * &
-                  (1._r8 / (mol_per_umol*r_stomata_co2 * cf))
-            cycle
-         end if
+!         if( abs(a_net_resid(2)) < residual_tolerance ) then
+!             psn_out           = psn_out  + (a_net(2)+lmr)*sunsha_frac
+!             a_net_out         = a_net_out + a_net(2)*sunsha_frac
+!             g_stomata_h2o     = g_stomata_h2o + sunsha_frac / (mol_per_umol*r_stomata_co2 * cf)
+!             print*,"RESID2",r_stomata_co2
+!            cycle
+!         end if
 
 
          ! if both a1 and a2 are below zero then 
@@ -2887,22 +2879,22 @@ contains
               RStomaH2OMedlyn2011(vpd, blayer_co2, can_press, a_net_final)
       
          ! Use ficks law to estimate the chloroplast CO2 concentration
-         cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net_final,can_press,r_stomata_co2+r_blayer_co2)
+!         cplast_co2 = FicksLawDiffusion(can_co2_ppress,a_net_final,can_press,r_stomata_co2+r_blayer_co2)
 
          
          ! Re-calculate co-limited CO2 assimilation one last time to estimate the residual
          ! This is only for checking our results.
 
-         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
-               co2_cpoint,lmr,c3c4_path_index,a_net_temp)
+!         call CoLimitedAssimilation(cplast_co2,vcmax,je,tpu,mm_km, &
+!               co2_cpoint,lmr,c3c4_path_index,a_net_temp)
          
          ! The residual is the difference, the re-calculated rate minus the input rate
-         a_net_resid_final = a_net_temp - a_net_final
+!         a_net_resid_final = a_net_temp - a_net_final
 
-         if( abs(a_net_resid_final) > residual_tolerance ) then
-            print*,"High final Residual",a_net_resid_final
-            stop
-         end if
+!         if( abs(a_net_resid_final) > residual_tolerance ) then
+!            print*,"High final Residual",a_net_resid_final
+!            stop
+!         end if
 
          
          ! Update averages of the sun/shaded weighted 
@@ -2910,9 +2902,8 @@ contains
          
          psn_out         = psn_out  + (a_net_final+lmr) * sunsha_frac
          a_net_out       = a_net_out + a_net_final * sunsha_frac
-         g_stomata_h2o   = g_stomata_h2o + sunsha_frac * (1._r8 / (mol_per_umol*r_stomata_co2 * cf))
-                  
-         
+         g_stomata_h2o   = g_stomata_h2o + sunsha_frac / (mol_per_umol*r_stomata_co2 * cf)
+
       end do
       
       
