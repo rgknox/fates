@@ -65,6 +65,58 @@ contains
 
   ! =====================================================================================
 
- 
+  subroutine err_msg_supp1()
+
+    write(fates_log(),*)'                                                                             '
+    write(fates_log(),*)'                                                                             '
+    write(fates_log(),*)'      ___  ___    __    _____          ____     __    _____  _____           '
+    write(fates_log(),*)'     /     |  \  /  \   |     |   |    |   \   /  \   |      |       |       '
+    write(fates_log(),*)'     |     |--| /----\  ----| |---|    ----   /____\  ----|  ----|   |       '
+    write(fates_log(),*)'     \___  |  |/      \ ____| |   |    |___/ /      \ ____|  ____|           '
+    write(fates_log(),*)'                                                                     O       '
+    write(fates_log(),*)''         
+    write(fates_log(),*)''   
+    write(fates_log(),*)''   
+    write(fates_log(),*)''   
+    write(fates_log(),*)''
+    write(fates_log(),*)''
+    write(fates_log(),*)''
+    write(fates_log(),*)'                                       /..:-                                     '
+    write(fates_log(),*)'                                 -.-o+++o+++           ``.--::////////::--.--.   '
+    write(fates_log(),*)'                               .-+ooo+oosyos. `-:/osyhddhyyysssyssosssyyhs++o/+. '
+    write(fates_log(),*)'                              `++oooosssyyhhhhhysssoooo++++++os+soy+++ss++o:---/ '
+    write(fates_log(),*)'                             -++ooosyhhdhysso++++++++++++++++os+y+s++so++o:----+ '
+    write(fates_log(),*)'                            .+oosyhddhs+++++++++++++++++++++++ooosooso++s:-----/ '
+    write(fates_log(),*)'                           `+oyyddhso+++++++++++++++++++++++++++++os+++s/-----:. '
+    write(fates_log(),*)'                           :shdyoo++++++++++++++++++++++++++++++oso+++os------:  '
+    write(fates_log(),*)'                 `.-:/++osyddyo+++++++++++++++++++++++o++++++++oo+++++h:---::/   '
+    write(fates_log(),*)'              `:ossossssyddyo+++++++++++++++++++++++++s+++++++oo+++++so-----::-  '
+    write(fates_log(),*)'             -soooosyyyddhs+++++++++++++++++++++++++++oo++++++so++ooosyo+:-----/`'
+    write(fates_log(),*)'            -oooosyyyhddyo+++++++++++oooooo++++++o+++++ooooo+++o+++++++++oso+//+o'
+    write(fates_log(),*)'            ooosssyshdhso++++++++++++s+++osssso++so++++++++++++++++++oo++++++++o/'
+    write(fates_log(),*)'           :ooooyyyddho++++++++++++++s++oossyyyhyoso+++++++++++++++++++//+++/-.  '
+    write(fates_log(),*)'           /osoyysydho+++++++++++++++sooossssshhds+++oo+++++++++++++o:--:-.`     '
+    write(fates_log(),*)'           .oos+-/dho+++++++++++++++++ssosssyyyhys/////++oo++++++////+-`         '
+    write(fates_log(),*)'             `  :dho+++++++++++++++////+ooooo++::----------:://:----.            '
+    write(fates_log(),*)'               `dhs+++++///:::::::::---------------:oo++//-..                    '
+    write(fates_log(),*)'               shy++++//:/ossyyysssosoo+---------:oyyyshys                       '
+    write(fates_log(),*)'              +dyo++//::ossssssoooooos/         `ssyysohyo                       '
+    write(fates_log(),*)'            -shy++//:-: `oosssoosoos/`          :ooo++ysoo                       '
+    write(fates_log(),*)'        -/+ooso+++/--/    -+ossso/-             .++++.`:/:                       '
+    write(fates_log(),*)'     `:oooooooo++++/:/:                          .-`                             '
+    write(fates_log(),*)'    :oo+ooosooooooooooy/                                                         '
+    write(fates_log(),*)'  `+o+oo+/oooso+sssossyy/                                                        '
+    write(fates_log(),*)' .+o+o+++o+s+sssoysoyyyss:                                                       '
+    write(fates_log(),*)' +s+o+/o+soyoyoyoyssyssyys`                                                      '
+    write(fates_log(),*)'  `.--///+::.  -osssssyssy/                                                      '
+    write(fates_log(),*)'                `:/+sysyy/                                                      '
+    write(fates_log(),*)''
+    write(fates_log(),*)''
+    
+    return
+  end subroutine err_msg_supp1
+
+
+
 
 end module FatesGlobals
