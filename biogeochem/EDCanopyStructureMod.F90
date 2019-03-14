@@ -634,8 +634,7 @@ contains
                end if
                
                ! kill the ones which go into canopy layers that are not allowed
-               if(i_lyr+1 > nclmax)then 
-                  
+               if(currentCohort%canopy_layer>nclmax )then
                   ! put the litter from the terminated cohorts into the fragmenting pools
                   do i_cwd=1,ncwd
                      
