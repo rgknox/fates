@@ -46,6 +46,8 @@ module FatesPlantHydraulicsMod
    use EDTypesMod        , only : ed_patch_type
    use EDTypesMod        , only : ed_cohort_type
 
+   use FatesUtilsMod      , only : check_var_real
+
    use FatesInterfaceMod  , only : bc_in_type
    use FatesInterfaceMod  , only : bc_out_type
 
@@ -116,7 +118,7 @@ module FatesPlantHydraulicsMod
                                                           ! hydraulic properties and states be 
                                                           ! updated every day when trees grow or 
                                                           ! when recruitment happens?
-   logical,parameter :: debug = .false.                   !flag to report warning in hydro
+   logical,parameter :: debug = .true.                    !flag to report warning in hydro
 							  
 
    character(len=*), parameter, private :: sourcefile = &
@@ -3655,7 +3657,8 @@ contains
     real(r8)             , intent(in)             :: lwp         ! leaf water potential (MPa)
     integer              , intent(in)             :: ft          ! leaf pft
     real(r8)             , intent(out)            :: dflcgsdpsi  ! fractional loss of conductivity  [-]
-
+    
+    integer                                       :: return_code
     !----------------------------------------------------------------------
   
     associate(& 
@@ -3663,9 +3666,26 @@ contains
          p50_gs   => EDPftvarcon_inst%hydr_p50_gs     & ! Input: [real(r8) (:) ] stomatal PLC curve: water potential at 50% loss of gs,max  [Pa]
          )
 
-    dflcgsdpsi = -1._r8 * (1._r8 + (lwp/p50_gs(FT))**avuln_gs(FT))**(-2._r8) * &
-                          avuln_gs(FT)/p50_gs(FT)*(lwp/p50_gs(FT))**(avuln_gs(FT)-1._r8)
+    dflcgsdpsi = -1._r8 * (1._r8 + (lwp/p50_gs(ft))**avuln_gs(ft))**(-2._r8) * &
+                          avuln_gs(ft)/p50_gs(ft)*(lwp/p50_gs(ft))**(avuln_gs(ft)-1._r8)
 	     
+
+    if(debug) then
+       call check_var_real(dflcgsdpsi, 'dflcgsdpsi', return_code)
+       if(return_code>0)then
+          write(fates_log(),*) 'problem calculating fractional loss of conductivity'
+          write(fates_log(),*) 'ft: ',ft
+          write(fates_log(),*) 'lwp/p50_gs(ft): ',lwp/p50_gs(ft)
+          write(fates_log(),*) 'lwp/p50_gs(ft))**avuln_gs(ft): ',lwp/p50_gs(ft))**avuln_gs(ft)
+          write(fates_log(),*) '(1._r8 + (lwp/p50_gs(ft))**avuln_gs(ft))**(-2._r8): ',(1._r8 + (lwp/p50_gs(ft))**avuln_gs(ft))**(-2._r8)
+          write(fates_log(),*) 'avuln_gs(ft)/p50_gs(ft): ',avuln_gs(ft)/p50_gs(ft)
+          write(fates_log(),*) '(avuln_gs(ft)-1._r8): ',(avuln_gs(ft)-1._r8)
+          write(fates_log(),*) ' 
+
+          call endrun(msg=errMsg(sourcefile, __LINE__))
+       end if
+    end if
+       
     end associate
 
   end subroutine dflcgsdpsi_from_psi
