@@ -118,7 +118,7 @@ module FatesPlantHydraulicsMod
                                                           ! hydraulic properties and states be 
                                                           ! updated every day when trees grow or 
                                                           ! when recruitment happens?
-   logical,parameter :: debug = .true.                    !flag to report warning in hydro
+   logical,parameter :: debug = .true.                    ! flag to report warning in hydro
 							  
 
    character(len=*), parameter, private :: sourcefile = &
@@ -3676,12 +3676,11 @@ contains
           write(fates_log(),*) 'problem calculating fractional loss of conductivity'
           write(fates_log(),*) 'ft: ',ft
           write(fates_log(),*) 'lwp/p50_gs(ft): ',lwp/p50_gs(ft)
-          write(fates_log(),*) 'lwp/p50_gs(ft))**avuln_gs(ft): ',lwp/p50_gs(ft))**avuln_gs(ft)
+          write(fates_log(),*) '(lwp/p50_gs(ft))**avuln_gs(ft): ',(lwp/p50_gs(ft))**avuln_gs(ft)
           write(fates_log(),*) '(1._r8 + (lwp/p50_gs(ft))**avuln_gs(ft))**(-2._r8): ',(1._r8 + (lwp/p50_gs(ft))**avuln_gs(ft))**(-2._r8)
           write(fates_log(),*) 'avuln_gs(ft)/p50_gs(ft): ',avuln_gs(ft)/p50_gs(ft)
           write(fates_log(),*) '(avuln_gs(ft)-1._r8): ',(avuln_gs(ft)-1._r8)
-          write(fates_log(),*) ' 
-
+          write(fates_log(),*) 'term: ',dflcgsdpsi
           call endrun(msg=errMsg(sourcefile, __LINE__))
        end if
     end if
