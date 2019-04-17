@@ -3452,7 +3452,7 @@ contains
 			     dqbounddth1(index_aroot)*dth_node_inner(index_aroot+1))*dt_new
 	  
 	  ! UPDATE ERROR TERM
-          w_tot_end_inner = sum(th_node(:)*v_node(:))*denh2o
+      w_tot_end_inner = sum(th_node(:)*v_node(:))*denh2o
 	  dw_tot_inner    = w_tot_end_inner - w_tot_beg_inner
           we_tot_inner    = dw_tot_inner/dt_new + (qtop + dqtopdth_leaf*dth_node_inner(1))
 	  we_area_inner   = we_tot_inner/(cCohort%c_area / cCohort%n)
@@ -3471,12 +3471,36 @@ contains
     ccohort_hydr%iterh1 = real(iterh1)
     ccohort_hydr%iterh2 = real(iterh2)
 
-    ! WATER BALANCE ERROR-HANDLING
+   ! WATER BALANCE ERROR-HANDLING
     if ( (abs(we_local) > thresh) .and. debug) then
        write(fates_log(),*)'WARNING: plant hydraulics water balance error exceeds threshold of ',&
              thresh
     else if (abs(we_local) > thresh_break) then
        write(fates_log(),*)'EDPlantHydraulics water balance error exceeds threshold of = ', thresh_break
+       write(fates_log(),*)'------------------ 1D Solve Dump --------------------'
+       write(fates_log(),*)'pft ', cc_p%pft
+       write(fates_log(),*)'dbh ', cc_p%dbh
+       write(fates_log(),*)'treelai ',cc_p%treelai
+       write(fates_log(),*)'th_node_init(:) ',th_node_init(:)               ! initial volumetric water in water storage compartments          [m3 m-3]
+       write(fates_log(),*)'th_node(:) ',th_node(:)                         ! volumetric water in water storage compartments          [m3 m-3]
+       write(fates_log(),*)'psi_node(:) ',psi_node(:)                       ! water potential in water storage compartments                   [MPa]
+       write(fates_log(),*)'z_node(:) ',z_node(:)                           ! nodal height of water storage compartments                      [m]
+       write(fates_log(),*)'v_node(:) ',v_node(:)                           ! volume of water storage compartments                            [m3]
+       write(fates_log(),*)'ths_node(:) ',ths_node(:)                       ! saturated volumetric water in water storage compartments        [m3 m-3]
+       write(fates_log(),*)'thr_node(:) ',thr_node(:)                       ! residual volumetric water in water storage compartments         [m3 m-3]
+       write(fates_log(),*)'kmax_bound(:) ',kmax_bound(:)                   ! lower boundary maximum hydraulic conductance of compartments    [kg s-1 MPa-1]
+       write(fates_log(),*)'kmax_upper(:) ',kmax_upper(:)                   ! maximum hydraulic conductance from node to upper boundary       [kg s-1 MPa-1]
+       write(fates_log(),*)'kmax_lower(:) ',kmax_lower(:)                   ! maximum hydraulic conductance from node to lower boundary       [kg s-1 MPa-1]
+       write(fates_log(),*)'kmax_bound_aroot_soil1 ',kmax_bound_aroot_soil1 ! maximum radial conductance of absorbing roots                   [kg s-1 MPa-1]
+       write(fates_log(),*)'kmax_bound_aroot_soil2 ',kmax_bound_aroot_soil2 ! maximum conductance to root surface from innermost rhiz shell   [kg s-1 MPa-1]
+       write(fates_log(),*)'flc_min_node(:) ',flc_min_node(:)               ! minimum attained fractional loss of conductivity (for xylem refilling dynamics) [-]
+       write(fates_log(),*)'maxiter ',maxiter                               ! maximum iterations for timestep reduction                       [-]
+       write(fates_log(),*)'imult ',imult                                   ! iteration index multiplier                                      [-]
+       write(fates_log(),*)'thresh ',thresh                                 ! threshold for water balance error (warning only)                [mm h2o]
+       write(fates_log(),*)'thresh_break ',thresh_break                     ! threshold for water balance error (stop model)                  [mm h2o]
+       write(fates_log(),*)'dtime ',dtime                                   ! timestep size                                                   [s]
+       write(fates_log(),*)'qtop ',qtop                                     ! evaporative flux from canopy                                    [kgh2o indiv-1 s-1]
+       write(fates_log(),*)'small_theta_num',small_theta_num
        call endrun(msg=errMsg(sourcefile, __LINE__))
     end if
     
