@@ -117,7 +117,7 @@ module FatesPlantHydraulicsMod
                                                           ! hydraulic properties and states be 
                                                           ! updated every day when trees grow or 
                                                           ! when recruitment happens?
-   logical,parameter :: debug = .false.                   !flag to report warning in hydro
+   logical,parameter :: debug = .true.                   !flag to report warning in hydro
 							  
 
    character(len=*), parameter, private :: sourcefile = &
@@ -2149,6 +2149,15 @@ contains
        csite_hydr => sites(s)%si_hydr
 
        do j = 1,csite_hydr%nlevsoi_hyd 
+
+          ! Units of cumShellH2o:
+          ! l_aroot_layer:        Total length (across cohorts) of absorbing
+          !                       roots by soil layer (m)
+          ! h2osoi_liqvol_shell:  Volumetric water in rhizosphere compartment (m3/m3)
+          ! v_shell:              Volume of rhizosphere compartment (m3) 
+          ! denh2o:               Density of fresh liquid water (kg/m3)
+          ! [m3/m3] * [m3] / [m] * [m] * [kg/m3] / [m2] = [kg/m2]
+
           cumShellH2O=sum(csite_hydr%h2osoi_liqvol_shell(j,:) *csite_hydr%v_shell(j,:)) &
                / bc_in(s)%dz_sisl(j) * csite_hydr%l_aroot_layer(j) * denh2o/AREA
           
@@ -2181,6 +2190,25 @@ contains
                    end if
                 enddo
              enddo
+
+             ! Check to see if ordering makes sense
+             if(debug)then
+
+                if(dwat_kg>0._r8) then
+                   print*,"adding water"
+                   do k = 1,nshell
+                      print*,csite_hydr%h2osoi_liqvol_shell(j,ordered(k))
+                   end do
+                else
+                   print*,"removing water"
+                   do k = 1,nshell
+                      print*,csite_hydr%h2osoi_liqvol_shell(j,ordered(k))
+                   end do
+                end if
+                
+                stop
+             end if
+
           end if
           
           ! fill shells with water up to the water content of the next-wettest shell, 
@@ -5250,7 +5278,7 @@ contains
     !-----------------------------------------------------------------------
 
     ! update outer radii of column-level rhizosphere shells (same across patches and cohorts)
-    r_out_shell(nshell) = (pi_const*l_aroot/(area*dz))**(-0.5_r8)                  ! eqn(8) S98
+    r_out_shell(nshell) = (pi_const*l_aroot/(area*dz))**(-0.5_r8)                          ! eqn(8) S98
     if(nshell > 1) then
        do k = 1,nshell-1
           r_out_shell(k)   = rs1*(r_out_shell(nshell)/rs1)**((real(k,r8))/real(nshell,r8))  ! eqn(7) S98
