@@ -2189,7 +2189,7 @@ contains
                          ordered(kk)   = ordered(kk+1)
                          ordered(kk+1) = tmp
                       end if
-                   enddo
+                   end do
                 end do
              end if
              
@@ -2202,9 +2202,9 @@ contains
                          ordered(kk)   = ordered(kk+1)
                          ordered(kk+1) = tmp
                       end if
-                   end if
-                enddo
-             enddo
+                   end do
+                end do
+             end if
 
              ! Note, if dwat_dg == 0 (which would be weird anyway)
              ! it doesn't matter which order because no mass fluxes will occur
@@ -2215,7 +2215,6 @@ contains
              ! boundary water content:   [kg/m2] / [kg/m3] / [m] = [m3/m3]
 
              if(debug)then
-
                 if(dwat_kg>0._r8) then
                    do k = 1,nshell-1
                       if (csite_hydr%h2osoi_liqvol_shell(j,ordered(k)) > &
@@ -2272,7 +2271,7 @@ contains
                 dwat_kg  = 0._r8
              end if
              k = k + 1
-          enddo
+          end do
           
           ! If the first pass through did not bring the residual (dwat_kg) down to 
           ! zero, then equally distribute this mass to all shells
@@ -2294,7 +2293,7 @@ contains
           h2osoi_liq_shell(j,:) = csite_hydr%h2osoi_liqvol_shell(j,:) * &
                csite_hydr%v_shell(j,:) / bc_in(s)%dz_sisl(j) * csite_hydr%l_aroot_layer(j) * denh2o
    
-       enddo
+       end do
        
        ! balance check
        if(csite_hydr%nlevsoi_hyd .ne. 1) then
@@ -2309,7 +2308,7 @@ contains
                 end if
                 call endrun(msg=errMsg(sourcefile, __LINE__))
              end if
-          enddo
+          end do
        else
           errh2o(csite_hydr%nlevsoi_hyd) = sum(h2osoi_liq_shell(csite_hydr%nlevsoi_hyd,:))/AREA - sum( bc_in(s)%h2o_liq_sisl(:) )
        end if
