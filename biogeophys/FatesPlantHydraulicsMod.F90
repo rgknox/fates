@@ -39,6 +39,7 @@ module FatesPlantHydraulicsMod
    use FatesConstantsMod, only : pi_const
    use FatesConstantsMod, only : cm2_per_m2
    use FatesConstantsMod, only : g_per_kg
+   use FatesConstantsMod, only : nearzero
 
    use EDParamsMod       , only : hydr_kmax_rsurf1
    !   use EDParamsMod       , only : hydr_kmax_rsurf2
@@ -2160,6 +2161,7 @@ contains
           ! h2osoi_liqvol_shell:  Volumetric water in rhizosphere compartment (m3/m3)
           ! v_shell:              Volume of rhizosphere compartment (m3) 
           ! denh2o:               Density of fresh liquid water (kg/m3)
+          ! area:                 Total area of the site (m2)
           ! [m3/m3] * [m3] / [m] * [m] * [kg/m3] / [m2] = [kg/m2]
 
           cumShellH2O=sum(csite_hydr%h2osoi_liqvol_shell(j,:) *csite_hydr%v_shell(j,:)) &
@@ -2172,21 +2174,30 @@ contains
           end if
 
           dwat_kg = dwat_kgm2 * AREA
+
           
           ! order shells in terms of increasing or decreasing volumetric water content
           ! algorithm same as that used in histFileMod.F90 to alphabetize history tape contents
           if(nshell > 1) then
-             do k = nshell-1,1,-1
-                do kk = 1,k
-                   if (csite_hydr%h2osoi_liqvol_shell(j,ordered(kk)) > &
-                       csite_hydr%h2osoi_liqvol_shell(j,ordered(kk+1))) then
-                      if (dwat_kg > 0._r8) then  !order increasing
+
+             if (dwat_kg > 0._r8) then  ! order increasing
+                do k = nshell-1,1,-1
+                   do kk = 1,k
+                      if (csite_hydr%h2osoi_liqvol_shell(j,ordered(kk)) > &
+                           csite_hydr%h2osoi_liqvol_shell(j,ordered(kk+1))) then
                          tmp           = ordered(kk)
                          ordered(kk)   = ordered(kk+1)
                          ordered(kk+1) = tmp
                       end if
-                   else
-                      if (dwat_kg < 0._r8) then  !order decreasing
+                   enddo
+                end do
+             end if
+             
+             if (dwat_kg < 0._r8) then  ! order decreasing
+                do k = nshell-1,1,-1
+                   do kk = 1,k
+                      if (csite_hydr%h2osoi_liqvol_shell(j,ordered(kk)) < &
+                           csite_hydr%h2osoi_liqvol_shell(j,ordered(kk+1))) then
                          tmp           = ordered(kk)
                          ordered(kk)   = ordered(kk+1)
                          ordered(kk+1) = tmp
@@ -2195,25 +2206,43 @@ contains
                 enddo
              enddo
 
-             ! Check to see if ordering makes sense
+             ! Note, if dwat_dg == 0 (which would be weird anyway)
+             ! it doesn't matter which order because no mass fluxes will occur
+             ! This may happen during initialization if this is called twice
+             ! before hydrologic dynamics kick in
+
+             ! Check to see if ordering makes sense 
+             ! boundary water content:   [kg/m2] / [kg/m3] / [m] = [m3/m3]
+
              if(debug)then
 
                 if(dwat_kg>0._r8) then
-                   print*,"adding water"
-                   do k = 1,nshell
-                      print*,csite_hydr%h2osoi_liqvol_shell(j,ordered(k))
-                   end do
-                else
-                   print*,"removing water"
-                   do k = 1,nshell
-                      print*,csite_hydr%h2osoi_liqvol_shell(j,ordered(k))
+                   do k = 1,nshell-1
+                      if (csite_hydr%h2osoi_liqvol_shell(j,ordered(k)) > &
+                          csite_hydr%h2osoi_liqvol_shell(j,ordered(k+1)) ) then
+                         write(fates_log(),*) 'Shell sorting did not produce increasing order'
+                         write(fates_log(),*) 'when adding water'
+                         write(fates_log(),*) 'liqvol (k): ',csite_hydr%h2osoi_liqvol_shell(j,ordered(k))
+                         write(fates_log(),*) 'liqvol (k+1): ',csite_hydr%h2osoi_liqvol_shell(j,ordered(k+1))
+                         call endrun(msg=errMsg(sourcefile, __LINE__))
+                      end if
                    end do
                 end if
-                
-                stop
+                if(dwat_kg<0._r8) then
+                   do k = 1,nshell-1
+                      if (csite_hydr%h2osoi_liqvol_shell(j,ordered(k)) < &
+                           csite_hydr%h2osoi_liqvol_shell(j,ordered(k+1)) ) then
+                         write(fates_log(),*) 'Shell sorting did not produce decreasing order'
+                         write(fates_log(),*) 'when removing water'
+                         write(fates_log(),*) 'liqvol (k): ',csite_hydr%h2osoi_liqvol_shell(j,ordered(k)),ordered(k),k
+                         write(fates_log(),*) 'liqvol (k+1): ',csite_hydr%h2osoi_liqvol_shell(j,ordered(k+1)),ordered(k+1),k
+                         call endrun(msg=errMsg(sourcefile, __LINE__))
+                      end if
+                   end do
+                end if
              end if
 
-          end if
+          end if  ! if nshell > 1
           
           ! fill shells with water up to the water content of the next-wettest shell, 
           ! in order from driest to wettest (dwat_kg > 0)
@@ -2221,12 +2250,19 @@ contains
           ! drain shells' water down to the water content of the next-driest shell, 
           ! in order from wettest to driest (dwat_kg < 0)
           k = 1
-          do while ( (dwat_kg /= 0._r8) .and. (k < nshell) )
+          do while ( (abs(dwat_kg) > nearzero) .and. (k < nshell) )
+
+             ! [m3/m3]
              thdiff = csite_hydr%h2osoi_liqvol_shell(j,ordered(k+1)) - &
                       csite_hydr%h2osoi_liqvol_shell(j,ordered(k))
+
+             ! [m3] = [m3] / [m] * [m]    (across whole site's area)
              v_cum  = sum(csite_hydr%v_shell(j,ordered(1:k))) / &
                       bc_in(s)%dz_sisl(j) * csite_hydr%l_aroot_layer(j)
+
+             ! [kg] = [m3/m3] * [m3] * [kg/m3]
              wdiff  = thdiff * v_cum * denh2o
+
              if(abs(dwat_kg) >= abs(wdiff)) then
                 csite_hydr%h2osoi_liqvol_shell(j,ordered(1:k)) = csite_hydr%h2osoi_liqvol_shell(j,ordered(k+1))
                 dwat_kg  = dwat_kg - wdiff
@@ -2238,19 +2274,26 @@ contains
              k = k + 1
           enddo
           
-          if (dwat_kg /= 0._r8) then
+          ! If the first pass through did not bring the residual (dwat_kg) down to 
+          ! zero, then equally distribute this mass to all shells
+          
+          if ( abs(dwat_kg) > nearzero) then
              v_cum  = sum(csite_hydr%v_shell(j,ordered(1:nshell))) / bc_in(s)%dz_sisl(j) * &
                       csite_hydr%l_aroot_layer(j)
+
+             ! [m3/m3] = [kg] / [m3] / [kg/m3]
              thdiff = dwat_kg / v_cum / denh2o
              do k = nshell, 1, -1
                 csite_hydr%h2osoi_liqvol_shell(j,k) = csite_hydr%h2osoi_liqvol_shell(j,k) + thdiff
              end do
           end if
           
+          ! Track the total resulting mass in the shells, in this layer [kg]
           ! m3/m3 * Total volume m3 * kg/m3 = kg
+       
           h2osoi_liq_shell(j,:) = csite_hydr%h2osoi_liqvol_shell(j,:) * &
                csite_hydr%v_shell(j,:) / bc_in(s)%dz_sisl(j) * csite_hydr%l_aroot_layer(j) * denh2o
-          
+   
        enddo
        
        ! balance check
@@ -2259,13 +2302,12 @@ contains
              errh2o(j) = sum(h2osoi_liq_shell(j,:))/AREA - bc_in(s)%h2o_liq_sisl(j)
              
              if (abs(errh2o(j)) > 1.e-9_r8) then
-                found = .true.
-                indexj = j
                 if( found ) then
                    write(fates_log(),*)'WARNING:  water balance error in FillDrainRhizShells',&
-                        ' local indexj= ',indexj,&
-                        ' errh2o= ',errh2o(indexj)
+                        ' soil layer= ',j,&
+                        ' errh2o= ',errh2o(j), ' [kg/m2]'
                 end if
+                call endrun(msg=errMsg(sourcefile, __LINE__))
              end if
           enddo
        else
@@ -2464,7 +2506,7 @@ contains
         dth_layershell_col(:,:) = 0._r8
         site_hydr%dwat_veg       = 0._r8
         site_hydr%errh2o_hyd     = 0._r8
-	prev_h2oveg    = site_hydr%h2oveg
+        prev_h2oveg    = site_hydr%h2oveg
         ncoh_col       = 0
 
         ! Calculate the mean site level transpiration flux
