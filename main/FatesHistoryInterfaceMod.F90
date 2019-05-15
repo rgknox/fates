@@ -12,6 +12,7 @@ module FatesHistoryInterfaceMod
   use EDTypesMod               , only : ican_upper
   use EDTypesMod               , only : numWaterMem
   use EDTypesMod               , only : num_vegtemp_mem
+  use EDTypesMod               , only : AREA
   use FatesIODimensionsMod     , only : fates_io_dimension_type
   use FatesIOVariableKindMod   , only : fates_io_variable_kind_type
   use FatesHistoryVariableType , only : fates_history_variable_type
@@ -1333,7 +1334,7 @@ end subroutine flush_hvars
            hio_nbp_si(io_si) = sites(s)%nbp
            hio_fire_c_to_atm_si(io_si) = sites(s)%fire_c_to_atm
            hio_totecosysc_si(io_si) = sites(s)%totecosysc
-           hio_cbal_err_fates_si(io_si) = sites(s)%cbal_err_fates
+           hio_cbal_err_fates_si(io_si) = sites(s)%cbal_err_fates*1000._r8*AREA/86400.0_r8
            hio_cbal_err_bgc_si(io_si) = sites(s)%cbal_err_bgc
            hio_cbal_err_tot_si(io_si) = sites(s)%cbal_err_tot
            hio_biomass_stock_si(io_si) = sites(s)%biomass_stock
@@ -1359,7 +1360,6 @@ end subroutine flush_hvars
     use EDtypesMod          , only : ed_site_type
     use EDtypesMod          , only : ed_cohort_type
     use EDtypesMod          , only : ed_patch_type
-    use EDtypesMod          , only : AREA
     use EDtypesMod          , only : AREA_INV
     use EDtypesMod          , only : nfsc
     use EDtypesMod          , only : ncwd
@@ -4730,7 +4730,7 @@ end subroutine flush_hvars
          avgflag='A', vtype=site_r8, hlms='CLM:ALM', flushval=hlm_hio_ignore_val,    &
          upfreq=3, ivar=ivar, initialize=initialize_variables, index = ih_totecosysc_si )
     
-    call this%set_history_var(vname='CBALANCE_ERROR_ED', units='gC/m^2/s',  &
+    call this%set_history_var(vname='CBALANCE_ERROR_FATES', units='mgC/day',  &
          long='total carbon balance error on ED side', use_default='active', &
          avgflag='A', vtype=site_r8, hlms='CLM:ALM', flushval=hlm_hio_ignore_val,    &
          upfreq=3, ivar=ivar, initialize=initialize_variables, index = ih_cbal_err_fates_si )
