@@ -1334,7 +1334,7 @@ end subroutine flush_hvars
            hio_nbp_si(io_si) = sites(s)%nbp
            hio_fire_c_to_atm_si(io_si) = sites(s)%fire_c_to_atm
            hio_totecosysc_si(io_si) = sites(s)%totecosysc
-           hio_cbal_err_fates_si(io_si) = sites(s)%cbal_err_fates*1000._r8*AREA/86400.0_r8
+           hio_cbal_err_fates_si(io_si) = sites(s)%cbal_err_fates*1000._r8*AREA*86400.0_r8
            hio_cbal_err_bgc_si(io_si) = sites(s)%cbal_err_bgc
            hio_cbal_err_tot_si(io_si) = sites(s)%cbal_err_tot
            hio_biomass_stock_si(io_si) = sites(s)%biomass_stock
