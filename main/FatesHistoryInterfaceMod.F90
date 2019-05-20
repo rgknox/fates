@@ -4755,7 +4755,7 @@ end subroutine flush_hvars
           avgflag='A', vtype=site_r8, hlms='CLM:ALM', flushval=hlm_hio_ignore_val,    &
           upfreq=3, ivar=ivar, initialize=initialize_variables, index = ih_litter_stock_si )
     
-    call this%set_history_var(vname='CWD_STOCK_COL', units='gC/m^2', &
+    call this%set_history_var(vname='LITTER_CWD', units='gC/m^2', &
           long='total CWD carbon at the column level', use_default='active', &
           avgflag='A', vtype=site_r8, hlms='CLM:ALM', flushval=hlm_hio_ignore_val,    &
           upfreq=3, ivar=ivar, initialize=initialize_variables, index = ih_cwd_stock_si )
