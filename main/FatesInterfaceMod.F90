@@ -35,7 +35,7 @@ module FatesInterfaceMod
    use PRTGenericMod         , only : prt_cnp_flex_allom_hyp
    use PRTAllometricCarbonMod, only : InitPRTGlobalAllometricCarbon
    !   use PRTAllometricCNPMod, only    : InitPRTGlobalAllometricCNP
-
+   use EDTypesMod          , only : numlevsoil_max
 
    ! CIME Globals
    use shr_log_mod         , only : errMsg => shr_log_errMsg
@@ -653,10 +653,6 @@ contains
       
       ! Allocate input boundaries
 
-
-      print*,nlevsoil_in
-      stop
-
       bc_in%nlevsoil   = nlevsoil_in
       bc_in%nlevdecomp = nlevdecomp_in
 
@@ -987,7 +983,8 @@ contains
          ! These values are used to define the restart file allocations and general structure
          ! of memory for the cohort arrays
          
-         fates_maxElementsPerPatch = max(maxCohortsPerPatch, numpft, ncwd )
+         !         fates_maxElementsPerPatch = max(maxCohortsPerPatch, numpft, ncwd )
+         fates_maxElementsPerPatch = max(maxCohortsPerPatch, numpft*numlevsoil_max ,ncwd*numlevsoil_max)
 
          if (maxPatchesPerSite * fates_maxElementsPerPatch <  numWaterMem) then
             write(fates_log(), *) 'By using such a tiny number of maximum patches and maximum cohorts'
@@ -997,6 +994,7 @@ contains
          end if
          
          fates_maxElementsPerSite = maxPatchesPerSite * fates_maxElementsPerPatch
+         
 
          ! Identify number of size and age class bins for history output
          ! assume these arrays are 1-indexed
