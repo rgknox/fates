@@ -1386,7 +1386,8 @@ contains
     !Evenly distribute the litter from the trees that died across the new and old patches
     !'litter' fluxes here are in KgC
     !************************************/
-    litter_area = currentPatch%area 
+    litter_area = (currentPatch%area - patch_site_areadis) + new_patch%area
+
     np_mult =  patch_site_areadis/new_patch%area
     ! This litter is distributed between the current and new patches, &
     ! not to any other patches. This is really the eventually area of the current patch &
@@ -1400,10 +1401,10 @@ contains
           
           cwd_litter_density = SF_val_CWD_frac(c) * canopy_mortality_woody_litter(p) / litter_area
           
-          new_patch%cwd_ag(c)    = new_patch%cwd_ag(c)    + EDPftvarcon_inst%allom_agb_frac(p) * cwd_litter_density * np_mult
+          new_patch%cwd_ag(c)    = new_patch%cwd_ag(c)    + EDPftvarcon_inst%allom_agb_frac(p) * cwd_litter_density! * np_mult
           currentPatch%cwd_ag(c) = currentPatch%cwd_ag(c) + EDPftvarcon_inst%allom_agb_frac(p) * cwd_litter_density
-          new_patch%cwd_bg(c)    = new_patch%cwd_bg(c)    + (1._r8-EDPftvarcon_inst%allom_agb_frac(p)) * cwd_litter_density &
-                                                            * np_mult 
+          new_patch%cwd_bg(c)    = new_patch%cwd_bg(c)    + (1._r8-EDPftvarcon_inst%allom_agb_frac(p)) * cwd_litter_density! &
+!                                                            * np_mult 
           currentPatch%cwd_bg(c) = currentPatch%cwd_bg(c) + (1._r8-EDPftvarcon_inst%allom_agb_frac(p)) * cwd_litter_density 
           
           ! track as diagnostic fluxes
@@ -1415,8 +1416,8 @@ contains
                 - EDPftvarcon_inst%allom_agb_frac(p)) / AREA
        enddo
 
-       new_patch%leaf_litter(p) = new_patch%leaf_litter(p) + canopy_mortality_leaf_litter(p) / litter_area * np_mult
-       new_patch%root_litter(p) = new_patch%root_litter(p) + canopy_mortality_root_litter(p) / litter_area * np_mult 
+       new_patch%leaf_litter(p) = new_patch%leaf_litter(p) + canopy_mortality_leaf_litter(p) / litter_area! * np_mult
+       new_patch%root_litter(p) = new_patch%root_litter(p) + canopy_mortality_root_litter(p) / litter_area! * np_mult 
 
        currentPatch%leaf_litter(p) = currentPatch%leaf_litter(p) + canopy_mortality_leaf_litter(p) / litter_area
        currentPatch%root_litter(p) = currentPatch%root_litter(p) + canopy_mortality_root_litter(p) / litter_area

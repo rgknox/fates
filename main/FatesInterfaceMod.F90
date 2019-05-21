@@ -654,6 +654,9 @@ contains
       ! Allocate input boundaries
 
 
+      print*,nlevsoil_in
+      stop
+
       bc_in%nlevsoil   = nlevsoil_in
       bc_in%nlevdecomp = nlevdecomp_in
 
