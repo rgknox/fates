@@ -100,7 +100,7 @@ module EDCohortDynamicsMod
   public :: UpdateCohortBioPhysRates
   public :: EvaluateAndCorrectDBH
 
-  logical, parameter :: debug  = .false. ! local debug flag
+  logical, parameter :: debug  = .true. ! local debug flag
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -610,7 +610,7 @@ contains
   end subroutine zero_cohort
 
   !-------------------------------------------------------------------------------------!
-  subroutine terminate_cohorts( currentSite, currentPatch, level )
+  subroutine terminate_cohorts( currentSite, currentPatch, level, call_index )
     !
     ! !DESCRIPTION:
     ! terminates cohorts when they get too small      
@@ -622,6 +622,7 @@ contains
     type (ed_site_type) , intent(inout), target :: currentSite
     type (ed_patch_type), intent(inout), target :: currentPatch
     integer             , intent(in)            :: level
+    integer             , intent(in)            :: call_index
 
     ! Important point regarding termination levels.  Termination is typically
     ! called after fusion.  We do this so that we can re-capture the biomass that would
@@ -667,7 +668,7 @@ contains
        if (currentcohort%n <  min_n_safemath .and. level == 1) then
          terminate = 1
 	 if ( debug ) then
-             write(fates_log(),*) 'terminating cohorts 0',currentCohort%n/currentPatch%area,currentCohort%dbh
+             write(fates_log(),*) 'terminating cohorts 0',currentCohort%n/currentPatch%area,currentCohort%dbh, call_index
          endif
        endif
 
@@ -681,7 +682,7 @@ contains
             terminate = 1
 
             if ( debug ) then
-               write(fates_log(),*) 'terminating cohorts 1',currentCohort%n/currentPatch%area,currentCohort%dbh
+               write(fates_log(),*) 'terminating cohorts 1',currentCohort%n/currentPatch%area,currentCohort%dbh, call_index
             endif
          endif
 
@@ -689,7 +690,7 @@ contains
          if (currentCohort%canopy_layer > nclmax ) then 
            terminate = 1
            if ( debug ) then
-             write(fates_log(),*) 'terminating cohorts 2', currentCohort%canopy_layer
+             write(fates_log(),*) 'terminating cohorts 2', currentCohort%canopy_layer,call_index
            endif
          endif
 
@@ -699,7 +700,7 @@ contains
             terminate = 1  
             if ( debug ) then
               write(fates_log(),*) 'terminating cohorts 3', &
-                    sapw_c,leaf_c,fnrt_c,store_c
+                    sapw_c,leaf_c,fnrt_c,store_c,call_index
             endif
          endif
 
@@ -708,7 +709,7 @@ contains
             terminate = 1
             if ( debug ) then
             write(fates_log(),*) 'terminating cohorts 4', & 
-                  struct_c,sapw_c,leaf_c,fnrt_c,store_c
+                  struct_c,sapw_c,leaf_c,fnrt_c,store_c,call_index
 
          endif
 

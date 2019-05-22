@@ -842,9 +842,9 @@ contains
              ! the first call to terminate cohorts removes sparse number densities,
              ! the second call removes for all other reasons (sparse culling must happen
              ! before fusion)
-             call terminate_cohorts(currentSite, currentPatch, 1)
+             call terminate_cohorts(currentSite, currentPatch, 1,16)
              call fuse_cohorts(currentSite,currentPatch, bc_in)
-             call terminate_cohorts(currentSite, currentPatch, 2)
+             call terminate_cohorts(currentSite, currentPatch, 2,16)
              call sort_cohorts(currentPatch)
              
           end if    ! if (patch_site_areadis > nearzero) then
@@ -885,16 +885,16 @@ contains
        ! before fusion)
 
        if ( site_areadis_primary .gt. nearzero) then
-          call terminate_cohorts(currentSite, new_patch_primary, 1)
+          call terminate_cohorts(currentSite, new_patch_primary, 1, 17)
           call fuse_cohorts(currentSite,new_patch_primary, bc_in)
-          call terminate_cohorts(currentSite, new_patch_primary, 2)
+          call terminate_cohorts(currentSite, new_patch_primary, 2,17)
           call sort_cohorts(new_patch_primary)
        endif
        
        if ( site_areadis_secondary .gt. nearzero) then
-          call terminate_cohorts(currentSite, new_patch_secondary, 1)
+          call terminate_cohorts(currentSite, new_patch_secondary, 1,18)
           call fuse_cohorts(currentSite,new_patch_secondary, bc_in)
-          call terminate_cohorts(currentSite, new_patch_secondary, 2)
+          call terminate_cohorts(currentSite, new_patch_secondary, 2,18)
           call sort_cohorts(new_patch_secondary)
        endif
        
