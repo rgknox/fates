@@ -136,6 +136,11 @@ module FatesHistoryInterfaceMod
   integer, private :: ih_litter_in_si
   integer, private :: ih_litter_out_pa
 
+  integer, private :: ih_fines_ag_elem
+  integer, private :: ih_fines_bg_elem
+  integer, private :: ih_cwd_ag_elem
+  integer, private :: ih_cwd_bg_elem
+
   integer, private :: ih_daily_temp
   integer, private :: ih_daily_rh
   integer, private :: ih_daily_prec
@@ -1540,8 +1545,11 @@ end subroutine flush_hvars
                hio_m6_si_scls          => this%hvars(ih_m6_si_scls)%r82d, &
                hio_m7_si_scls          => this%hvars(ih_m7_si_scls)%r82d, &
                hio_m8_si_scls          => this%hvars(ih_m8_si_scls)%r82d, &    
-	       hio_c13disc_si_scpf     => this%hvars(ih_c13disc_si_scpf)%r82d, &                    
-
+               hio_c13disc_si_scpf     => this%hvars(ih_c13disc_si_scpf)%r82d, &                    
+               hio_cwd_ag_elem         => this%hvars(ih_cwd_ag_elem)%r81d, & 
+               hio_cwd_bg_elem         => this%hvars(ih_cwd_bg_elem)%r81d, & 
+               hio_fines_ag_elem       => this%hvars(ih_fines_bg_elem)%r81d, & 
+               hio_fines_bg_elem       => this%hvars(ih_fines_ag_elem)%r81d, & 
 
                hio_ba_si_scls          => this%hvars(ih_ba_si_scls)%r82d, &
                hio_agb_si_scls          => this%hvars(ih_agb_si_scls)%r82d, &
@@ -2437,6 +2445,26 @@ end subroutine flush_hvars
 
             end do
          end do
+
+         
+         hio_cwd_ag_elem(io_si)         = 0._r8
+         hio_cwd_bg_elem(io_si)         = 0._r8
+         hio_fines_ag_elem(io_si)       = 0._r8
+         hio_fines_bg_elem(io_si)       = 0._r8
+         
+         cpatch => sites(s)%oldest_patch
+         do while(associated(cpatch))
+             hio_cwd_ag_elem(io_si) = hio_cwd_ag_elem(io_si) + &
+                   sum(cpatch%cwd_ag(:)) * cpatch%area/AREA
+             hio_cwd_bg_elem(io_si) = hio_cwd_bg_elem(io_si) + &
+                   sum(cpatch%cwd_bg(:)) * cpatch%area/AREA
+             hio_fines_ag_elem(io_si) = hio_fines_ag_elem(io_si) + &
+                   sum(cpatch%leaf_litter(:)) * cpatch%area/AREA
+             hio_fines_bg_elem(io_si) = hio_fines_bg_elem(io_si) + &
+                   sum(cpatch%root_litter(:)) * cpatch%area/AREA
+             cpatch => cpatch%younger
+         end do
+
 
          ! pass demotion rates and associated carbon fluxes to history
          do i_scls = 1,nlevsclass
@@ -3639,6 +3667,26 @@ end subroutine flush_hvars
          ivar=ivar, initialize=initialize_variables, index = ih_litter_moisture_si_fuel )
 
     ! Litter Variables
+    call this%set_history_var(vname='LITTER_FINES_AG', units='kg/m^2', &
+          long='mass of above ground  litter in fines (leaves,nonviable seed)', use_default='active', &
+          avgflag='A', vtype=site_r8, hlms='CLM:ALM', flushval=hlm_hio_ignore_val,    &
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_fines_ag_elem )
+
+    call this%set_history_var(vname='LITTER_FINES_BG', units='kg/m^2', &
+          long='mass of below ground litter in fines (fineroots)', use_default='active', &
+          avgflag='A', vtype=site_r8, hlms='CLM:ALM', flushval=hlm_hio_ignore_val,    &
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_fines_bg_elem )
+
+    call this%set_history_var(vname='LITTER_CWD_BG', units='kg/m^2', &
+          long='mass of below ground litter in CWD (coarse roots)', use_default='active', &
+          avgflag='A', vtype=site_r8, hlms='CLM:ALM', flushval=hlm_hio_ignore_val,    &
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_bg_elem )
+
+    call this%set_history_var(vname='LITTER_CWD_AG', units='kg/m^2', &
+          long='mass of above ground litter in CWD (trunks/branches/twigs)', use_default='active', &
+          avgflag='A', vtype=site_r8, hlms='CLM:ALM', flushval=hlm_hio_ignore_val,    &
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_ag_elem )
+
 
     call this%set_history_var(vname='LITTER_IN', units='gC m-2 s-1',           &
          long='FATES litter flux in',  use_default='active',                   &
