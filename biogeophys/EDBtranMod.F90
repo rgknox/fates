@@ -18,11 +18,16 @@ module EDBtranMod
                                   numpft
    use FatesInterfaceMod , only : hlm_use_planthydro
    use FatesGlobals      , only : fates_log
-
+   use FatesGlobals     , only  : fates_log
+   use FatesGlobals     , only  : endrun => fates_endrun
+   use shr_log_mod      , only : errMsg => shr_log_errMsg
+   use FatesAllometryMod, only : i_hydro_rootprof_context, & 
+                                 i_biomass_rootprof_context, &
+                                 set_root_fraction
    !
    implicit none
    private
-   
+   character(len=*), parameter :: sourcefile = __FILE__
    public :: btran_ed
    public :: get_active_suction_layers
    public :: check_layer_water
@@ -115,6 +120,7 @@ contains
       real(r8) :: pftgs(maxpft)     ! pft weighted stomatal conductance m/s
       real(r8) :: temprootr
       real(r8) :: sum_pftgs         ! sum of weighted conductances (for normalization)
+      real(r8), allocatable :: rootfr(:)  ! Root resistance in each pft x layer
       !------------------------------------------------------------------------------
       
       associate(                                 &
@@ -125,6 +131,7 @@ contains
         do s = 1,nsites
 
            bc_out(s)%rootr_pasl(:,:) = 0._r8
+           allocate(rootfr(bc_in(s)%nlevsoil))
 
            ifp = 0
            cpatch => sites(s)%oldest_patch
@@ -135,6 +142,11 @@ contains
               
               do ft = 1,numpft
                  cpatch%btran_ft(ft) = 0.0_r8
+
+                 call set_root_fraction(rootfr, ft, bc_in(s)%zi_sisl, &
+                       lowerb=0,icontext = i_hydro_rootprof_context)
+
+
                  do j = 1,bc_in(s)%nlevsoil
                     
                     ! Calculations are only relevant where liquid water exists
@@ -147,6 +159,13 @@ contains
                        rresis  = min( (bc_in(s)%eff_porosity_sl(j)/bc_in(s)%watsat_sl(j))*               &
                             (smp_node - smpsc(ft)) / (smpso(ft) - smpsc(ft)), 1._r8)
                        
+                       if(cpatch%rootfr_ft(ft,j).ne.rootfr(j))then
+                           write(fates_log(),*) 'conflicting root fractions'
+                           write(fates_log(),*) cpatch%rootfr_ft(ft,:)
+                           write(fates_log(),*) rootfr(:)
+                           call endrun(msg=errMsg(sourcefile, __LINE__))
+                       end if
+
                        cpatch%rootr_ft(ft,j) = cpatch%rootfr_ft(ft,j)*rresis
                        
                        ! root water uptake is not linearly proportional to root density,
@@ -231,8 +250,10 @@ contains
               
               cpatch => cpatch%younger
            end do
-        
-        end do
+           
+           deallocate(rootfr)
+
+       end do
            
         if(hlm_use_planthydro.eq.itrue) then
            call BTranForHLMDiagnosticsFromCohortHydr(nsites,sites,bc_out)
