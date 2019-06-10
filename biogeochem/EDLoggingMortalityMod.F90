@@ -274,7 +274,7 @@ contains
       !LOCAL VARIABLES:
       type(ed_cohort_type), pointer :: currentCohort
       real(r8) :: litter_area         ! area over which to distribute this litter (m2/site). 
-      real(r8) :: np_mult             ! Fraction of the new patch which came from the current patch
+!      real(r8) :: np_mult             ! Fraction of the new patch which came from the current patch
       real(r8) :: direct_dead         ! Mortality count through direct logging
       real(r8) :: indirect_dead       ! Mortality count through: impacts, infrastructure and collateral damage
       real(r8) :: trunk_product_site  ! flux of carbon in trunk products exported off site      [ kgC/site ] 
@@ -343,8 +343,8 @@ contains
          end if
 
          agb_frac    = EDPftvarcon_inst%allom_agb_frac(currentCohort%pft)
-         litter_area = currentPatch%area 
-         np_mult     = patch_site_areadis/newPatch%area
+         litter_area = (currentPatch%area - patch_site_areadis) + newPatch%area
+!         np_mult     = patch_site_areadis/newPatch%area
          
          
          if( hlm_use_planthydro == itrue ) then
@@ -366,9 +366,9 @@ contains
                   (struct_c + sapw_c ) 
             cwd_litter_density = SF_val_CWD_frac(c) * woody_litter / litter_area
             
-            newPatch%cwd_ag(c)     = newPatch%cwd_ag(c)     + agb_frac * cwd_litter_density * np_mult
+            newPatch%cwd_ag(c)     = newPatch%cwd_ag(c)     + agb_frac * cwd_litter_density   ! * np_mult
             currentPatch%cwd_ag(c) = currentPatch%cwd_ag(c) + agb_frac * cwd_litter_density
-            newPatch%cwd_bg(c)     = newPatch%cwd_bg(c)     + (1._r8-agb_frac) * cwd_litter_density * np_mult
+            newPatch%cwd_bg(c)     = newPatch%cwd_bg(c)     + (1._r8-agb_frac) * cwd_litter_density !* np_mult
             currentPatch%cwd_bg(c) = currentPatch%cwd_bg(c) + (1._r8-agb_frac) * cwd_litter_density 
             
             ! Diagnostics on fluxes into the AG and BG CWD pools
@@ -396,10 +396,10 @@ contains
          
          cwd_litter_density = SF_val_CWD_frac(ncwd) * woody_litter / litter_area
          
-         newPatch%cwd_ag(ncwd)     = newPatch%cwd_ag(ncwd)     + agb_frac * cwd_litter_density * np_mult
+         newPatch%cwd_ag(ncwd)     = newPatch%cwd_ag(ncwd)     + agb_frac * cwd_litter_density !* np_mult
          currentPatch%cwd_ag(ncwd) = currentPatch%cwd_ag(ncwd) + agb_frac * cwd_litter_density
 
-         newPatch%cwd_bg(ncwd)     = newPatch%cwd_bg(ncwd)     + (1._r8-agb_frac) * cwd_litter_density * np_mult 
+         newPatch%cwd_bg(ncwd)     = newPatch%cwd_bg(ncwd)     + (1._r8-agb_frac) * cwd_litter_density! * np_mult 
          currentPatch%cwd_bg(ncwd) = currentPatch%cwd_bg(ncwd) + (1._r8-agb_frac) * cwd_litter_density 
          
          currentSite%CWD_AG_diagnostic_input_carbonflux(ncwd) =       &
@@ -420,7 +420,7 @@ contains
          cwd_litter_density = SF_val_CWD_frac(ncwd) * woody_litter / litter_area
          
          newPatch%cwd_bg(ncwd)     = newPatch%cwd_bg(ncwd)     + &
-               (1._r8-agb_frac) * cwd_litter_density * np_mult 
+               (1._r8-agb_frac) * cwd_litter_density !* np_mult 
 
          currentPatch%cwd_bg(ncwd) = currentPatch%cwd_bg(ncwd) + &
                (1._r8-agb_frac) * cwd_litter_density 
@@ -452,8 +452,8 @@ contains
          leaf_litter = (direct_dead+indirect_dead) * leaf_c
          root_litter = (direct_dead+indirect_dead) * (fnrt_c + store_c)
 
-         newPatch%leaf_litter(p) = newPatch%leaf_litter(p) + leaf_litter / litter_area * np_mult
-         newPatch%root_litter(p) = newPatch%root_litter(p) + root_litter / litter_area * np_mult 
+         newPatch%leaf_litter(p) = newPatch%leaf_litter(p) + leaf_litter / litter_area !* np_mult
+         newPatch%root_litter(p) = newPatch%root_litter(p) + root_litter / litter_area !* np_mult 
          
          currentPatch%leaf_litter(p) = currentPatch%leaf_litter(p) + leaf_litter / litter_area
          currentPatch%root_litter(p) = currentPatch%root_litter(p) + root_litter / litter_area
