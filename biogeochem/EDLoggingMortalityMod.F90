@@ -60,9 +60,6 @@ module EDLoggingMortalityMod
    character(len=*), parameter, private :: sourcefile = &
          __FILE__
 
-
-   real(r8), public, parameter :: logging_export_frac = 0.8_r8
-   
    public :: LoggingMortality_frac
    public :: logging_litter_fluxes
    public :: logging_time
@@ -276,7 +273,6 @@ contains
       !LOCAL VARIABLES:
       type(ed_cohort_type), pointer :: currentCohort
       real(r8) :: litter_area         ! area over which to distribute this litter (m2/site). 
-!      real(r8) :: np_mult             ! Fraction of the new patch which came from the current patch
       real(r8) :: direct_dead         ! Mortality count through direct logging
       real(r8) :: indirect_dead       ! Mortality count through: impacts, infrastructure and collateral damage
       real(r8) :: trunk_product_site  ! flux of carbon in trunk products exported off site      [ kgC/site ] 
