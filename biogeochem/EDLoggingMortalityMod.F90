@@ -443,7 +443,7 @@ contains
 
          ! CWD contributed by logged boles due to losses in transportation
          newPatch%cwd_ag(ncwd)     = newPatch%cwd_ag(ncwd)     + agb_frac * &
-               (1.0_r8-logging_export_frac) * cwd_litter_density * np_mult
+               (1.0_r8-logging_export_frac) * cwd_litter_density !* np_mult
          currentPatch%cwd_ag(ncwd) = currentPatch%cwd_ag(ncwd) + &
                (1.0_r8 - logging_export_frac) * agb_frac * cwd_litter_density 
 
