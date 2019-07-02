@@ -341,9 +341,9 @@ contains
          end if
 
          agb_frac    = EDPftvarcon_inst%allom_agb_frac(currentCohort%pft)
+
          litter_area = (currentPatch%area - patch_site_areadis) + newPatch%area
 !         np_mult     = patch_site_areadis/newPatch%area
-         
          
          if( hlm_use_planthydro == itrue ) then
             call AccumulateMortalityWaterStorage(currentSite,currentCohort,(direct_dead+indirect_dead))
@@ -367,6 +367,7 @@ contains
             newPatch%cwd_ag(c)     = newPatch%cwd_ag(c)     + agb_frac * cwd_litter_density   ! * np_mult
             currentPatch%cwd_ag(c) = currentPatch%cwd_ag(c) + agb_frac * cwd_litter_density
             newPatch%cwd_bg(c)     = newPatch%cwd_bg(c)     + (1._r8-agb_frac) * cwd_litter_density !* np_mult
+
             currentPatch%cwd_bg(c) = currentPatch%cwd_bg(c) + (1._r8-agb_frac) * cwd_litter_density 
             
             ! Diagnostics on fluxes into the AG and BG CWD pools
@@ -398,6 +399,7 @@ contains
          currentPatch%cwd_ag(ncwd) = currentPatch%cwd_ag(ncwd) + agb_frac * cwd_litter_density
 
          newPatch%cwd_bg(ncwd)     = newPatch%cwd_bg(ncwd)     + (1._r8-agb_frac) * cwd_litter_density! * np_mult 
+
          currentPatch%cwd_bg(ncwd) = currentPatch%cwd_bg(ncwd) + (1._r8-agb_frac) * cwd_litter_density 
          
          currentSite%CWD_AG_diagnostic_input_carbonflux(ncwd) =       &
@@ -440,6 +442,7 @@ contains
          ! CWD contributed by logged boles due to losses in transportation
          newPatch%cwd_ag(ncwd)     = newPatch%cwd_ag(ncwd)     + agb_frac * &
                (1.0_r8-logging_export_frac) * cwd_litter_density !* np_mult
+
          currentPatch%cwd_ag(ncwd) = currentPatch%cwd_ag(ncwd) + &
                (1.0_r8 - logging_export_frac) * agb_frac * cwd_litter_density 
 
