@@ -3634,7 +3634,7 @@ end subroutine flush_hvars
          ivar=ivar, initialize=initialize_variables, index = ih_sum_fuel_pa )
 
     call this%set_history_var(vname='FUEL_MOISTURE_NFSC', units='-',                &
-         long='spitfire size-resolved fuel moisture', use_default='active',       &
+         long='spitfire size-resolved fuel moisture', use_default='inactive',       &
          avgflag='A', vtype=site_fuel_r8, hlms='CLM:ALM', flushval=0.0_r8, upfreq=1,   &
          ivar=ivar, initialize=initialize_variables, index = ih_litter_moisture_si_fuel )
 
