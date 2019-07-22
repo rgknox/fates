@@ -15,7 +15,7 @@ import getopt
 import code  # For development: code.interact(local=locals())
 from datetime import datetime
 from scipy.io import netcdf
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 # =======================================================================================
 # Parameters
