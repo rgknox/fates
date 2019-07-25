@@ -1161,7 +1161,7 @@ contains
              dead_tree_num = currentCohort%fire_mort * currentCohort%n*patch_site_areadis/currentPatch%area
 
              ! density of dead trees per m2 (spread over the new and pre-existing patch) 
-             dead_tree_density  = dead_tree_num / (new_patch%area + currentPatch%area-patch_site_areadis )  !AREA  
+             dead_tree_density  = dead_tree_num / (new_patch%area + currentPatch%area-patch_site_areadis )
              
              if( hlm_use_planthydro == itrue ) then
                 call AccumulateMortalityWaterStorage(currentSite,currentCohort,dead_tree_num)
@@ -1176,10 +1176,7 @@ contains
              currentPatch%leaf_litter(p) = currentPatch%leaf_litter(p) + dead_tree_density * &
                    leaf_c * (1.0_r8-currentCohort%fraction_crown_burned)
 
-
              new_patch%root_litter(p) = new_patch%root_litter(p) + dead_tree_density * (fnrt_c+store_c)
-
-             
 
              currentPatch%root_litter(p) = currentPatch%root_litter(p) + dead_tree_density * &
                   (fnrt_c + store_c)
@@ -1595,6 +1592,7 @@ contains
     currentPatch%root_litter_out(:) = 0.0_r8 ! As a newly created patch with no age, no frag or decomp has happened yet
 
     ! FIRE
+    currentPatch%litter_moisture(:)         = 0.0_r8 ! litter moisture
     currentPatch%fuel_eff_moist             = 0.0_r8 ! average fuel moisture content of the ground fuel 
     ! (incl. live grasses. omits 1000hr fuels)
     currentPatch%livegrass                  = 0.0_r8 ! total ag grass biomass in patch. 1=c3 grass, 2=c4 grass. gc/m2
