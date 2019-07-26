@@ -21,6 +21,7 @@ module FatesInterfaceMod
    use EDTypesMod          , only : do_fates_salinity
    use EDTypesMod          , only : ncwd
    use EDTypesMod          , only : numWaterMem
+   use EDTypesMod          , only : numlevsoil_max
    use FatesConstantsMod   , only : r8 => fates_r8
    use FatesConstantsMod   , only : itrue,ifalse
    use FatesGlobals        , only : fates_global_verbose
@@ -982,8 +983,9 @@ contains
          ! These values are used to define the restart file allocations and general structure
          ! of memory for the cohort arrays
          
-         fates_maxElementsPerPatch = max(maxCohortsPerPatch, numpft, ncwd )
-         
+!         fates_maxElementsPerPatch = max(maxCohortsPerPatch, numpft, ncwd )
+         fates_maxElementsPerPatch = max(maxCohortsPerPatch, ncwd*numlevsoil_max)
+
          if (maxPatchesPerSite * fates_maxElementsPerPatch <  numWaterMem) then
             write(fates_log(), *) 'By using such a tiny number of maximum patches and maximum cohorts'
             write(fates_log(), *) ' this could create problems for indexing in restart files'
