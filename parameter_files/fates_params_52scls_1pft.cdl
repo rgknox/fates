@@ -1,9 +1,9 @@
-netcdf fates_params_25scls_1pft_master {
+netcdf fates_params_52scls_1pft {
 dimensions:
 	fates_NCWD = 4 ;
 	fates_history_age_bins = 7 ;
 	fates_history_height_bins = 6 ;
-	fates_history_size_bins = 25 ;
+	fates_history_size_bins = 52 ;
 	fates_hydr_organs = 4 ;
 	fates_leafage_class = 1 ;
 	fates_litterclass = 6 ;
@@ -600,7 +600,8 @@ variables:
 data:
 
  fates_history_sizeclass_bin_edges = 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 
-    50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120 ;
+    50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160,
+    165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 250, 275, 300 ;
 
  fates_history_ageclass_bin_edges = 0, 1, 2, 5, 10, 20, 50 ;
 
@@ -918,11 +919,11 @@ data:
 
  fates_prescribed_mortality_canopy = 0.0097, 0.0097 ;
 
- fates_prescribed_mortality_understory = 0.0198, 0.0198 ;
+ fates_prescribed_mortality_understory = 0.0197, 0.0197 ;
 
- fates_prescribed_npp_canopy = 0.725, 0.725 ;
+ fates_prescribed_npp_canopy = 0.75, 0.75 ;
 
- fates_prescribed_npp_understory = 0.07, 0.07 ;
+ fates_prescribed_npp_understory = 0.075, 0.075 ;
 
  fates_prescribed_recruitment = 0.02, 0.02 ;
 
