@@ -168,7 +168,6 @@ contains
        call phenology(currentSite, bc_in )
     end if
 
-
     if (hlm_use_ed_st3.eq.ifalse) then   ! Bypass if ST3
        call fire_model(currentSite, bc_in) 
 
@@ -190,6 +189,9 @@ contains
        call bypass_dynamics(currentSite)
        
     end if
+
+
+    call TotalBalanceCheck(currentSite,10)
 
     !******************************************************************************
     ! Reproduction, Recruitment and Cohort Dynamics : controls cohort organization 
