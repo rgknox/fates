@@ -1666,11 +1666,12 @@ contains
             plant_dens
 
       do dcmpy=1,ndcmpy
-          dcmpy_frac = GetDecompyFrac(pft,dcmpy)
+          dcmpy_frac = GetDecompyFrac(pft,leaf_organ,dcmpy)
 
           litt%leaf_fines_in(dcmpy) = litt%leaf_fines_in(dcmpy) + &
                 leaf_m_turnover * plant_dens * dcmpy_frac
 
+          dcmpy_frac = GetDecompyFrac(pft,fnrt_organ,dcmpy)
           do ilyr = 1, numlevsoil
               litt%root_fines_in(dcmpy,ilyr) = litt%root_fines_in(dcmpy,ilyr) + &
                     currentSite%rootfrac_scr(ilyr) * root_fines_tot * dcmpy_frac
@@ -1753,11 +1754,12 @@ contains
            store_m*(1._r8-EDPftvarcon_inst%allom_frbstor_repro(pft)) )
 
       do dcmpy=1,ndcmpy
-          dcmpy_frac = GetDecompyFrac(pft,dcmpy)
+          dcmpy_frac = GetDecompyFrac(pft,leaf_organ,dcmpy)
           
           litt%leaf_fines_in(dcmpy) = litt%leaf_fines_in(dcmpy) + &
                 leaf_m * dead_n * dcmpy_frac
           
+          dcmpy_frac = GetDecompyFrac(pft,fnrt_organ,dcmpy)
           do ilyr = 1, numlevsoil
               litt%root_fines_in(dcmpy,ilyr) = litt%root_fines_in(dcmpy,ilyr) + &
                     root_fines_tot * currentSite%rootfrac_scr(ilyr) * dcmpy_frac

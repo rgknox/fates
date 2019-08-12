@@ -858,11 +858,12 @@ contains
        enddo
        
        do dcmpy=1,ndcmpy
-           dcmpy_frac = GetDecompyFrac(pft,dcmpy)
+           dcmpy_frac = GetDecompyFrac(pft,leaf_organ,dcmpy)
            
            litt%leaf_fines(dcmpy) = litt%leaf_fines(dcmpy) + &
                  plant_dens * (leaf_m+repro_m) * dcmpy_frac
        
+           dcmpy_frac = GetDecompyFrac(pft,fnrt_organ,dcmpy)
            do sl=1,csite%nlevsoil
                litt%root_fines(dcmpy,sl) = litt%root_fines(dcmpy,sl) + &
                      plant_dens * (fnrt_m+store_m) * csite%rootfrac_scr(sl) * dcmpy_frac
