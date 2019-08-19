@@ -392,6 +392,7 @@ contains
     this%bg_cwd_in(:,:)       = 0._r8
     this%leaf_fines_in(:)     = 0._r8
     this%root_fines_in(:,:)   = 0._r8
+
     this%seed_in_local(:)     = 0._r8
     this%seed_in_extern(:)    = 0._r8
 

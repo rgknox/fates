@@ -389,7 +389,7 @@ contains
              
          ! Update the state of the pool to reflect the mass lost
          prt%variables(i_var)%val(i_pos) = prt%variables(i_var)%val(i_pos) - &
-               (mass_fraction * prt%variables(i_var)%val(i_pos))
+              mass_fraction * prt%variables(i_var)%val(i_pos)
     
          ! Update the val0 (because we don't give this dedicated flux)
          ! This is somewhat of a hack

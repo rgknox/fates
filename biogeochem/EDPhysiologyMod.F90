@@ -920,7 +920,7 @@ contains
 
           ! Retrieve existing leaf and storage carbon
 
-          call currentCohort%prt%CheckMassConservation(ipft,0)
+          if(debug) call currentCohort%prt%CheckMassConservation(ipft,0)
 
           store_c = currentCohort%prt%GetState(store_organ, all_carbon_elements)
           leaf_c  = currentCohort%prt%GetState(leaf_organ, all_carbon_elements)
@@ -1031,7 +1031,7 @@ contains
              endif !status
           endif !drought dec.
 
-          call currentCohort%prt%CheckMassConservation(ipft,1)
+          if(debug) call currentCohort%prt%CheckMassConservation(ipft,1)
 
           currentCohort => currentCohort%shorter
        enddo !currentCohort
@@ -1118,7 +1118,7 @@ contains
              ! specified as input.  This routine will also remove the mass
              ! from the parteh state-variable.
 
-             call PRTReproRelease(currentCohort%prt,repro_organ,element_id, &
+             call PRTReproRelease(currentCohort%prt,repro_organ,element_id, & 
                    1.0_r8, seed_prod)
              
              if(element_id==carbon12_element)then

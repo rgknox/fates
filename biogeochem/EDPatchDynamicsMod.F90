@@ -101,7 +101,7 @@ module EDPatchDynamicsMod
   character(len=*), parameter, private :: sourcefile = &
         __FILE__
 
-  logical, parameter :: debug = .true.
+  logical, parameter :: debug = .false.
 
   ! When creating new patches from other patches, we need to send some of the
   ! litter from the old patch to the new patch.  Likewise, when plants die
@@ -1084,8 +1084,8 @@ contains
            ! This returns the total mass on the patch for the current area [kg]
            call PatchMassStock(largestPatch,el,live_stock,seed_stock,litter_stock)
            
-           ! Then we scale the total mass by the added area
-           mass_gain = (live_stock+seed_stock+litter_stock) * &
+           ! Then we scale the litter mass by the added area
+           mass_gain = (seed_stock+litter_stock) * &
                  (area_site-areatot)/largestPatch%area
 
            currentSite%mass_balance(el)%patch_resize_err = &

@@ -105,7 +105,7 @@ contains
             sum(litt%leaf_fines)              + &
             sum(litt%root_fines))
       
-        ! Total mass of viable seeds in [kg]
+      ! Total mass of viable seeds in [kg]
       seed_stock = currentPatch%area * &
             (sum(litt%seed) + sum(litt%seed_germ))
 
