@@ -103,6 +103,8 @@ contains
         end if
      end do
 
+     SF_val_max_decomp(:) = 0._r8
+
      ! Check if the CWD fraction sums to unity, if it is not wayyy off,
      ! add a small correction to the largest pool. 
      ! This is important for tight mass conservation

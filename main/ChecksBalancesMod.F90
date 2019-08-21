@@ -48,7 +48,6 @@ contains
      real(r8),intent(out)                    :: litter_stock   ! kg
      real(r8),intent(out)                    :: biomass_stock  ! kg
      real(r8),intent(out)                    :: seed_stock     ! kg
-     integer                                 :: element_id     ! parteh element id
      type(litter_type), pointer              :: litt           ! litter object
      type(ed_patch_type), pointer            :: currentPatch
      type(ed_cohort_type), pointer           :: currentCohort
@@ -59,8 +58,6 @@ contains
      litter_stock  = 0.0_r8
      biomass_stock = 0.0_r8
      seed_stock    = 0.0_r8
-
-     element_id = element_list(i_element)
 
      currentPatch => currentSite%oldest_patch 
      do while(associated(currentPatch))
@@ -86,10 +83,10 @@ contains
       ! Sum up the mass of the different stocks on a patch for each element
       ! ---------------------------------------------------------------------------------
       type(ed_patch_type),intent(in),target :: currentPatch
-      integer                               :: el
-      real(r8)                              :: live_stock
-      real(r8)                              :: seed_stock
-      real(r8)                              :: litter_stock
+      integer,intent(in)                    :: el
+      real(r8),intent(out)                  :: live_stock
+      real(r8),intent(out)                  :: seed_stock
+      real(r8),intent(out)                  :: litter_stock
 
       type(litter_type), pointer            :: litt           ! litter object
       type(ed_cohort_type), pointer         :: currentCohort
@@ -100,9 +97,9 @@ contains
 
       ! Total non-seed litter in [kg]
       litter_stock = currentPatch%area * &
-            (sum(litt%ag_cwd)                  + &
-            sum(litt%bg_cwd) + &
-            sum(litt%leaf_fines)              + &
+            (sum(litt%ag_cwd)     + &
+            sum(litt%bg_cwd)      + &
+            sum(litt%leaf_fines)  + &
             sum(litt%root_fines))
       
       ! Total mass of viable seeds in [kg]

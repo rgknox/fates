@@ -109,7 +109,7 @@ module EDCohortDynamicsMod
   public :: DeallocateCohort
   public :: EvaluateAndCorrectDBH
 
-  logical, parameter :: debug  = .false. ! local debug flag
+  logical, parameter :: debug  = .true. ! local debug flag
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -733,6 +733,9 @@ contains
           if (currentCohort%n.gt.0.0_r8) then
              call SendCohortToLitter(currentSite,currentPatch, &
                   currentCohort,currentCohort%n)
+          elseif(currentCohort%n<0._r8) then
+             write(fates_log(),*) 'non-positive cohort count?'
+             write(fates_log(),*) 'n: ',currentCohort%n
           end if
           
           ! Set pointers and remove the current cohort from the list
@@ -832,12 +835,12 @@ contains
 
        do c=1,ncwd
 
-! above ground CWD
+          ! above ground CWD
           litt%ag_cwd(c) = litt%ag_cwd(c) + plant_dens * &
                (struct_m+sapw_m)  * SF_val_CWD_frac(c) * &
                EDPftvarcon_inst%allom_agb_frac(pft)
-
-! below ground CWD
+          
+          ! below ground CWD
           do sl=1,csite%nlevsoil
              litt%bg_cwd(c,sl) = litt%bg_cwd(c,sl) + plant_dens * &
                   (struct_m+sapw_m) * SF_val_CWD_frac(c) * &
@@ -845,12 +848,12 @@ contains
                   csite%rootfrac_scr(sl)
           enddo
 
-! above ground
+          ! above ground
           flux_diags%cwd_ag_input(c)  = flux_diags%cwd_ag_input(c) + &
                 (struct_m+sapw_m) * SF_val_CWD_frac(c) * &
                 EDPftvarcon_inst%allom_agb_frac(pft) * nplant
 
-! below ground
+          ! below ground
           flux_diags%cwd_bg_input(c)  = flux_diags%cwd_bg_input(c) + &
                 (struct_m + sapw_m) * SF_val_CWD_frac(c) * &
                 (1.0_r8 - EDPftvarcon_inst%allom_agb_frac(pft)) * nplant
@@ -1151,7 +1154,7 @@ contains
                                    !
                                 case default
                                     write(fates_log(),*) 'FATES: Invalid choice for cohort_fusion_conservation_method'
-                                   call endrun(msg=errMsg(sourcefile, __LINE__))
+                                    call endrun(msg=errMsg(sourcefile, __LINE__))
                                 end select
 
                                 leaf_c = currentCohort%prt%GetState(leaf_organ,all_carbon_elements)

@@ -55,6 +55,7 @@ module EDMainMod
   use FatesConstantsMod        , only : itrue,ifalse
   use FatesConstantsMod        , only : primaryforest, secondaryforest
   use FatesConstantsMod        , only : nearzero
+  use FatesConstantsMod        , only : calloc_abs_error
   use FatesPlantHydraulicsMod  , only : do_growthrecruiteffects
   use FatesPlantHydraulicsMod  , only : updateSizeDepTreeHydProps
   use FatesPlantHydraulicsMod  , only : updateSizeDepTreeHydStates
@@ -78,7 +79,6 @@ module EDMainMod
   use PRTGenericMod,          only : struct_organ
 
   use PRTLossFluxesMod,       only : PRTMaintTurnover
-  use PRTLossFluxesMod,       only : PRTReproRelease
 
   use EDPftvarcon,            only : EDPftvarcon_inst
 
@@ -100,7 +100,7 @@ module EDMainMod
   private :: TotalBalanceCheck
   private :: bypass_dynamics
   
-  logical :: debug  = .false.
+  logical :: debug  = .true.
 
   integer, parameter :: final_check_id = -1
   
@@ -306,6 +306,8 @@ contains
     logical  :: is_drought            ! logical for if the plant (site) is in a drought state
     real(r8) :: delta_dbh             ! correction for dbh
     real(r8) :: delta_hite            ! correction for hite
+    real(r8) :: total_c_alloc         ! total amount of allocated carbon [kg/plant]
+    real(r8) :: alloc_error           ! the amount of error in the allocation [kg/plant]
 
     !-----------------------------------------------------------------------
 
@@ -406,7 +408,31 @@ contains
 
           ! Growth and Allocation (PARTEH)
           call currentCohort%prt%DailyPRT()
-    
+   
+          if(debug)then
+             if(abs(currentCohort%npp_acc) > calloc_abs_error)then
+                write(fates_log(),*) 'NPP left?',currentCohort%npp_acc
+                call endrun(msg=errMsg(sourcefile, __LINE__))
+             end if
+             ! PARTEH checks if the total allocations match changes in plant biomass
+             ! so the net allocation should be accurate.
+             total_c_alloc = currentCohort%prt%GetNetAlloc(leaf_organ,carbon12_element) + &
+                             currentCohort%prt%GetNetAlloc(fnrt_organ,carbon12_element) + & 
+                             currentCohort%prt%GetNetAlloc(sapw_organ,carbon12_element) + & 
+                             currentCohort%prt%GetNetAlloc(struct_organ,carbon12_element) + &
+                             currentCohort%prt%GetNetAlloc(repro_organ,carbon12_element) + & 
+                             currentCohort%prt%GetNetAlloc(store_organ,carbon12_element)
+             alloc_error = (currentCohort%gpp_acc-currentCohort%resp_acc) - total_c_alloc 
+             if( abs(alloc_error)>calloc_abs_error )then
+                write(fates_log(),*) 'Total carbon does not match total allocated'
+                write(fates_log(),*) 'total_c_alloc: ',total_c_alloc
+                write(fates_log(),*) 'total gpp-resp:',(currentCohort%gpp_acc-currentCohort%resp_acc)
+                write(fates_log(),*) 'error: ',alloc_error
+                call endrun(msg=errMsg(sourcefile, __LINE__))
+             end if
+
+          end if
+
           ! And simultaneously add the input fluxes to mass balance accounting
           site_cmass%gpp_acc   = site_cmass%gpp_acc + &
                 currentCohort%gpp_acc * currentCohort%n
@@ -636,7 +662,7 @@ contains
        net_flux        = flux_in - flux_out
        error           = abs(net_flux - change_in_stock)   
 
-       if(change_in_stock>0.0)then
+       if(abs(total_stock)>calloc_abs_error)then
           error_frac      = error/abs(total_stock)
        else
           error_frac      = 0.0_r8
