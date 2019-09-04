@@ -3,37 +3,41 @@ module SFParamsMod
    ! module that deals with reading the SF parameter file
    !
    use FatesConstantsMod , only: r8 => fates_r8
-   use EDtypesMod        , only: NFSC,NCWD
+   use EDtypesMod        , only: NFSC
+   use FatesLitterMod    , only: ncwd
    use FatesParametersInterface, only : param_string_length
+   use FatesGlobals,   only : fates_log
+   use FatesGlobals,   only : endrun => fates_endrun
+   use shr_log_mod      , only : errMsg => shr_log_errMsg
 
    implicit none
+   private ! Modules are private by default
    save
-   ! private - if we allow this module to be private, it does not allow the protected values below to be
-   ! seen outside of this module.
 
    !
    ! this is what the user can use for the actual values
    !
-   real(r8),protected :: SF_val_fdi_a
-   real(r8),protected :: SF_val_fdi_b
-   real(r8),protected :: SF_val_fdi_alpha
-   real(r8),protected :: SF_val_miner_total
-   real(r8),protected :: SF_val_fuel_energy
-   real(r8),protected :: SF_val_part_dens
-   real(r8),protected :: SF_val_miner_damp
-   real(r8),protected :: SF_val_max_durat
-   real(r8),protected :: SF_val_durat_slope
-   real(r8),protected :: SF_val_drying_ratio
-   real(r8),protected :: SF_val_CWD_frac(NCWD)
-   real(r8),protected :: SF_val_max_decomp(NFSC)
-   real(r8),protected :: SF_val_SAV(NFSC)
-   real(r8),protected :: SF_val_FBD(NFSC)
-   real(r8),protected :: SF_val_min_moisture(NFSC)
-   real(r8),protected :: SF_val_mid_moisture(NFSC)
-   real(r8),protected :: SF_val_low_moisture_Coeff(NFSC)
-   real(r8),protected :: SF_val_low_moisture_Slope(NFSC)
-   real(r8),protected :: SF_val_mid_moisture_Coeff(NFSC)
-   real(r8),protected :: SF_val_mid_moisture_Slope(NFSC)
+
+   real(r8),protected, public :: SF_val_fdi_a
+   real(r8),protected, public :: SF_val_fdi_b
+   real(r8),protected, public :: SF_val_fdi_alpha
+   real(r8),protected, public :: SF_val_miner_total
+   real(r8),protected, public :: SF_val_fuel_energy
+   real(r8),protected, public :: SF_val_part_dens
+   real(r8),protected, public :: SF_val_miner_damp
+   real(r8),protected, public :: SF_val_max_durat
+   real(r8),protected, public :: SF_val_durat_slope
+   real(r8),protected, public :: SF_val_drying_ratio
+   real(r8),protected, public :: SF_val_CWD_frac(ncwd)
+   real(r8),protected, public :: SF_val_max_decomp(NFSC)
+   real(r8),protected, public :: SF_val_SAV(NFSC)
+   real(r8),protected, public :: SF_val_FBD(NFSC)
+   real(r8),protected, public :: SF_val_min_moisture(NFSC)
+   real(r8),protected, public :: SF_val_mid_moisture(NFSC)
+   real(r8),protected, public :: SF_val_low_moisture_Coeff(NFSC)
+   real(r8),protected, public :: SF_val_low_moisture_Slope(NFSC)
+   real(r8),protected, public :: SF_val_mid_moisture_Coeff(NFSC)
+   real(r8),protected, public :: SF_val_mid_moisture_Slope(NFSC)
 
    character(len=param_string_length),parameter :: SF_name_fdi_a = "fates_fire_fdi_a"
    character(len=param_string_length),parameter :: SF_name_fdi_b = "fates_fire_fdi_b"
@@ -56,20 +60,69 @@ module SFParamsMod
    character(len=param_string_length),parameter :: SF_name_mid_moisture_Coeff = "fates_fire_mid_moisture_Coeff"
    character(len=param_string_length),parameter :: SF_name_mid_moisture_Slope = "fates_fire_mid_moisture_Slope"
 
+   character(len=*), parameter, private :: sourcefile = &
+         __FILE__
+
    public :: SpitFireRegisterParams
    public :: SpitFireReceiveParams
+   public :: SpitFireCheckParams
 
-   private :: SpitFireParamsInit
-   private :: SpitFireRegisterScalars
-   private :: SpitFireReceiveScalars
-  
-   private :: SpitFireRegisterNCWD
-   private :: SpitFireReceiveNCWD
-  
-   private :: SpitFireRegisterNFSC
-   private :: SpitFireReceiveNFSC
-  
+
 contains
+
+  ! =====================================================================================
+
+  subroutine SpitFireCheckParams(is_master)
+
+     ! ----------------------------------------------------------------------------------
+     !
+     ! This subroutine performs logical checks on user supplied parameters.  It cross
+     ! compares various parameters and will fail if they don't make sense.  
+     ! Examples:
+     ! Decomposition rates should not be less than zero or greater than 1
+     ! -----------------------------------------------------------------------------------
+
+     logical, intent(in) :: is_master    ! Only log if this is the master proc
+
+
+     integer :: c      ! debris type loop counter
+     integer :: corr_id(1)        ! This is the bin with largest fraction
+                                  ! add/subtract any corrections there
+     real(r8) :: correction       ! This correction ensures that root fractions
+                                  ! sum to 1.0
+
+
+     if(.not.is_master) return
+     
+     ! Move these checks to initialization
+     do c = 1,nfsc
+        if ( SF_val_max_decomp(c) < 0._r8) then
+           write(fates_log(),*) 'Decomposition rates should be >0'
+           write(fates_log(),*) 'c = ',c,' SF_val_max_decomp(c) = ',SF_val_max_decomp(c)
+           call endrun(msg=errMsg(sourcefile, __LINE__))
+        end if
+     end do
+
+     ! Check if the CWD fraction sums to unity, if it is not wayyy off,
+     ! add a small correction to the largest pool. 
+     ! This is important for tight mass conservation
+     ! checks
+
+     if(abs(1.0_r8 - sum(SF_val_CWD_frac(1:ncwd))) > 1.e-5_r8) then
+         write(fates_log(),*) 'The CWD fractions from index 1:4 must sum to unity'
+         write(fates_log(),*) 'SF_val_CWD_frac(1:ncwd) = ',SF_val_CWD_frac(1:ncwd)
+         write(fates_log(),*) 'error = ',1.0_r8 - sum(SF_val_CWD_frac(1:ncwd))
+         call endrun(msg=errMsg(sourcefile, __LINE__))
+     else
+         correction = 1._r8 - sum(SF_val_CWD_frac(1:ncwd))
+         corr_id = maxloc(SF_val_CWD_frac(1:ncwd))
+         SF_val_CWD_frac(corr_id(1)) = SF_val_CWD_frac(corr_id(1)) + correction
+     end if
+
+
+     return
+  end subroutine SpitFireCheckParams
+
   !-----------------------------------------------------------------------
   subroutine SpitFireParamsInit()
     ! Initialize all parameters to nan to ensure that we get valid
@@ -247,6 +300,8 @@ contains
 
     call fates_params%RetreiveParameter(name=SF_name_CWD_frac, &
          data=SF_val_CWD_frac)
+
+    
 
   end subroutine SpitFireReceiveNCWD
 
