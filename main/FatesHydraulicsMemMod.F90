@@ -116,7 +116,7 @@ module FatesHydraulicsMemMod
                                                     ! after root water has been extracted.  This should
                                                     ! be equal to the sum of the water over the rhizosphere shells
      
-     real(r8),allocatable :: psisoi_liq_innershell(:) ! Matric potential of the inner rhizosphere shell (MPa)
+!     real(r8),allocatable :: psisoi_liq_innershell(:) ! Matric potential of the inner rhizosphere shell (MPa)
      
      
      real(r8),allocatable :: recruit_w_uptake(:)    ! recruitment water uptake (kg H2o/m2/s)
@@ -364,7 +364,7 @@ module FatesHydraulicsMemMod
          allocate(this%supsub_flag(1:nlevsoil_hyd))                ; this%supsub_flag = -999
          allocate(this%h2osoi_liqvol_shell(1:nlevsoil_hyd,1:nshell)) ; this%h2osoi_liqvol_shell = nan
          allocate(this%h2osoi_liq_prev(1:nlevsoil_hyd))          ; this%h2osoi_liq_prev = nan
-         allocate(this%psisoi_liq_innershell(1:nlevsoil_hyd)); this%psisoi_liq_innershell = nan
+!         allocate(this%psisoi_liq_innershell(1:nlevsoil_hyd)); this%psisoi_liq_innershell = nan
          allocate(this%rs1(1:nlevsoil_hyd)); this%rs1(:) = fine_root_radius_const
          allocate(this%recruit_w_uptake(1:nlevsoil_hyd)); this%recruit_w_uptake = nan
 

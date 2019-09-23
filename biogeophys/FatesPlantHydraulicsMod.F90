@@ -316,7 +316,6 @@ contains
 
     ! REQUIRED INPUTS:
     !
-    !  csite%si_hydr%psisoi_liq_innershell(:)
     !  ccohort_hydr%z_node_troot(:)
     !  ccohort_hydr%z_node_aroot
     !  ccohort_hydr%z_node_ag
@@ -352,7 +351,6 @@ contains
        !   watsat(c,j), watres(c,j), alpha_VG(c,j), n_VG(c,j), m_VG(c,j), l_VG(c,j), &
        !   smp)
        !ccohort_hydr%psi_aroot(j) = smp
-       !ccohort_hydr%psi_aroot(j) = csite%si_hydr%psisoi_liq_innershell(j)
        ccohort_hydr%psi_aroot(j) = -0.2_r8 !do not assume the equilibrium between soil and root
 
        ccohort_hydr%th_aroot(j) = th_from_psi(ft, aroot_p_media, ccohort_hydr%psi_aroot(j))
@@ -1190,7 +1188,6 @@ contains
                bc_in(s)%watsat_sisl(j), (-1.0_r8)*bc_in(s)%sucsat_sisl(j)*denh2o*grav_earth*mpa_per_pa*m_per_mm, &
                bc_in(s)%bsw_sisl(j), smp)
 
-          site_hydr%psisoi_liq_innershell(j) = smp
 
        end do
        site_hydr%l_aroot_layer(1:site_hydr%nlevsoi_hyd) = 0.0_r8
@@ -2159,12 +2156,17 @@ contains
     ! area, and assumes that the HLM has it's own patch
     ! that is not tracked by FATES which accounts for all
     ! non-canopy areas across all patches					       
+
+    real(r8) :: dt_step                       ! time (s) for partial integration
+                                              ! step. (total time is split in half, at least)
+                                              ! to allow traversing cohort loop both directions
+    integer  :: idir                          ! loop index for going tallest-shortest and shortest-tallest
+    integer  :: isplit                        ! loop index for splitting the total cohort integratios
     
     real(r8) :: smp                           ! temporary for matric potential (MPa)
     integer  :: tmp
     real(r8) :: tmp1
     real(r8) :: watres_local
-    real(r8) :: dt_step
     integer  :: pick_1l(nshell+1) = (/(k,k=n_hypool_ag+n_hypool_troot+1,n_hypool_tot,1)/)
     real(r8) :: roota, rootb                  ! parameters for root distribution                                      [m-1]
     real(r8) :: rootfr                        ! root fraction at different soil layers
@@ -2172,7 +2174,7 @@ contains
     logical  :: recruitflag                   ! flag to check if there is newly recruited cohorts
     integer  :: iter                          ! number of solver iterations used for each cohort x layer
     integer  :: nsteps                        ! number of substeps used for the final iteration on linear solve
-
+    integer  :: inode                         ! node index
     real(r8) :: root_flux
     real(r8) :: transp_flux
     real(r8) :: delta_plant_storage
@@ -2183,6 +2185,7 @@ contains
     type(ed_cohort_hydr_type), pointer :: ccohort_hydr
     integer  :: err_code = 0
 
+    integer, parameter :: nsplits = 1                           ! total number of times to split the integration
     logical, parameter :: weight_serial_dt = .false.  ! For serial solver (1D), should
     ! the fractional time each layer
     ! gets, be weighted by conductance?
@@ -2280,11 +2283,26 @@ contains
              call endrun(msg=errMsg(sourcefile, __LINE__))
           end if
           
-          ccohort=>cpatch%tallest
+
+          ! We loop from shortest to tallest and
+          ! then tallest to shortest again. We do this
+          ! at least once
+
+          do isplit = 1, nsplits
+              
+              do idir = 1, 2
+
+                  if(idir==1) then
+                      ccohort => cpatch%shortest
+                  else
+                      ccohort => cpatch%tallest
+                  end if
+                  
+!          ccohort=>cpatch%tallest
           do while(associated(ccohort))
 
              ccohort_hydr => ccohort%co_hydr
-             ft       = ccohort%pft
+             ft = ccohort%pft
 
              ccohort_hydr%sapflow         = 0._r8
              ccohort_hydr%rootuptake      = 0._r8
@@ -2302,6 +2320,8 @@ contains
              end if
 
              ! Save the transpiration flux for diagnostics (currently its a constant boundary condition)
+             
+
              ccohort_hydr%qtop = qflx_tran_veg_indiv*dtime
 
              transp_flux = transp_flux + (qflx_tran_veg_indiv*dtime)*ccohort%n*AREA_INV
@@ -2443,16 +2463,14 @@ contains
                    ! each layer over the whole time, but
                    ! reduce the conductance cross section
                    ! according to what fraction of root is active
-                   dt_step = dtime
+                   dt_step = dtime/real(nsplits*2,r8)
                 else
                    if(weight_serial_dt)then
-                      dt_step = dtime*kbg_layer(j)/kbg_tot
+                      dt_step = dtime*kbg_layer(j)/real(nsplits*2*kbg_tot,r8)
                    else
-                      dt_step = dtime/real(site_hydr%nlevsoi_hyd,r8)
+                      dt_step = dtime/real(site_hydr%nlevsoi_hyd*nsplits*2,r8)
                    end if
                 end if
-                   
-
 
                 ! This routine will update the theta values for 1 cohort's flow-path
                 ! from leaf to the current soil layer.  This does NOT
@@ -2516,7 +2534,16 @@ contains
                      dth_node((n_hypool_tot-nshell+1):n_hypool_tot) * & 
                      ccohort_hydr%l_aroot_layer(j) * &
                      ccohort%n / site_hydr%l_aroot_layer(j)
-                     
+ 
+                ! Update the soil moisture in each shell
+                do k = 1,nshell
+                    inode = k+n_hypool_ag+2
+                    site_hydr%h2osoi_liqvol_shell(j,k) = & 
+                          site_hydr%h2osoi_liqvol_shell(j,k) + &
+                          dth_node(inode) * ccohort_hydr%l_aroot_layer(j) * &
+                          ccohort%n / site_hydr%l_aroot_layer(j)
+                end do
+
              enddo !soil layer
 
              ! ---------------------------------------------------------
@@ -2547,11 +2574,18 @@ contains
                                                           ccohort_hydr%psi_aroot(j))
              end do
 
-             ccohort => ccohort%shorter
+             if(idir==1) then
+                 ccohort => ccohort%taller
+             else
+                 ccohort => ccohort%shorter
+             end if
           enddo !cohort 
 
+          end do ! Loop over cohorts in both directions
+          end do ! Loop over splits
+
           cpatch => cpatch%younger
-       enddo !patch
+        enddo !patch
 
 
        ! In this section we evaluate the water content in the rhizosphere
@@ -2587,8 +2621,8 @@ contains
 !!                site_hydr%supsub_flag(j)           = -k
 !!                site_hydr%h2osoi_liqvol_shell(j,k) =  watres_local+small_theta_num
 !!             else
-                site_hydr%h2osoi_liqvol_shell(j,k) =  site_hydr%h2osoi_liqvol_shell(j,k) + &
-                     dth_layershell_col(j,k)
+!!                site_hydr%h2osoi_liqvol_shell(j,k) =  site_hydr%h2osoi_liqvol_shell(j,k) + &
+!!                     dth_layershell_col(j,k)
 !!             end if
           enddo
 
@@ -2617,7 +2651,7 @@ contains
           call swcCampbell_psi_from_th(site_hydr%h2osoi_liqvol_shell(j,1), &
                bc_in(s)%watsat_sisl(j), (-1.0_r8)*bc_in(s)%sucsat_sisl(j)*denh2o*grav_earth*1.e-9_r8, &
                bc_in(s)%bsw_sisl(j), smp)
-          site_hydr%psisoi_liq_innershell(j) = smp
+!          site_hydr%psisoi_liq_innershell(j) = smp
 
 
           !qflx_rootsoi(c,j)              = -(sum(dth_layershell_col(j,:))*bc_in(s)%dz_sisl(j)*denh2o/dtime)
@@ -3449,11 +3483,11 @@ contains
           end if
 
           ! Also check that flux was in the same direction as the total potential
-          do j = 1,n_hypool_tot-1
-              if((h_node(j+1)-h_node(j))>0._r8) then
-                  q_flow = dt_substep * (k_eff(j)*(h_node(j+1)-h_node(j)) + &
-                        A_term(j)*dth_node(j)        + &
-                        B_term(j)*dth_node(j+1)
+          do jpath = 1,n_hypool_tot-1
+              if((h_node(jpath+1)-h_node(jpath))>0._r8) then
+                  q_flow = dt_substep * (k_eff(jpath)*(h_node(jpath+1)-h_node(jpath)) + &
+                        A_term(jpath)*dth_node(jpath)        + &
+                        B_term(jpath)*dth_node(jpath+1))
                   if(q_flow<0) then
                       print*,"Flow doesnt match head?"
                       stop
