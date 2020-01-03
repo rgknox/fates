@@ -16,9 +16,11 @@ module FatesRestartInterfaceMod
   use FatesRestartVariableMod, only : fates_restart_variable_type
   use FatesInterfaceMod,       only : bc_in_type 
   use FatesInterfaceMod,       only : bc_out_type
-  use FatesInterfaceMod,       only : hlm_use_planthydro
+  use FatesInterfaceMod,       only : hlm_plant_hydro_mode
   use FatesInterfaceMod,       only : fates_maxElementsPerSite
   use EDCohortDynamicsMod,     only : UpdateCohortBioPhysRates
+  use FatesHydraulicsMemMod,   only : tfs_hydro_mode
+  use FatesHydraulicsMemMod,   only : tfs2d_hydro_mode
   use FatesHydraulicsMemMod,   only : nshell
   use FatesHydraulicsMemMod,   only : n_hypool_ag
   use FatesHydraulicsMemMod,   only : n_hypool_troot
@@ -872,7 +874,7 @@ contains
 
     ! Only register hydraulics restart variables if it is turned on!
     
-    if(hlm_use_planthydro==itrue) then
+    if( any(hlm_plant_hydro_mode == [tfs_hydro_mode,tfs2d_hydro_mode])) then
 
        if ( fates_maxElementsPerSite < (nshell * nlevsoi_hyd_max) ) then
           write(fates_log(), *) ' Ftes plant hydraulics needs space to store site-level hydraulics info.'
@@ -1630,7 +1632,7 @@ contains
                 end do
 
                 
-                if(hlm_use_planthydro==itrue)then
+                if(any(hlm_plant_hydro_mode == [tfs_hydro_mode,tfs2d_hydro_mode])) then
                    
                    ! Load the water contents
                    call this%SetCohortRealVector(ccohort%co_hydr%th_ag,n_hypool_ag, &
@@ -1864,7 +1866,7 @@ contains
           ! Set site-level hydraulics arrays
           ! -----------------------------------------------------------------------------
 
-          if(hlm_use_planthydro==itrue)then
+          if(any(hlm_plant_hydro_mode == [tfs_hydro_mode,tfs2d_hydro_mode])) then
 
              ! No associate statements because there is no gaurantee these
              ! are allocated
@@ -2041,7 +2043,7 @@ contains
                 
                 
                 ! Allocate hydraulics arrays
-                if( hlm_use_planthydro.eq.itrue ) then
+                if( any(hlm_plant_hydro_mode == [tfs_hydro_mode,tfs2d_hydro_mode])) then
                    call InitHydrCohort(sites(s),new_cohort)
                 end if
 
@@ -2379,8 +2381,7 @@ contains
 
 
                 ! Initialize Plant Hydraulics
-
-                if(hlm_use_planthydro==itrue)then
+                if( any(hlm_plant_hydro_mode == [tfs_hydro_mode,tfs2d_hydro_mode])) then
                    
                    ! Load the water contents
                    call this%GetCohortRealVector(ccohort%co_hydr%th_ag,n_hypool_ag, &
@@ -2531,7 +2532,7 @@ contains
           ! first known.
           ! -----------------------------------------------------------------------------
 
-          if(hlm_use_planthydro==itrue)then
+          if( any(hlm_plant_hydro_mode == [tfs_hydro_mode,tfs2d_hydro_mode])) then
 
              sites(s)%si_hydr%h2oveg_recruit      = this%rvars(ir_hydro_recruit_si)%r81d(io_idx_si)
              sites(s)%si_hydr%h2oveg_dead         = this%rvars(ir_hydro_dead_si)%r81d(io_idx_si)

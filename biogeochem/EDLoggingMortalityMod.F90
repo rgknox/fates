@@ -45,7 +45,7 @@ module EDLoggingMortalityMod
    use FatesInterfaceMod , only : hlm_day_of_year 
    use FatesInterfaceMod , only : hlm_days_per_year
    use FatesInterfaceMod , only : hlm_use_logging 
-   use FatesInterfaceMod , only : hlm_use_planthydro
+   use FatesInterfaceMod , only : hlm_plant_hydro_mode
    use FatesConstantsMod , only : itrue,ifalse
    use FatesGlobals      , only : endrun => fates_endrun 
    use FatesGlobals      , only : fates_log
@@ -395,7 +395,7 @@ contains
             end if
             
             if( (element_id .eq. carbon12_element) .and. &
-               hlm_use_planthydro == itrue ) then
+                (hlm_plant_hydro_mode > 0) ) then
                call AccumulateMortalityWaterStorage(currentSite, &
                      currentCohort,(direct_dead+indirect_dead))
             end if

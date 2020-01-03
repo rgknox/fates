@@ -16,7 +16,7 @@ module EDMortalityFunctionsMod
    use FatesInterfaceMod     , only : bc_in_type
    use FatesInterfaceMod     , only : hlm_use_ed_prescribed_phys
    use FatesInterfaceMod     , only : hlm_freq_day
-   use FatesInterfaceMod     , only : hlm_use_planthydro
+   use FatesInterfaceMod     , only : hlm_plant_hydro_mode
    use EDLoggingMortalityMod , only : LoggingMortality_frac
    use EDParamsMod           , only : fates_mortality_disturbance_fraction
    use FatesInterfaceMod     , only : bc_in_type
@@ -85,7 +85,7 @@ contains
     ! Proxy for hydraulic failure induced mortality. 
     hf_sm_threshold = EDPftvarcon_inst%hf_sm_threshold(cohort_in%pft)
     hf_flc_threshold = EDPftvarcon_inst%hf_flc_threshold(cohort_in%pft)
-    if(hlm_use_planthydro.eq.itrue)then
+    if(hlm_plant_hydro_mode>0)then
      !note the flc is set as the fraction of max conductivity in hydro
      min_fmc_ag = minval(cohort_in%co_hydr%flc_ag(:))
      min_fmc_tr = minval(cohort_in%co_hydr%flc_troot(:))

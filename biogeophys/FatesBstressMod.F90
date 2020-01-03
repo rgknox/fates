@@ -15,7 +15,6 @@ module FatesBstressMod
    use FatesInterfaceMod , only : bc_in_type, &
                                   bc_out_type, &
                                   numpft
-   use FatesInterfaceMod , only : hlm_use_planthydro
    use FatesGlobals      , only : fates_log
    use EDBtranMod        , only : check_layer_water
    use FatesAllometryMod , only : set_root_fraction

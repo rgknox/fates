@@ -37,7 +37,7 @@ module EDPatchDynamicsMod
   use EDTypesMod           , only : dl_sf
   use EDTypesMod           , only : dump_patch
   use FatesConstantsMod    , only : rsnbl_math_prec
-  use FatesInterfaceMod    , only : hlm_use_planthydro
+  use FatesInterfaceMod    , only : hlm_plant_hydro_mode
   use FatesInterfaceMod    , only : hlm_numSWb
   use FatesInterfaceMod    , only : bc_in_type
   use FatesInterfaceMod    , only : hlm_days_per_year
@@ -575,7 +575,7 @@ contains
              do while(associated(currentCohort))       
                  
                  allocate(nc)
-                 if(hlm_use_planthydro.eq.itrue) call InitHydrCohort(CurrentSite,nc)
+                 if(hlm_plant_hydro_mode>0) call InitHydrCohort(CurrentSite,nc)
                  
                  ! Initialize the PARTEH object and point to the
                  ! correct boundary condition fields
@@ -1425,7 +1425,7 @@ contains
 
     ! If plant hydraulics are turned on, account for water leaving the plant-soil
     ! mass balance through the dead trees
-    if (hlm_use_planthydro == itrue) then
+    if (hlm_plant_hydro_mode>0) then
        currentCohort => currentPatch%shortest
        do while(associated(currentCohort))
           num_dead_trees  = (currentCohort%fire_mort * &
@@ -1701,7 +1701,7 @@ contains
           ! Update water balance by removing dead plant water
           ! but only do this once (use the carbon element id)
           if( (element_id == carbon12_element) .and. &
-              (hlm_use_planthydro == itrue) ) then
+              (hlm_plant_hydro_mode>0) then
               call AccumulateMortalityWaterStorage(currentSite,currentCohort, num_dead)
           end if
           

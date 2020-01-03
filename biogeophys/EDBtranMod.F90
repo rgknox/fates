@@ -16,7 +16,12 @@ module EDBtranMod
    use FatesInterfaceMod , only : bc_in_type, &
                                   bc_out_type, &
                                   numpft
-   use FatesInterfaceMod , only : hlm_use_planthydro
+   
+   use FatesHydraulicsMemMod, only : sbtran_hydro_mode
+   use FatesHydraulicsMemMod, only : tfs_hydro_mode
+   use FatesHydraulicsMemMod, only : tfs2d_hydro_mode
+   
+   use FatesInterfaceMod , only : hlm_plant_hydro_mode
    use FatesGlobals      , only : fates_log
    use FatesAllometryMod , only : set_root_fraction
    use FatesAllometryMod , only : i_hydro_rootprof_context
@@ -215,7 +220,7 @@ contains
               ! used only for diagnostics. If plant hydraulics is turned off
               ! we are using the patchxpft level btran calculation
               
-              if(hlm_use_planthydro.eq.ifalse) then
+              if(hlm_plant_hydro_mode == sbtran_hydro_mode) then
                  !weight patch level output BTRAN for the
                  bc_out(s)%btran_pa(ifp) = 0.0_r8
                  do ft = 1,numpft
@@ -244,7 +249,7 @@ contains
            
         end do
            
-        if(hlm_use_planthydro.eq.itrue) then
+        if(any(hlm_plant_hydro_mode==[tfs_hydro_mode,tfs2d_hydro_mode])) then
            call BTranForHLMDiagnosticsFromCohortHydr(nsites,sites,bc_out)
         end if
         

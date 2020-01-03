@@ -13,7 +13,7 @@ module EDMainMod
   use FatesInterfaceMod        , only : hlm_current_year
   use FatesInterfaceMod        , only : hlm_current_month
   use FatesInterfaceMod        , only : hlm_current_day 
-  use FatesInterfaceMod        , only : hlm_use_planthydro 
+  use FatesInterfaceMod        , only : hlm_plant_hydro_mode
   use FatesInterfaceMod        , only : hlm_reference_date
   use FatesInterfaceMod        , only : hlm_use_ed_prescribed_phys
   use FatesInterfaceMod        , only : hlm_use_ed_st3 
@@ -251,7 +251,7 @@ contains
        ! based on the new cohort-patch structure
        ! 'rhizosphere geometry' (column-level root biomass + rootfr --> root length 
        ! density --> node radii and volumes)
-       if( (hlm_use_planthydro.eq.itrue) .and. do_growthrecruiteffects) then
+       if( (hlm_plant_hydro_mode>0) .and. do_growthrecruiteffects) then
           call updateSizeDepRhizHydProps(currentSite, bc_in)
           call updateSizeDepRhizHydStates(currentSite, bc_in)
           !       if(nshell > 1) then  (THIS BEING CHECKED INSIDE OF the update)
@@ -433,7 +433,7 @@ contains
           ! BOC...update tree 'hydraulic geometry' 
           ! (size --> heights of elements --> hydraulic path lengths --> 
           ! maximum node-to-node conductances)
-          if( (hlm_use_planthydro.eq.itrue) .and. do_growthrecruiteffects) then
+          if( (hlm_plant_hydro_mode>0) .and. do_growthrecruiteffects) then
              call updateSizeDepTreeHydProps(currentSite,currentCohort, bc_in)
              call updateSizeDepTreeHydStates(currentSite,currentCohort)
           end if
@@ -448,7 +448,7 @@ contains
     ! When plants die, the water goes with them.  This effects
     ! the water balance. 
 
-    if( hlm_use_planthydro == itrue ) then
+    if( hlm_plant_hydro_mode>0 ) then
        currentPatch => currentSite%youngest_patch
        do while(associated(currentPatch))
           currentCohort => currentPatch%shortest

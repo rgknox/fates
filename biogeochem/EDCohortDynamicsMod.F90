@@ -8,7 +8,6 @@ module EDCohortDynamicsMod
   use FatesGlobals          , only : fates_log
   use FatesInterfaceMod     , only : hlm_freq_day
   use FatesInterfaceMod     , only : bc_in_type
-  use FatesInterfaceMod     , only : hlm_use_planthydro
   use FatesConstantsMod     , only : r8 => fates_r8
   use FatesConstantsMod     , only : fates_unset_int
   use FatesConstantsMod     , only : itrue,ifalse
@@ -36,7 +35,7 @@ module EDCohortDynamicsMod
   use EDTypesMod            , only : ican_upper
   use EDTypesMod            , only : site_fluxdiags_type
   use EDTypesMod            , only : num_elements
-  use FatesInterfaceMod      , only : hlm_use_planthydro
+  use FatesInterfaceMod      , only : hlm_plant_hydro_mode
   use FatesInterfaceMod      , only : hlm_parteh_mode
   use FatesPlantHydraulicsMod, only : FuseCohortHydraulics
   use FatesPlantHydraulicsMod, only : CopyCohortHydraulics
@@ -279,7 +278,7 @@ contains
     ! growth, disturbance and mortality.
     new_cohort%isnew = .true.
 
-    if( hlm_use_planthydro.eq.itrue ) then
+    if( hlm_plant_hydro_mode>0 ) then
 
        nlevsoi_hyd = currentSite%si_hydr%nlevsoi_hyd
 
@@ -712,7 +711,7 @@ contains
           ! preserve a record of the to-be-terminated cohort for mortality accounting
           levcan = currentCohort%canopy_layer
 
-          if( hlm_use_planthydro == itrue ) &
+          if( hlm_plant_hydro_mode > 0 ) &
              call AccumulateMortalityWaterStorage(currentSite,currentCohort,currentCohort%n)
 
           if(levcan==ican_upper) then
@@ -902,7 +901,7 @@ contains
      type(ed_cohort_type),intent(inout) :: currentCohort
      
      ! At this point, nothing should be pointing to current Cohort
-     if (hlm_use_planthydro.eq.itrue) call DeallocateHydrCohort(currentCohort)
+     if (hlm_plant_hydro_mode>0) call DeallocateHydrCohort(currentCohort)
      
      ! Deallocate the cohort's PRT structures
      call currentCohort%prt%DeallocatePRTVartypes()
@@ -1168,7 +1167,7 @@ contains
                                 call sizetype_class_index(currentCohort%dbh,currentCohort%pft, &
                                       currentCohort%size_class,currentCohort%size_by_pft_class)
 				      
-                                if(hlm_use_planthydro.eq.itrue) then			  					  				  
+                                if(hlm_plant_hydro_mode>0) then
                                     call FuseCohortHydraulics(currentSite,currentCohort,nextc,bc_in,newn)				    
                                 endif
 
@@ -1297,7 +1296,7 @@ contains
                                 ! At this point, nothing should be pointing to current Cohort
                                 ! update hydraulics quantities that are functions of hite & biomasses
                                 ! deallocate the hydro structure of nextc
-                                if (hlm_use_planthydro.eq.itrue) then				    
+                                if (hlm_plant_hydro_mode>0)then
                                    call carea_allom(currentCohort%dbh,currentCohort%n,currentSite%spread, &
                                         currentCohort%pft,currentCohort%c_area)
                                    leaf_c   = currentCohort%prt%GetState(leaf_organ, carbon12_element)
@@ -1662,7 +1661,7 @@ contains
 
     ! Plant Hydraulics
     
-    if( hlm_use_planthydro.eq.itrue ) then
+    if( hlm_plant_hydro_mode>0)then
       call CopyCohortHydraulics(n,o)
     endif
 

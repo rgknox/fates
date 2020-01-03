@@ -27,7 +27,7 @@ module FatesHistoryInterfaceMod
   use FatesIOVariableKindMod   , only : fates_io_variable_kind_type
   use FatesHistoryVariableType , only : fates_history_variable_type
   use FatesInterfaceMod        , only : hlm_hio_ignore_val
-  use FatesInterfaceMod        , only : hlm_use_planthydro
+  use FatesInterfaceMod        , only : hlm_plant_hydro_mode
   use FatesInterfaceMod        , only : hlm_use_ed_st3
   use FatesInterfaceMod        , only : numpft
   use FatesInterfaceMod        , only : hlm_freq_day
@@ -38,6 +38,10 @@ module FatesHistoryInterfaceMod
   use FatesInterfaceMod        , only : bc_in_type
   use FatesInterfaceMod        , only : hlm_model_day
 
+  use FatesHydraulicsMemMod    , only : sbtran_hydro_mode
+  use FatesHydraulicsMemMod    , only : tfs_hydro_mode
+  use FatesHydrualicsMemMod    , only : tfs2d_hydro_mode
+  
   ! FIXME(bja, 2016-10) need to remove CLM dependancy 
   use EDPftvarcon              , only : EDPftvarcon_inst
 
@@ -1891,7 +1895,7 @@ end subroutine flush_hvars
          ! If hydraulics are turned on, track the error terms
          ! associated with dynamics
 
-         if(hlm_use_planthydro.eq.itrue)then
+         if(hlm_plant_hydro_mode>0) then
             this%hvars(ih_h2oveg_dead_si)%r81d(io_si)         = sites(s)%si_hydr%h2oveg_dead
             this%hvars(ih_h2oveg_recruit_si)%r81d(io_si)      = sites(s)%si_hydr%h2oveg_recruit
             this%hvars(ih_h2oveg_growturn_err_si)%r81d(io_si) = sites(s)%si_hydr%h2oveg_growturn_err
@@ -3276,7 +3280,7 @@ end subroutine flush_hvars
     logical :: layer9_present
     logical :: layer10_present
     
-    if(hlm_use_planthydro.eq.ifalse) return
+    if(hlm_plant_hydro_mode == sbtran_hydro_mode) return  ! alternately, == 0
 
     associate( hio_errh2o_scpf  => this%hvars(ih_errh2o_scpf)%r82d, &
           hio_tran_scpf         => this%hvars(ih_tran_scpf)%r82d, &
@@ -3642,7 +3646,7 @@ end subroutine flush_hvars
     use FatesIOVariableKindMod, only : site_r8, site_ground_r8, site_size_pft_r8    
     use FatesIOVariableKindMod, only : site_size_r8, site_pft_r8, site_age_r8
     use FatesIOVariableKindMod, only : site_height_r8
-    use FatesInterfaceMod     , only : hlm_use_planthydro
+
     
     use FatesIOVariableKindMod, only : site_fuel_r8, site_cwdsc_r8, site_scag_r8
     use FatesIOVariableKindMod, only : site_can_r8, site_cnlf_r8, site_cnlfpft_r8
@@ -5121,7 +5125,7 @@ end subroutine flush_hvars
 
     ! PLANT HYDRAULICS
 
-    if(hlm_use_planthydro.eq.itrue) then
+    if( any(hlm_plant_hydro_mode == [tfs_hydro_mode,tfs2d_hydro_mode])   ) then
        
        call this%set_history_var(vname='FATES_ERRH2O_SCPF', units='kg/indiv/s', &
              long='mean individual water balance error', use_default='inactive', &

@@ -25,7 +25,7 @@ module EDCanopyStructureMod
   use EDtypesMod            , only : AREA
   use FatesGlobals          , only : endrun => fates_endrun
   use FatesInterfaceMod     , only : hlm_days_per_year
-  use FatesInterfaceMod     , only : hlm_use_planthydro
+  use FatesInterfaceMod     , only : hlm_plant_hydro_mode
   use FatesInterfaceMod     , only : numpft
   use FatesPlantHydraulicsMod, only : UpdateH2OVeg,InitHydrCohort, RecruitWaterStorage
   use EDTypesMod            , only : maxCohortsPerPatch
@@ -663,7 +663,7 @@ contains
                   call InitPRTObject(copyc%prt)
                   call InitPRTBoundaryConditions(copyc)
 
-                  if( hlm_use_planthydro.eq.itrue ) then
+                  if( hlm_plant_hydro_mode>0) then
                      call InitHydrCohort(currentSite,copyc)
                   endif
 
@@ -1116,7 +1116,7 @@ contains
                      call InitPRTObject(copyc%prt)
                      call InitPRTBoundaryConditions(copyc)
 
-                     if( hlm_use_planthydro.eq.itrue ) then
+                     if( hlm_plant_hydro_mode > 0 ) then
                         call InitHydrCohort(CurrentSite,copyc)
                      endif
                      call copy_cohort(currentCohort, copyc) !makes an identical copy...
@@ -2006,7 +2006,7 @@ contains
      end do
 
      ! If hydraulics is turned on, update the amount of water bound in vegetation
-     if (hlm_use_planthydro.eq.itrue) then
+     if (hlm_plant_hydro_mode>0) then
         call RecruitWaterStorage(nsites,sites,bc_out)
         call UpdateH2OVeg(nsites,sites,bc_out)
      end if

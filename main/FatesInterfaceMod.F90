@@ -24,6 +24,9 @@ module FatesInterfaceMod
    use EDTypesMod          , only : num_elements
    use EDTypesMod          , only : element_list
    use EDTypesMod          , only : element_pos
+   use FatesHydraulicsMemMod, only: sbtran_hydro_mode
+   use FatesHydraulicsMemMod, only: tfs_hydro_mode
+   use FatesHydraulicsMemMod, only: tfs2d_hydro_mode
    use FatesConstantsMod   , only : r8 => fates_r8
    use FatesConstantsMod   , only : itrue,ifalse
    use FatesGlobals        , only : fates_global_verbose
@@ -117,8 +120,20 @@ module FatesInterfaceMod
                                                         ! compare it to our maxpatchpersite,
                                                         ! and gracefully halt if we are over-allocating
 
-   integer, public, protected :: hlm_parteh_mode   ! This flag signals which Plant Allocation and Reactive
-                                                   ! Transport (exensible) Hypothesis (PARTEH) to use
+   ! -------------------------------------------------------------
+   ! 'hlm_parteh_mode' specifies which 'Plant Allocations Reactions
+   ! and Transport (exensible) Hypothesis (PARTEH) to use. 
+   !
+   ! Options passed from the HLM:
+   !
+   ! 'CALLOM'       This is a Carbon-only model that uses plant
+   !                allometry functions to govern allocation
+   ! 'CNPALLOM'     This is a carbon-nitrogen-phosphorous model
+   !                that also uses allometry (for carbon) and
+   !                stoichiometry end-points to govern allocation
+   ! --------------------------------------------------------------
+   
+   integer, public, protected :: hlm_parteh_mode   
 
 
    integer, public, protected :: hlm_use_vertsoilc ! This flag signals whether or not the 
@@ -133,8 +148,26 @@ module FatesInterfaceMod
    integer, public, protected :: hlm_use_logging       ! This flag signals whether or not to use
                                                        ! the logging module
 
-   integer, public, protected :: hlm_use_planthydro    ! This flag signals whether or not to use
-                                                       ! plant hydraulics (bchristo/xu methods)
+
+   ! -------------------------------------------------------------
+   ! 'hlm_plant_hydro_mode' specifies which hydraulics module/hypothesis is active
+   !
+   ! Options passed in from the HLM are:
+   !
+   ! 'SBTRAN'   This turns off the vegetation hydro model
+   !            and uses a Soil based "BTRAN" like calculation
+   !            to regulate stomatal conductance
+   ! 'TFS'      This enables plant hydraulics via the methods of
+   !            Christoffersen, Xu et al.
+   ! 'TFS2D'    This utilizes the TFS model, and also leverages
+   !            a 2-Dimensional solution to the flux calculations
+   !            of each plant, which enables all soil layers
+   !            to be calculated simultaneously.
+   ! -------------------------------------------------------------
+   
+   integer, public, protected :: hlm_plant_hydro_mode
+   ! 
+                                                                ! plant hydraulics (bchristo/xu methods)
                                                        ! 1 = TRUE, 0 = FALSE
                                                        ! THIS IS CURRENTLY NOT SUPPORTED 
 
@@ -772,7 +805,7 @@ contains
       allocate(bc_in%albgr_dif_rb(hlm_numSWb))
 
       ! Plant-Hydro BC's
-      if (hlm_use_planthydro.eq.itrue) then
+      if (hlm_plant_hydro_mode>0) then
       
          allocate(bc_in%qflx_transp_pa(maxPatchesPerSite))
          allocate(bc_in%swrad_net_pa(maxPatchesPerSite))
@@ -863,7 +896,7 @@ contains
       allocate(bc_out%frac_veg_nosno_alb_pa(maxPatchesPerSite))
 
       ! Plant-Hydro BC's
-      if (hlm_use_planthydro.eq.itrue) then
+      if (hlm_plant_hydro_mode>0) then
          allocate(bc_out%qflx_soil2root_sisl(nlevsoil_in))
       end if
 
@@ -908,8 +941,7 @@ contains
          this%bc_in(s)%salinity_sl(:)   = 0.0_r8
       endif
 
-      if (hlm_use_planthydro.eq.itrue) then
-  
+      if (hlm_plant_hydro_mode>0) then
          this%bc_in(s)%qflx_transp_pa(:) = 0.0_r8
          this%bc_in(s)%swrad_net_pa(:) = 0.0_r8
          this%bc_in(s)%lwrad_net_pa(:) = 0.0_r8
@@ -978,7 +1010,7 @@ contains
       this%bc_out(s)%canopy_fraction_pa(:) = 0.0_r8
       this%bc_out(s)%frac_veg_nosno_alb_pa(:) = 0.0_r8
 
-      if (hlm_use_planthydro.eq.itrue) then
+      if (hlm_plant_hydro_mode>0) then
          this%bc_out(s)%qflx_soil2root_sisl(:) = 0.0_r8
       end if
       this%bc_out(s)%plant_stored_h2o_si = 0.0_r8
@@ -1415,25 +1447,25 @@ contains
             write(fates_log(), *) 'Flushing FATES control parameters prior to transfer from host'
          end if
 
-         hlm_numSWb     = unset_int
-         hlm_inir       = unset_int
-         hlm_ivis       = unset_int
-         hlm_is_restart = unset_int
-         hlm_numlevgrnd   = unset_int
-         hlm_name         = 'unset'
-         hlm_hio_ignore_val   = unset_double
-         hlm_masterproc   = unset_int
-         hlm_ipedof       = unset_int
-         hlm_max_patch_per_site = unset_int
-         hlm_use_vertsoilc = unset_int
-         hlm_parteh_mode   = unset_int
-         hlm_use_spitfire  = unset_int
-         hlm_use_planthydro = unset_int
-         hlm_use_logging   = unset_int
-         hlm_use_ed_st3    = unset_int
+         hlm_numSWb                 = unset_int
+         hlm_inir                   = unset_int
+         hlm_ivis                   = unset_int
+         hlm_is_restart             = unset_int
+         hlm_numlevgrnd             = unset_int
+         hlm_name                   = 'unset'
+         hlm_hio_ignore_val         = unset_double
+         hlm_masterproc             = unset_int
+         hlm_ipedof                 = unset_int
+         hlm_max_patch_per_site     = unset_int
+         hlm_use_vertsoilc          = unset_int
+         hlm_parteh_mode            = unset_int
+         hlm_plant_hydro_mode       = unset_int
+         hlm_use_spitfire           = unset_int
+         hlm_use_logging            = unset_int
+         hlm_use_ed_st3             = unset_int
          hlm_use_ed_prescribed_phys = unset_int
-         hlm_use_inventory_init = unset_int
-         hlm_inventory_ctrl_file = 'unset'
+         hlm_use_inventory_init     = unset_int
+         hlm_inventory_ctrl_file    = 'unset'
 
       case('check_allset')
          
@@ -1464,15 +1496,17 @@ contains
             call endrun(msg=errMsg(sourcefile, __LINE__))
          end if
          
-         if (  .not.((hlm_use_planthydro.eq.1).or.(hlm_use_planthydro.eq.0))    ) then
+         if (  .not.((hlm_plant_hydro_mode.eq.sbtran_hydro_mode) .or. &
+                     (hlm_plant_hydro_mode.eq.tfs_hydro_mode)    .or. &
+                     (hlm_plant_hydro_mode.eq.tfs2d_hydro_mode))    ) then
             if (fates_global_verbose()) then
-               write(fates_log(), *) 'The FATES namelist planthydro flag must be 0 or 1, exiting'
+               write(fates_log(), *) 'The FATES namelist planthydro flag must be 0, 1 or 2, exiting'
             end if
             call endrun(msg=errMsg(sourcefile, __LINE__))
-         elseif (hlm_use_planthydro.eq.1 ) then
+         elseif (hlm_plant_hydro_mode>0) then
                write(fates_log(), *) '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
                write(fates_log(), *) ''
-               write(fates_log(), *) ' use_fates_planthydro is an      EXPERIMENTAL FEATURE        '
+               write(fates_log(), *) ' FATES HYDRO is an      EXPERIMENTAL FEATURE        '
                write(fates_log(), *) ' please see header of fates/biogeophys/FatesHydraulicsMod.F90'
                write(fates_log(), *) ' for more information.'
                write(fates_log(), *) ''
@@ -1673,22 +1707,12 @@ contains
                   write(fates_log(),*) 'Transfering hlm_use_vertsoilc= ',ival,' to FATES'
                end if
                
-            case('parteh_mode')
-               hlm_parteh_mode = ival
-               if (fates_global_verbose()) then
-                  write(fates_log(),*) 'Transfering hlm_parteh_mode= ',ival,' to FATES'
-               end if
+        
 
             case('use_spitfire')
                hlm_use_spitfire = ival
                if (fates_global_verbose()) then
                   write(fates_log(),*) 'Transfering hlm_use_spitfire= ',ival,' to FATES'
-               end if
-               
-            case('use_planthydro')
-               hlm_use_planthydro = ival
-               if (fates_global_verbose()) then
-                  write(fates_log(),*) 'Transfering hlm_use_planthydro= ',ival,' to FATES'
                end if
 
             case('use_logging')
@@ -1753,6 +1777,41 @@ contains
                if (fates_global_verbose()) then
                   write(fates_log(),*) 'Transfering the name of the inventory control file = ',trim(cval)
                end if
+
+            case('parteh_mode')
+
+               if(trim(cval).eq.'CALLOM') then
+                  hlm_parteh_mode = prt_carbon_allom_hyp
+               elseif(trim(cval).eq.'CNPALLOM') then
+                  hlm_parteh_mode = prt_cnp_flex_allom_hyp
+               else
+                  write(fates_log(),*) 'While sending the parteh mode from the'
+                  write(fates_log(),*) 'HLM to FATES, an unexpected mode name was'
+                  write(fates_log(),*) 'sent. Should be either CALLOM or CNPALLOM'
+                  write(fates_log(),*) 'parteh_mode = ',trim(cval)
+                  call endrun(msg=errMsg(sourcefile, __LINE__))
+               end if
+               if (fates_global_verbose()) then
+                  write(fates_log(),*) 'Transfering hlm_parteh_mode= ',cval,' to FATES'
+               end if
+               
+            case('plant_hydro_mode')
+               if(trim(cval).eq.'SBTRAN') then
+                  hlm_plant_hydro_mode = sbtran_hydro_mode
+               elseif(trim(cval).eq.'TFS') then
+                  hlm_plant_hydro_mode = tfs_hydro_mode
+               else(trim(cval).eq.'TFS2D') then
+                  hlm_plant_hydro_mode = tfs2d_hydro_mode
+               else
+                  write(fates_log(),*) 'While sending the plant hydraulics mode from'
+                  write(fates_log(),*) 'the HLM to FATES, an unexpected mode name was'
+                  write(fates_log(),*) 'sent. Should be either SBTRAN, TFS or TFS2D.'
+                  write(fates_log(),*) 'plant_hydro_mode = ',trim(cval)
+                  call endrun(msg=errMsg(sourcefile, __LINE__))
+               end if
+               write(fates_log(),*) 'Transfering hlm_plant_hydro_mode = ',cval,' to FATES'
+               
+
                
             case default
                if (fates_global_verbose()) then

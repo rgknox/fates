@@ -36,7 +36,7 @@ module EDInitMod
   use EDTypesMod                , only : phen_cstat_notcold
   use EDTypesMod                , only : phen_dstat_moiston
   use FatesInterfaceMod         , only : bc_in_type
-  use FatesInterfaceMod         , only : hlm_use_planthydro
+  use FatesInterfaceMod         , only : hlm_plant_hydro_mode
   use FatesInterfaceMod         , only : hlm_use_inventory_init
   use FatesInterfaceMod         , only : numpft
   use FatesInterfaceMod         , only : nleafage
@@ -406,7 +406,7 @@ contains
      ! This sets the rhizosphere shells based on the plant initialization
      ! The initialization of the plant-relevant hydraulics variables
      ! were set from a call inside of the init_cohorts()->create_cohort() subroutine
-     if (hlm_use_planthydro.eq.itrue) then 
+     if (hlm_plant_hydro_mode>0) then
         do s = 1, nsites
 	   sitep => sites(s)
            call updateSizeDepRhizHydProps(sitep, bc_in(s))

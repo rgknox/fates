@@ -51,12 +51,15 @@ module FatesPlantHydraulicsMod
    use FatesInterfaceMod  , only : bc_in_type
    use FatesInterfaceMod  , only : bc_out_type
 
-   use FatesInterfaceMod  , only : hlm_use_planthydro
+   use FatesInterfaceMod  , only : hlm_plant_hydro_mode
 
    use FatesAllometryMod, only    : bsap_allom
    use FatesAllometryMod, only    : CrownDepth
    use FatesAllometryMod , only   : set_root_fraction
    use FatesAllometryMod , only   : i_hydro_rootprof_context
+
+   use FatesHydraulicsMemMod, only: tfs_hydro_mode
+   use FatesHydraulicsMemMod, only: tfs2d_hydro_mode
    use FatesHydraulicsMemMod, only: ed_site_hydr_type
    use FatesHydraulicsMemMod, only: ed_cohort_hydr_type
    use FatesHydraulicsMemMod, only: n_hypool_leaf
@@ -102,9 +105,6 @@ module FatesPlantHydraulicsMod
    ! 1=leaf, 2=stem, 3=troot, 4=aroot
    ! Several of these may be better transferred to the parameter file in due time (RGK)
 
-   integer, public :: use_ed_planthydraulics    =  1      ! 0 => use vanilla btran
-                                                          ! 1 => use BC hydraulics; 
-                                                          ! 2 => use CX hydraulics
    logical, public :: do_dqtopdth_leaf          = .false.  ! should a nonzero dqtopdth_leaf
                                                           ! term be applied to the plant 
                                                           ! hydraulics numerical solution?
@@ -176,9 +176,9 @@ contains
       real(r8),intent(in)                     :: dtime
       
       
-      select case (use_ed_planthydraulics)
+      select case (hlm_plant_hydro_mode)
          
-      case (1)
+      case (tfs_hydro_mode,tfs2d_hydro_mode)
          
          call FillDrainRhizShells(nsites, sites, bc_in, bc_out )
          call hydraulics_BC(nsites, sites,bc_in,bc_out,dtime )
@@ -1261,7 +1261,7 @@ contains
     type(ed_cohort_type), target :: currentCohort
     type(ed_cohort_hydr_type), pointer :: ccohort_hydr
 
-    if ( hlm_use_planthydro.eq.ifalse ) return
+    if ( .not. any(hlm_plant_hydro_mode==[tfs_hydro_mode,tfs2d_hydro_mode])) return
     allocate(ccohort_hydr)
     currentCohort%co_hydr => ccohort_hydr
     call ccohort_hydr%AllocateHydrCohortArrays(currentSite%si_hydr%nlevsoi_hyd)
@@ -1277,7 +1277,7 @@ contains
     type(ed_cohort_type), target :: currentCohort
     type(ed_cohort_hydr_type), pointer :: ccohort_hydr
 
-    if ( hlm_use_planthydro.eq.ifalse ) return
+    if ( .not. any(hlm_plant_hydro_mode==[tfs_hydro_mode,tfs2d_hydro_mode])) return
     
     ccohort_hydr => currentCohort%co_hydr
     call ccohort_hydr%DeAllocateHydrCohortArrays()
@@ -1300,8 +1300,7 @@ contains
        integer :: s
        type(ed_site_hydr_type),pointer :: csite_hydr
        
-
-       if ( hlm_use_planthydro.eq.ifalse ) return
+       if ( .not. any(hlm_plant_hydro_mode==[tfs_hydro_mode,tfs2d_hydro_mode])) return
        
        ! Initialize any derived hydraulics parameters
        call InitHydraulicsDerived(numpft)
@@ -1450,8 +1449,8 @@ contains
         bc_out(s)%plant_stored_h2o_si = 0.0_r8
      end do
 
-     if( hlm_use_planthydro.eq.ifalse ) return
-
+     if ( .not. any(hlm_plant_hydro_mode==[tfs_hydro_mode,tfs2d_hydro_mode])) return
+     
      do s = 1,nsites
 
         csite_hydr => sites(s)%si_hydr
@@ -3203,8 +3202,8 @@ contains
      type(ed_site_hydr_type), pointer :: csite_hydr
      integer :: s
 
-     if( hlm_use_planthydro.eq.ifalse ) return
-
+     if ( .not. any(hlm_plant_hydro_mode==[tfs_hydro_mode,tfs2d_hydro_mode])) return
+     
      do s = 1,nsites
 
         csite_hydr => sites(s)%si_hydr

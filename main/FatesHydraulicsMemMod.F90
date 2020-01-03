@@ -9,6 +9,15 @@ module FatesHydraulicsMemMod
    implicit none
    private
 
+   ! These flags specify which hydaulics mode is active.
+   ! sbtran_hydro_mode is synonomous with "off", and uses soil
+   ! btran to govern stomatal conductance.
+   
+   integer, parameter, public :: sbtran_hydro_mode = 0
+   integer, parameter, public :: tfs_hydro_mode    = 1
+   integer, parameter, public :: tfs2d_hydro_mode  = 2
+   
+   
    ! Number of soil layers for indexing cohort fine root quanitities
    ! NOTE: The hydraulics code does have some capacity to run a single soil
    ! layer that was developed for comparisons with TFS. However, this has 
