@@ -47,7 +47,8 @@ module FATESPlantRespPhotosynthMod
    use PRTGenericMod,     only : repro_organ
    use PRTGenericMod,     only : struct_organ
    use EDParamsMod, only : ED_val_bbopt_c3, ED_val_bbopt_c4, ED_val_base_mr_20
-
+   use FatesUtilsMod, only : check_var_real
+   
    ! CIME Globals
    use shr_log_mod , only      : errMsg => shr_log_errMsg
 
@@ -897,6 +898,9 @@ contains
    integer :: c3c4_path_index    ! Index for which photosynthetic pathway 
                                  ! is active.  C4 = 0,  C3 = 1
    integer :: sunsha             ! Index for differentiating sun and shade
+   integer :: return_code        ! Code returned by the real variable checker
+                                 ! See check_real_var() for explanation, anything>0
+                                 ! means the variable is invalid
    real(r8) :: gstoma            ! Stomatal Conductance of this leaf layer (m/s)
    real(r8) :: agross            ! co-limited gross leaf photosynthesis (umol CO2/m**2/s)
    real(r8) :: anet              ! net leaf photosynthesis (umol CO2/m**2/s)
@@ -989,7 +993,6 @@ contains
 
            !Loop aroun shaded and unshaded leaves          
            psn_out     = 0._r8    ! psn is accumulated across sun and shaded leaves. 
-           rstoma_out  = 0._r8    ! 1/rs is accumulated across sun and shaded leaves. 
            anet_av_out = 0._r8
            gstoma  = 0._r8
            
@@ -1135,7 +1138,7 @@ contains
               
               ! Convert gs_mol (umol /m**2/s) to gs (m/s) and then to rs (s/m)
               gs = gs_mol / cf
-	      
+
               ! estimate carbon 13 discrimination in leaf level carbon 
               ! flux Liang WEI and Hang ZHOU 2018, based on
               ! Ubierna and Farquhar, 2014 doi:10.1111/pce.12346, using the simplified model:
@@ -1153,11 +1156,55 @@ contains
                  psn_out     = psn_out + agross * f_sun_lsl
                  anet_av_out = anet_av_out + anet * f_sun_lsl
                  gstoma  = gstoma + 1._r8/(min(1._r8/gs, rsmax0)) * f_sun_lsl
+
+                 call check_var_real(gstoma, 'gstoma_p1', return_code)
+                 if( (return_code>0) .or. (gstoma<nearzero) ) then
+                    write (fates_log(),*) 'bad gstoma at p1 (sunlit)'
+                    write (fates_log(),*) 'gs = ',gs
+                    write (fates_log(),*) 'f_sun_lsl = ',f_sun_lsl
+                    write (fates_log(),*) 'cf = ',cf
+                    write (fates_log(),*) 'gs_mol = ',gs_mol
+                    write (fates_log(),*) 'pft = ',ft
+                    write (fates_log(),*) 'qabs = ',qabs
+                    write (fates_log(),*) 'anet = ',anet
+                    write (fates_log(),*) 'gb_mol = ',gb_mol
+                    write (fates_log(),*) 'can_press = ',can_press
+                    write (fates_log(),*) 'veg_esat = ',veg_esat
+                    write (fates_log(),*) 'leaf_co2_ppress = ',leaf_co2_ppress
+                    write (fates_log(),*) 'qabs = ',qabs
+                    write (fates_log(),*) 'bbb = ',bbb
+                    write (fates_log(),*) 'btran_eff = ',btran
+                    call endrun(msg=errMsg(sourcefile, __LINE__))
+                 end if
+
+                 
               else
+
                  psn_out = psn_out + agross * (1.0_r8-f_sun_lsl)                 
                  anet_av_out = anet_av_out + anet * (1.0_r8-f_sun_lsl) 
                  gstoma  = gstoma + &
-                       1._r8/(min(1._r8/gs, rsmax0)) * (1.0_r8-f_sun_lsl) 
+                      1._r8/(min(1._r8/gs, rsmax0)) * (1.0_r8-f_sun_lsl)
+
+                 call check_var_real(gstoma, 'gstoma_p2', return_code)
+                 if( (return_code>0) .or. (gstoma<nearzero) ) then
+                    write (fates_log(),*) 'bad gstoma at p2 (shaded)'
+                    write (fates_log(),*) 'gs = ',gs
+                    write (fates_log(),*) '1-f_sun_lsl = ',1.0_r8-f_sun_lsl
+                    write (fates_log(),*) 'cf = ',cf
+                    write (fates_log(),*) 'gs_mol = ',gs_mol
+                    write (fates_log(),*) 'pft = ',ft
+                    write (fates_log(),*) 'qabs = ',qabs
+                    write (fates_log(),*) 'anet = ',anet
+                    write (fates_log(),*) 'gb_mol = ',gb_mol
+                    write (fates_log(),*) 'can_press = ',can_press
+                    write (fates_log(),*) 'veg_esat = ',veg_esat
+                    write (fates_log(),*) 'leaf_co2_ppress = ',leaf_co2_ppress
+                    write (fates_log(),*) 'qabs = ',qabs
+                    write (fates_log(),*) 'bbb = ',bbb
+                    write (fates_log(),*) 'btran_eff = ',btran
+                    call endrun(msg=errMsg(sourcefile, __LINE__))
+                 end if
+                 
               end if
               
               ! Make sure iterative solution is correct
@@ -1180,7 +1227,15 @@ contains
 
            ! This is the stomatal resistance of the leaf layer
            rstoma_out = 1._r8/gstoma
-	   
+
+           call check_var_real(rstoma_out, 'rstoma_out_p1', return_code)
+           if((rstoma_out < nearzero) .or. (return_code>0) ) then
+              write (fates_log(),*) 'bad rstoma_out position 1'
+              write (fates_log(),*) 'gstoma = ',gstoma
+              call endrun(msg=errMsg(sourcefile, __LINE__))
+           end if
+           
+           
         else
 
            ! No leaf area. This layer is present only because of stems. 
@@ -1192,6 +1247,17 @@ contains
            anet_av_out = 0._r8
            rstoma_out  = min(rsmax0, cf/(stem_cuticle_loss_frac*bbbopt(c3c4_path_index)))
            c13disc_z = 0.0_r8
+
+           call check_var_real(rstoma_out, 'rstoma_out_p2', return_code)
+           if ( (rstoma_out < nearzero) .or. (return_code>0) ) then
+              write (fates_log(),*) 'bad rstoma_out position 2, rstoma_out: ',rstoma_out
+              write (fates_log(),*) 'cf = ',cf
+              write (fates_log(),*) 'stem_cuticle_loss_frac: ',stem_cuticle_loss_frac
+              write (fates_log(),*) 'bbbopt: ',bbbopt(c3c4_path_index)
+              write (fates_log(),*) 'c3c4_path_index: ',c3c4_path_index
+              call endrun(msg=errMsg(sourcefile, __LINE__))
+           end if
+        
            
        end if !is there leaf area? 
         
