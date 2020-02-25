@@ -1794,7 +1794,7 @@ contains
      ! to loop through elements, and call the correct PARTEH interfaces
      ! automatically.
      
-     select case(parteh_mode)
+     select case(hlm_parteh_mode)
      case(prt_carbon_allom_hyp)
 
         num_elements = 1
