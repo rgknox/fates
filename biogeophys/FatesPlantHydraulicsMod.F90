@@ -206,7 +206,7 @@ module FatesPlantHydraulicsMod
 
   ! The maximum allowable water balance error over a plant-soil continuum
   ! for a given step [kgs] (0.1 mg)
-  real(r8), parameter :: max_wb_step_err = 1.e-7_r8 
+  real(r8), parameter :: max_wb_step_err = 1.e-9_r8 
 
   !
   ! !PUBLIC MEMBER FUNCTIONS:
@@ -2558,30 +2558,32 @@ contains
        
       delta_soil_storage  = sum(site_hydr%h2osoi_liqvol_shell(:,:) * & 
             site_hydr%v_shell(:,:)) * denh2o * AREA_INV - prev_h2osoil
-       
-      if(abs(delta_plant_storage - (root_flux - transp_flux)) > 1.e-4_r8 ) then
-          write(fates_log(),*) 'Site plant water balance does not close'
-          write(fates_log(),*) 'balance error: ',abs(delta_plant_storage - (root_flux - transp_flux))
-          write(fates_log(),*) 'delta plant storage: ',delta_plant_storage,' [kg/m2]'
-          write(fates_log(),*) 'integrated root flux: ',root_flux,' [kg/m2]'
-          write(fates_log(),*) 'transpiration flux: ',transp_flux,' [kg/m2]'
-          write(fates_log(),*) 'end storage: ',site_hydr%h2oveg
-          call endrun(msg=errMsg(sourcefile, __LINE__))
+
+      if(.false.)then
+          if(abs(delta_plant_storage - (root_flux - transp_flux)) > 1.e-4_r8 ) then
+              write(fates_log(),*) 'Site plant water balance does not close'
+              write(fates_log(),*) 'balance error: ',abs(delta_plant_storage - (root_flux - transp_flux))
+              write(fates_log(),*) 'delta plant storage: ',delta_plant_storage,' [kg/m2]'
+              write(fates_log(),*) 'integrated root flux: ',root_flux,' [kg/m2]'
+              write(fates_log(),*) 'transpiration flux: ',transp_flux,' [kg/m2]'
+              write(fates_log(),*) 'end storage: ',site_hydr%h2oveg
+              call endrun(msg=errMsg(sourcefile, __LINE__))
+          end if
+          
+          if(abs(delta_soil_storage + root_flux + site_runoff) > 1.e-4_r8 ) then
+              write(fates_log(),*) 'Site soil water balance does not close'
+              write(fates_log(),*) 'delta soil storage: ',delta_soil_storage,' [kg/m2]'
+              write(fates_log(),*) 'integrated root flux (pos into root): ',root_flux,' [kg/m2]'
+              write(fates_log(),*) 'site runoff: ',site_runoff,' [kg/m2]'
+              write(fates_log(),*) 'end storage: ',sum(site_hydr%h2osoi_liqvol_shell(:,:) * & 
+                    site_hydr%v_shell(:,:)) * denh2o * AREA_INV, & 
+                    ' [kg/m2]'
+              call endrun(msg=errMsg(sourcefile, __LINE__))
+          end if
+
       end if
       
-       if(abs(delta_soil_storage + root_flux + site_runoff) > 1.e-4_r8 ) then
-          write(fates_log(),*) 'Site soil water balance does not close'
-          write(fates_log(),*) 'delta soil storage: ',delta_soil_storage,' [kg/m2]'
-          write(fates_log(),*) 'integrated root flux (pos into root): ',root_flux,' [kg/m2]'
-          write(fates_log(),*) 'site runoff: ',site_runoff,' [kg/m2]'
-          write(fates_log(),*) 'end storage: ',sum(site_hydr%h2osoi_liqvol_shell(:,:) * & 
-               site_hydr%v_shell(:,:)) * denh2o * AREA_INV, & 
-               ' [kg/m2]'
-          call endrun(msg=errMsg(sourcefile, __LINE__))
-       end if
-
-
-       !-----------------------------------------------------------------------
+      !-----------------------------------------------------------------------
        ! mass balance check and pass the total stored vegetation water to HLM
        ! in order for it to fill its balance checks
 
@@ -4440,7 +4442,7 @@ contains
     ! This is a convergence test.  This is the maximum difference
     ! allowed between the flux balance and the change in storage
     ! on a node. [kg/s] *Note, 1.e-9 = 1 ug/s
-    real(r8), parameter :: max_allowed_residual = 1.e-8_r8
+    real(r8), parameter :: max_allowed_residual = 1.e-7_r8
 
     ! Maximum number of times we re-try a round of Newton
     ! iterations, each time decreasing the time-step and
@@ -4842,7 +4844,8 @@ contains
 
              else
 
-                 if( residual_amax < max_allowed_residual) then
+                 if( (sum(residual(:)) < max_allowed_residual) .and. &
+                       ( residual_amax < max_allowed_residual)) then
                      
                      ! We have succesffully found a solution
                      ! in this newton iteration.
