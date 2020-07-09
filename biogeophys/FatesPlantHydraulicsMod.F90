@@ -2299,9 +2299,6 @@ contains
        site_hydr%rootuptake50_scpf(:,:)  = 0._r8
        site_hydr%rootuptake100_scpf(:,:) = 0._r8
 
-       print*,"Starting Hydro"
-
-       
        ! Initialize water mass balancing terms [kg h2o / m2]
        ! --------------------------------------------------------------------------------
        transp_flux          = 0._r8
@@ -2344,8 +2341,6 @@ contains
              call endrun(msg=errMsg(sourcefile, __LINE__))
           end if
           
-!          print*,"--New step--"
-
           ccohort=>cpatch%tallest
           do while(associated(ccohort))
 
@@ -2786,8 +2781,6 @@ contains
          a_sapwood / z_upper
 
     ccohort_hydr%kmax_troot_upper = (1._r8/kmax_node - 1._r8/kmax_upper)**(-1._r8)
-
-    !print*,z_upper,z_node,kmax_upper,kmax_node,ccohort_hydr%kmax_troot_upper
 
 
     ! The maximum conductance between the center node of the transporting root
@@ -4472,11 +4465,11 @@ contains
     ! Timestep reduction factor when a round of
     ! newton iterations fail. 
     
-    real(r8), parameter :: dtime_rf = 0.2_r8
+    real(r8), parameter :: dtime_rf = 0.5_r8
 
-    real(r8), parameter :: rlfx_soil_init = 0.5  !rlfx1 ! 0.1  ! Initial Pressure update
+    real(r8), parameter :: rlfx_soil_init = 1.0  !rlfx1 ! 0.1  ! Initial Pressure update
                                          ! reduction factor for soil compartments
-    real(r8), parameter :: rlfx_plnt_init = 0.5  !rlfx  0.6  ! Initial Pressure update
+    real(r8), parameter :: rlfx_plnt_init = 1.0  !rlfx  0.6  ! Initial Pressure update
                                          ! reduction factor for plant comparmtents
 
 
@@ -4983,7 +4976,8 @@ contains
      end do outerloop
 
      if(cohort_hydr%iterh1>1._r8) then
-         print*,"i1: ",cohort_hydr%iterh1,"i2: ",cohort_hydr%iterh2
+         write(fates_log(),*) 'fates hydro 2d solve, i1: ',cohort_hydr%iterh1,'i2: ',cohort_hydr%iterh2
+        call endrun(msg=errMsg(sourcefile, __LINE__))
      end if
 
      ! Save flux diagnostics
