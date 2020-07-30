@@ -3302,7 +3302,7 @@ contains
                 kmax_dn  = rootfr_scaler*cohort_hydr%kmax_petiole_to_leaf
                 kmax_up  = rootfr_scaler*cohort_hydr%kmax_stem_upper(1)
 
-                call GetImTaylorKAB(kmax_up,kmax_dn,        &
+                call GetImTaylorKAB(pm_node(i_dn),kmax_up,kmax_dn,        &
                       ftc_node(i_up),ftc_node(i_dn),        & 
                       h_node(i_up),h_node(i_dn),            & 
                       dftc_dtheta_node(i_up), dftc_dtheta_node(i_dn), &
@@ -3330,7 +3330,7 @@ contains
                     kmax_dn  = rootfr_scaler*cohort_hydr%kmax_stem_lower(i_dn-n_hypool_leaf)
                     kmax_up  = rootfr_scaler*cohort_hydr%kmax_stem_upper(i_up-n_hypool_leaf)
 
-                    call GetImTaylorKAB(kmax_up,kmax_dn,        &
+                    call GetImTaylorKAB(pm_node(i_dn),kmax_up,kmax_dn,        &
                           ftc_node(i_up),ftc_node(i_dn),        & 
                           h_node(i_up),h_node(i_dn),            & 
                           dftc_dtheta_node(i_up), dftc_dtheta_node(i_dn), &
@@ -3350,7 +3350,7 @@ contains
                 kmax_dn  = rootfr_scaler*cohort_hydr%kmax_stem_lower(n_hypool_stem)
                 kmax_up  = rootfr_scaler*cohort_hydr%kmax_troot_upper
 
-                call GetImTaylorKAB(kmax_up,kmax_dn,        &
+                call GetImTaylorKAB(pm_node(i_dn),kmax_up,kmax_dn,        &
                       ftc_node(i_up),ftc_node(i_dn),        & 
                       h_node(i_up),h_node(i_dn),            & 
                       dftc_dtheta_node(i_up), dftc_dtheta_node(i_dn), &
@@ -3370,7 +3370,7 @@ contains
                 kmax_dn = cohort_hydr%kmax_troot_lower(ilayer) 
                 kmax_up = cohort_hydr%kmax_aroot_upper(ilayer)
 
-                call GetImTaylorKAB(kmax_up,kmax_dn,        &
+                call GetImTaylorKAB(pm_node(i_dn),kmax_up,kmax_dn,        &
                       ftc_node(i_up),ftc_node(i_dn),        & 
                       h_node(i_up),h_node(i_dn),            & 
                       dftc_dtheta_node(i_up), dftc_dtheta_node(i_dn), &
@@ -3398,7 +3398,7 @@ contains
 
                 kmax_up = site_hydr%kmax_upper_shell(ilayer,1)*aroot_frac_plant
 
-                call GetImTaylorKAB(kmax_up,kmax_dn,        &
+                call GetImTaylorKAB(pm_node(i_dn),kmax_up,kmax_dn,        &
                       ftc_node(i_up),ftc_node(i_dn),        & 
                       h_node(i_up),h_node(i_dn),            & 
                       dftc_dtheta_node(i_up), dftc_dtheta_node(i_dn), &
@@ -3419,7 +3419,7 @@ contains
                     kmax_dn = site_hydr%kmax_lower_shell(ilayer,ishell_dn)*aroot_frac_plant
                     kmax_up = site_hydr%kmax_upper_shell(ilayer,ishell_up)*aroot_frac_plant
 
-                    call GetImTaylorKAB(kmax_up,kmax_dn,        &
+                    call GetImTaylorKAB(pm_node(i_dn),kmax_up,kmax_dn,        &
                           ftc_node(i_up),ftc_node(i_dn),        & 
                           h_node(i_up),h_node(i_dn),            & 
                           dftc_dtheta_node(i_up), dftc_dtheta_node(i_dn), &
@@ -3788,7 +3788,7 @@ contains
 
   ! =================================================================================
 
-  subroutine GetImTaylorKAB(kmax_up,kmax_dn, &
+  subroutine GetImTaylorKAB(pm_downstream,kmax_up,kmax_dn, &
        ftc_up,ftc_dn, &
        h_up,h_dn, &
        dftc_dtheta_up, dftc_dtheta_dn, &
@@ -3807,6 +3807,8 @@ contains
     ! and the "d"ow"n" stream side (closer to air)
     ! -----------------------------------------------------------------------------
     ! Arguments
+    integer,intent(in)     :: pm_downstream                  ! downstream node's material type
+                                                             ! i.e leaf, stem, root, rhiz etc                
     real(r8),intent(in)    :: kmax_dn, kmax_up               ! max conductance [kg s-1 Mpa-1]
     real(r8),intent(inout) :: ftc_dn, ftc_up                 ! frac total conductance [-]
     real(r8),intent(in)    :: h_dn, h_up                     ! total potential [Mpa]
@@ -3836,9 +3838,16 @@ contains
        if (h_diff>0._r8) then
           ftc_dn       = ftc_up
           dftc_dtheta_dn = 0._r8
-       else
-          ftc_up         = ftc_dn
-          dftc_dtheta_up = 0._r8
+       elseif(pm_downstream .ne. leaf_p_media)
+
+           ! Here we do not allow upstream k
+           ! if it is coming from the leaf because
+           ! petiole conductance is ill defined right now
+           ! (the pm_downstream convention is the standard
+           !  flow direction of root to atm being downstream)
+
+           ftc_up         = ftc_dn
+           dftc_dtheta_up = 0._r8
        end if
 
     end if
@@ -3862,7 +3871,8 @@ contains
 
   ! =====================================================================================
 
-  subroutine GetKAndDKDPsi(kmax_dn,kmax_up, &
+  subroutine GetKAndDKDPsi(pm_downstream,
+       kmax_dn,kmax_up, &
        h_dn,h_up, &
        ftc_dn,ftc_up, &
        dftc_dpsi_dn, & 
@@ -3879,7 +3889,8 @@ contains
     ! themselves, but to the path between the nodes, defined as positive
     ! direction from "up"per (closer to atm) and "lo"wer (further from atm).
     ! -----------------------------------------------------------------------------
-
+    integer,intent(in)     :: pm_downstream                  ! downstream node's material type
+                                                             ! i.e leaf, stem, root, rhiz etc       
     real(r8),intent(in)    :: kmax_dn        ! max conductance (downstream) [kg s-1 Mpa-1]
     real(r8),intent(in)    :: kmax_up        ! max conductance (upstream)   [kg s-1 Mpa-1]
     real(r8),intent(in)    :: h_dn           ! total potential (downstream) [MPa]
@@ -3916,7 +3927,13 @@ contains
        if (h_diff>0._r8) then
           ftc_dn         = ftc_up
           dftc_dpsi_dn = 0._r8
-       else
+       elseif(pm_downstream .ne. leaf_p_media)
+
+           ! Here we do not allow upstream k
+           ! if it is coming from the leaf because
+           ! petiole conductance is ill defined right now
+           ! (the pm_downstream convention is the standard
+           !  flow direction of root to atm being downstream)
           ftc_up         = ftc_dn
           dftc_dpsi_up = 0._r8
        end if
