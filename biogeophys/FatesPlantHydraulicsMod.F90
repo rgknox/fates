@@ -3788,7 +3788,8 @@ contains
 
   ! =================================================================================
 
-  subroutine GetImTaylorKAB(pm_downstream,kmax_up,kmax_dn, &
+  subroutine GetImTaylorKAB(pm_downstream, &
+       kmax_up,kmax_dn, &
        ftc_up,ftc_dn, &
        h_up,h_dn, &
        dftc_dtheta_up, dftc_dtheta_dn, &
@@ -3838,7 +3839,7 @@ contains
        if (h_diff>0._r8) then
           ftc_dn       = ftc_up
           dftc_dtheta_dn = 0._r8
-       elseif(pm_downstream .ne. leaf_p_media)
+       elseif(pm_downstream .ne. leaf_p_media)then
 
            ! Here we do not allow upstream k
            ! if it is coming from the leaf because
@@ -3871,7 +3872,7 @@ contains
 
   ! =====================================================================================
 
-  subroutine GetKAndDKDPsi(pm_downstream,
+  subroutine GetKAndDKDPsi(pm_downstream, &
        kmax_dn,kmax_up, &
        h_dn,h_up, &
        ftc_dn,ftc_up, &
@@ -3927,7 +3928,7 @@ contains
        if (h_diff>0._r8) then
           ftc_dn         = ftc_up
           dftc_dpsi_dn = 0._r8
-       elseif(pm_downstream .ne. leaf_p_media)
+       elseif(pm_downstream .ne. leaf_p_media) then
 
            ! Here we do not allow upstream k
            ! if it is coming from the leaf because
@@ -4703,7 +4704,8 @@ contains
             ! This will get the effective K, and may modify FTC depending
             ! on the flow direction
 
-            call GetKAndDKDPsi(kmax_dn(icnx), &
+            call GetKAndDKDPsi(pm_node(id_dn), &
+                               kmax_dn(icnx), &
                                kmax_up(icnx), &
                                h_node(id_dn), &
                                h_node(id_up), &
