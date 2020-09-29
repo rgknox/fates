@@ -145,47 +145,47 @@ module FatesHistoryInterfaceMod
   
   ! Indices to 1D Patch variables
 
-  integer :: ih_storec_si
-  integer :: ih_leafc_si
-  integer :: ih_sapwc_si
-  integer :: ih_fnrtc_si
-  integer :: ih_reproc_si
-  integer :: ih_totvegc_si
+  integer :: ih_storec
+  integer :: ih_leafc
+  integer :: ih_sapwc
+  integer :: ih_fnrtc
+  integer :: ih_reproc
+  integer :: ih_totvegc
 
-  integer :: ih_storen_si
-  integer :: ih_leafn_si
-  integer :: ih_sapwn_si
-  integer :: ih_fnrtn_si
-  integer :: ih_repron_si
-  integer :: ih_totvegn_si
+  integer :: ih_storen
+  integer :: ih_leafn
+  integer :: ih_sapwn
+  integer :: ih_fnrtn
+  integer :: ih_repron
+  integer :: ih_totvegn
 
-  integer :: ih_storep_si
-  integer :: ih_leafp_si
-  integer :: ih_sapwp_si
-  integer :: ih_fnrtp_si
-  integer :: ih_reprop_si
-  integer :: ih_totvegp_si
+  integer :: ih_storep
+  integer :: ih_leafp
+  integer :: ih_sapwp
+  integer :: ih_fnrtp
+  integer :: ih_reprop
+  integer :: ih_totvegp
 
-  integer :: ih_nuptake_si
-  integer :: ih_puptake_si
-  integer :: ih_cefflux_si
-  integer :: ih_nefflux_si
-  integer :: ih_pefflux_si
-  integer :: ih_nneedgrow_si
-  integer :: ih_nneedmax_si
-  integer :: ih_pneedgrow_si
-  integer :: ih_pneedmax_si
+  integer :: ih_nuptake
+  integer :: ih_puptake
+  integer :: ih_cefflux
+  integer :: ih_nefflux
+  integer :: ih_pefflux
+  integer :: ih_nneedgrow
+  integer :: ih_nneedmax
+  integer :: ih_pneedgrow
+  integer :: ih_pneedmax
   
-  integer :: ih_trimming_si
-  integer :: ih_area_plant_si
-  integer :: ih_area_trees_si
+  integer :: ih_trimming
+  integer :: ih_area_plant
+  integer :: ih_area_trees
 
   integer :: ih_cwd_elcwd
 
-  integer :: ih_litter_in_si    ! carbon only
-  integer :: ih_litter_out_si   ! carbon only
-  integer :: ih_seed_bank_si    ! carbon only
-  integer :: ih_seeds_in_si     ! carbon only
+  integer :: ih_litter_in    ! carbon only
+  integer :: ih_litter_out   ! carbon only
+  integer :: ih_seed_bank    ! carbon only
+  integer :: ih_seeds_in     ! carbon only
 
   integer :: ih_litter_in_elem
   integer :: ih_litter_out_elem
@@ -203,10 +203,10 @@ module FatesHistoryInterfaceMod
 
   ! Size-class x PFT mass states
   
-  integer :: ih_bstor_canopy_si_scpf
-  integer :: ih_bstor_understory_si_scpf
-  integer :: ih_bleaf_canopy_si_scpf
-  integer :: ih_bleaf_understory_si_scpf
+  integer :: ih_bstor_canopy_scpf
+  integer :: ih_bstor_understory_scpf
+  integer :: ih_bleaf_canopy_scpf
+  integer :: ih_bleaf_understory_scpf
 
 
 
@@ -244,299 +244,299 @@ module FatesHistoryInterfaceMod
   integer :: ih_daily_rh
   integer :: ih_daily_prec
  
-  integer :: ih_bstore_si
-  integer :: ih_bdead_si
-  integer :: ih_balive_si
-  integer :: ih_bleaf_si
-  integer :: ih_bsapwood_si
-  integer :: ih_bfineroot_si
-  integer :: ih_btotal_si
-  integer :: ih_agb_si
-  integer :: ih_npp_si
-  integer :: ih_gpp_si
-  integer :: ih_aresp_si
-  integer :: ih_maint_resp_si
-  integer :: ih_growth_resp_si
-  integer :: ih_ar_canopy_si
-  integer :: ih_gpp_canopy_si
-  integer :: ih_ar_understory_si
-  integer :: ih_gpp_understory_si
-  integer :: ih_canopy_biomass_si
-  integer :: ih_understory_biomass_si
+  integer :: ih_bstore
+  integer :: ih_bdead
+  integer :: ih_balive
+  integer :: ih_bleaf
+  integer :: ih_bsapwood
+  integer :: ih_bfineroot
+  integer :: ih_btotal
+  integer :: ih_agb
+  integer :: ih_npp
+  integer :: ih_gpp
+  integer :: ih_aresp
+  integer :: ih_maint_resp
+  integer :: ih_growth_resp
+  integer :: ih_ar_canopy
+  integer :: ih_gpp_canopy
+  integer :: ih_ar_understory
+  integer :: ih_gpp_understory
+  integer :: ih_canopy_biomass
+  integer :: ih_understory_biomass
 
-  integer :: ih_primaryland_fusion_error_si
-  integer :: ih_disturbance_rate_p2p_si
-  integer :: ih_disturbance_rate_p2s_si
-  integer :: ih_disturbance_rate_s2s_si
-  integer :: ih_fire_disturbance_rate_si
-  integer :: ih_logging_disturbance_rate_si
-  integer :: ih_fall_disturbance_rate_si
-  integer :: ih_potential_disturbance_rate_si
-  integer :: ih_harvest_carbonflux_si
+  integer :: ih_primaryland_fusion_error
+  integer :: ih_disturbance_rate_p2p
+  integer :: ih_disturbance_rate_p2s
+  integer :: ih_disturbance_rate_s2s
+  integer :: ih_fire_disturbance_rate
+  integer :: ih_logging_disturbance_rate
+  integer :: ih_fall_disturbance_rate
+  integer :: ih_potential_disturbance_rate
+  integer :: ih_harvest_carbonflux
 
   ! Indices to site by size-class by age variables
-  integer :: ih_nplant_si_scag
-  integer :: ih_nplant_canopy_si_scag
-  integer :: ih_nplant_understory_si_scag
-  integer :: ih_ddbh_canopy_si_scag
-  integer :: ih_ddbh_understory_si_scag
-  integer :: ih_mortality_canopy_si_scag
-  integer :: ih_mortality_understory_si_scag
+  integer :: ih_nplant_scag
+  integer :: ih_nplant_canopy_scag
+  integer :: ih_nplant_understory_scag
+  integer :: ih_ddbh_canopy_scag
+  integer :: ih_ddbh_understory_scag
+  integer :: ih_mortality_canopy_scag
+  integer :: ih_mortality_understory_scag
 
   ! Indices to site by size-class by age by pft variables
-  integer :: ih_nplant_si_scagpft
+  integer :: ih_nplant_scagpft
 
   ! Indices to site by patch age by pft variables
-  integer :: ih_biomass_si_agepft
-  integer :: ih_npp_si_agepft
-  integer :: ih_scorch_height_si_agepft
+  integer :: ih_biomass_agepft
+  integer :: ih_npp_agepft
+  integer :: ih_scorch_height_agepft
 
   ! Indices to (site) variables
 
-  integer :: ih_nep_si
+  integer :: ih_nep
 
-  integer :: ih_c_stomata_si
-  integer :: ih_c_lblayer_si
+  integer :: ih_c_stomata
+  integer :: ih_c_lblayer
 
-  integer :: ih_fire_c_to_atm_si
+  integer :: ih_fire_c_to_atm
 
 
-  integer :: ih_cbal_err_fates_si
-  integer :: ih_err_fates_si
+  integer :: ih_cbal_err_fates
+  integer :: ih_err_fates
 
-  integer :: ih_npatches_si
-  integer :: ih_ncohorts_si
-  integer :: ih_demotion_carbonflux_si
-  integer :: ih_promotion_carbonflux_si
-  integer :: ih_canopy_mortality_carbonflux_si
-  integer :: ih_understory_mortality_carbonflux_si
-  integer :: ih_canopy_spread_si
-  integer :: ih_npp_leaf_si
-  integer :: ih_npp_seed_si
-  integer :: ih_npp_stem_si
-  integer :: ih_npp_froot_si
-  integer :: ih_npp_croot_si
-  integer :: ih_npp_stor_si
-  integer :: ih_leaf_mr_si
-  integer :: ih_froot_mr_si
-  integer :: ih_livestem_mr_si
-  integer :: ih_livecroot_mr_si
-  integer :: ih_fraction_secondary_forest_si
-  integer :: ih_biomass_secondary_forest_si
-  integer :: ih_woodproduct_si
-  integer :: ih_h2oveg_si
-  integer :: ih_h2oveg_dead_si
-  integer :: ih_h2oveg_recruit_si
-  integer :: ih_h2oveg_growturn_err_si
-  integer :: ih_h2oveg_pheno_err_si
-  integer :: ih_h2oveg_hydro_err_si
+  integer :: ih_npatches
+  integer :: ih_ncohorts
+  integer :: ih_demotion_carbonflux
+  integer :: ih_promotion_carbonflux
+  integer :: ih_canopy_mortality_carbonflux
+  integer :: ih_understory_mortality_carbonflux
+  integer :: ih_canopy_spread
+  integer :: ih_npp_leaf
+  integer :: ih_npp_seed
+  integer :: ih_npp_stem
+  integer :: ih_npp_froot
+  integer :: ih_npp_croot
+  integer :: ih_npp_stor
+  integer :: ih_leaf_mr
+  integer :: ih_froot_mr
+  integer :: ih_livestem_mr
+  integer :: ih_livecroot_mr
+  integer :: ih_fraction_secondary_forest
+  integer :: ih_biomass_secondary_forest
+  integer :: ih_woodproduct
+  integer :: ih_h2oveg
+  integer :: ih_h2oveg_dead
+  integer :: ih_h2oveg_recruit
+  integer :: ih_h2oveg_growturn_err
+  integer :: ih_h2oveg_pheno_err
+  integer :: ih_h2oveg_hydro_err
   
-  integer :: ih_site_cstatus_si
-  integer :: ih_site_dstatus_si
-  integer :: ih_gdd_si
-  integer :: ih_site_nchilldays_si
-  integer :: ih_site_ncolddays_si
-  integer :: ih_cleafoff_si
-  integer :: ih_cleafon_si
-  integer :: ih_dleafoff_si
-  integer :: ih_dleafon_si
-  integer :: ih_meanliqvol_si
+  integer :: ih_cstatus
+  integer :: ih_dstatus
+  integer :: ih_gdd
+  integer :: ihte_nchilldays
+  integer :: ihte_ncolddays
+  integer :: ih_cleafoff
+  integer :: ih_cleafon
+  integer :: ih_dleafoff
+  integer :: ih_dleafon
+  integer :: ih_meanliqvol
 
-  integer :: ih_nesterov_fire_danger_si
-  integer :: ih_fire_nignitions_si
-  integer :: ih_fire_fdi_si
-  integer :: ih_fire_intensity_area_product_si
-  integer :: ih_spitfire_ros_si
-  integer :: ih_fire_ros_area_product_si
-  integer :: ih_effect_wspeed_si
-  integer :: ih_tfc_ros_si
-  integer :: ih_tfc_ros_area_product_si
-  integer :: ih_fire_intensity_si
-  integer :: ih_fire_area_si
-  integer :: ih_fire_fuel_bulkd_si
-  integer :: ih_fire_fuel_eff_moist_si
-  integer :: ih_fire_fuel_sav_si
-  integer :: ih_fire_fuel_mef_si
-  integer :: ih_sum_fuel_si
-  integer :: ih_fragmentation_scaler_si
+  integer :: ih_nesterov_fire_danger
+  integer :: ih_fire_nignitions
+  integer :: ih_fire_fdi
+  integer :: ih_fire_intensity_area_product
+  integer :: ih_spitfire_ros
+  integer :: ih_fire_ros_area_product
+  integer :: ih_effect_wspeed
+  integer :: ih_tfc_ros
+  integer :: ih_tfc_ros_area_product
+  integer :: ih_fire_intensity
+  integer :: ih_fire_area
+  integer :: ih_fire_fuel_bulkd
+  integer :: ih_fire_fuel_eff_moist
+  integer :: ih_fire_fuel_sav
+  integer :: ih_fire_fuel_mef
+  integer :: ih_sum_fuel
+  integer :: ih_fragmentation_scaler
 
-  integer :: ih_nplant_si_scpf
-  integer :: ih_gpp_si_scpf
-  integer :: ih_npp_totl_si_scpf
-  integer :: ih_npp_leaf_si_scpf
-  integer :: ih_npp_seed_si_scpf
-  integer :: ih_npp_fnrt_si_scpf
-  integer :: ih_npp_bgsw_si_scpf
-  integer :: ih_npp_bgdw_si_scpf
-  integer :: ih_npp_agsw_si_scpf
-  integer :: ih_npp_agdw_si_scpf
-  integer :: ih_npp_stor_si_scpf
+  integer :: ih_nplant_scpf
+  integer :: ih_gpp_scpf
+  integer :: ih_npp_totl_scpf
+  integer :: ih_npp_leaf_scpf
+  integer :: ih_npp_seed_scpf
+  integer :: ih_npp_fnrt_scpf
+  integer :: ih_npp_bgsw_scpf
+  integer :: ih_npp_bgdw_scpf
+  integer :: ih_npp_agsw_scpf
+  integer :: ih_npp_agdw_scpf
+  integer :: ih_npp_stor_scpf
   
  
-  integer :: ih_mortality_canopy_si_scpf
-  integer :: ih_mortality_understory_si_scpf
-  integer :: ih_nplant_canopy_si_scpf
-  integer :: ih_nplant_understory_si_scpf
-  integer :: ih_ddbh_canopy_si_scpf
-  integer :: ih_ddbh_understory_si_scpf
-  integer :: ih_gpp_canopy_si_scpf
-  integer :: ih_gpp_understory_si_scpf
-  integer :: ih_ar_canopy_si_scpf
-  integer :: ih_ar_understory_si_scpf
+  integer :: ih_mortality_canopy_scpf
+  integer :: ih_mortality_understory_scpf
+  integer :: ih_nplant_canopy_scpf
+  integer :: ih_nplant_understory_scpf
+  integer :: ih_ddbh_canopy_scpf
+  integer :: ih_ddbh_understory_scpf
+  integer :: ih_gpp_canopy_scpf
+  integer :: ih_gpp_understory_scpf
+  integer :: ih_ar_canopy_scpf
+  integer :: ih_ar_understory_scpf
 
-  integer :: ih_ddbh_si_scpf
-  integer :: ih_growthflux_si_scpf
-  integer :: ih_growthflux_fusion_si_scpf
-  integer :: ih_ba_si_scpf
-  integer :: ih_agb_si_scpf
-  integer :: ih_m1_si_scpf
-  integer :: ih_m2_si_scpf
-  integer :: ih_m3_si_scpf
-  integer :: ih_m4_si_scpf
-  integer :: ih_m5_si_scpf
-  integer :: ih_m6_si_scpf
-  integer :: ih_m7_si_scpf  
-  integer :: ih_m8_si_scpf
-  integer :: ih_m9_si_scpf
-  integer :: ih_m10_si_scpf
-  integer :: ih_crownfiremort_si_scpf
-  integer :: ih_cambialfiremort_si_scpf
+  integer :: ih_ddbh_scpf
+  integer :: ih_growthflux_scpf
+  integer :: ih_growthflux_fusion_scpf
+  integer :: ih_ba_scpf
+  integer :: ih_agb_scpf
+  integer :: ih_m1_scpf
+  integer :: ih_m2_scpf
+  integer :: ih_m3_scpf
+  integer :: ih_m4_scpf
+  integer :: ih_m5_scpf
+  integer :: ih_m6_scpf
+  integer :: ih_m7_scpf  
+  integer :: ih_m8_scpf
+  integer :: ih_m9_scpf
+  integer :: ih_m10_scpf
+  integer :: ih_crownfiremort_scpf
+  integer :: ih_cambialfiremort_scpf
 
-  integer :: ih_m10_si_capf
-  integer :: ih_nplant_si_capf
+  integer :: ih_m10_capf
+  integer :: ih_nplant_capf
 
-  integer :: ih_ar_si_scpf
-  integer :: ih_ar_grow_si_scpf
-  integer :: ih_ar_maint_si_scpf
-  integer :: ih_ar_darkm_si_scpf
-  integer :: ih_ar_agsapm_si_scpf
-  integer :: ih_ar_crootm_si_scpf
-  integer :: ih_ar_frootm_si_scpf
+  integer :: ih_ar_scpf
+  integer :: ih_ar_grow_scpf
+  integer :: ih_ar_maint_scpf
+  integer :: ih_ar_darkm_scpf
+  integer :: ih_ar_agsapm_scpf
+  integer :: ih_ar_crootm_scpf
+  integer :: ih_ar_frootm_scpf
   
-  integer :: ih_c13disc_si_scpf
+  integer :: ih_c13disc_scpf
 
   ! indices to (site x size [size class bins]) variables
-  integer :: ih_ba_si_sz
-  integer :: ih_nplant_si_sz
-  integer :: ih_nplant_canopy_si_sz
-  integer :: ih_nplant_understory_si_sz
-  integer :: ih_lai_canopy_si_sz
-  integer :: ih_lai_understory_si_sz
-  integer :: ih_sai_canopy_si_sz
-  integer :: ih_sai_understory_si_sz
-  integer :: ih_mortality_canopy_si_sz
-  integer :: ih_mortality_understory_si_sz
-  integer :: ih_demotion_rate_si_sz
-  integer :: ih_promotion_rate_si_sz
-  integer :: ih_trimming_canopy_si_sz
-  integer :: ih_trimming_understory_si_sz
-  integer :: ih_crown_area_canopy_si_sz
-  integer :: ih_crown_area_understory_si_sz
-  integer :: ih_ddbh_canopy_si_sz
-  integer :: ih_ddbh_understory_si_sz
-  integer :: ih_agb_si_sz
-  integer :: ih_biomass_si_sz
+  integer :: ih_ba_sz
+  integer :: ih_nplant_sz
+  integer :: ih_nplant_canopy_sz
+  integer :: ih_nplant_understory_sz
+  integer :: ih_lai_canopy_sz
+  integer :: ih_lai_understory_sz
+  integer :: ih_sai_canopy_sz
+  integer :: ih_sai_understory_sz
+  integer :: ih_mortality_canopy_sz
+  integer :: ih_mortality_understory_sz
+  integer :: ih_demotion_rate_sz
+  integer :: ih_promotion_rate_sz
+  integer :: ih_trimming_canopy_sz
+  integer :: ih_trimming_understory_sz
+  integer :: ih_crown_area_canopy_sz
+  integer :: ih_crown_area_understory_sz
+  integer :: ih_ddbh_canopy_sz
+  integer :: ih_ddbh_understory_sz
+  integer :: ih_agb_sz
+  integer :: ih_biomass_sz
 
   ! mortality vars
-  integer :: ih_m1_si_sz
-  integer :: ih_m2_si_sz
-  integer :: ih_m3_si_sz
-  integer :: ih_m4_si_sz
-  integer :: ih_m5_si_sz
-  integer :: ih_m6_si_sz
-  integer :: ih_m7_si_sz  
-  integer :: ih_m8_si_sz
-  integer :: ih_m9_si_sz
-  integer :: ih_m10_si_sz
+  integer :: ih_m1_sz
+  integer :: ih_m2_sz
+  integer :: ih_m3_sz
+  integer :: ih_m4_sz
+  integer :: ih_m5_sz
+  integer :: ih_m6_sz
+  integer :: ih_m7_sz  
+  integer :: ih_m8_sz
+  integer :: ih_m9_sz
+  integer :: ih_m10_sz
 
-  integer :: ih_m10_si_cacls
-  integer :: ih_nplant_si_cacls
+  integer :: ih_m10_cacls
+  integer :: ih_nplant_cacls
 
   ! lots of non-default diagnostics for understanding canopy versus understory carbon balances
-  integer :: ih_rdark_canopy_si_sz
-  integer :: ih_livestem_mr_canopy_si_sz
-  integer :: ih_livecroot_mr_canopy_si_sz
-  integer :: ih_froot_mr_canopy_si_sz
-  integer :: ih_resp_g_canopy_si_sz
-  integer :: ih_resp_m_canopy_si_sz
-  integer :: ih_leaf_md_canopy_si_sz
-  integer :: ih_root_md_canopy_si_sz
-  integer :: ih_carbon_balance_canopy_si_sz
-  integer :: ih_bstore_md_canopy_si_sz
-  integer :: ih_bdead_md_canopy_si_sz
-  integer :: ih_bsw_md_canopy_si_sz
-  integer :: ih_seed_prod_canopy_si_sz
-  integer :: ih_npp_leaf_canopy_si_sz
-  integer :: ih_npp_fnrt_canopy_si_sz
-  integer :: ih_npp_sapw_canopy_si_sz
-  integer :: ih_npp_dead_canopy_si_sz
-  integer :: ih_npp_seed_canopy_si_sz
-  integer :: ih_npp_stor_canopy_si_sz
+  integer :: ih_rdark_canopy_sz
+  integer :: ih_livestem_mr_canopy_sz
+  integer :: ih_livecroot_mr_canopy_sz
+  integer :: ih_froot_mr_canopy_sz
+  integer :: ih_resp_g_canopy_sz
+  integer :: ih_resp_m_canopy_sz
+  integer :: ih_leaf_md_canopy_sz
+  integer :: ih_root_md_canopy_sz
+  integer :: ih_carbon_balance_canopy_sz
+  integer :: ih_bstore_md_canopy_sz
+  integer :: ih_bdead_md_canopy_sz
+  integer :: ih_bsw_md_canopy_sz
+  integer :: ih_seed_prod_canopy_sz
+  integer :: ih_npp_leaf_canopy_sz
+  integer :: ih_npp_fnrt_canopy_sz
+  integer :: ih_npp_sapw_canopy_sz
+  integer :: ih_npp_dead_canopy_sz
+  integer :: ih_npp_seed_canopy_sz
+  integer :: ih_npp_stor_canopy_sz
 
-  integer :: ih_rdark_understory_si_sz
-  integer :: ih_livestem_mr_understory_si_sz
-  integer :: ih_livecroot_mr_understory_si_sz
-  integer :: ih_froot_mr_understory_si_sz
-  integer :: ih_resp_g_understory_si_sz
-  integer :: ih_resp_m_understory_si_sz
-  integer :: ih_leaf_md_understory_si_sz
-  integer :: ih_root_md_understory_si_sz
-  integer :: ih_carbon_balance_understory_si_sz
-  integer :: ih_bsw_md_understory_si_sz
-  integer :: ih_bdead_md_understory_si_sz
-  integer :: ih_bstore_md_understory_si_sz
-  integer :: ih_seed_prod_understory_si_sz
-  integer :: ih_npp_leaf_understory_si_sz
-  integer :: ih_npp_fnrt_understory_si_sz
-  integer :: ih_npp_sapw_understory_si_sz
-  integer :: ih_npp_dead_understory_si_sz
-  integer :: ih_npp_seed_understory_si_sz
-  integer :: ih_npp_stor_understory_si_sz
+  integer :: ih_rdark_understory_sz
+  integer :: ih_livestem_mr_understory_sz
+  integer :: ih_livecroot_mr_understory_sz
+  integer :: ih_froot_mr_understory_sz
+  integer :: ih_resp_g_understory_sz
+  integer :: ih_resp_m_understory_sz
+  integer :: ih_leaf_md_understory_sz
+  integer :: ih_root_md_understory_sz
+  integer :: ih_carbon_balance_understory_sz
+  integer :: ih_bsw_md_understory_sz
+  integer :: ih_bdead_md_understory_sz
+  integer :: ih_bstore_md_understory_sz
+  integer :: ih_seed_prod_understory_sz
+  integer :: ih_npp_leaf_understory_sz
+  integer :: ih_npp_fnrt_understory_sz
+  integer :: ih_npp_sapw_understory_sz
+  integer :: ih_npp_dead_understory_sz
+  integer :: ih_npp_seed_understory_sz
+  integer :: ih_npp_stor_understory_sz
 
-  integer :: ih_yesterdaycanopylevel_canopy_si_sz
-  integer :: ih_yesterdaycanopylevel_understory_si_sz
+  integer :: ih_yesterdaycanopylevel_canopy_sz
+  integer :: ih_yesterdaycanopylevel_understory_sz
 
   ! indices to (site x pft) variables
-  integer :: ih_biomass_si_pft
-  integer :: ih_leafbiomass_si_pft
-  integer :: ih_storebiomass_si_pft
-  integer :: ih_nindivs_si_pft
-  integer :: ih_recruitment_si_pft
-  integer :: ih_mortality_si_pft
-  integer :: ih_crownarea_si_pft
-  integer :: ih_canopycrownarea_si_pft
+  integer :: ih_biomass_pft
+  integer :: ih_leafbiomass_pft
+  integer :: ih_storebiomass_pft
+  integer :: ih_nindivs_pft
+  integer :: ih_recruitment_pft
+  integer :: ih_mortality_pft
+  integer :: ih_crownarea_pft
+  integer :: ih_canopycrownarea_pft
 
   ! indices to (site x patch-age) variables
-  integer :: ih_area_si_age
-  integer :: ih_lai_si_age
-  integer :: ih_canopy_area_si_age
-  integer :: ih_gpp_si_age
-  integer :: ih_npp_si_age
-  integer :: ih_ncl_si_age
-  integer :: ih_npatches_si_age
-  integer :: ih_zstar_si_age
-  integer :: ih_biomass_si_age
-  integer :: ih_c_stomata_si_age
-  integer :: ih_c_lblayer_si_age
-  integer :: ih_agesince_anthrodist_si_age
-  integer :: ih_secondaryforest_area_si_age
-  integer :: ih_area_burnt_si_age
-  ! integer :: ih_fire_rate_of_spread_front_si_age
-  integer :: ih_fire_intensity_si_age
-  integer :: ih_fire_sum_fuel_si_age
+  integer :: ih_area_age
+  integer :: ih_lai_age
+  integer :: ih_canopy_area_age
+  integer :: ih_gpp_age
+  integer :: ih_npp_age
+  integer :: ih_ncl_age
+  integer :: ih_npatches_age
+  integer :: ih_zstar_age
+  integer :: ih_biomass_age
+  integer :: ih_c_stomata_age
+  integer :: ih_c_lblayer_age
+  integer :: ih_agesince_anthrodist_age
+  integer :: ih_secondaryforest_area_age
+  integer :: ih_area_burnt_age
+  ! integer :: ih_fire_rate_of_spread_front_age
+  integer :: ih_fire_intensity_age
+  integer :: ih_fire_sum_fuel_age
 
   ! indices to (site x height) variables
-  integer :: ih_canopy_height_dist_si_height
-  integer :: ih_leaf_height_dist_si_height
+  integer :: ih_canopy_height_dist_height
+  integer :: ih_leaf_height_dist_height
 
   ! Indices to hydraulics variables
   
   integer :: ih_errh2o_scpf
   integer :: ih_tran_scpf
 
-!  integer :: ih_h2osoi_si_scagpft  ! hijacking the scagpft dimension instead of creating a new shsl dimension
+!  integer :: ih_h2osoi_scagpft  ! hijacking the scagpft dimension instead of creating a new shsl dimension
   integer :: ih_sapflow_scpf
-  integer :: ih_sapflow_si
+  integer :: ih_sapflow
   integer :: ih_iterh1_scpf          
   integer :: ih_iterh2_scpf           
   integer :: ih_supsub_scpf              
@@ -555,9 +555,9 @@ module FatesHistoryInterfaceMod
   integer :: ih_btran_scpf
   
   ! Hydro: Soil water states
-  integer :: ih_rootwgt_soilvwc_si
-  integer :: ih_rootwgt_soilvwcsat_si
-  integer :: ih_rootwgt_soilmatpot_si
+  integer :: ih_rootwgt_soilvwc
+  integer :: ih_rootwgt_soilvwcsat
+  integer :: ih_rootwgt_soilmatpot
 
   ! Hydro: Soil water state by layer
   integer :: ih_soilmatpot_sl
@@ -565,7 +565,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_soilvwcsat_sl
   
   ! Hydro: Root water Uptake rates
-  integer :: ih_rootuptake_si
+  integer :: ih_rootuptake
   integer :: ih_rootuptake_sl
   integer :: ih_rootuptake0_scpf
   integer :: ih_rootuptake10_scpf
@@ -574,54 +574,54 @@ module FatesHistoryInterfaceMod
 
   
   ! indices to (site x fuel class) variables
-  integer :: ih_litter_moisture_si_fuel
-  integer :: ih_burnt_frac_litter_si_fuel
-  integer :: ih_fuel_amount_si_fuel
+  integer :: ih_litter_moisture_fuel
+  integer :: ih_burnt_frac_litter_fuel
+  integer :: ih_fuel_amount_fuel
 
   ! indices to (site x cwd size class) variables
-  integer :: ih_cwd_ag_si_cwdsc
-  integer :: ih_cwd_bg_si_cwdsc
-  integer :: ih_cwd_ag_in_si_cwdsc
-  integer :: ih_cwd_bg_in_si_cwdsc
-  integer :: ih_cwd_ag_out_si_cwdsc
-  integer :: ih_cwd_bg_out_si_cwdsc
+  integer :: ih_cwd_ag_cwdsc
+  integer :: ih_cwd_bg_cwdsc
+  integer :: ih_cwd_ag_in_cwdsc
+  integer :: ih_cwd_bg_in_cwdsc
+  integer :: ih_cwd_ag_out_cwdsc
+  integer :: ih_cwd_bg_out_cwdsc
 
   ! indices to (site x [canopy layer x leaf layer]) variables
-  integer :: ih_parsun_z_si_cnlf
-  integer :: ih_parsha_z_si_cnlf
-  integer :: ih_laisun_z_si_cnlf
-  integer :: ih_laisha_z_si_cnlf
-  integer :: ih_fabd_sun_si_cnlf
-  integer :: ih_fabd_sha_si_cnlf
-  integer :: ih_fabi_sun_si_cnlf
-  integer :: ih_fabi_sha_si_cnlf
-  integer :: ih_ts_net_uptake_si_cnlf
-  integer :: ih_crownarea_si_cnlf
-  integer :: ih_parprof_dir_si_cnlf
-  integer :: ih_parprof_dif_si_cnlf
+  integer :: ih_parsun_z_cnlf
+  integer :: ih_parsha_z_cnlf
+  integer :: ih_laisun_z_cnlf
+  integer :: ih_laisha_z_cnlf
+  integer :: ih_fabd_sun_cnlf
+  integer :: ih_fabd_sha_cnlf
+  integer :: ih_fabi_sun_cnlf
+  integer :: ih_fabi_sha_cnlf
+  integer :: ih_ts_net_uptake_cnlf
+  integer :: ih_crownarea_cnlf
+  integer :: ih_parprof_dir_cnlf
+  integer :: ih_parprof_dif_cnlf
 
   ! indices to (site x [canopy layer x leaf layer x pft]) variables
-  integer :: ih_parsun_z_si_cnlfpft
-  integer :: ih_parsha_z_si_cnlfpft
-  integer :: ih_laisun_z_si_cnlfpft
-  integer :: ih_laisha_z_si_cnlfpft
-  integer :: ih_fabd_sun_si_cnlfpft
-  integer :: ih_fabd_sha_si_cnlfpft
-  integer :: ih_fabi_sun_si_cnlfpft
-  integer :: ih_fabi_sha_si_cnlfpft
-  integer :: ih_parprof_dir_si_cnlfpft
-  integer :: ih_parprof_dif_si_cnlfpft
+  integer :: ih_parsun_z_cnlfpft
+  integer :: ih_parsha_z_cnlfpft
+  integer :: ih_laisun_z_cnlfpft
+  integer :: ih_laisha_z_cnlfpft
+  integer :: ih_fabd_sun_cnlfpft
+  integer :: ih_fabd_sha_cnlfpft
+  integer :: ih_fabi_sun_cnlfpft
+  integer :: ih_fabi_sha_cnlfpft
+  integer :: ih_parprof_dir_cnlfpft
+  integer :: ih_parprof_dif_cnlfpft
 
   ! indices to (site x canopy layer) variables
-  integer :: ih_parsun_top_si_can
-  integer :: ih_parsha_top_si_can
-  integer :: ih_laisun_top_si_can
-  integer :: ih_laisha_top_si_can
-  integer :: ih_fabd_sun_top_si_can
-  integer :: ih_fabd_sha_top_si_can
-  integer :: ih_fabi_sun_top_si_can
-  integer :: ih_fabi_sha_top_si_can
-  integer :: ih_crownarea_si_can
+  integer :: ih_parsun_top_can
+  integer :: ih_parsha_top_can
+  integer :: ih_laisun_top_can
+  integer :: ih_laisha_top_can
+  integer :: ih_fabd_sun_top_can
+  integer :: ih_fabd_sha_top_can
+  integer :: ih_fabi_sun_top_can
+  integer :: ih_fabi_sha_top_can
+  integer :: ih_crownarea_can
 
   ! The number of variable dim/kind types we have defined (static)
 
@@ -1758,41 +1758,41 @@ end subroutine flush_hvars
     
     integer :: tmp
 
-    associate( hio_npatches_si         => this%hvars(ih_npatches_si)%r81d, &
-               hio_ncohorts_si         => this%hvars(ih_ncohorts_si)%r81d, &
-               hio_trimming_si         => this%hvars(ih_trimming_si)%r81d, &
-               hio_area_plant_si       => this%hvars(ih_area_plant_si)%r81d, &
-               hio_area_trees_si  => this%hvars(ih_area_trees_si)%r81d, & 
-               hio_canopy_spread_si    => this%hvars(ih_canopy_spread_si)%r81d, &
-               hio_biomass_si_pft      => this%hvars(ih_biomass_si_pft)%r82d, &
-               hio_leafbiomass_si_pft  => this%hvars(ih_leafbiomass_si_pft)%r82d, &
-               hio_storebiomass_si_pft => this%hvars(ih_storebiomass_si_pft)%r82d, &
-               hio_nindivs_si_pft      => this%hvars(ih_nindivs_si_pft)%r82d, &
-               hio_recruitment_si_pft  => this%hvars(ih_recruitment_si_pft)%r82d, &
-               hio_mortality_si_pft    => this%hvars(ih_mortality_si_pft)%r82d, &
-               hio_crownarea_si_pft    => this%hvars(ih_crownarea_si_pft)%r82d, &
-               hio_canopycrownarea_si_pft  => this%hvars(ih_canopycrownarea_si_pft)%r82d, &
-               hio_nesterov_fire_danger_si => this%hvars(ih_nesterov_fire_danger_si)%r81d, &
-               hio_fire_nignitions_si => this%hvars(ih_fire_nignitions_si)%r81d, &
-               hio_fire_fdi_si => this%hvars(ih_fire_fdi_si)%r81d, &
-               hio_spitfire_ros_si     => this%hvars(ih_spitfire_ros_si)%r81d, &
-               hio_fire_ros_area_product_si=> this%hvars(ih_fire_ros_area_product_si)%r81d, &
-               hio_tfc_ros_si          => this%hvars(ih_tfc_ros_si)%r81d, &
-               hio_tfc_ros_area_product_si => this%hvars(ih_tfc_ros_area_product_si)%r81d, &
-               hio_effect_wspeed_si    => this%hvars(ih_effect_wspeed_si)%r81d, &
-               hio_fire_intensity_si   => this%hvars(ih_fire_intensity_si)%r81d, &
-               hio_fire_intensity_area_product_si => this%hvars(ih_fire_intensity_area_product_si)%r81d, &
-               hio_fire_area_si        => this%hvars(ih_fire_area_si)%r81d, &
-               hio_fire_fuel_bulkd_si  => this%hvars(ih_fire_fuel_bulkd_si)%r81d, &
-               hio_fire_fuel_eff_moist_si => this%hvars(ih_fire_fuel_eff_moist_si)%r81d, &
-               hio_fire_fuel_sav_si    => this%hvars(ih_fire_fuel_sav_si)%r81d, &
-               hio_fire_fuel_mef_si    => this%hvars(ih_fire_fuel_mef_si)%r81d, &
-               hio_sum_fuel_si         => this%hvars(ih_sum_fuel_si)%r81d,  &
-               hio_fragmentation_scaler_si  => this%hvars(ih_fragmentation_scaler_si)%r81d,  &
-               hio_litter_in_si        => this%hvars(ih_litter_in_si)%r81d, &
-               hio_litter_out_si       => this%hvars(ih_litter_out_si)%r81d, &
-               hio_seed_bank_si        => this%hvars(ih_seed_bank_si)%r81d, &
-               hio_seeds_in_si         => this%hvars(ih_seeds_in_si)%r81d, &
+    associate( hio_npatches         => this%hvars(ih_npatches)%r81d, &
+               hio_ncohorts         => this%hvars(ih_ncohorts)%r81d, &
+               hio_trimming         => this%hvars(ih_trimming)%r81d, &
+               hio_area_plant       => this%hvars(ih_area_plant)%r81d, &
+               hio_area_trees  => this%hvars(ih_area_trees)%r81d, & 
+               hio_canopy_spread    => this%hvars(ih_canopy_spread)%r81d, &
+               hio_biomass_pft      => this%hvars(ih_biomass_pft)%r82d, &
+               hio_leafbiomass_pft  => this%hvars(ih_leafbiomass_pft)%r82d, &
+               hio_storebiomass_pft => this%hvars(ih_storebiomass_pft)%r82d, &
+               hio_nindivs_pft      => this%hvars(ih_nindivs_pft)%r82d, &
+               hio_recruitment_pft  => this%hvars(ih_recruitment_pft)%r82d, &
+               hio_mortality_pft    => this%hvars(ih_mortality_pft)%r82d, &
+               hio_crownarea_pft    => this%hvars(ih_crownarea_pft)%r82d, &
+               hio_canopycrownarea_pft  => this%hvars(ih_canopycrownarea_pft)%r82d, &
+               hio_nesterov_fire_danger => this%hvars(ih_nesterov_fire_danger)%r81d, &
+               hio_fire_nignitions => this%hvars(ih_fire_nignitions)%r81d, &
+               hio_fire_fdi => this%hvars(ih_fire_fdi)%r81d, &
+               hio_spitfire_ros     => this%hvars(ih_spitfire_ros)%r81d, &
+               hio_fire_ros_area_product=> this%hvars(ih_fire_ros_area_product)%r81d, &
+               hio_tfc_ros          => this%hvars(ih_tfc_ros)%r81d, &
+               hio_tfc_ros_area_product => this%hvars(ih_tfc_ros_area_product)%r81d, &
+               hio_effect_wspeed    => this%hvars(ih_effect_wspeed)%r81d, &
+               hio_fire_intensity   => this%hvars(ih_fire_intensity)%r81d, &
+               hio_fire_intensity_area_product => this%hvars(ih_fire_intensity_area_product)%r81d, &
+               hio_fire_area        => this%hvars(ih_fire_area)%r81d, &
+               hio_fire_fuel_bulkd  => this%hvars(ih_fire_fuel_bulkd)%r81d, &
+               hio_fire_fuel_eff_moist => this%hvars(ih_fire_fuel_eff_moist)%r81d, &
+               hio_fire_fuel_sav    => this%hvars(ih_fire_fuel_sav)%r81d, &
+               hio_fire_fuel_mef    => this%hvars(ih_fire_fuel_mef)%r81d, &
+               hio_sum_fuel         => this%hvars(ih_sum_fuel)%r81d,  &
+               hio_fragmentation_scaler  => this%hvars(ih_fragmentation_scaler)%r81d,  &
+               hio_litter_in        => this%hvars(ih_litter_in)%r81d, &
+               hio_litter_out       => this%hvars(ih_litter_out)%r81d, &
+               hio_seed_bank        => this%hvars(ih_seed_bank)%r81d, &
+               hio_seeds_in         => this%hvars(ih_seeds_in)%r81d, &
                hio_litter_in_elem      => this%hvars(ih_litter_in_elem)%r82d, &
                hio_litter_out_elem     => this%hvars(ih_litter_out_elem)%r82d, &
                hio_seed_bank_elem      => this%hvars(ih_seed_bank_elem)%r82d, &
@@ -1800,205 +1800,205 @@ end subroutine flush_hvars
                hio_seed_in_extern_elem => this%hvars(ih_seeds_in_extern_elem)%r82d, & 
                hio_seed_decay_elem     => this%hvars(ih_seed_decay_elem)%r82d, &
                hio_seed_germ_elem      => this%hvars(ih_seed_germ_elem)%r82d, &
-               hio_bstore_si           => this%hvars(ih_bstore_si)%r81d, &
-               hio_bdead_si            => this%hvars(ih_bdead_si)%r81d, &
-               hio_balive_si           => this%hvars(ih_balive_si)%r81d, &
-               hio_bleaf_si            => this%hvars(ih_bleaf_si)%r81d, &
-               hio_bsapwood_si         => this%hvars(ih_bsapwood_si)%r81d, &
-               hio_bfineroot_si        => this%hvars(ih_bfineroot_si)%r81d, &
-               hio_btotal_si           => this%hvars(ih_btotal_si)%r81d, &
-               hio_agb_si              => this%hvars(ih_agb_si)%r81d, &
-               hio_canopy_biomass_si   => this%hvars(ih_canopy_biomass_si)%r81d, &
-               hio_understory_biomass_si   => this%hvars(ih_understory_biomass_si)%r81d, &
-               hio_primaryland_fusion_error_si    => this%hvars(ih_primaryland_fusion_error_si)%r81d, &
-               hio_disturbance_rate_p2p_si       => this%hvars(ih_disturbance_rate_p2p_si)%r81d, &
-               hio_disturbance_rate_p2s_si       => this%hvars(ih_disturbance_rate_p2s_si)%r81d, &
-               hio_disturbance_rate_s2s_si       => this%hvars(ih_disturbance_rate_s2s_si)%r81d, &
-               hio_fire_disturbance_rate_si      => this%hvars(ih_fire_disturbance_rate_si)%r81d, &
-               hio_logging_disturbance_rate_si   => this%hvars(ih_logging_disturbance_rate_si)%r81d, &
-               hio_fall_disturbance_rate_si      => this%hvars(ih_fall_disturbance_rate_si)%r81d, &
-               hio_potential_disturbance_rate_si => this%hvars(ih_potential_disturbance_rate_si)%r81d, &
-               hio_harvest_carbonflux_si => this%hvars(ih_harvest_carbonflux_si)%r81d, &
-               hio_gpp_si_scpf         => this%hvars(ih_gpp_si_scpf)%r82d, &
-               hio_npp_totl_si_scpf    => this%hvars(ih_npp_totl_si_scpf)%r82d, &
-               hio_npp_leaf_si_scpf    => this%hvars(ih_npp_leaf_si_scpf)%r82d, &
-               hio_npp_seed_si_scpf    => this%hvars(ih_npp_seed_si_scpf)%r82d, &
-               hio_npp_fnrt_si_scpf    => this%hvars(ih_npp_fnrt_si_scpf)%r82d, &
-               hio_npp_bgsw_si_scpf    => this%hvars(ih_npp_bgsw_si_scpf)%r82d, &
-               hio_npp_bgdw_si_scpf    => this%hvars(ih_npp_bgdw_si_scpf)%r82d, &
-               hio_npp_agsw_si_scpf    => this%hvars(ih_npp_agsw_si_scpf)%r82d, &
-               hio_npp_agdw_si_scpf    => this%hvars(ih_npp_agdw_si_scpf)%r82d, &
-               hio_npp_stor_si_scpf    => this%hvars(ih_npp_stor_si_scpf)%r82d, &
-               hio_npp_leaf_si         => this%hvars(ih_npp_leaf_si)%r81d, &
-               hio_npp_seed_si         => this%hvars(ih_npp_seed_si)%r81d, &
-               hio_npp_stem_si         => this%hvars(ih_npp_stem_si)%r81d, &
-               hio_npp_froot_si        => this%hvars(ih_npp_froot_si)%r81d, &
-               hio_npp_croot_si        => this%hvars(ih_npp_croot_si)%r81d, &
-               hio_npp_stor_si         => this%hvars(ih_npp_stor_si)%r81d, &
-               hio_bstor_canopy_si_scpf      => this%hvars(ih_bstor_canopy_si_scpf)%r82d, &
-               hio_bstor_understory_si_scpf  => this%hvars(ih_bstor_understory_si_scpf)%r82d, &
-               hio_bleaf_canopy_si_scpf      => this%hvars(ih_bleaf_canopy_si_scpf)%r82d, &
-               hio_bleaf_understory_si_scpf  => this%hvars(ih_bleaf_understory_si_scpf)%r82d, &
-               hio_mortality_canopy_si_scpf         => this%hvars(ih_mortality_canopy_si_scpf)%r82d, &
-               hio_mortality_understory_si_scpf     => this%hvars(ih_mortality_understory_si_scpf)%r82d, &
-               hio_nplant_canopy_si_scpf     => this%hvars(ih_nplant_canopy_si_scpf)%r82d, &
-               hio_nplant_understory_si_scpf => this%hvars(ih_nplant_understory_si_scpf)%r82d, &
-               hio_ddbh_canopy_si_scpf       => this%hvars(ih_ddbh_canopy_si_scpf)%r82d, &
-               hio_ddbh_understory_si_scpf   => this%hvars(ih_ddbh_understory_si_scpf)%r82d, &
-               hio_ddbh_canopy_si_sz       => this%hvars(ih_ddbh_canopy_si_sz)%r82d, &
-               hio_ddbh_understory_si_sz   => this%hvars(ih_ddbh_understory_si_sz)%r82d, &
-               hio_gpp_canopy_si_scpf        => this%hvars(ih_gpp_canopy_si_scpf)%r82d, &
-               hio_gpp_understory_si_scpf    => this%hvars(ih_gpp_understory_si_scpf)%r82d, &
-               hio_ar_canopy_si_scpf         => this%hvars(ih_ar_canopy_si_scpf)%r82d, &
-               hio_ar_understory_si_scpf     => this%hvars(ih_ar_understory_si_scpf)%r82d, &
-               hio_ddbh_si_scpf        => this%hvars(ih_ddbh_si_scpf)%r82d, &
-               hio_growthflux_si_scpf        => this%hvars(ih_growthflux_si_scpf)%r82d, &
-               hio_growthflux_fusion_si_scpf        => this%hvars(ih_growthflux_fusion_si_scpf)%r82d, &
-               hio_ba_si_scpf          => this%hvars(ih_ba_si_scpf)%r82d, &
-               hio_agb_si_scpf         => this%hvars(ih_agb_si_scpf)%r82d, &
-               hio_nplant_si_scpf      => this%hvars(ih_nplant_si_scpf)%r82d, &
-               hio_nplant_si_capf      => this%hvars(ih_nplant_si_capf)%r82d, &
+               hio_bstore           => this%hvars(ih_bstore)%r81d, &
+               hio_bdead            => this%hvars(ih_bdead)%r81d, &
+               hio_balive           => this%hvars(ih_balive)%r81d, &
+               hio_bleaf            => this%hvars(ih_bleaf)%r81d, &
+               hio_bsapwood         => this%hvars(ih_bsapwood)%r81d, &
+               hio_bfineroot        => this%hvars(ih_bfineroot)%r81d, &
+               hio_btotal           => this%hvars(ih_btotal)%r81d, &
+               hio_agb              => this%hvars(ih_agb)%r81d, &
+               hio_canopy_biomass   => this%hvars(ih_canopy_biomass)%r81d, &
+               hio_understory_biomass   => this%hvars(ih_understory_biomass)%r81d, &
+               hio_primaryland_fusion_error    => this%hvars(ih_primaryland_fusion_error)%r81d, &
+               hio_disturbance_rate_p2p       => this%hvars(ih_disturbance_rate_p2p)%r81d, &
+               hio_disturbance_rate_p2s       => this%hvars(ih_disturbance_rate_p2s)%r81d, &
+               hio_disturbance_rate_s2s       => this%hvars(ih_disturbance_rate_s2s)%r81d, &
+               hio_fire_disturbance_rate      => this%hvars(ih_fire_disturbance_rate)%r81d, &
+               hio_logging_disturbance_rate   => this%hvars(ih_logging_disturbance_rate)%r81d, &
+               hio_fall_disturbance_rate      => this%hvars(ih_fall_disturbance_rate)%r81d, &
+               hio_potential_disturbance_rate => this%hvars(ih_potential_disturbance_rate)%r81d, &
+               hio_harvest_carbonflux => this%hvars(ih_harvest_carbonflux)%r81d, &
+               hio_gpp_scpf         => this%hvars(ih_gpp_scpf)%r82d, &
+               hio_npp_totl_scpf    => this%hvars(ih_npp_totl_scpf)%r82d, &
+               hio_npp_leaf_scpf    => this%hvars(ih_npp_leaf_scpf)%r82d, &
+               hio_npp_seed_scpf    => this%hvars(ih_npp_seed_scpf)%r82d, &
+               hio_npp_fnrt_scpf    => this%hvars(ih_npp_fnrt_scpf)%r82d, &
+               hio_npp_bgsw_scpf    => this%hvars(ih_npp_bgsw_scpf)%r82d, &
+               hio_npp_bgdw_scpf    => this%hvars(ih_npp_bgdw_scpf)%r82d, &
+               hio_npp_agsw_scpf    => this%hvars(ih_npp_agsw_scpf)%r82d, &
+               hio_npp_agdw_scpf    => this%hvars(ih_npp_agdw_scpf)%r82d, &
+               hio_npp_stor_scpf    => this%hvars(ih_npp_stor_scpf)%r82d, &
+               hio_npp_leaf         => this%hvars(ih_npp_leaf)%r81d, &
+               hio_npp_seed         => this%hvars(ih_npp_seed)%r81d, &
+               hio_npp_stem         => this%hvars(ih_npp_stem)%r81d, &
+               hio_npp_froot        => this%hvars(ih_npp_froot)%r81d, &
+               hio_npp_croot        => this%hvars(ih_npp_croot)%r81d, &
+               hio_npp_stor         => this%hvars(ih_npp_stor)%r81d, &
+               hio_bstor_canopy_scpf      => this%hvars(ih_bstor_canopy_scpf)%r82d, &
+               hio_bstor_understory_scpf  => this%hvars(ih_bstor_understory_scpf)%r82d, &
+               hio_bleaf_canopy_scpf      => this%hvars(ih_bleaf_canopy_scpf)%r82d, &
+               hio_bleaf_understory_scpf  => this%hvars(ih_bleaf_understory_scpf)%r82d, &
+               hio_mortality_canopy_scpf         => this%hvars(ih_mortality_canopy_scpf)%r82d, &
+               hio_mortality_understory_scpf     => this%hvars(ih_mortality_understory_scpf)%r82d, &
+               hio_nplant_canopy_scpf     => this%hvars(ih_nplant_canopy_scpf)%r82d, &
+               hio_nplant_understory_scpf => this%hvars(ih_nplant_understory_scpf)%r82d, &
+               hio_ddbh_canopy_scpf       => this%hvars(ih_ddbh_canopy_scpf)%r82d, &
+               hio_ddbh_understory_scpf   => this%hvars(ih_ddbh_understory_scpf)%r82d, &
+               hio_ddbh_canopy_sz       => this%hvars(ih_ddbh_canopy_sz)%r82d, &
+               hio_ddbh_understory_sz   => this%hvars(ih_ddbh_understory_sz)%r82d, &
+               hio_gpp_canopy_scpf        => this%hvars(ih_gpp_canopy_scpf)%r82d, &
+               hio_gpp_understory_scpf    => this%hvars(ih_gpp_understory_scpf)%r82d, &
+               hio_ar_canopy_scpf         => this%hvars(ih_ar_canopy_scpf)%r82d, &
+               hio_ar_understory_scpf     => this%hvars(ih_ar_understory_scpf)%r82d, &
+               hio_ddbh_scpf        => this%hvars(ih_ddbh_scpf)%r82d, &
+               hio_growthflux_scpf        => this%hvars(ih_growthflux_scpf)%r82d, &
+               hio_growthflux_fusion_scpf        => this%hvars(ih_growthflux_fusion_scpf)%r82d, &
+               hio_ba_scpf          => this%hvars(ih_ba_scpf)%r82d, &
+               hio_agb_scpf         => this%hvars(ih_agb_scpf)%r82d, &
+               hio_nplant_scpf      => this%hvars(ih_nplant_scpf)%r82d, &
+               hio_nplant_capf      => this%hvars(ih_nplant_capf)%r82d, &
                
-               hio_m1_si_scpf          => this%hvars(ih_m1_si_scpf)%r82d, &
-               hio_m2_si_scpf          => this%hvars(ih_m2_si_scpf)%r82d, &
-               hio_m3_si_scpf          => this%hvars(ih_m3_si_scpf)%r82d, &
-               hio_m4_si_scpf          => this%hvars(ih_m4_si_scpf)%r82d, &
-               hio_m5_si_scpf          => this%hvars(ih_m5_si_scpf)%r82d, &
-               hio_m6_si_scpf          => this%hvars(ih_m6_si_scpf)%r82d, &
-               hio_m7_si_scpf          => this%hvars(ih_m7_si_scpf)%r82d, &                  
-               hio_m8_si_scpf          => this%hvars(ih_m8_si_scpf)%r82d, &
-               hio_m9_si_scpf          => this%hvars(ih_m9_si_scpf)%r82d, &
-               hio_m10_si_scpf         => this%hvars(ih_m10_si_scpf)%r82d, &
-               hio_m10_si_capf         => this%hvars(ih_m10_si_capf)%r82d, &
+               hio_m1_scpf          => this%hvars(ih_m1_scpf)%r82d, &
+               hio_m2_scpf          => this%hvars(ih_m2_scpf)%r82d, &
+               hio_m3_scpf          => this%hvars(ih_m3_scpf)%r82d, &
+               hio_m4_scpf          => this%hvars(ih_m4_scpf)%r82d, &
+               hio_m5_scpf          => this%hvars(ih_m5_scpf)%r82d, &
+               hio_m6_scpf          => this%hvars(ih_m6_scpf)%r82d, &
+               hio_m7_scpf          => this%hvars(ih_m7_scpf)%r82d, &                  
+               hio_m8_scpf          => this%hvars(ih_m8_scpf)%r82d, &
+               hio_m9_scpf          => this%hvars(ih_m9_scpf)%r82d, &
+               hio_m10_scpf         => this%hvars(ih_m10_scpf)%r82d, &
+               hio_m10_capf         => this%hvars(ih_m10_capf)%r82d, &
       
-               hio_crownfiremort_si_scpf     => this%hvars(ih_crownfiremort_si_scpf)%r82d, &
-               hio_cambialfiremort_si_scpf   => this%hvars(ih_cambialfiremort_si_scpf)%r82d, &
+               hio_crownfiremort_scpf     => this%hvars(ih_crownfiremort_scpf)%r82d, &
+               hio_cambialfiremort_scpf   => this%hvars(ih_cambialfiremort_scpf)%r82d, &
 
-               hio_fire_c_to_atm_si  => this%hvars(ih_fire_c_to_atm_si)%r81d, &
+               hio_fire_c_to_atm  => this%hvars(ih_fire_c_to_atm)%r81d, &
                hio_burn_flux_elem    => this%hvars(ih_burn_flux_elem)%r82d, &
 
-               hio_m1_si_sz          => this%hvars(ih_m1_si_sz)%r82d, &
-               hio_m2_si_sz          => this%hvars(ih_m2_si_sz)%r82d, &
-               hio_m3_si_sz          => this%hvars(ih_m3_si_sz)%r82d, &
-               hio_m4_si_sz          => this%hvars(ih_m4_si_sz)%r82d, &
-               hio_m5_si_sz          => this%hvars(ih_m5_si_sz)%r82d, &
-               hio_m6_si_sz          => this%hvars(ih_m6_si_sz)%r82d, &
-               hio_m7_si_sz          => this%hvars(ih_m7_si_sz)%r82d, &
-               hio_m8_si_sz          => this%hvars(ih_m8_si_sz)%r82d, &
-               hio_m9_si_sz          => this%hvars(ih_m9_si_sz)%r82d, &
-               hio_m10_si_sz         => this%hvars(ih_m10_si_sz)%r82d, &
-               hio_m10_si_cacls        => this%hvars(ih_m10_si_cacls)%r82d, &
+               hio_m1_sz          => this%hvars(ih_m1_sz)%r82d, &
+               hio_m2_sz          => this%hvars(ih_m2_sz)%r82d, &
+               hio_m3_sz          => this%hvars(ih_m3_sz)%r82d, &
+               hio_m4_sz          => this%hvars(ih_m4_sz)%r82d, &
+               hio_m5_sz          => this%hvars(ih_m5_sz)%r82d, &
+               hio_m6_sz          => this%hvars(ih_m6_sz)%r82d, &
+               hio_m7_sz          => this%hvars(ih_m7_sz)%r82d, &
+               hio_m8_sz          => this%hvars(ih_m8_sz)%r82d, &
+               hio_m9_sz          => this%hvars(ih_m9_sz)%r82d, &
+               hio_m10_sz         => this%hvars(ih_m10_sz)%r82d, &
+               hio_m10_cacls        => this%hvars(ih_m10_cacls)%r82d, &
               
-               hio_c13disc_si_scpf     => this%hvars(ih_c13disc_si_scpf)%r82d, &                    
+               hio_c13disc_scpf     => this%hvars(ih_c13disc_scpf)%r82d, &                    
 
                hio_cwd_elcwd           => this%hvars(ih_cwd_elcwd)%r82d, &
                hio_cwd_ag_elem         => this%hvars(ih_cwd_ag_elem)%r82d, &
                hio_cwd_bg_elem         => this%hvars(ih_cwd_bg_elem)%r82d, &
                hio_fines_ag_elem       => this%hvars(ih_fines_bg_elem)%r82d, &
                hio_fines_bg_elem       => this%hvars(ih_fines_ag_elem)%r82d, &
-               hio_ba_si_sz          => this%hvars(ih_ba_si_sz)%r82d, &
-               hio_agb_si_sz          => this%hvars(ih_agb_si_sz)%r82d, &
-               hio_biomass_si_sz          => this%hvars(ih_biomass_si_sz)%r82d, &
-               hio_nplant_si_sz         => this%hvars(ih_nplant_si_sz)%r82d, &
-               hio_nplant_si_cacls        => this%hvars(ih_nplant_si_cacls)%r82d, &
-               hio_nplant_canopy_si_sz         => this%hvars(ih_nplant_canopy_si_sz)%r82d, &
-               hio_nplant_understory_si_sz     => this%hvars(ih_nplant_understory_si_sz)%r82d, &
-               hio_lai_canopy_si_sz         => this%hvars(ih_lai_canopy_si_sz)%r82d, &
-               hio_lai_understory_si_sz     => this%hvars(ih_lai_understory_si_sz)%r82d, &
-               hio_sai_canopy_si_sz         => this%hvars(ih_sai_canopy_si_sz)%r82d, &
-               hio_sai_understory_si_sz     => this%hvars(ih_sai_understory_si_sz)%r82d, &
-               hio_mortality_canopy_si_sz      => this%hvars(ih_mortality_canopy_si_sz)%r82d, &
-               hio_mortality_understory_si_sz  => this%hvars(ih_mortality_understory_si_sz)%r82d, &
-               hio_demotion_rate_si_sz         => this%hvars(ih_demotion_rate_si_sz)%r82d, &
-               hio_demotion_carbonflux_si        => this%hvars(ih_demotion_carbonflux_si)%r81d, &
-               hio_promotion_rate_si_sz        => this%hvars(ih_promotion_rate_si_sz)%r82d, &
-               hio_trimming_canopy_si_sz         => this%hvars(ih_trimming_canopy_si_sz)%r82d, &
-               hio_trimming_understory_si_sz     => this%hvars(ih_trimming_understory_si_sz)%r82d, &
-               hio_crown_area_canopy_si_sz         => this%hvars(ih_crown_area_canopy_si_sz)%r82d, &
-               hio_crown_area_understory_si_sz     => this%hvars(ih_crown_area_understory_si_sz)%r82d, &
-               hio_promotion_carbonflux_si       => this%hvars(ih_promotion_carbonflux_si)%r81d, &
-               hio_canopy_mortality_carbonflux_si     => this%hvars(ih_canopy_mortality_carbonflux_si)%r81d, &
-               hio_understory_mortality_carbonflux_si => this%hvars(ih_understory_mortality_carbonflux_si)%r81d, &
-               hio_leaf_md_canopy_si_sz           => this%hvars(ih_leaf_md_canopy_si_sz)%r82d, &
-               hio_root_md_canopy_si_sz           => this%hvars(ih_root_md_canopy_si_sz)%r82d, &
-               hio_carbon_balance_canopy_si_sz    => this%hvars(ih_carbon_balance_canopy_si_sz)%r82d, &
-               hio_bsw_md_canopy_si_sz            => this%hvars(ih_bsw_md_canopy_si_sz)%r82d, &
-               hio_bdead_md_canopy_si_sz          => this%hvars(ih_bdead_md_canopy_si_sz)%r82d, &
-               hio_bstore_md_canopy_si_sz         => this%hvars(ih_bstore_md_canopy_si_sz)%r82d, &
-               hio_seed_prod_canopy_si_sz         => this%hvars(ih_seed_prod_canopy_si_sz)%r82d, &
-               hio_npp_leaf_canopy_si_sz          => this%hvars(ih_npp_leaf_canopy_si_sz)%r82d, &
-               hio_npp_fnrt_canopy_si_sz         => this%hvars(ih_npp_fnrt_canopy_si_sz)%r82d, &
-               hio_npp_sapw_canopy_si_sz           => this%hvars(ih_npp_sapw_canopy_si_sz)%r82d, &
-               hio_npp_dead_canopy_si_sz         => this%hvars(ih_npp_dead_canopy_si_sz)%r82d, &
-               hio_npp_seed_canopy_si_sz         => this%hvars(ih_npp_seed_canopy_si_sz)%r82d, &
-               hio_npp_stor_canopy_si_sz         => this%hvars(ih_npp_stor_canopy_si_sz)%r82d, &
-               hio_leaf_md_understory_si_sz       => this%hvars(ih_leaf_md_understory_si_sz)%r82d, &
-               hio_root_md_understory_si_sz       => this%hvars(ih_root_md_understory_si_sz)%r82d, &
-               hio_carbon_balance_understory_si_sz=> this%hvars(ih_carbon_balance_understory_si_sz)%r82d, &
-               hio_bstore_md_understory_si_sz     => this%hvars(ih_bstore_md_understory_si_sz)%r82d, &
-               hio_bsw_md_understory_si_sz        => this%hvars(ih_bsw_md_understory_si_sz)%r82d, &
-               hio_bdead_md_understory_si_sz      => this%hvars(ih_bdead_md_understory_si_sz)%r82d, &
-               hio_seed_prod_understory_si_sz     => this%hvars(ih_seed_prod_understory_si_sz)%r82d, &
-               hio_npp_leaf_understory_si_sz      => this%hvars(ih_npp_leaf_understory_si_sz)%r82d, &
-               hio_npp_fnrt_understory_si_sz     => this%hvars(ih_npp_fnrt_understory_si_sz)%r82d, &
-               hio_npp_sapw_understory_si_sz       => this%hvars(ih_npp_sapw_understory_si_sz)%r82d, &
-               hio_npp_dead_understory_si_sz     => this%hvars(ih_npp_dead_understory_si_sz)%r82d, &
-               hio_npp_seed_understory_si_sz     => this%hvars(ih_npp_seed_understory_si_sz)%r82d, &
-               hio_npp_stor_understory_si_sz     => this%hvars(ih_npp_stor_understory_si_sz)%r82d, &
-               hio_nplant_si_scagpft                => this%hvars(ih_nplant_si_scagpft)%r82d, &
-               hio_npp_si_agepft                    => this%hvars(ih_npp_si_agepft)%r82d, &
-               hio_biomass_si_agepft                => this%hvars(ih_biomass_si_agepft)%r82d, &
-               hio_scorch_height_si_agepft          => this%hvars(ih_scorch_height_si_agepft)%r82d, &
-               hio_yesterdaycanopylevel_canopy_si_sz     => this%hvars(ih_yesterdaycanopylevel_canopy_si_sz)%r82d, &
-               hio_yesterdaycanopylevel_understory_si_sz => this%hvars(ih_yesterdaycanopylevel_understory_si_sz)%r82d, &
-               hio_area_si_age         => this%hvars(ih_area_si_age)%r82d, &
-               hio_lai_si_age          => this%hvars(ih_lai_si_age)%r82d, &
-               hio_canopy_area_si_age  => this%hvars(ih_canopy_area_si_age)%r82d, &
-               hio_ncl_si_age          => this%hvars(ih_ncl_si_age)%r82d, &
-               hio_npatches_si_age     => this%hvars(ih_npatches_si_age)%r82d, &
-               hio_zstar_si_age        => this%hvars(ih_zstar_si_age)%r82d, &
-               hio_biomass_si_age        => this%hvars(ih_biomass_si_age)%r82d, &
-               hio_fraction_secondary_forest_si   => this%hvars(ih_fraction_secondary_forest_si)%r81d, &
-               hio_biomass_secondary_forest_si    => this%hvars(ih_biomass_secondary_forest_si)%r81d, &
-               hio_woodproduct_si                 => this%hvars(ih_woodproduct_si)%r81d, &
-               hio_agesince_anthrodist_si_age     => this%hvars(ih_agesince_anthrodist_si_age)%r82d, &
-               hio_secondaryforest_area_si_age    => this%hvars(ih_secondaryforest_area_si_age)%r82d, &
-               hio_area_burnt_si_age              => this%hvars(ih_area_burnt_si_age)%r82d, &
-               ! hio_fire_rate_of_spread_front_si_age  => this%hvars(ih_fire_rate_of_spread_front_si_age)%r82d, &
-               hio_fire_intensity_si_age          => this%hvars(ih_fire_intensity_si_age)%r82d, &
-               hio_fire_sum_fuel_si_age           => this%hvars(ih_fire_sum_fuel_si_age)%r82d, &
-               hio_burnt_frac_litter_si_fuel      => this%hvars(ih_burnt_frac_litter_si_fuel)%r82d, &
-               hio_fuel_amount_si_fuel            => this%hvars(ih_fuel_amount_si_fuel)%r82d, &
-               hio_canopy_height_dist_si_height   => this%hvars(ih_canopy_height_dist_si_height)%r82d, &
-               hio_leaf_height_dist_si_height     => this%hvars(ih_leaf_height_dist_si_height)%r82d, &
-               hio_litter_moisture_si_fuel        => this%hvars(ih_litter_moisture_si_fuel)%r82d, &
-               hio_cwd_ag_si_cwdsc                  => this%hvars(ih_cwd_ag_si_cwdsc)%r82d, &
-               hio_cwd_bg_si_cwdsc                  => this%hvars(ih_cwd_bg_si_cwdsc)%r82d, &
-               hio_cwd_ag_in_si_cwdsc               => this%hvars(ih_cwd_ag_in_si_cwdsc)%r82d, &
-               hio_cwd_bg_in_si_cwdsc               => this%hvars(ih_cwd_bg_in_si_cwdsc)%r82d, &
-               hio_cwd_ag_out_si_cwdsc              => this%hvars(ih_cwd_ag_out_si_cwdsc)%r82d, &
-               hio_cwd_bg_out_si_cwdsc              => this%hvars(ih_cwd_bg_out_si_cwdsc)%r82d, &
-               hio_crownarea_si_cnlf                => this%hvars(ih_crownarea_si_cnlf)%r82d, &
-               hio_crownarea_si_can                 => this%hvars(ih_crownarea_si_can)%r82d, &
-               hio_nplant_si_scag                   => this%hvars(ih_nplant_si_scag)%r82d, &
-               hio_nplant_canopy_si_scag            => this%hvars(ih_nplant_canopy_si_scag)%r82d, &
-               hio_nplant_understory_si_scag        => this%hvars(ih_nplant_understory_si_scag)%r82d, &
-               hio_ddbh_canopy_si_scag              => this%hvars(ih_ddbh_canopy_si_scag)%r82d, &
-               hio_ddbh_understory_si_scag          => this%hvars(ih_ddbh_understory_si_scag)%r82d, &
-               hio_mortality_canopy_si_scag         => this%hvars(ih_mortality_canopy_si_scag)%r82d, &
-               hio_mortality_understory_si_scag     => this%hvars(ih_mortality_understory_si_scag)%r82d, &
-               hio_site_cstatus_si                  => this%hvars(ih_site_cstatus_si)%r81d, &
-               hio_site_dstatus_si                  => this%hvars(ih_site_dstatus_si)%r81d, &
-               hio_gdd_si                           => this%hvars(ih_gdd_si)%r81d, &
-               hio_site_ncolddays_si                => this%hvars(ih_site_ncolddays_si)%r81d, &
-               hio_site_nchilldays_si               => this%hvars(ih_site_nchilldays_si)%r81d, &
-               hio_cleafoff_si                      => this%hvars(ih_cleafoff_si)%r81d, &
-               hio_cleafon_si                       => this%hvars(ih_cleafon_si)%r81d, &
-               hio_dleafoff_si                      => this%hvars(ih_dleafoff_si)%r81d, &
-               hio_dleafon_si                       => this%hvars(ih_dleafoff_si)%r81d, &
-               hio_meanliqvol_si                    => this%hvars(ih_meanliqvol_si)%r81d, &
-               hio_cbal_err_fates_si                => this%hvars(ih_cbal_err_fates_si)%r81d, &
-               hio_err_fates_si                     => this%hvars(ih_err_fates_si)%r82d )
+               hio_ba_sz          => this%hvars(ih_ba_sz)%r82d, &
+               hio_agb_sz          => this%hvars(ih_agb_sz)%r82d, &
+               hio_biomass_sz          => this%hvars(ih_biomass_sz)%r82d, &
+               hio_nplant_sz         => this%hvars(ih_nplant_sz)%r82d, &
+               hio_nplant_cacls        => this%hvars(ih_nplant_cacls)%r82d, &
+               hio_nplant_canopy_sz         => this%hvars(ih_nplant_canopy_sz)%r82d, &
+               hio_nplant_understory_sz     => this%hvars(ih_nplant_understory_sz)%r82d, &
+               hio_lai_canopy_sz         => this%hvars(ih_lai_canopy_sz)%r82d, &
+               hio_lai_understory_sz     => this%hvars(ih_lai_understory_sz)%r82d, &
+               hio_sai_canopy_sz         => this%hvars(ih_sai_canopy_sz)%r82d, &
+               hio_sai_understory_sz     => this%hvars(ih_sai_understory_sz)%r82d, &
+               hio_mortality_canopy_sz      => this%hvars(ih_mortality_canopy_sz)%r82d, &
+               hio_mortality_understory_sz  => this%hvars(ih_mortality_understory_sz)%r82d, &
+               hio_demotion_rate_sz         => this%hvars(ih_demotion_rate_sz)%r82d, &
+               hio_demotion_carbonflux        => this%hvars(ih_demotion_carbonflux)%r81d, &
+               hio_promotion_rate_sz        => this%hvars(ih_promotion_rate_sz)%r82d, &
+               hio_trimming_canopy_sz         => this%hvars(ih_trimming_canopy_sz)%r82d, &
+               hio_trimming_understory_sz     => this%hvars(ih_trimming_understory_sz)%r82d, &
+               hio_crown_area_canopy_sz         => this%hvars(ih_crown_area_canopy_sz)%r82d, &
+               hio_crown_area_understory_sz     => this%hvars(ih_crown_area_understory_sz)%r82d, &
+               hio_promotion_carbonflux       => this%hvars(ih_promotion_carbonflux)%r81d, &
+               hio_canopy_mortality_carbonflux     => this%hvars(ih_canopy_mortality_carbonflux)%r81d, &
+               hio_understory_mortality_carbonflux => this%hvars(ih_understory_mortality_carbonflux)%r81d, &
+               hio_leaf_md_canopy_sz           => this%hvars(ih_leaf_md_canopy_sz)%r82d, &
+               hio_root_md_canopy_sz           => this%hvars(ih_root_md_canopy_sz)%r82d, &
+               hio_carbon_balance_canopy_sz    => this%hvars(ih_carbon_balance_canopy_sz)%r82d, &
+               hio_bsw_md_canopy_sz            => this%hvars(ih_bsw_md_canopy_sz)%r82d, &
+               hio_bdead_md_canopy_sz          => this%hvars(ih_bdead_md_canopy_sz)%r82d, &
+               hio_bstore_md_canopy_sz         => this%hvars(ih_bstore_md_canopy_sz)%r82d, &
+               hio_seed_prod_canopy_sz         => this%hvars(ih_seed_prod_canopy_sz)%r82d, &
+               hio_npp_leaf_canopy_sz          => this%hvars(ih_npp_leaf_canopy_sz)%r82d, &
+               hio_npp_fnrt_canopy_sz         => this%hvars(ih_npp_fnrt_canopy_sz)%r82d, &
+               hio_npp_sapw_canopy_sz           => this%hvars(ih_npp_sapw_canopy_sz)%r82d, &
+               hio_npp_dead_canopy_sz         => this%hvars(ih_npp_dead_canopy_sz)%r82d, &
+               hio_npp_seed_canopy_sz         => this%hvars(ih_npp_seed_canopy_sz)%r82d, &
+               hio_npp_stor_canopy_sz         => this%hvars(ih_npp_stor_canopy_sz)%r82d, &
+               hio_leaf_md_understory_sz       => this%hvars(ih_leaf_md_understory_sz)%r82d, &
+               hio_root_md_understory_sz       => this%hvars(ih_root_md_understory_sz)%r82d, &
+               hio_carbon_balance_understory_sz=> this%hvars(ih_carbon_balance_understory_sz)%r82d, &
+               hio_bstore_md_understory_sz     => this%hvars(ih_bstore_md_understory_sz)%r82d, &
+               hio_bsw_md_understory_sz        => this%hvars(ih_bsw_md_understory_sz)%r82d, &
+               hio_bdead_md_understory_sz      => this%hvars(ih_bdead_md_understory_sz)%r82d, &
+               hio_seed_prod_understory_sz     => this%hvars(ih_seed_prod_understory_sz)%r82d, &
+               hio_npp_leaf_understory_sz      => this%hvars(ih_npp_leaf_understory_sz)%r82d, &
+               hio_npp_fnrt_understory_sz     => this%hvars(ih_npp_fnrt_understory_sz)%r82d, &
+               hio_npp_sapw_understory_sz       => this%hvars(ih_npp_sapw_understory_sz)%r82d, &
+               hio_npp_dead_understory_sz     => this%hvars(ih_npp_dead_understory_sz)%r82d, &
+               hio_npp_seed_understory_sz     => this%hvars(ih_npp_seed_understory_sz)%r82d, &
+               hio_npp_stor_understory_sz     => this%hvars(ih_npp_stor_understory_sz)%r82d, &
+               hio_nplant_scagpft                => this%hvars(ih_nplant_scagpft)%r82d, &
+               hio_npp_agepft                    => this%hvars(ih_npp_agepft)%r82d, &
+               hio_biomass_agepft                => this%hvars(ih_biomass_agepft)%r82d, &
+               hio_scorch_height_agepft          => this%hvars(ih_scorch_height_agepft)%r82d, &
+               hio_yesterdaycanopylevel_canopy_sz     => this%hvars(ih_yesterdaycanopylevel_canopy_sz)%r82d, &
+               hio_yesterdaycanopylevel_understory_sz => this%hvars(ih_yesterdaycanopylevel_understory_sz)%r82d, &
+               hio_area_age         => this%hvars(ih_area_age)%r82d, &
+               hio_lai_age          => this%hvars(ih_lai_age)%r82d, &
+               hio_canopy_area_age  => this%hvars(ih_canopy_area_age)%r82d, &
+               hio_ncl_age          => this%hvars(ih_ncl_age)%r82d, &
+               hio_npatches_age     => this%hvars(ih_npatches_age)%r82d, &
+               hio_zstar_age        => this%hvars(ih_zstar_age)%r82d, &
+               hio_biomass_age        => this%hvars(ih_biomass_age)%r82d, &
+               hio_fraction_secondary_forest   => this%hvars(ih_fraction_secondary_forest)%r81d, &
+               hio_biomass_secondary_forest    => this%hvars(ih_biomass_secondary_forest)%r81d, &
+               hio_woodproduct                 => this%hvars(ih_woodproduct)%r81d, &
+               hio_agesince_anthrodist_age     => this%hvars(ih_agesince_anthrodist_age)%r82d, &
+               hio_secondaryforest_area_age    => this%hvars(ih_secondaryforest_area_age)%r82d, &
+               hio_area_burnt_age              => this%hvars(ih_area_burnt_age)%r82d, &
+               ! hio_fire_rate_of_spread_front_age  => this%hvars(ih_fire_rate_of_spread_front_age)%r82d, &
+               hio_fire_intensity_age          => this%hvars(ih_fire_intensity_age)%r82d, &
+               hio_fire_sum_fuel_age           => this%hvars(ih_fire_sum_fuel_age)%r82d, &
+               hio_burnt_frac_litter_fuel      => this%hvars(ih_burnt_frac_litter_fuel)%r82d, &
+               hio_fuel_amount_fuel            => this%hvars(ih_fuel_amount_fuel)%r82d, &
+               hio_canopy_height_dist_height   => this%hvars(ih_canopy_height_dist_height)%r82d, &
+               hio_leaf_height_dist_height     => this%hvars(ih_leaf_height_dist_height)%r82d, &
+               hio_litter_moisture_fuel        => this%hvars(ih_litter_moisture_fuel)%r82d, &
+               hio_cwd_ag_cwdsc                  => this%hvars(ih_cwd_ag_cwdsc)%r82d, &
+               hio_cwd_bg_cwdsc                  => this%hvars(ih_cwd_bg_cwdsc)%r82d, &
+               hio_cwd_ag_in_cwdsc               => this%hvars(ih_cwd_ag_in_cwdsc)%r82d, &
+               hio_cwd_bg_in_cwdsc               => this%hvars(ih_cwd_bg_in_cwdsc)%r82d, &
+               hio_cwd_ag_out_cwdsc              => this%hvars(ih_cwd_ag_out_cwdsc)%r82d, &
+               hio_cwd_bg_out_cwdsc              => this%hvars(ih_cwd_bg_out_cwdsc)%r82d, &
+               hio_crownarea_cnlf                => this%hvars(ih_crownarea_cnlf)%r82d, &
+               hio_crownarea_can                 => this%hvars(ih_crownarea_can)%r82d, &
+               hio_nplant_scag                   => this%hvars(ih_nplant_scag)%r82d, &
+               hio_nplant_canopy_scag            => this%hvars(ih_nplant_canopy_scag)%r82d, &
+               hio_nplant_understory_scag        => this%hvars(ih_nplant_understory_scag)%r82d, &
+               hio_ddbh_canopy_scag              => this%hvars(ih_ddbh_canopy_scag)%r82d, &
+               hio_ddbh_understory_scag          => this%hvars(ih_ddbh_understory_scag)%r82d, &
+               hio_mortality_canopy_scag         => this%hvars(ih_mortality_canopy_scag)%r82d, &
+               hio_mortality_understory_scag     => this%hvars(ih_mortality_understory_scag)%r82d, &
+               hio_cstatus                  => this%hvars(ih_cstatus)%r81d, &
+               hio_dstatus                  => this%hvars(ih_dstatus)%r81d, &
+               hio_gdd                           => this%hvars(ih_gdd)%r81d, &
+               hio_ncolddays                => this%hvars(ih_ncolddays)%r81d, &
+               hio_nchilldays               => this%hvars(ih_nchilldays)%r81d, &
+               hio_cleafoff                      => this%hvars(ih_cleafoff)%r81d, &
+               hio_cleafon                       => this%hvars(ih_cleafon)%r81d, &
+               hio_dleafoff                      => this%hvars(ih_dleafoff)%r81d, &
+               hio_dleafon                       => this%hvars(ih_dleafoff)%r81d, &
+               hio_meanliqvol                    => this%hvars(ih_meanliqvol)%r81d, &
+               hio_cbal_err_fates                => this%hvars(ih_cbal_err_fates)%r81d, &
+               hio_err_fates                     => this%hvars(ih_err_fates)%r82d )
 
                
       ! ---------------------------------------------------------------------------------
@@ -2028,18 +2028,18 @@ end subroutine flush_hvars
          
 
          ! Total carbon model error [kgC/day -> mgC/day]
-         hio_cbal_err_fates_si(io_si) = &
+         hio_cbal_err_fates(io_si) = &
                sites(s)%mass_balance(element_pos(carbon12_element))%err_fates * mg_per_kg
 
          ! Total carbon lost to atmosphere from burning (kgC/site/day -> gC/m2/s)
-         hio_fire_c_to_atm_si(io_si) = &
+         hio_fire_c_to_atm(io_si) = &
               sites(s)%mass_balance(element_pos(carbon12_element))%burn_flux_to_atm * &
               g_per_kg * ha_per_m2 * days_per_sec
 
          ! Total model error [kg/day -> mg/day]  (all elements)
          do el = 1, num_elements
 
-             hio_err_fates_si(io_si,el) = sites(s)%mass_balance(el)%err_fates * mg_per_kg
+             hio_err_fates(io_si,el) = sites(s)%mass_balance(el)%err_fates * mg_per_kg
 
              ! Total element lost to atmosphere from burning (kg/site/day -> g/m2/s)
              hio_burn_flux_elem(io_si,el) = &
@@ -2048,109 +2048,109 @@ end subroutine flush_hvars
 
          end do
 
-         hio_canopy_spread_si(io_si)        = sites(s)%spread
+         hio_canopy_spread(io_si)        = sites(s)%spread
 
          ! Update the site statuses (stati?)
-         hio_site_cstatus_si(io_si)   = real(sites(s)%cstatus,r8)
-         hio_site_dstatus_si(io_si)   = real(sites(s)%dstatus,r8)
+         hio_cstatus(io_si)   = real(sites(s)%cstatus,r8)
+         hio_dstatus(io_si)   = real(sites(s)%dstatus,r8)
 
          !count number of days for leaves off
-         hio_site_nchilldays_si(io_si) = real(sites(s)%nchilldays,r8)
-         hio_site_ncolddays_si(io_si)  = real(sites(s)%ncolddays,r8)
+         hio_nchilldays(io_si) = real(sites(s)%nchilldays,r8)
+         hio_ncolddays(io_si)  = real(sites(s)%ncolddays,r8)
 
             
-         hio_gdd_si(io_si)      = sites(s)%grow_deg_days
-         hio_cleafoff_si(io_si) = real(model_day_int - sites(s)%cleafoffdate,r8)
-         hio_cleafon_si(io_si)  = real(model_day_int - sites(s)%cleafondate,r8)
-         hio_dleafoff_si(io_si) = real(model_day_int - sites(s)%dleafoffdate,r8)
-         hio_dleafon_si(io_si)  = real(model_day_int - sites(s)%dleafondate,r8)
+         hio_gdd(io_si)      = sites(s)%grow_deg_days
+         hio_cleafoff(io_si) = real(model_day_int - sites(s)%cleafoffdate,r8)
+         hio_cleafon(io_si)  = real(model_day_int - sites(s)%cleafondate,r8)
+         hio_dleafoff(io_si) = real(model_day_int - sites(s)%dleafoffdate,r8)
+         hio_dleafon(io_si)  = real(model_day_int - sites(s)%dleafondate,r8)
 
          if(model_day_int>numWaterMem)then
-            hio_meanliqvol_si(io_si) = &
+            hio_meanliqvol(io_si) = &
                  sum(sites(s)%water_memory(1:numWaterMem))/real(numWaterMem,r8)
          end if
 
          ! track total wood product accumulation at the site level
-         hio_woodproduct_si(io_si)          = sites(s)%resources_management%trunk_product_site &
+         hio_woodproduct(io_si)          = sites(s)%resources_management%trunk_product_site &
               * AREA_INV * g_per_kg
          
          ! site-level fire variables
-         hio_nesterov_fire_danger_si(io_si) = sites(s)%acc_NI
-         hio_fire_nignitions_si(io_si) = sites(s)%NF
-         hio_fire_fdi_si(io_si) = sites(s)%FDI
+         hio_nesterov_fire_danger(io_si) = sites(s)%acc_NI
+         hio_fire_nignitions(io_si) = sites(s)%NF
+         hio_fire_fdi(io_si) = sites(s)%FDI
 
          ! If hydraulics are turned on, track the error terms
          ! associated with dynamics
 
          if(hlm_use_planthydro.eq.itrue)then
-            this%hvars(ih_h2oveg_dead_si)%r81d(io_si)         = sites(s)%si_hydr%h2oveg_dead
-            this%hvars(ih_h2oveg_recruit_si)%r81d(io_si)      = sites(s)%si_hydr%h2oveg_recruit
-            this%hvars(ih_h2oveg_growturn_err_si)%r81d(io_si) = sites(s)%si_hydr%h2oveg_growturn_err
-            this%hvars(ih_h2oveg_pheno_err_si)%r81d(io_si)    = sites(s)%si_hydr%h2oveg_pheno_err
+            this%hvars(ih_h2oveg_dead)%r81d(io_si)         = sites(s)%si_hydr%h2oveg_dead
+            this%hvars(ih_h2oveg_recruit)%r81d(io_si)      = sites(s)%si_hydr%h2oveg_recruit
+            this%hvars(ih_h2oveg_growturn_err)%r81d(io_si) = sites(s)%si_hydr%h2oveg_growturn_err
+            this%hvars(ih_h2oveg_pheno_err)%r81d(io_si)    = sites(s)%si_hydr%h2oveg_pheno_err
          end if
 
          ! error in primary lands from patch fusion
-         hio_primaryland_fusion_error_si(io_si) = sites(s)%primary_land_patchfusion_error
+         hio_primaryland_fusion_error(io_si) = sites(s)%primary_land_patchfusion_error
 
          ! output site-level disturbance rates
-         hio_disturbance_rate_p2p_si(io_si) = sum(sites(s)%disturbance_rates_primary_to_primary(1:N_DIST_TYPES))
-         hio_disturbance_rate_p2s_si(io_si) = sum(sites(s)%disturbance_rates_primary_to_secondary(1:N_DIST_TYPES))
-         hio_disturbance_rate_s2s_si(io_si) = sum(sites(s)%disturbance_rates_secondary_to_secondary(1:N_DIST_TYPES))
+         hio_disturbance_rate_p2p(io_si) = sum(sites(s)%disturbance_rates_primary_to_primary(1:N_DIST_TYPES))
+         hio_disturbance_rate_p2s(io_si) = sum(sites(s)%disturbance_rates_primary_to_secondary(1:N_DIST_TYPES))
+         hio_disturbance_rate_s2s(io_si) = sum(sites(s)%disturbance_rates_secondary_to_secondary(1:N_DIST_TYPES))
 
-         hio_fire_disturbance_rate_si(io_si) = sites(s)%disturbance_rates_primary_to_primary(dtype_ifire) + &
+         hio_fire_disturbance_rate(io_si) = sites(s)%disturbance_rates_primary_to_primary(dtype_ifire) + &
               sites(s)%disturbance_rates_primary_to_secondary(dtype_ifire) + &
               sites(s)%disturbance_rates_secondary_to_secondary(dtype_ifire)
 
-         hio_logging_disturbance_rate_si(io_si) = sites(s)%disturbance_rates_primary_to_primary(dtype_ilog) + &
+         hio_logging_disturbance_rate(io_si) = sites(s)%disturbance_rates_primary_to_primary(dtype_ilog) + &
               sites(s)%disturbance_rates_primary_to_secondary(dtype_ilog) + &
               sites(s)%disturbance_rates_secondary_to_secondary(dtype_ilog)
 
-         hio_fall_disturbance_rate_si(io_si) = sites(s)%disturbance_rates_primary_to_primary(dtype_ifall) + &
+         hio_fall_disturbance_rate(io_si) = sites(s)%disturbance_rates_primary_to_primary(dtype_ifall) + &
               sites(s)%disturbance_rates_primary_to_secondary(dtype_ifall) + &
               sites(s)%disturbance_rates_secondary_to_secondary(dtype_ifall)
 
-         hio_potential_disturbance_rate_si(io_si) = sum(sites(s)%potential_disturbance_rates(1:N_DIST_TYPES))
+         hio_potential_disturbance_rate(io_si) = sum(sites(s)%potential_disturbance_rates(1:N_DIST_TYPES))
 
-         hio_harvest_carbonflux_si(io_si) = sites(s)%harvest_carbon_flux
+         hio_harvest_carbonflux(io_si) = sites(s)%harvest_carbon_flux
 
          ipa = 0
          cpatch => sites(s)%oldest_patch
          do while(associated(cpatch))
             
             ! Increment the number of patches per site
-            hio_npatches_si(io_si) = hio_npatches_si(io_si) + 1._r8
+            hio_npatches(io_si) = hio_npatches(io_si) + 1._r8
 
             cpatch%age_class  = get_age_class_index(cpatch%age)
 
             ! Increment the fractional area in each age class bin
-            hio_area_si_age(io_si,cpatch%age_class) = hio_area_si_age(io_si,cpatch%age_class) &
+            hio_area_age(io_si,cpatch%age_class) = hio_area_age(io_si,cpatch%age_class) &
                  + cpatch%area * AREA_INV
 
             ! Increment some patch-age-resolved diagnostics
-            hio_lai_si_age(io_si,cpatch%age_class) = hio_lai_si_age(io_si,cpatch%age_class) &
+            hio_lai_age(io_si,cpatch%age_class) = hio_lai_age(io_si,cpatch%age_class) &
                   + sum(cpatch%tlai_profile(:,:,:)) * cpatch%area
 
-            hio_ncl_si_age(io_si,cpatch%age_class) = hio_ncl_si_age(io_si,cpatch%age_class) &
+            hio_ncl_age(io_si,cpatch%age_class) = hio_ncl_age(io_si,cpatch%age_class) &
                   + cpatch%ncl_p * cpatch%area
-            hio_npatches_si_age(io_si,cpatch%age_class) = hio_npatches_si_age(io_si,cpatch%age_class) + 1._r8
+            hio_npatches_age(io_si,cpatch%age_class) = hio_npatches_age(io_si,cpatch%age_class) + 1._r8
             if ( ED_val_comp_excln .lt. 0._r8 ) then ! only valid when "strict ppa" enabled
-               hio_zstar_si_age(io_si,cpatch%age_class) = hio_zstar_si_age(io_si,cpatch%age_class) &
+               hio_zstar_age(io_si,cpatch%age_class) = hio_zstar_age(io_si,cpatch%age_class) &
                     + cpatch%zstar * cpatch%area * AREA_INV
             endif
 
             ! some diagnostics on secondary forest area and its age distribution
             if ( cpatch%anthro_disturbance_label .eq. secondaryforest ) then
-               hio_fraction_secondary_forest_si(io_si) = hio_fraction_secondary_forest_si(io_si) + &
+               hio_fraction_secondary_forest(io_si) = hio_fraction_secondary_forest(io_si) + &
                     cpatch%area * AREA_INV
                
                ageclass_since_anthrodist = get_age_class_index(cpatch%age_since_anthro_disturbance)
                
-               hio_agesince_anthrodist_si_age(io_si,ageclass_since_anthrodist) = &
-                    hio_agesince_anthrodist_si_age(io_si,ageclass_since_anthrodist)  &
+               hio_agesince_anthrodist_age(io_si,ageclass_since_anthrodist) = &
+                    hio_agesince_anthrodist_age(io_si,ageclass_since_anthrodist)  &
                     + cpatch%area * AREA_INV
 
-               hio_secondaryforest_area_si_age(io_si,cpatch%age_class) = &
-                    hio_secondaryforest_area_si_age(io_si,cpatch%age_class)  &
+               hio_secondaryforest_area_age(io_si,cpatch%age_class) = &
+                    hio_secondaryforest_area_age(io_si,cpatch%age_class)  &
                     + cpatch%area * AREA_INV
             endif
             
@@ -2159,29 +2159,29 @@ end subroutine flush_hvars
                ! for scorch height, weight the value by patch area within any given age calss (in the event that there is
                ! more than one patch per age class.
                iagepft = cpatch%age_class + (i_pft-1) * nlevage
-               hio_scorch_height_si_agepft(io_si,iagepft) = hio_scorch_height_si_agepft(io_si,iagepft) + &
+               hio_scorch_height_agepft(io_si,iagepft) = hio_scorch_height_agepft(io_si,iagepft) + &
                     cpatch%Scorch_ht(i_pft) * cpatch%area
             end do
 
-            hio_area_burnt_si_age(io_si,cpatch%age_class) = hio_area_burnt_si_age(io_si,cpatch%age_class) + &
+            hio_area_burnt_age(io_si,cpatch%age_class) = hio_area_burnt_age(io_si,cpatch%age_class) + &
                  cpatch%frac_burnt * cpatch%area * AREA_INV
 
-            ! hio_fire_rate_of_spread_front_si_age(io_si, cpatch%age_class) = hio_fire_rate_of_spread_si_age(io_si, cpatch%age_class) + &
+            ! hio_fire_rate_of_spread_front_age(io_si, cpatch%age_class) = hio_fire_rate_of_spread_age(io_si, cpatch%age_class) + &
             !      cpatch%ros_front * cpatch*frac_burnt * cpatch%area * AREA_INV
 
-            hio_fire_intensity_si_age(io_si, cpatch%age_class) = hio_fire_intensity_si_age(io_si, cpatch%age_class) + &
+            hio_fire_intensity_age(io_si, cpatch%age_class) = hio_fire_intensity_age(io_si, cpatch%age_class) + &
                  cpatch%FI * cpatch%frac_burnt * cpatch%area * AREA_INV
 
-            hio_fire_sum_fuel_si_age(io_si, cpatch%age_class) = hio_fire_sum_fuel_si_age(io_si, cpatch%age_class) + &
+            hio_fire_sum_fuel_age(io_si, cpatch%age_class) = hio_fire_sum_fuel_age(io_si, cpatch%age_class) + &
                  cpatch%sum_fuel * g_per_kg * cpatch%area * AREA_INV
              
             if(associated(cpatch%tallest))then
-               hio_trimming_si(io_si) = hio_trimming_si(io_si) + cpatch%tallest%canopy_trim * cpatch%area * AREA_INV
+               hio_trimming(io_si) = hio_trimming(io_si) + cpatch%tallest%canopy_trim * cpatch%area * AREA_INV
             endif
             
-            hio_area_plant_si(io_si) = hio_area_plant_si(io_si) + min(cpatch%total_canopy_area,cpatch%area) * AREA_INV
+            hio_area_plant(io_si) = hio_area_plant(io_si) + min(cpatch%total_canopy_area,cpatch%area) * AREA_INV
 
-            hio_area_trees_si(io_si) = hio_area_trees_si(io_si) + min(cpatch%total_tree_area,cpatch%area) * AREA_INV
+            hio_area_trees(io_si) = hio_area_trees(io_si) + min(cpatch%total_tree_area,cpatch%area) * AREA_INV
             
             ccohort => cpatch%shortest
             do while(associated(ccohort))
@@ -2193,11 +2193,11 @@ end subroutine flush_hvars
                                           ccohort%coage_class, ccohort%coage_by_pft_class)
               
                ! Increment the number of cohorts per site
-               hio_ncohorts_si(io_si) = hio_ncohorts_si(io_si) + 1._r8
+               hio_ncohorts(io_si) = hio_ncohorts(io_si) + 1._r8
                
                n_perm2   = ccohort%n * AREA_INV
                               
-               hio_canopy_area_si_age(io_si,cpatch%age_class) = hio_canopy_area_si_age(io_si,cpatch%age_class) &
+               hio_canopy_area_age(io_si,cpatch%age_class) = hio_canopy_area_age(io_si,cpatch%age_class) &
                     + ccohort%c_area * AREA_INV
 
                ! calculate leaf height distribution, assuming leaf area is evenly distributed thru crown depth
@@ -2215,20 +2215,20 @@ end subroutine flush_hvars
                        max(binbottom,ccohort%hite * (1._r8 - EDPftvarcon_inst%crown(ft)))) / &
                        (ccohort%hite * EDPftvarcon_inst%crown(ft))
                   !
-                  hio_leaf_height_dist_si_height(io_si,i_heightbin) = &
-                       hio_leaf_height_dist_si_height(io_si,i_heightbin) + &
+                  hio_leaf_height_dist_height(io_si,i_heightbin) = &
+                       hio_leaf_height_dist_height(io_si,i_heightbin) + &
                        ccohort%c_area * AREA_INV * ccohort%treelai * frac_canopy_in_bin
 
                   ! if ( ( ccohort%c_area * AREA_INV * ccohort%treelai * frac_canopy_in_bin) .lt. 0._r8) then
-                  !    write(fates_log(),*) ' negative hio_leaf_height_dist_si_height:'
+                  !    write(fates_log(),*) ' negative hio_leaf_height_dist_height:'
                   !    write(fates_log(),*) '   c_area, treelai, frac_canopy_in_bin:', ccohort%c_area, ccohort%treelai, frac_canopy_in_bin
                   ! endif
                end do
                
                if (ccohort%canopy_layer .eq. 1) then
                   ! calculate the area of canopy that is within each height bin
-                  hio_canopy_height_dist_si_height(io_si,height_bin_max) = &
-                       hio_canopy_height_dist_si_height(io_si,height_bin_max) + ccohort%c_area * AREA_INV
+                  hio_canopy_height_dist_height(io_si,height_bin_max) = &
+                       hio_canopy_height_dist_height(io_si,height_bin_max) + ccohort%c_area * AREA_INV
                endif
 
                ! Update biomass components
@@ -2249,85 +2249,85 @@ end subroutine flush_hvars
                   ! Zero states, and set the fluxes
                   if( element_list(el).eq.carbon12_element )then
 
-                     this%hvars(ih_storec_si)%r81d(io_si)  = &
-                          this%hvars(ih_storec_si)%r81d(io_si) + ccohort%n * store_m
-                     this%hvars(ih_leafc_si)%r81d(io_si)   = &
-                          this%hvars(ih_leafc_si)%r81d(io_si) + ccohort%n * leaf_m
-                     this%hvars(ih_fnrtc_si)%r81d(io_si)   = &
-                          this%hvars(ih_fnrtc_si)%r81d(io_si) + ccohort%n * fnrt_m
-                     this%hvars(ih_reproc_si)%r81d(io_si)  = &
-                          this%hvars(ih_reproc_si)%r81d(io_si)+ ccohort%n * repro_m
-                     this%hvars(ih_sapwc_si)%r81d(io_si)   = &
-                          this%hvars(ih_sapwc_si)%r81d(io_si)+ ccohort%n * sapw_m
-                     this%hvars(ih_totvegc_si)%r81d(io_si) = &
-                          this%hvars(ih_totvegc_si)%r81d(io_si)+ ccohort%n * total_m
+                     this%hvars(ih_storec)%r81d(io_si)  = &
+                          this%hvars(ih_storec)%r81d(io_si) + ccohort%n * store_m
+                     this%hvars(ih_leafc)%r81d(io_si)   = &
+                          this%hvars(ih_leafc)%r81d(io_si) + ccohort%n * leaf_m
+                     this%hvars(ih_fnrtc)%r81d(io_si)   = &
+                          this%hvars(ih_fnrtc)%r81d(io_si) + ccohort%n * fnrt_m
+                     this%hvars(ih_reproc)%r81d(io_si)  = &
+                          this%hvars(ih_reproc)%r81d(io_si)+ ccohort%n * repro_m
+                     this%hvars(ih_sapwc)%r81d(io_si)   = &
+                          this%hvars(ih_sapwc)%r81d(io_si)+ ccohort%n * sapw_m
+                     this%hvars(ih_totvegc)%r81d(io_si) = &
+                          this%hvars(ih_totvegc)%r81d(io_si)+ ccohort%n * total_m
 
-                     hio_bleaf_si(io_si)     = hio_bleaf_si(io_si)  + n_perm2 * leaf_m  * g_per_kg
-                     hio_bstore_si(io_si)    = hio_bstore_si(io_si) + n_perm2 * store_m * g_per_kg
-                     hio_bdead_si(io_si)     = hio_bdead_si(io_si)  + n_perm2 * struct_m * g_per_kg
-                     hio_balive_si(io_si)    = hio_balive_si(io_si) + n_perm2 * alive_m * g_per_kg
+                     hio_bleaf(io_si)     = hio_bleaf(io_si)  + n_perm2 * leaf_m  * g_per_kg
+                     hio_bstore(io_si)    = hio_bstore(io_si) + n_perm2 * store_m * g_per_kg
+                     hio_bdead(io_si)     = hio_bdead(io_si)  + n_perm2 * struct_m * g_per_kg
+                     hio_balive(io_si)    = hio_balive(io_si) + n_perm2 * alive_m * g_per_kg
                      
-                     hio_bsapwood_si(io_si)  = hio_bsapwood_si(io_si)   + n_perm2 * sapw_m  * g_per_kg
-                     hio_bfineroot_si(io_si) = hio_bfineroot_si(io_si) + n_perm2 * fnrt_m * g_per_kg
-                     hio_btotal_si(io_si)    = hio_btotal_si(io_si) + n_perm2 * total_m * g_per_kg
+                     hio_bsapwood(io_si)  = hio_bsapwood(io_si)   + n_perm2 * sapw_m  * g_per_kg
+                     hio_bfineroot(io_si) = hio_bfineroot(io_si) + n_perm2 * fnrt_m * g_per_kg
+                     hio_btotal(io_si)    = hio_btotal(io_si) + n_perm2 * total_m * g_per_kg
                      
-                     hio_agb_si(io_si)       = hio_agb_si(io_si) + n_perm2 * g_per_kg * &
+                     hio_agb(io_si)       = hio_agb(io_si) + n_perm2 * g_per_kg * &
                            ( leaf_m + (sapw_m + struct_m + store_m) * prt_params%allom_agb_frac(ccohort%pft) )
                      
                      
                      ! Update PFT partitioned biomass components
-                     hio_leafbiomass_si_pft(io_si,ft) = hio_leafbiomass_si_pft(io_si,ft) + &
+                     hio_leafbiomass_pft(io_si,ft) = hio_leafbiomass_pft(io_si,ft) + &
                            (ccohort%n * AREA_INV) * leaf_m     * g_per_kg
                      
-                     hio_storebiomass_si_pft(io_si,ft) = hio_storebiomass_si_pft(io_si,ft) + &
+                     hio_storebiomass_pft(io_si,ft) = hio_storebiomass_pft(io_si,ft) + &
                            (ccohort%n * AREA_INV) * store_m   * g_per_kg
                      
-                     hio_nindivs_si_pft(io_si,ft) = hio_nindivs_si_pft(io_si,ft) + &
+                     hio_nindivs_pft(io_si,ft) = hio_nindivs_pft(io_si,ft) + &
                            ccohort%n * AREA_INV
                      
-                     hio_biomass_si_pft(io_si, ft) = hio_biomass_si_pft(io_si, ft) + &
+                     hio_biomass_pft(io_si, ft) = hio_biomass_pft(io_si, ft) + &
                            (ccohort%n * AREA_INV) * total_m * g_per_kg
 
                      ! update total biomass per age bin
-                     hio_biomass_si_age(io_si,cpatch%age_class) = hio_biomass_si_age(io_si,cpatch%age_class) &
+                     hio_biomass_age(io_si,cpatch%age_class) = hio_biomass_age(io_si,cpatch%age_class) &
                            + total_m * ccohort%n * AREA_INV
                      
                      ! track the total biomass on all secondary lands
                      if ( cpatch%anthro_disturbance_label .eq. secondaryforest ) then
-                         hio_biomass_secondary_forest_si(io_si) = hio_biomass_secondary_forest_si(io_si) + &
+                         hio_biomass_secondary_forest(io_si) = hio_biomass_secondary_forest(io_si) + &
                                total_m * ccohort%n * AREA_INV
                      endif
               
                   elseif(element_list(el).eq.nitrogen_element)then
 
-                     this%hvars(ih_storen_si)%r81d(io_si)  = &
-                          this%hvars(ih_storen_si)%r81d(io_si) + ccohort%n * store_m
-                     this%hvars(ih_leafn_si)%r81d(io_si)   = &
-                          this%hvars(ih_leafn_si)%r81d(io_si) + ccohort%n * leaf_m
-                     this%hvars(ih_fnrtn_si)%r81d(io_si)   = &
-                          this%hvars(ih_fnrtn_si)%r81d(io_si) + ccohort%n * fnrt_m
-                     this%hvars(ih_repron_si)%r81d(io_si)  = &
-                          this%hvars(ih_repron_si)%r81d(io_si) + ccohort%n * repro_m
-                     this%hvars(ih_sapwn_si)%r81d(io_si)   = &
-                          this%hvars(ih_sapwn_si)%r81d(io_si) + ccohort%n * sapw_m
-                     this%hvars(ih_totvegn_si)%r81d(io_si) = &
-                          this%hvars(ih_totvegn_si)%r81d(io_si) + ccohort%n * total_m
+                     this%hvars(ih_storen)%r81d(io_si)  = &
+                          this%hvars(ih_storen)%r81d(io_si) + ccohort%n * store_m
+                     this%hvars(ih_leafn)%r81d(io_si)   = &
+                          this%hvars(ih_leafn)%r81d(io_si) + ccohort%n * leaf_m
+                     this%hvars(ih_fnrtn)%r81d(io_si)   = &
+                          this%hvars(ih_fnrtn)%r81d(io_si) + ccohort%n * fnrt_m
+                     this%hvars(ih_repron)%r81d(io_si)  = &
+                          this%hvars(ih_repron)%r81d(io_si) + ccohort%n * repro_m
+                     this%hvars(ih_sapwn)%r81d(io_si)   = &
+                          this%hvars(ih_sapwn)%r81d(io_si) + ccohort%n * sapw_m
+                     this%hvars(ih_totvegn)%r81d(io_si) = &
+                          this%hvars(ih_totvegn)%r81d(io_si) + ccohort%n * total_m
 
                      
                   elseif(element_list(el).eq.phosphorus_element) then
                      
-                     this%hvars(ih_storep_si)%r81d(io_si)  = &
-                          this%hvars(ih_storep_si)%r81d(io_si) + ccohort%n * store_m
-                     this%hvars(ih_leafp_si)%r81d(io_si)   = &
-                          this%hvars(ih_leafp_si)%r81d(io_si) + ccohort%n * leaf_m
-                     this%hvars(ih_fnrtp_si)%r81d(io_si)   = &
-                          this%hvars(ih_fnrtp_si)%r81d(io_si) + ccohort%n * fnrt_m
-                     this%hvars(ih_reprop_si)%r81d(io_si)  = &
-                          this%hvars(ih_reprop_si)%r81d(io_si) + ccohort%n * repro_m
-                     this%hvars(ih_sapwp_si)%r81d(io_si)   = &
-                          this%hvars(ih_sapwp_si)%r81d(io_si) + ccohort%n * sapw_m
-                     this%hvars(ih_totvegp_si)%r81d(io_si) = &
-                          this%hvars(ih_totvegp_si)%r81d(io_si)+ ccohort%n * total_m
+                     this%hvars(ih_storep)%r81d(io_si)  = &
+                          this%hvars(ih_storep)%r81d(io_si) + ccohort%n * store_m
+                     this%hvars(ih_leafp)%r81d(io_si)   = &
+                          this%hvars(ih_leafp)%r81d(io_si) + ccohort%n * leaf_m
+                     this%hvars(ih_fnrtp)%r81d(io_si)   = &
+                          this%hvars(ih_fnrtp)%r81d(io_si) + ccohort%n * fnrt_m
+                     this%hvars(ih_reprop)%r81d(io_si)  = &
+                          this%hvars(ih_reprop)%r81d(io_si) + ccohort%n * repro_m
+                     this%hvars(ih_sapwp)%r81d(io_si)   = &
+                          this%hvars(ih_sapwp)%r81d(io_si) + ccohort%n * sapw_m
+                     this%hvars(ih_totvegp)%r81d(io_si) = &
+                          this%hvars(ih_totvegp)%r81d(io_si)+ ccohort%n * total_m
 
                   end if
                      
@@ -2336,12 +2336,12 @@ end subroutine flush_hvars
 
 
                ! Update PFT crown area
-               hio_crownarea_si_pft(io_si, ft) = hio_crownarea_si_pft(io_si, ft) + &
+               hio_crownarea_pft(io_si, ft) = hio_crownarea_pft(io_si, ft) + &
                     ccohort%c_area 
 
                if (ccohort%canopy_layer .eq. 1) then
                   ! Update PFT canopy crown area
-                  hio_canopycrownarea_si_pft(io_si, ft) = hio_canopycrownarea_si_pft(io_si, ft) + &
+                  hio_canopycrownarea_pft(io_si, ft) = hio_canopycrownarea_pft(io_si, ft) + &
                        ccohort%c_area 
                end if
 
@@ -2372,14 +2372,14 @@ end subroutine flush_hvars
                   repro_m_net_alloc  = ccohort%prt%GetNetAlloc(repro_organ, carbon12_element) * days_per_year
 
                   ! ecosystem-level, organ-partitioned NPP/allocation fluxes
-                  hio_npp_leaf_si(io_si) = hio_npp_leaf_si(io_si) + leaf_m_net_alloc * n_perm2
-                  hio_npp_seed_si(io_si) = hio_npp_seed_si(io_si) + repro_m_net_alloc * n_perm2
-                  hio_npp_stem_si(io_si) = hio_npp_stem_si(io_si) + (sapw_m_net_alloc + struct_m_net_alloc) * n_perm2 * &
+                  hio_npp_leaf(io_si) = hio_npp_leaf(io_si) + leaf_m_net_alloc * n_perm2
+                  hio_npp_seed(io_si) = hio_npp_seed(io_si) + repro_m_net_alloc * n_perm2
+                  hio_npp_stem(io_si) = hio_npp_stem(io_si) + (sapw_m_net_alloc + struct_m_net_alloc) * n_perm2 * &
                        (prt_params%allom_agb_frac(ccohort%pft))
-                  hio_npp_froot_si(io_si) = hio_npp_froot_si(io_si) + fnrt_m_net_alloc * n_perm2
-                  hio_npp_croot_si(io_si) = hio_npp_croot_si(io_si) + (sapw_m_net_alloc + struct_m_net_alloc) * n_perm2 * &
+                  hio_npp_froot(io_si) = hio_npp_froot(io_si) + fnrt_m_net_alloc * n_perm2
+                  hio_npp_croot(io_si) = hio_npp_croot(io_si) + (sapw_m_net_alloc + struct_m_net_alloc) * n_perm2 * &
                        (1._r8-prt_params%allom_agb_frac(ccohort%pft))
-                  hio_npp_stor_si(io_si) = hio_npp_stor_si(io_si) + store_m_net_alloc * n_perm2
+                  hio_npp_stor(io_si) = hio_npp_stor(io_si) + store_m_net_alloc * n_perm2
                   
                   associate( scpf => ccohort%size_by_pft_class, &
 
@@ -2388,94 +2388,94 @@ end subroutine flush_hvars
                        capf => ccohort%coage_by_pft_class)
      
 			     
-                    gpp_cached = hio_gpp_si_scpf(io_si,scpf)
+                    gpp_cached = hio_gpp_scpf(io_si,scpf)
       
-                    hio_gpp_si_scpf(io_si,scpf)      = hio_gpp_si_scpf(io_si,scpf)      + &
+                    hio_gpp_scpf(io_si,scpf)      = hio_gpp_scpf(io_si,scpf)      + &
                                                        n_perm2*ccohort%gpp_acc_hold  ! [kgC/m2/yr]
-                    hio_npp_totl_si_scpf(io_si,scpf) = hio_npp_totl_si_scpf(io_si,scpf) + &
+                    hio_npp_totl_scpf(io_si,scpf) = hio_npp_totl_scpf(io_si,scpf) + &
                                                        ccohort%npp_acc_hold *n_perm2
                     
                     
-                    hio_npp_leaf_si_scpf(io_si,scpf) = hio_npp_leaf_si_scpf(io_si,scpf) + &
+                    hio_npp_leaf_scpf(io_si,scpf) = hio_npp_leaf_scpf(io_si,scpf) + &
                                                        leaf_m_net_alloc*n_perm2
-                    hio_npp_fnrt_si_scpf(io_si,scpf) = hio_npp_fnrt_si_scpf(io_si,scpf) + &
+                    hio_npp_fnrt_scpf(io_si,scpf) = hio_npp_fnrt_scpf(io_si,scpf) + &
                                                        fnrt_m_net_alloc*n_perm2
-                    hio_npp_bgsw_si_scpf(io_si,scpf) = hio_npp_bgsw_si_scpf(io_si,scpf) + &
+                    hio_npp_bgsw_scpf(io_si,scpf) = hio_npp_bgsw_scpf(io_si,scpf) + &
                                                        sapw_m_net_alloc*n_perm2*           &
                                                        (1._r8-prt_params%allom_agb_frac(ccohort%pft))
-                    hio_npp_agsw_si_scpf(io_si,scpf) = hio_npp_agsw_si_scpf(io_si,scpf) + &
+                    hio_npp_agsw_scpf(io_si,scpf) = hio_npp_agsw_scpf(io_si,scpf) + &
                                                        sapw_m_net_alloc*n_perm2*           &
                                                        prt_params%allom_agb_frac(ccohort%pft)
-                    hio_npp_bgdw_si_scpf(io_si,scpf) = hio_npp_bgdw_si_scpf(io_si,scpf) + &
+                    hio_npp_bgdw_scpf(io_si,scpf) = hio_npp_bgdw_scpf(io_si,scpf) + &
                                                        struct_m_net_alloc*n_perm2*         &
                                                        (1._r8-prt_params%allom_agb_frac(ccohort%pft))
-                    hio_npp_agdw_si_scpf(io_si,scpf) = hio_npp_agdw_si_scpf(io_si,scpf) + &
+                    hio_npp_agdw_scpf(io_si,scpf) = hio_npp_agdw_scpf(io_si,scpf) + &
                                                        struct_m_net_alloc*n_perm2*         &
                                                        prt_params%allom_agb_frac(ccohort%pft)
-                    hio_npp_seed_si_scpf(io_si,scpf) = hio_npp_seed_si_scpf(io_si,scpf) + &
+                    hio_npp_seed_scpf(io_si,scpf) = hio_npp_seed_scpf(io_si,scpf) + &
                                                        repro_m_net_alloc*n_perm2
-                    hio_npp_stor_si_scpf(io_si,scpf) = hio_npp_stor_si_scpf(io_si,scpf) + &
+                    hio_npp_stor_scpf(io_si,scpf) = hio_npp_stor_scpf(io_si,scpf) + &
                                                        store_m_net_alloc*n_perm2
 
                     ! Woody State Variables (basal area growth increment)
                     if ( int(prt_params%woody(ft)) == itrue) then
 
                        ! basal area  [m2/ha]
-                       hio_ba_si_scpf(io_si,scpf) = hio_ba_si_scpf(io_si,scpf) + &
+                       hio_ba_scpf(io_si,scpf) = hio_ba_scpf(io_si,scpf) + &
                             0.25_r8*3.14159_r8*((dbh/100.0_r8)**2.0_r8)*ccohort%n
 
                        ! also by size class only
-                       hio_ba_si_sz(io_si,sz) = hio_ba_si_sz(io_si,sz) + &
+                       hio_ba_sz(io_si,sz) = hio_ba_sz(io_si,sz) + &
                             0.25_r8*3.14159_r8*((dbh/100.0_r8)**2.0_r8)*ccohort%n
 
                        ! growth increment
-                       hio_ddbh_si_scpf(io_si,scpf) = hio_ddbh_si_scpf(io_si,scpf) + &
+                       hio_ddbh_scpf(io_si,scpf) = hio_ddbh_scpf(io_si,scpf) + &
                             ccohort%ddbhdt*ccohort%n
 
                     end if
 
-                    hio_m1_si_scpf(io_si,scpf) = hio_m1_si_scpf(io_si,scpf) + ccohort%bmort*ccohort%n
-                    hio_m2_si_scpf(io_si,scpf) = hio_m2_si_scpf(io_si,scpf) + ccohort%hmort*ccohort%n
-                    hio_m3_si_scpf(io_si,scpf) = hio_m3_si_scpf(io_si,scpf) + ccohort%cmort*ccohort%n
-                    hio_m7_si_scpf(io_si,scpf) = hio_m7_si_scpf(io_si,scpf) + &
+                    hio_m1_scpf(io_si,scpf) = hio_m1_scpf(io_si,scpf) + ccohort%bmort*ccohort%n
+                    hio_m2_scpf(io_si,scpf) = hio_m2_scpf(io_si,scpf) + ccohort%hmort*ccohort%n
+                    hio_m3_scpf(io_si,scpf) = hio_m3_scpf(io_si,scpf) + ccohort%cmort*ccohort%n
+                    hio_m7_scpf(io_si,scpf) = hio_m7_scpf(io_si,scpf) + &
                          (ccohort%lmort_direct+ccohort%lmort_collateral+ccohort%lmort_infra) * ccohort%n
-                    hio_m8_si_scpf(io_si,scpf) = hio_m8_si_scpf(io_si,scpf) + ccohort%frmort*ccohort%n
-                    hio_m9_si_scpf(io_si,scpf) = hio_m9_si_scpf(io_si,scpf) + ccohort%smort*ccohort%n
+                    hio_m8_scpf(io_si,scpf) = hio_m8_scpf(io_si,scpf) + ccohort%frmort*ccohort%n
+                    hio_m9_scpf(io_si,scpf) = hio_m9_scpf(io_si,scpf) + ccohort%smort*ccohort%n
                     
                     if (hlm_use_cohort_age_tracking .eq.itrue) then
-                       hio_m10_si_scpf(io_si,scpf) = hio_m10_si_scpf(io_si,scpf) + ccohort%asmort*ccohort%n
-                       hio_m10_si_capf(io_si,capf) = hio_m10_si_capf(io_si,capf) + ccohort%asmort*ccohort%n
-                       hio_m10_si_sz(io_si,sz) = hio_m10_si_sz(io_si,sz) + ccohort%asmort*ccohort%n
-                       hio_m10_si_cacls(io_si,cacls) = hio_m10_si_cacls(io_si,cacls)+ &
+                       hio_m10_scpf(io_si,scpf) = hio_m10_scpf(io_si,scpf) + ccohort%asmort*ccohort%n
+                       hio_m10_capf(io_si,capf) = hio_m10_capf(io_si,capf) + ccohort%asmort*ccohort%n
+                       hio_m10_sz(io_si,sz) = hio_m10_sz(io_si,sz) + ccohort%asmort*ccohort%n
+                       hio_m10_cacls(io_si,cacls) = hio_m10_cacls(io_si,cacls)+ &
                             ccohort%asmort*ccohort%n
                     end if
                     
-                    hio_m1_si_sz(io_si,sz) = hio_m1_si_sz(io_si,sz) + ccohort%bmort*ccohort%n
-                    hio_m2_si_sz(io_si,sz) = hio_m2_si_sz(io_si,sz) + ccohort%hmort*ccohort%n
-                    hio_m3_si_sz(io_si,sz) = hio_m3_si_sz(io_si,sz) + ccohort%cmort*ccohort%n
-                    hio_m7_si_sz(io_si,sz) = hio_m7_si_sz(io_si,sz) + &
+                    hio_m1_sz(io_si,sz) = hio_m1_sz(io_si,sz) + ccohort%bmort*ccohort%n
+                    hio_m2_sz(io_si,sz) = hio_m2_sz(io_si,sz) + ccohort%hmort*ccohort%n
+                    hio_m3_sz(io_si,sz) = hio_m3_sz(io_si,sz) + ccohort%cmort*ccohort%n
+                    hio_m7_sz(io_si,sz) = hio_m7_sz(io_si,sz) + &
                          (ccohort%lmort_direct+ccohort%lmort_collateral+ccohort%lmort_infra) * ccohort%n
-                    hio_m8_si_sz(io_si,sz) = hio_m8_si_sz(io_si,sz) + &
+                    hio_m8_sz(io_si,sz) = hio_m8_sz(io_si,sz) + &
                          ccohort%frmort*ccohort%n
-                    hio_m9_si_sz(io_si,sz) = hio_m9_si_sz(io_si,sz) + ccohort%smort*ccohort%n
+                    hio_m9_sz(io_si,sz) = hio_m9_sz(io_si,sz) + ccohort%smort*ccohort%n
                   
                   
                    
                     !C13 discrimination
                     if(gpp_cached + ccohort%gpp_acc_hold > 0.0_r8)then
-                       hio_c13disc_si_scpf(io_si,scpf) = ((hio_c13disc_si_scpf(io_si,scpf) * gpp_cached) + &
+                       hio_c13disc_scpf(io_si,scpf) = ((hio_c13disc_scpf(io_si,scpf) * gpp_cached) + &
                             (ccohort%c13disc_acc * ccohort%gpp_acc_hold)) / (gpp_cached + ccohort%gpp_acc_hold)
                     else
-                       hio_c13disc_si_scpf(io_si,scpf) = 0.0_r8
+                       hio_c13disc_scpf(io_si,scpf) = 0.0_r8
                     endif
 
                     ! number density [/ha]
-                    hio_nplant_si_scpf(io_si,scpf) = hio_nplant_si_scpf(io_si,scpf) + ccohort%n
+                    hio_nplant_scpf(io_si,scpf) = hio_nplant_scpf(io_si,scpf) + ccohort%n
 
                     ! number density along the cohort age dimension
                     if (hlm_use_cohort_age_tracking .eq.itrue) then
-                       hio_nplant_si_capf(io_si,capf) = hio_nplant_si_capf(io_si,capf) + ccohort%n
-                       hio_nplant_si_cacls(io_si,cacls) = hio_nplant_si_cacls(io_si,cacls)+ccohort%n
+                       hio_nplant_capf(io_si,capf) = hio_nplant_capf(io_si,capf) + ccohort%n
+                       hio_nplant_cacls(io_si,cacls) = hio_nplant_cacls(io_si,cacls)+ccohort%n
                     end if
 
 
@@ -2491,96 +2491,96 @@ end subroutine flush_hvars
                     
                     
                     ! number density by size and biomass
-                    hio_agb_si_sz(io_si,sz) = hio_agb_si_sz(io_si,sz) + &
+                    hio_agb_sz(io_si,sz) = hio_agb_sz(io_si,sz) + &
                           total_m * ccohort%n * prt_params%allom_agb_frac(ccohort%pft) * AREA_INV
 
-                    hio_agb_si_scpf(io_si,scpf) = hio_agb_si_scpf(io_si,scpf) + &
+                    hio_agb_scpf(io_si,scpf) = hio_agb_scpf(io_si,scpf) + &
                          total_m * ccohort%n * prt_params%allom_agb_frac(ccohort%pft) * AREA_INV
 
 
-                    hio_biomass_si_sz(io_si,sz) = hio_biomass_si_sz(io_si,sz) + &
+                    hio_biomass_sz(io_si,sz) = hio_biomass_sz(io_si,sz) + &
                           total_m * ccohort%n * AREA_INV
 
                     ! update size-class x patch-age related quantities
 
                     iscag = get_sizeage_class_index(ccohort%dbh,cpatch%age)
                     
-                    hio_nplant_si_scag(io_si,iscag) = hio_nplant_si_scag(io_si,iscag) + ccohort%n
+                    hio_nplant_scag(io_si,iscag) = hio_nplant_scag(io_si,iscag) + ccohort%n
 
-                    hio_nplant_si_sz(io_si,sz) = hio_nplant_si_sz(io_si,sz) + ccohort%n
+                    hio_nplant_sz(io_si,sz) = hio_nplant_sz(io_si,sz) + ccohort%n
                     
                   
                     ! update size, age, and PFT - indexed quantities
 
                     iscagpft = get_sizeagepft_class_index(ccohort%dbh,cpatch%age,ccohort%pft)
                     
-                    hio_nplant_si_scagpft(io_si,iscagpft) = hio_nplant_si_scagpft(io_si,iscagpft) + ccohort%n
+                    hio_nplant_scagpft(io_si,iscagpft) = hio_nplant_scagpft(io_si,iscagpft) + ccohort%n
 
                     ! update age and PFT - indexed quantities
 
                     iagepft = get_agepft_class_index(cpatch%age,ccohort%pft)
                     
-                    hio_npp_si_agepft(io_si,iagepft) = hio_npp_si_agepft(io_si,iagepft) + &
+                    hio_npp_agepft(io_si,iagepft) = hio_npp_agepft(io_si,iagepft) + &
                          ccohort%n * ccohort%npp_acc_hold * AREA_INV
 
-                    hio_biomass_si_agepft(io_si,iagepft) = hio_biomass_si_agepft(io_si,iagepft) + &
+                    hio_biomass_agepft(io_si,iagepft) = hio_biomass_agepft(io_si,iagepft) + &
                           total_m * ccohort%n * AREA_INV
 
                     ! update SCPF/SZ- and canopy/subcanopy- partitioned quantities
                     if (ccohort%canopy_layer .eq. 1) then
-                       hio_nplant_canopy_si_scag(io_si,iscag) = hio_nplant_canopy_si_scag(io_si,iscag) + ccohort%n
-                       hio_mortality_canopy_si_scag(io_si,iscag) = hio_mortality_canopy_si_scag(io_si,iscag) + &
+                       hio_nplant_canopy_scag(io_si,iscag) = hio_nplant_canopy_scag(io_si,iscag) + ccohort%n
+                       hio_mortality_canopy_scag(io_si,iscag) = hio_mortality_canopy_scag(io_si,iscag) + &
                             (ccohort%bmort + ccohort%hmort + ccohort%cmort + & 
                             ccohort%frmort + ccohort%smort + ccohort%asmort) * ccohort%n
-                       hio_ddbh_canopy_si_scag(io_si,iscag) = hio_ddbh_canopy_si_scag(io_si,iscag) + &
+                       hio_ddbh_canopy_scag(io_si,iscag) = hio_ddbh_canopy_scag(io_si,iscag) + &
                             ccohort%ddbhdt*ccohort%n
-                       hio_bstor_canopy_si_scpf(io_si,scpf) = hio_bstor_canopy_si_scpf(io_si,scpf) + &
+                       hio_bstor_canopy_scpf(io_si,scpf) = hio_bstor_canopy_scpf(io_si,scpf) + &
                              store_m * ccohort%n
-                       hio_bleaf_canopy_si_scpf(io_si,scpf) = hio_bleaf_canopy_si_scpf(io_si,scpf) + &
+                       hio_bleaf_canopy_scpf(io_si,scpf) = hio_bleaf_canopy_scpf(io_si,scpf) + &
                              leaf_m * ccohort%n
 
-                       hio_canopy_biomass_si(io_si) = hio_canopy_biomass_si(io_si) + n_perm2 * total_m * g_per_kg
+                       hio_canopy_biomass(io_si) = hio_canopy_biomass(io_si) + n_perm2 * total_m * g_per_kg
 
-                       !hio_mortality_canopy_si_scpf(io_si,scpf) = hio_mortality_canopy_si_scpf(io_si,scpf)+ &
+                       !hio_mortality_canopy_scpf(io_si,scpf) = hio_mortality_canopy_scpf(io_si,scpf)+ &
                        !    (ccohort%bmort + ccohort%hmort + ccohort%cmort + &
                        ! ccohort%frmort + ccohort%smort + ccohort%asmort) * ccohort%n
 
-                       hio_mortality_canopy_si_scpf(io_si,scpf) = hio_mortality_canopy_si_scpf(io_si,scpf)+ &
+                       hio_mortality_canopy_scpf(io_si,scpf) = hio_mortality_canopy_scpf(io_si,scpf)+ &
 
                             (ccohort%bmort + ccohort%hmort + ccohort%cmort + ccohort%frmort + & 
                             ccohort%smort + ccohort%asmort) * ccohort%n + &
                             (ccohort%lmort_direct + ccohort%lmort_collateral + ccohort%lmort_infra) * &
                             ccohort%n * sec_per_day * days_per_year
 
-                       hio_nplant_canopy_si_scpf(io_si,scpf) = hio_nplant_canopy_si_scpf(io_si,scpf) + ccohort%n
-                       hio_nplant_canopy_si_sz(io_si,sz) = hio_nplant_canopy_si_sz(io_si,sz) + ccohort%n
-                       hio_lai_canopy_si_sz(io_si,sz) = hio_lai_canopy_si_sz(io_si,sz) + &
+                       hio_nplant_canopy_scpf(io_si,scpf) = hio_nplant_canopy_scpf(io_si,scpf) + ccohort%n
+                       hio_nplant_canopy_sz(io_si,sz) = hio_nplant_canopy_sz(io_si,sz) + ccohort%n
+                       hio_lai_canopy_sz(io_si,sz) = hio_lai_canopy_sz(io_si,sz) + &
                                                             ccohort%treelai*ccohort%c_area * AREA_INV
-                       hio_sai_canopy_si_sz(io_si,sz) = hio_sai_canopy_si_sz(io_si,sz) + &
+                       hio_sai_canopy_sz(io_si,sz) = hio_sai_canopy_sz(io_si,sz) + &
                                                             ccohort%treesai*ccohort%c_area * AREA_INV
-                       hio_trimming_canopy_si_sz(io_si,sz) = hio_trimming_canopy_si_sz(io_si,sz) + &
+                       hio_trimming_canopy_sz(io_si,sz) = hio_trimming_canopy_sz(io_si,sz) + &
                             ccohort%n * ccohort%canopy_trim
-                       hio_crown_area_canopy_si_sz(io_si,sz) = hio_crown_area_canopy_si_sz(io_si,sz) + &
+                       hio_crown_area_canopy_sz(io_si,sz) = hio_crown_area_canopy_sz(io_si,sz) + &
                             ccohort%c_area
-                       hio_gpp_canopy_si_scpf(io_si,scpf)      = hio_gpp_canopy_si_scpf(io_si,scpf)      + &
+                       hio_gpp_canopy_scpf(io_si,scpf)      = hio_gpp_canopy_scpf(io_si,scpf)      + &
                             n_perm2*ccohort%gpp_acc_hold
-                       hio_ar_canopy_si_scpf(io_si,scpf)      = hio_ar_canopy_si_scpf(io_si,scpf)      + &
+                       hio_ar_canopy_scpf(io_si,scpf)      = hio_ar_canopy_scpf(io_si,scpf)      + &
                             n_perm2*ccohort%resp_acc_hold
                        ! growth increment
-                       hio_ddbh_canopy_si_scpf(io_si,scpf) = hio_ddbh_canopy_si_scpf(io_si,scpf) + &
+                       hio_ddbh_canopy_scpf(io_si,scpf) = hio_ddbh_canopy_scpf(io_si,scpf) + &
                             ccohort%ddbhdt*ccohort%n
-                       hio_ddbh_canopy_si_sz(io_si,sz) = hio_ddbh_canopy_si_sz(io_si,sz) + &
+                       hio_ddbh_canopy_sz(io_si,sz) = hio_ddbh_canopy_sz(io_si,sz) + &
                             ccohort%ddbhdt*ccohort%n
 
                        ! sum of all mortality
-                       hio_mortality_canopy_si_sz(io_si,sz) = hio_mortality_canopy_si_sz(io_si,sz) + &
+                       hio_mortality_canopy_sz(io_si,sz) = hio_mortality_canopy_sz(io_si,sz) + &
 
                              (ccohort%bmort + ccohort%hmort + ccohort%cmort + &
                              ccohort%frmort + ccohort%smort + ccohort%asmort) * ccohort%n + &
                              (ccohort%lmort_direct + ccohort%lmort_collateral + ccohort%lmort_infra) * &
                              ccohort%n * sec_per_day * days_per_year
 
-                       hio_canopy_mortality_carbonflux_si(io_si) = hio_canopy_mortality_carbonflux_si(io_si) + &
+                       hio_canopy_mortality_carbonflux(io_si) = hio_canopy_mortality_carbonflux(io_si) + &
                             (ccohort%bmort + ccohort%hmort + ccohort%cmort + & 
                             ccohort%frmort + ccohort%smort + ccohort%asmort) * &
                             total_m * ccohort%n * g_per_kg * days_per_sec * years_per_day * ha_per_m2 + &
@@ -2588,130 +2588,130 @@ end subroutine flush_hvars
                             ccohort%n * g_per_kg * ha_per_m2
                        
 
-                       hio_carbon_balance_canopy_si_sz(io_si,sz) = hio_carbon_balance_canopy_si_sz(io_si,sz) + &
+                       hio_carbon_balance_canopy_sz(io_si,sz) = hio_carbon_balance_canopy_sz(io_si,sz) + &
                              ccohort%n * ccohort%npp_acc_hold
                        
                       
-                       hio_leaf_md_canopy_si_sz(io_si,sz) = hio_leaf_md_canopy_si_sz(io_si,sz) + &
+                       hio_leaf_md_canopy_sz(io_si,sz) = hio_leaf_md_canopy_sz(io_si,sz) + &
                              leaf_m_turnover * ccohort%n
-                       hio_root_md_canopy_si_sz(io_si,sz) = hio_root_md_canopy_si_sz(io_si,sz) + &
+                       hio_root_md_canopy_sz(io_si,sz) = hio_root_md_canopy_sz(io_si,sz) + &
                              fnrt_m_turnover * ccohort%n
-                       hio_bsw_md_canopy_si_sz(io_si,sz) = hio_bsw_md_canopy_si_sz(io_si,sz) + &
+                       hio_bsw_md_canopy_sz(io_si,sz) = hio_bsw_md_canopy_sz(io_si,sz) + &
                              sapw_m_turnover * ccohort%n
-                       hio_bstore_md_canopy_si_sz(io_si,sz) = hio_bstore_md_canopy_si_sz(io_si,sz) + &
+                       hio_bstore_md_canopy_sz(io_si,sz) = hio_bstore_md_canopy_sz(io_si,sz) + &
                              store_m_turnover * ccohort%n
-                       hio_bdead_md_canopy_si_sz(io_si,sz) = hio_bdead_md_canopy_si_sz(io_si,sz) + &
+                       hio_bdead_md_canopy_sz(io_si,sz) = hio_bdead_md_canopy_sz(io_si,sz) + &
                              struct_m_turnover * ccohort%n
-                       hio_seed_prod_canopy_si_sz(io_si,sz) = hio_seed_prod_canopy_si_sz(io_si,sz) + &
+                       hio_seed_prod_canopy_sz(io_si,sz) = hio_seed_prod_canopy_sz(io_si,sz) + &
                              ccohort%seed_prod * ccohort%n
 
-                       hio_npp_leaf_canopy_si_sz(io_si,sz) = hio_npp_leaf_canopy_si_sz(io_si,sz) + &
+                       hio_npp_leaf_canopy_sz(io_si,sz) = hio_npp_leaf_canopy_sz(io_si,sz) + &
                              leaf_m_net_alloc * ccohort%n
-                       hio_npp_fnrt_canopy_si_sz(io_si,sz) = hio_npp_fnrt_canopy_si_sz(io_si,sz) + &
+                       hio_npp_fnrt_canopy_sz(io_si,sz) = hio_npp_fnrt_canopy_sz(io_si,sz) + &
                              fnrt_m_net_alloc * ccohort%n
-                       hio_npp_sapw_canopy_si_sz(io_si,sz) = hio_npp_sapw_canopy_si_sz(io_si,sz) + &
+                       hio_npp_sapw_canopy_sz(io_si,sz) = hio_npp_sapw_canopy_sz(io_si,sz) + &
                              sapw_m_net_alloc * ccohort%n
-                       hio_npp_dead_canopy_si_sz(io_si,sz) = hio_npp_dead_canopy_si_sz(io_si,sz) + &
+                       hio_npp_dead_canopy_sz(io_si,sz) = hio_npp_dead_canopy_sz(io_si,sz) + &
                              struct_m_net_alloc * ccohort%n
-                       hio_npp_seed_canopy_si_sz(io_si,sz) = hio_npp_seed_canopy_si_sz(io_si,sz) + &
+                       hio_npp_seed_canopy_sz(io_si,sz) = hio_npp_seed_canopy_sz(io_si,sz) + &
                              repro_m_net_alloc * ccohort%n
-                       hio_npp_stor_canopy_si_sz(io_si,sz) = hio_npp_stor_canopy_si_sz(io_si,sz) + &
+                       hio_npp_stor_canopy_sz(io_si,sz) = hio_npp_stor_canopy_sz(io_si,sz) + &
                              store_m_net_alloc * ccohort%n
                        
-                       hio_yesterdaycanopylevel_canopy_si_sz(io_si,sz) = &
-                            hio_yesterdaycanopylevel_canopy_si_sz(io_si,sz) + &
+                       hio_yesterdaycanopylevel_canopy_sz(io_si,sz) = &
+                            hio_yesterdaycanopylevel_canopy_sz(io_si,sz) + &
                             ccohort%canopy_layer_yesterday * ccohort%n
                     else
-                       hio_nplant_understory_si_scag(io_si,iscag) = hio_nplant_understory_si_scag(io_si,iscag) + ccohort%n
-                       hio_mortality_understory_si_scag(io_si,iscag) = hio_mortality_understory_si_scag(io_si,iscag) + &
+                       hio_nplant_understory_scag(io_si,iscag) = hio_nplant_understory_scag(io_si,iscag) + ccohort%n
+                       hio_mortality_understory_scag(io_si,iscag) = hio_mortality_understory_scag(io_si,iscag) + &
                             (ccohort%bmort + ccohort%hmort + ccohort%cmort + &
                             ccohort%frmort + ccohort%smort + ccohort%asmort) * ccohort%n
-                       hio_ddbh_understory_si_scag(io_si,iscag) = hio_ddbh_understory_si_scag(io_si,iscag) + &
+                       hio_ddbh_understory_scag(io_si,iscag) = hio_ddbh_understory_scag(io_si,iscag) + &
                             ccohort%ddbhdt*ccohort%n
-                       hio_bstor_understory_si_scpf(io_si,scpf) = hio_bstor_understory_si_scpf(io_si,scpf) + &
+                       hio_bstor_understory_scpf(io_si,scpf) = hio_bstor_understory_scpf(io_si,scpf) + &
                              store_m * ccohort%n
-                       hio_bleaf_understory_si_scpf(io_si,scpf) = hio_bleaf_understory_si_scpf(io_si,scpf) + &
+                       hio_bleaf_understory_scpf(io_si,scpf) = hio_bleaf_understory_scpf(io_si,scpf) + &
                              leaf_m  * ccohort%n
-                       hio_understory_biomass_si(io_si) = hio_understory_biomass_si(io_si) + &
+                       hio_understory_biomass(io_si) = hio_understory_biomass(io_si) + &
                              n_perm2 * total_m * g_per_kg
 
-                       !hio_mortality_understory_si_scpf(io_si,scpf) = hio_mortality_understory_si_scpf(io_si,scpf)+ &
+                       !hio_mortality_understory_scpf(io_si,scpf) = hio_mortality_understory_scpf(io_si,scpf)+ &
                         !    (ccohort%bmort + ccohort%hmort + ccohort%cmort + 
                        !      ccohort%frmort + ccohort%smort + ccohort%asmort) * ccohort%n
 
-                       hio_mortality_understory_si_scpf(io_si,scpf) = hio_mortality_understory_si_scpf(io_si,scpf)+ &
+                       hio_mortality_understory_scpf(io_si,scpf) = hio_mortality_understory_scpf(io_si,scpf)+ &
                             (ccohort%bmort + ccohort%hmort + ccohort%cmort + &
                             ccohort%frmort + ccohort%smort + ccohort%asmort) * ccohort%n + &
                             (ccohort%lmort_direct + ccohort%lmort_collateral + ccohort%lmort_infra) * &
                             ccohort%n * sec_per_day * days_per_year
 
-                       hio_nplant_understory_si_scpf(io_si,scpf) = hio_nplant_understory_si_scpf(io_si,scpf) + ccohort%n
-                       hio_nplant_understory_si_sz(io_si,sz) = hio_nplant_understory_si_sz(io_si,sz) + ccohort%n
-                       hio_lai_understory_si_sz(io_si,sz) = hio_lai_understory_si_sz(io_si,sz) + &
+                       hio_nplant_understory_scpf(io_si,scpf) = hio_nplant_understory_scpf(io_si,scpf) + ccohort%n
+                       hio_nplant_understory_sz(io_si,sz) = hio_nplant_understory_sz(io_si,sz) + ccohort%n
+                       hio_lai_understory_sz(io_si,sz) = hio_lai_understory_sz(io_si,sz) + &
                                                                 ccohort%treelai*ccohort%c_area  * AREA_INV
-                       hio_sai_understory_si_sz(io_si,sz) = hio_sai_understory_si_sz(io_si,sz) + &
+                       hio_sai_understory_sz(io_si,sz) = hio_sai_understory_sz(io_si,sz) + &
                                                                 ccohort%treelai*ccohort%c_area  * AREA_INV
-                       hio_trimming_understory_si_sz(io_si,sz) = hio_trimming_understory_si_sz(io_si,sz) + &
+                       hio_trimming_understory_sz(io_si,sz) = hio_trimming_understory_sz(io_si,sz) + &
                             ccohort%n * ccohort%canopy_trim
-                       hio_crown_area_understory_si_sz(io_si,sz) = hio_crown_area_understory_si_sz(io_si,sz) + &
+                       hio_crown_area_understory_sz(io_si,sz) = hio_crown_area_understory_sz(io_si,sz) + &
                             ccohort%c_area
-                       hio_gpp_understory_si_scpf(io_si,scpf)      = hio_gpp_understory_si_scpf(io_si,scpf)      + &
+                       hio_gpp_understory_scpf(io_si,scpf)      = hio_gpp_understory_scpf(io_si,scpf)      + &
                             n_perm2*ccohort%gpp_acc_hold
-                       hio_ar_understory_si_scpf(io_si,scpf)      = hio_ar_understory_si_scpf(io_si,scpf)      + &
+                       hio_ar_understory_scpf(io_si,scpf)      = hio_ar_understory_scpf(io_si,scpf)      + &
                             n_perm2*ccohort%resp_acc_hold
 
                        ! growth increment
-                       hio_ddbh_understory_si_scpf(io_si,scpf) = hio_ddbh_understory_si_scpf(io_si,scpf) + &
+                       hio_ddbh_understory_scpf(io_si,scpf) = hio_ddbh_understory_scpf(io_si,scpf) + &
                             ccohort%ddbhdt*ccohort%n
-                       hio_ddbh_understory_si_sz(io_si,sz) = hio_ddbh_understory_si_sz(io_si,sz) + &
+                       hio_ddbh_understory_sz(io_si,sz) = hio_ddbh_understory_sz(io_si,sz) + &
                             ccohort%ddbhdt*ccohort%n
 
                        ! sum of all mortality
-                       hio_mortality_understory_si_sz(io_si,sz) = hio_mortality_understory_si_sz(io_si,sz) + &
+                       hio_mortality_understory_sz(io_si,sz) = hio_mortality_understory_sz(io_si,sz) + &
 
                              (ccohort%bmort + ccohort%hmort + ccohort%cmort + & 
                              ccohort%frmort + ccohort%smort + ccohort%asmort) * ccohort%n + &
                              (ccohort%lmort_direct + ccohort%lmort_collateral + ccohort%lmort_infra) * &
                              ccohort%n * sec_per_day * days_per_year
                        
-                       hio_understory_mortality_carbonflux_si(io_si) = hio_understory_mortality_carbonflux_si(io_si) + &
+                       hio_understory_mortality_carbonflux(io_si) = hio_understory_mortality_carbonflux(io_si) + &
                              (ccohort%bmort + ccohort%hmort + ccohort%cmort + & 
                              ccohort%frmort + ccohort%smort + ccohort%asmort) * &
                              total_m * ccohort%n * g_per_kg * days_per_sec * years_per_day * ha_per_m2 + &
                              (ccohort%lmort_direct + ccohort%lmort_collateral + ccohort%lmort_infra) * total_m * &
                              ccohort%n * g_per_kg * ha_per_m2
 
-                       hio_carbon_balance_understory_si_sz(io_si,sz) = hio_carbon_balance_understory_si_sz(io_si,sz) + &
+                       hio_carbon_balance_understory_sz(io_si,sz) = hio_carbon_balance_understory_sz(io_si,sz) + &
                              ccohort%npp_acc_hold * ccohort%n
 
-                       hio_leaf_md_understory_si_sz(io_si,sz) = hio_leaf_md_understory_si_sz(io_si,sz) + &
+                       hio_leaf_md_understory_sz(io_si,sz) = hio_leaf_md_understory_sz(io_si,sz) + &
                             leaf_m_turnover * ccohort%n
-                       hio_root_md_understory_si_sz(io_si,sz) = hio_root_md_understory_si_sz(io_si,sz) + &
+                       hio_root_md_understory_sz(io_si,sz) = hio_root_md_understory_sz(io_si,sz) + &
                             fnrt_m_turnover * ccohort%n
-                       hio_bsw_md_understory_si_sz(io_si,sz) = hio_bsw_md_understory_si_sz(io_si,sz) + &
+                       hio_bsw_md_understory_sz(io_si,sz) = hio_bsw_md_understory_sz(io_si,sz) + &
                              sapw_m_turnover * ccohort%n
-                       hio_bstore_md_understory_si_sz(io_si,sz) = hio_bstore_md_understory_si_sz(io_si,sz) + &
+                       hio_bstore_md_understory_sz(io_si,sz) = hio_bstore_md_understory_sz(io_si,sz) + &
                              store_m_turnover * ccohort%n
-                       hio_bdead_md_understory_si_sz(io_si,sz) = hio_bdead_md_understory_si_sz(io_si,sz) + &
+                       hio_bdead_md_understory_sz(io_si,sz) = hio_bdead_md_understory_sz(io_si,sz) + &
                              struct_m_turnover * ccohort%n
-                       hio_seed_prod_understory_si_sz(io_si,sz) = hio_seed_prod_understory_si_sz(io_si,sz) + &
+                       hio_seed_prod_understory_sz(io_si,sz) = hio_seed_prod_understory_sz(io_si,sz) + &
                             ccohort%seed_prod * ccohort%n
 
-                       hio_npp_leaf_understory_si_sz(io_si,sz) = hio_npp_leaf_understory_si_sz(io_si,sz) + &
+                       hio_npp_leaf_understory_sz(io_si,sz) = hio_npp_leaf_understory_sz(io_si,sz) + &
                              leaf_m_net_alloc * ccohort%n
-                       hio_npp_fnrt_understory_si_sz(io_si,sz) = hio_npp_fnrt_understory_si_sz(io_si,sz) + &
+                       hio_npp_fnrt_understory_sz(io_si,sz) = hio_npp_fnrt_understory_sz(io_si,sz) + &
                              fnrt_m_net_alloc * ccohort%n
-                       hio_npp_sapw_understory_si_sz(io_si,sz) = hio_npp_sapw_understory_si_sz(io_si,sz) + &
+                       hio_npp_sapw_understory_sz(io_si,sz) = hio_npp_sapw_understory_sz(io_si,sz) + &
                              sapw_m_net_alloc * ccohort%n
-                       hio_npp_dead_understory_si_sz(io_si,sz) = hio_npp_dead_understory_si_sz(io_si,sz) + &
+                       hio_npp_dead_understory_sz(io_si,sz) = hio_npp_dead_understory_sz(io_si,sz) + &
                              struct_m_net_alloc * ccohort%n
-                       hio_npp_seed_understory_si_sz(io_si,sz) = hio_npp_seed_understory_si_sz(io_si,sz) + &
+                       hio_npp_seed_understory_sz(io_si,sz) = hio_npp_seed_understory_sz(io_si,sz) + &
                              repro_m_net_alloc * ccohort%n
-                       hio_npp_stor_understory_si_sz(io_si,sz) = hio_npp_stor_understory_si_sz(io_si,sz) + &
+                       hio_npp_stor_understory_sz(io_si,sz) = hio_npp_stor_understory_sz(io_si,sz) + &
                              store_m_net_alloc * ccohort%n
                        
-                       hio_yesterdaycanopylevel_understory_si_sz(io_si,sz) = &
-                            hio_yesterdaycanopylevel_understory_si_sz(io_si,sz) + &
+                       hio_yesterdaycanopylevel_understory_sz(io_si,sz) = &
+                            hio_yesterdaycanopylevel_understory_sz(io_si,sz) + &
                             ccohort%canopy_layer_yesterday * ccohort%n
                     endif
                     !
@@ -2723,7 +2723,7 @@ end subroutine flush_hvars
                     if ( (sz - ccohort%size_class_lasttimestep ) .gt. 0) then
                        do i_sz = ccohort%size_class_lasttimestep + 1, sz
                           i_scpf = (ccohort%pft-1)*nlevsclass+i_sz
-                          hio_growthflux_si_scpf(io_si,i_scpf) = hio_growthflux_si_scpf(io_si,i_scpf) + &
+                          hio_growthflux_scpf(io_si,i_scpf) = hio_growthflux_scpf(io_si,i_scpf) + &
                                ccohort%n * days_per_year
                        end do
                     end if
@@ -2736,7 +2736,7 @@ end subroutine flush_hvars
                   !
                   ! if cohort is new, track its growth flux into the first size bin
                   i_scpf = (ccohort%pft-1)*nlevsclass+1
-                  hio_growthflux_si_scpf(io_si,i_scpf) = hio_growthflux_si_scpf(io_si,i_scpf) + ccohort%n * days_per_year
+                  hio_growthflux_scpf(io_si,i_scpf) = hio_growthflux_scpf(io_si,i_scpf) + ccohort%n * days_per_year
                   ccohort%size_class_lasttimestep = 1
                                    
                end if
@@ -2744,11 +2744,11 @@ end subroutine flush_hvars
                ! resolve some canopy area profiles, both total and of occupied leaves
                ican = ccohort%canopy_layer
                !
-               hio_crownarea_si_can(io_si, ican) = hio_crownarea_si_can(io_si, ican) + ccohort%c_area / AREA
+               hio_crownarea_can(io_si, ican) = hio_crownarea_can(io_si, ican) + ccohort%c_area / AREA
                !
                do ileaf=1,ccohort%nv
                   cnlf_indx = ileaf + (ican-1) * nlevleaf
-                  hio_crownarea_si_cnlf(io_si, cnlf_indx) = hio_crownarea_si_cnlf(io_si, cnlf_indx) + &
+                  hio_crownarea_cnlf(io_si, cnlf_indx) = hio_crownarea_cnlf(io_si, cnlf_indx) + &
                        ccohort%c_area / AREA
                end do
                
@@ -2760,35 +2760,35 @@ end subroutine flush_hvars
             ! define scalar to counteract the patch albedo scaling logic for conserved quantities
                         
             ! Update Fire Variables
-            hio_spitfire_ros_si(io_si)         = hio_spitfire_ros_si(io_si) + cpatch%ROS_front * cpatch%area * AREA_INV
-            hio_fire_ros_area_product_si(io_si)= hio_fire_ros_area_product_si(io_si) + &
+            hio_spitfire_ros(io_si)         = hio_spitfire_ros(io_si) + cpatch%ROS_front * cpatch%area * AREA_INV
+            hio_fire_ros_area_product(io_si)= hio_fire_ros_area_product(io_si) + &
                  cpatch%frac_burnt * cpatch%ROS_front * cpatch%area * AREA_INV
-            hio_effect_wspeed_si(io_si)        = hio_effect_wspeed_si(io_si) + cpatch%effect_wspeed * cpatch%area * AREA_INV
-            hio_tfc_ros_si(io_si)              = hio_tfc_ros_si(io_si) + cpatch%TFC_ROS * cpatch%area * AREA_INV
-            hio_tfc_ros_area_product_si(io_si) = hio_tfc_ros_area_product_si(io_si) + &
+            hio_effect_wspeed(io_si)        = hio_effect_wspeed(io_si) + cpatch%effect_wspeed * cpatch%area * AREA_INV
+            hio_tfc_ros(io_si)              = hio_tfc_ros(io_si) + cpatch%TFC_ROS * cpatch%area * AREA_INV
+            hio_tfc_ros_area_product(io_si) = hio_tfc_ros_area_product(io_si) + &
                  cpatch%frac_burnt * cpatch%TFC_ROS * cpatch%area * AREA_INV
-            hio_fire_intensity_si(io_si)       = hio_fire_intensity_si(io_si) + cpatch%FI * cpatch%area * AREA_INV
-            hio_fire_area_si(io_si)            = hio_fire_area_si(io_si) + cpatch%frac_burnt * cpatch%area * AREA_INV
-            hio_fire_fuel_bulkd_si(io_si)      = hio_fire_fuel_bulkd_si(io_si) + cpatch%fuel_bulkd * cpatch%area * AREA_INV
-            hio_fire_fuel_eff_moist_si(io_si)  = hio_fire_fuel_eff_moist_si(io_si) + cpatch%fuel_eff_moist * cpatch%area * AREA_INV
-            hio_fire_fuel_sav_si(io_si)        = hio_fire_fuel_sav_si(io_si) + cpatch%fuel_sav * cpatch%area * AREA_INV
-            hio_fire_fuel_mef_si(io_si)        = hio_fire_fuel_mef_si(io_si) + cpatch%fuel_mef * cpatch%area * AREA_INV
-            hio_sum_fuel_si(io_si)             = hio_sum_fuel_si(io_si) + cpatch%sum_fuel * g_per_kg * cpatch%area * AREA_INV
-            hio_fragmentation_scaler_si(io_si) = hio_fragmentation_scaler_si(io_si) + cpatch%fragmentation_scaler * cpatch%area * AREA_INV
+            hio_fire_intensity(io_si)       = hio_fire_intensity(io_si) + cpatch%FI * cpatch%area * AREA_INV
+            hio_fire_area(io_si)            = hio_fire_area(io_si) + cpatch%frac_burnt * cpatch%area * AREA_INV
+            hio_fire_fuel_bulkd(io_si)      = hio_fire_fuel_bulkd(io_si) + cpatch%fuel_bulkd * cpatch%area * AREA_INV
+            hio_fire_fuel_eff_moist(io_si)  = hio_fire_fuel_eff_moist(io_si) + cpatch%fuel_eff_moist * cpatch%area * AREA_INV
+            hio_fire_fuel_sav(io_si)        = hio_fire_fuel_sav(io_si) + cpatch%fuel_sav * cpatch%area * AREA_INV
+            hio_fire_fuel_mef(io_si)        = hio_fire_fuel_mef(io_si) + cpatch%fuel_mef * cpatch%area * AREA_INV
+            hio_sum_fuel(io_si)             = hio_sum_fuel(io_si) + cpatch%sum_fuel * g_per_kg * cpatch%area * AREA_INV
+            hio_fragmentation_scaler(io_si) = hio_fragmentation_scaler(io_si) + cpatch%fragmentation_scaler * cpatch%area * AREA_INV
             
             do i_fuel = 1,nfsc
-               hio_litter_moisture_si_fuel(io_si, i_fuel) = hio_litter_moisture_si_fuel(io_si, i_fuel) + &
+               hio_litter_moisture_fuel(io_si, i_fuel) = hio_litter_moisture_fuel(io_si, i_fuel) + &
                     cpatch%litter_moisture(i_fuel) * cpatch%area * AREA_INV
 
-               hio_fuel_amount_si_fuel(io_si, i_fuel) = hio_fuel_amount_si_fuel(io_si, i_fuel) + &
+               hio_fuel_amount_fuel(io_si, i_fuel) = hio_fuel_amount_fuel(io_si, i_fuel) + &
                     cpatch%fuel_frac(i_fuel) * cpatch%sum_fuel * cpatch%area * AREA_INV
 
-               hio_burnt_frac_litter_si_fuel(io_si, i_fuel) = hio_burnt_frac_litter_si_fuel(io_si, i_fuel) + &
+               hio_burnt_frac_litter_fuel(io_si, i_fuel) = hio_burnt_frac_litter_fuel(io_si, i_fuel) + &
                     cpatch%burnt_frac_litter(i_fuel) * cpatch%frac_burnt * cpatch%area * AREA_INV
             end do
 
 
-            hio_fire_intensity_area_product_si(io_si) = hio_fire_intensity_area_product_si(io_si) + &
+            hio_fire_intensity_area_product(io_si) = hio_fire_intensity_area_product(io_si) + &
                  cpatch%FI * cpatch%frac_burnt * cpatch%area * AREA_INV
 
             ! Update Litter Flux Variables
@@ -2798,15 +2798,15 @@ end subroutine flush_hvars
                          
             do i_cwd = 1, ncwd
 
-                hio_cwd_ag_si_cwdsc(io_si, i_cwd) = hio_cwd_ag_si_cwdsc(io_si, i_cwd) + &
+                hio_cwd_ag_cwdsc(io_si, i_cwd) = hio_cwd_ag_cwdsc(io_si, i_cwd) + &
                       litt_c%ag_cwd(i_cwd)*cpatch%area * AREA_INV * g_per_kg
-                hio_cwd_bg_si_cwdsc(io_si, i_cwd) = hio_cwd_bg_si_cwdsc(io_si, i_cwd) + &
+                hio_cwd_bg_cwdsc(io_si, i_cwd) = hio_cwd_bg_cwdsc(io_si, i_cwd) + &
                       sum(litt_c%bg_cwd(i_cwd,:)) * cpatch%area * AREA_INV * g_per_kg
                 
-                hio_cwd_ag_out_si_cwdsc(io_si, i_cwd) = hio_cwd_ag_out_si_cwdsc(io_si, i_cwd) + &
+                hio_cwd_ag_out_cwdsc(io_si, i_cwd) = hio_cwd_ag_out_cwdsc(io_si, i_cwd) + &
                       litt_c%ag_cwd_frag(i_cwd)*cpatch%area * AREA_INV * g_per_kg
                 
-                hio_cwd_bg_out_si_cwdsc(io_si, i_cwd) = hio_cwd_bg_out_si_cwdsc(io_si, i_cwd) + &
+                hio_cwd_bg_out_cwdsc(io_si, i_cwd) = hio_cwd_bg_out_cwdsc(io_si, i_cwd) + &
                       sum(litt_c%bg_cwd_frag(i_cwd,:)) * cpatch%area * AREA_INV * g_per_kg
 
             end do
@@ -2817,17 +2817,17 @@ end subroutine flush_hvars
 
          ! divide so-far-just-summed but to-be-averaged patch-age-class variables by patch-age-class area to get mean values
          do ipa2 = 1, nlevage
-            if (hio_area_si_age(io_si, ipa2) .gt. tiny) then
-               hio_lai_si_age(io_si, ipa2) = hio_lai_si_age(io_si, ipa2) / (hio_area_si_age(io_si, ipa2)*AREA)
-               hio_ncl_si_age(io_si, ipa2) = hio_ncl_si_age(io_si, ipa2) / (hio_area_si_age(io_si, ipa2)*AREA)
+            if (hio_area_age(io_si, ipa2) .gt. tiny) then
+               hio_lai_age(io_si, ipa2) = hio_lai_age(io_si, ipa2) / (hio_area_age(io_si, ipa2)*AREA)
+               hio_ncl_age(io_si, ipa2) = hio_ncl_age(io_si, ipa2) / (hio_area_age(io_si, ipa2)*AREA)
                do i_pft = 1, numpft
                   iagepft = ipa2 + (i_pft-1) * nlevage
-                  hio_scorch_height_si_agepft(io_si, iagepft) = &
-                       hio_scorch_height_si_agepft(io_si, iagepft) / (hio_area_si_age(io_si, ipa2)*AREA)
+                  hio_scorch_height_agepft(io_si, iagepft) = &
+                       hio_scorch_height_agepft(io_si, iagepft) / (hio_area_age(io_si, ipa2)*AREA)
                enddo
             else
-               hio_lai_si_age(io_si, ipa2) = 0._r8
-               hio_ncl_si_age(io_si, ipa2) = 0._r8
+               hio_lai_age(io_si, ipa2) = 0._r8
+               hio_ncl_age(io_si, ipa2) = 0._r8
             endif
          end do
 
@@ -2838,93 +2838,93 @@ end subroutine flush_hvars
                i_scpf = (i_pft-1)*nlevsclass + i_sz
                !
                ! termination mortality. sum of canopy and understory indices
-               hio_m6_si_scpf(io_si,i_scpf) = (sites(s)%term_nindivs_canopy(i_sz,i_pft) + &
+               hio_m6_scpf(io_si,i_scpf) = (sites(s)%term_nindivs_canopy(i_sz,i_pft) + &
                                                sites(s)%term_nindivs_ustory(i_sz,i_pft)) * days_per_year
 
-               hio_m6_si_sz(io_si,i_sz) = hio_m6_si_sz(io_si,i_sz) + &
+               hio_m6_sz(io_si,i_sz) = hio_m6_sz(io_si,i_sz) + &
                      (sites(s)%term_nindivs_canopy(i_sz,i_pft) + &
                       sites(s)%term_nindivs_ustory(i_sz,i_pft)) * days_per_year
                      
 
                !
                ! add termination mortality to canopy and understory mortality
-               hio_mortality_canopy_si_sz(io_si,i_sz) = hio_mortality_canopy_si_sz(io_si,i_sz) + &
+               hio_mortality_canopy_sz(io_si,i_sz) = hio_mortality_canopy_sz(io_si,i_sz) + &
                     sites(s)%term_nindivs_canopy(i_sz,i_pft) * days_per_year
 
-               hio_mortality_understory_si_sz(io_si,i_sz) = hio_mortality_understory_si_sz(io_si,i_sz) + &
+               hio_mortality_understory_sz(io_si,i_sz) = hio_mortality_understory_sz(io_si,i_sz) + &
                     sites(s)%term_nindivs_ustory(i_sz,i_pft) * days_per_year
 
-               hio_mortality_canopy_si_scpf(io_si,i_scpf) = hio_mortality_canopy_si_scpf(io_si,i_scpf) + &
+               hio_mortality_canopy_scpf(io_si,i_scpf) = hio_mortality_canopy_scpf(io_si,i_scpf) + &
                      sites(s)%term_nindivs_canopy(i_sz,i_pft) * days_per_year
 
-               hio_mortality_understory_si_scpf(io_si,i_scpf) = hio_mortality_understory_si_scpf(io_si,i_scpf) + &
+               hio_mortality_understory_scpf(io_si,i_scpf) = hio_mortality_understory_scpf(io_si,i_scpf) + &
                      sites(s)%term_nindivs_ustory(i_sz,i_pft) * days_per_year
 
                !
                ! imort on its own
-               hio_m4_si_scpf(io_si,i_scpf) = sites(s)%imort_rate(i_sz, i_pft)
-               hio_m4_si_sz(io_si,i_sz) = hio_m4_si_sz(io_si,i_sz) + sites(s)%imort_rate(i_sz, i_pft)
+               hio_m4_scpf(io_si,i_scpf) = sites(s)%imort_rate(i_sz, i_pft)
+               hio_m4_sz(io_si,i_sz) = hio_m4_sz(io_si,i_sz) + sites(s)%imort_rate(i_sz, i_pft)
                !
                ! add imort to other mortality terms. consider imort as understory mortality even if it happens in 
                ! cohorts that may have been promoted as part of the patch creation, and use the pre-calculated site-level 
                ! values to avoid biasing the results by the dramatically-reduced number densities in cohorts that are subject to imort
-               hio_mortality_understory_si_scpf(io_si,i_scpf) = hio_mortality_understory_si_scpf(io_si,i_scpf) + &
+               hio_mortality_understory_scpf(io_si,i_scpf) = hio_mortality_understory_scpf(io_si,i_scpf) + &
                     sites(s)%imort_rate(i_sz, i_pft)
-               hio_mortality_understory_si_sz(io_si,i_sz) = hio_mortality_understory_si_sz(io_si,i_sz) + &
+               hio_mortality_understory_sz(io_si,i_sz) = hio_mortality_understory_sz(io_si,i_sz) + &
                     sites(s)%imort_rate(i_sz, i_pft)
                !
                iscag = i_sz ! since imort is by definition something that only happens in newly disturbed patches, treat as such
-               hio_mortality_understory_si_scag(io_si,iscag) = hio_mortality_understory_si_scag(io_si,iscag) + &
+               hio_mortality_understory_scag(io_si,iscag) = hio_mortality_understory_scag(io_si,iscag) + &
                     sites(s)%imort_rate(i_sz, i_pft)
 
                ! fire mortality from the site-level diagnostic rates
-               hio_m5_si_scpf(io_si,i_scpf) = sites(s)%fmort_rate_canopy(i_sz, i_pft) + &
+               hio_m5_scpf(io_si,i_scpf) = sites(s)%fmort_rate_canopy(i_sz, i_pft) + &
                      sites(s)%fmort_rate_ustory(i_sz, i_pft)
-               hio_m5_si_sz(io_si,i_sz) = hio_m5_si_sz(io_si,i_sz) + &
+               hio_m5_sz(io_si,i_sz) = hio_m5_sz(io_si,i_sz) + &
                      sites(s)%fmort_rate_canopy(i_sz, i_pft) +  sites(s)%fmort_rate_ustory(i_sz, i_pft)
                !
-               hio_crownfiremort_si_scpf(io_si,i_scpf) = sites(s)%fmort_rate_crown(i_sz, i_pft)
-               hio_cambialfiremort_si_scpf(io_si,i_scpf) = sites(s)%fmort_rate_cambial(i_sz, i_pft)
+               hio_crownfiremort_scpf(io_si,i_scpf) = sites(s)%fmort_rate_crown(i_sz, i_pft)
+               hio_cambialfiremort_scpf(io_si,i_scpf) = sites(s)%fmort_rate_cambial(i_sz, i_pft)
                !
                ! fire components of overall canopy and understory mortality
-               hio_mortality_canopy_si_scpf(io_si,i_scpf) = hio_mortality_canopy_si_scpf(io_si,i_scpf) + &
+               hio_mortality_canopy_scpf(io_si,i_scpf) = hio_mortality_canopy_scpf(io_si,i_scpf) + &
                     sites(s)%fmort_rate_canopy(i_sz, i_pft)
-               hio_mortality_canopy_si_sz(io_si,i_sz) = hio_mortality_canopy_si_sz(io_si,i_sz) + &
+               hio_mortality_canopy_sz(io_si,i_sz) = hio_mortality_canopy_sz(io_si,i_sz) + &
                     sites(s)%fmort_rate_canopy(i_sz, i_pft)
 
                ! the fire mortality rates for each layer are total dead, since the usable
                ! output will then normalize by the counts, we are allowed to sum over layers
-               hio_mortality_understory_si_scpf(io_si,i_scpf) = hio_mortality_understory_si_scpf(io_si,i_scpf) + &
+               hio_mortality_understory_scpf(io_si,i_scpf) = hio_mortality_understory_scpf(io_si,i_scpf) + &
                      sites(s)%fmort_rate_ustory(i_sz, i_pft)
 
-               hio_mortality_understory_si_sz(io_si,i_sz) = hio_mortality_understory_si_sz(io_si,i_sz) + &
+               hio_mortality_understory_sz(io_si,i_sz) = hio_mortality_understory_sz(io_si,i_sz) + &
                      sites(s)%fmort_rate_ustory(i_sz, i_pft)
 
                !
                ! carbon flux associated with mortality of trees dying by fire
-               hio_canopy_mortality_carbonflux_si(io_si) = hio_canopy_mortality_carbonflux_si(io_si) + &
+               hio_canopy_mortality_carbonflux(io_si) = hio_canopy_mortality_carbonflux(io_si) + &
                      sites(s)%fmort_carbonflux_canopy
                
-               hio_understory_mortality_carbonflux_si(io_si) = hio_understory_mortality_carbonflux_si(io_si) + &
+               hio_understory_mortality_carbonflux(io_si) = hio_understory_mortality_carbonflux(io_si) + &
                      sites(s)%fmort_carbonflux_ustory
                
                !
                ! for scag variables, also treat as happening in the newly-disurbed patch
 
-               hio_mortality_canopy_si_scag(io_si,iscag) = hio_mortality_canopy_si_scag(io_si,iscag) + &
+               hio_mortality_canopy_scag(io_si,iscag) = hio_mortality_canopy_scag(io_si,iscag) + &
                     sites(s)%fmort_rate_canopy(i_sz, i_pft)
-               hio_mortality_understory_si_scag(io_si,iscag) = hio_mortality_understory_si_scag(io_si,iscag) + &
+               hio_mortality_understory_scag(io_si,iscag) = hio_mortality_understory_scag(io_si,iscag) + &
                     sites(s)%fmort_rate_ustory(i_sz, i_pft)
 
                ! while in this loop, pass the fusion-induced growth rate flux to history
-               hio_growthflux_fusion_si_scpf(io_si,i_scpf) = hio_growthflux_fusion_si_scpf(io_si,i_scpf) + &
+               hio_growthflux_fusion_scpf(io_si,i_scpf) = hio_growthflux_fusion_scpf(io_si,i_scpf) + &
                     sites(s)%growthflux_fusion(i_sz, i_pft) * days_per_year
             end do
          end do
          !
          
          ! treat carbon flux from imort the same way
-         hio_understory_mortality_carbonflux_si(io_si) = hio_understory_mortality_carbonflux_si(io_si) + &
+         hio_understory_mortality_carbonflux(io_si) = hio_understory_mortality_carbonflux(io_si) + &
               sites(s)%imort_carbonflux
          !
          sites(s)%term_nindivs_canopy(:,:) = 0._r8
@@ -2941,7 +2941,7 @@ end subroutine flush_hvars
 
          ! pass the recruitment rate as a flux to the history, and then reset the recruitment buffer
          do i_pft = 1, numpft
-            hio_recruitment_si_pft(io_si,i_pft) = sites(s)%recruitment_rate(i_pft) * days_per_year
+            hio_recruitment_pft(io_si,i_pft) = sites(s)%recruitment_rate(i_pft) * days_per_year
          end do
          sites(s)%recruitment_rate(:) = 0._r8
 
@@ -2950,17 +2950,17 @@ end subroutine flush_hvars
             do i_sz = 1,nlevsclass
                i_scpf = (i_pft-1)*nlevsclass + i_sz
 
-               hio_mortality_si_pft(io_si,i_pft) = hio_mortality_si_pft(io_si,i_pft) + &
-                    hio_m1_si_scpf(io_si,i_scpf) + &
-                    hio_m2_si_scpf(io_si,i_scpf) + &
-                    hio_m3_si_scpf(io_si,i_scpf) + &
-                    hio_m4_si_scpf(io_si,i_scpf) + &
-                    hio_m5_si_scpf(io_si,i_scpf) + &
-                    hio_m6_si_scpf(io_si,i_scpf) + &
-		    hio_m7_si_scpf(io_si,i_scpf) + &
-                    hio_m8_si_scpf(io_si,i_scpf) + &
-                    hio_m9_si_scpf(io_si,i_scpf) + &
-                    hio_m10_si_scpf(io_si,i_scpf) 
+               hio_mortality_pft(io_si,i_pft) = hio_mortality_pft(io_si,i_pft) + &
+                    hio_m1_scpf(io_si,i_scpf) + &
+                    hio_m2_scpf(io_si,i_scpf) + &
+                    hio_m3_scpf(io_si,i_scpf) + &
+                    hio_m4_scpf(io_si,i_scpf) + &
+                    hio_m5_scpf(io_si,i_scpf) + &
+                    hio_m6_scpf(io_si,i_scpf) + &
+		    hio_m7_scpf(io_si,i_scpf) + &
+                    hio_m8_scpf(io_si,i_scpf) + &
+                    hio_m9_scpf(io_si,i_scpf) + &
+                    hio_m10_scpf(io_si,i_scpf) 
 
             end do
          end do
@@ -2971,15 +2971,15 @@ end subroutine flush_hvars
 
          flux_diags => sites(s)%flux_diags(element_pos(carbon12_element))
 
-         hio_litter_in_si(io_si) = (sum(flux_diags%cwd_ag_input(:)) + &
+         hio_litter_in(io_si) = (sum(flux_diags%cwd_ag_input(:)) + &
               sum(flux_diags%cwd_bg_input(:)) + &
               sum(flux_diags%leaf_litter_input(:)) + &
               sum(flux_diags%root_litter_input(:))) * &
               g_per_kg * AREA_INV * days_per_sec
 
-         hio_litter_out_si(io_si) = 0._r8
-         hio_seed_bank_si(io_si)  = 0._r8
-         hio_seeds_in_si(io_si)   = 0._r8
+         hio_litter_out(io_si) = 0._r8
+         hio_seed_bank(io_si)  = 0._r8
+         hio_seeds_in(io_si)   = 0._r8
 
          cpatch => sites(s)%oldest_patch
          do while(associated(cpatch))
@@ -2989,7 +2989,7 @@ end subroutine flush_hvars
             area_frac = cpatch%area * AREA_INV
             
             ! Sum up all output fluxes (fragmentation) kgC/m2/day -> gC/m2/s
-            hio_litter_out_si(io_si) = hio_litter_out_si(io_si) + &
+            hio_litter_out(io_si) = hio_litter_out(io_si) + &
                  (sum(litt%leaf_fines_frag(:)) + &
                  sum(litt%root_fines_frag(:,:)) + &
                  sum(litt%ag_cwd_frag(:)) + &
@@ -2997,12 +2997,12 @@ end subroutine flush_hvars
                  area_frac * g_per_kg * days_per_sec
 
             ! Sum up total seed bank (germinated and ungerminated)
-            hio_seed_bank_si(io_si) = hio_seed_bank_si(io_si) + &
+            hio_seed_bank(io_si) = hio_seed_bank(io_si) + &
                  (sum(litt%seed(:))+sum(litt%seed_germ(:))) * &
                  area_frac * g_per_kg * days_per_sec
 
             ! Sum up the input flux into the seed bank (local and external)
-            hio_seeds_in_si(io_si) = hio_seeds_in_si(io_si) + &
+            hio_seeds_in(io_si) = hio_seeds_in(io_si) + &
                  (sum(litt%seed_in_local(:)) + sum(litt%seed_in_extern(:))) * &
                  area_frac * g_per_kg * days_per_sec
             
@@ -3052,7 +3052,7 @@ end subroutine flush_hvars
                this%hvars(ih_cefflux_scpf)%r82d(io_si,:) = &
                     sites(s)%flux_diags(el)%nutrient_efflux_scpf(:)
                
-               this%hvars(ih_cefflux_si)%r81d(io_si) = & 
+               this%hvars(ih_cefflux)%r81d(io_si) = & 
                     sum(sites(s)%flux_diags(el)%nutrient_efflux_scpf(:),dim=1)
                
             elseif(element_list(el).eq.nitrogen_element)then
@@ -3076,16 +3076,16 @@ end subroutine flush_hvars
                this%hvars(ih_nneedmax_scpf)%r82d(io_si,:) = &
                     sites(s)%flux_diags(el)%nutrient_needmax_scpf(:)
                
-               this%hvars(ih_nneedgrow_si)%r81d(io_si) = &
+               this%hvars(ih_nneedgrow)%r81d(io_si) = &
                     sum(sites(s)%flux_diags(el)%nutrient_needgrow_scpf(:),dim=1)
 
-               this%hvars(ih_nneedmax_si)%r81d(io_si) = &
+               this%hvars(ih_nneedmax)%r81d(io_si) = &
                     sum(sites(s)%flux_diags(el)%nutrient_needmax_scpf(:),dim=1)
 
-               this%hvars(ih_nuptake_si)%r81d(io_si) = & 
+               this%hvars(ih_nuptake)%r81d(io_si) = & 
                     sum(sites(s)%flux_diags(el)%nutrient_uptake_scpf(:),dim=1)
 
-               this%hvars(ih_nefflux_si)%r81d(io_si) = & 
+               this%hvars(ih_nefflux)%r81d(io_si) = & 
                     sum(sites(s)%flux_diags(el)%nutrient_efflux_scpf(:),dim=1)
                
                
@@ -3109,16 +3109,16 @@ end subroutine flush_hvars
                this%hvars(ih_pneedmax_scpf)%r82d(io_si,:) = &
                     sites(s)%flux_diags(el)%nutrient_needmax_scpf(:)
 
-               this%hvars(ih_pneedgrow_si)%r81d(io_si) = &
+               this%hvars(ih_pneedgrow)%r81d(io_si) = &
                     sum(sites(s)%flux_diags(el)%nutrient_needgrow_scpf(:),dim=1)
 
-               this%hvars(ih_pneedmax_si)%r81d(io_si) = &
+               this%hvars(ih_pneedmax)%r81d(io_si) = &
                     sum(sites(s)%flux_diags(el)%nutrient_needmax_scpf(:),dim=1)
 
-               this%hvars(ih_puptake_si)%r81d(io_si) = & 
+               this%hvars(ih_puptake)%r81d(io_si) = & 
                     sum(sites(s)%flux_diags(el)%nutrient_uptake_scpf(:),dim=1)
                
-               this%hvars(ih_pefflux_si)%r81d(io_si) = & 
+               this%hvars(ih_pefflux)%r81d(io_si) = & 
                     sum(sites(s)%flux_diags(el)%nutrient_efflux_scpf(:),dim=1)
                
             end if
@@ -3242,20 +3242,20 @@ end subroutine flush_hvars
          
          ! pass demotion rates and associated carbon fluxes to history
          do i_sz = 1,nlevsclass
-            hio_demotion_rate_si_sz(io_si,i_sz) = sites(s)%demotion_rate(i_sz) * days_per_year
-            hio_promotion_rate_si_sz(io_si,i_sz) = sites(s)%promotion_rate(i_sz) * days_per_year
+            hio_demotion_rate_sz(io_si,i_sz) = sites(s)%demotion_rate(i_sz) * days_per_year
+            hio_promotion_rate_sz(io_si,i_sz) = sites(s)%promotion_rate(i_sz) * days_per_year
          end do
          !
          ! convert kg C / ha / day to gc / m2 / sec
-         hio_demotion_carbonflux_si(io_si) = sites(s)%demotion_carbonflux * g_per_kg * ha_per_m2 * days_per_sec
-         hio_promotion_carbonflux_si(io_si) = sites(s)%promotion_carbonflux * g_per_kg * ha_per_m2 * days_per_sec
+         hio_demotion_carbonflux(io_si) = sites(s)%demotion_carbonflux * g_per_kg * ha_per_m2 * days_per_sec
+         hio_promotion_carbonflux(io_si) = sites(s)%promotion_carbonflux * g_per_kg * ha_per_m2 * days_per_sec
          !
          ! mortality-associated carbon fluxes
          
-         hio_canopy_mortality_carbonflux_si(io_si) = hio_canopy_mortality_carbonflux_si(io_si) + &
+         hio_canopy_mortality_carbonflux(io_si) = hio_canopy_mortality_carbonflux(io_si) + &
                sites(s)%term_carbonflux_canopy * g_per_kg * days_per_sec * ha_per_m2
          
-         hio_understory_mortality_carbonflux_si(io_si) = hio_understory_mortality_carbonflux_si(io_si) + &
+         hio_understory_mortality_carbonflux(io_si) = hio_understory_mortality_carbonflux(io_si) + &
                sites(s)%term_carbonflux_ustory * g_per_kg * days_per_sec * ha_per_m2
 
          ! and zero the site-level termination carbon flux variable
@@ -3266,10 +3266,10 @@ end subroutine flush_hvars
          ! add the site-level disturbance-associated cwd and litter input fluxes to thir respective flux fields
 
          do i_cwd = 1, ncwd
-             hio_cwd_ag_in_si_cwdsc(io_si, i_cwd) = hio_cwd_ag_in_si_cwdsc(io_si, i_cwd) + &
+             hio_cwd_ag_in_cwdsc(io_si, i_cwd) = hio_cwd_ag_in_cwdsc(io_si, i_cwd) + &
                    flux_diags_c%cwd_ag_input(i_cwd) * g_per_kg
              
-             hio_cwd_bg_in_si_cwdsc(io_si, i_cwd) = hio_cwd_bg_in_si_cwdsc(io_si, i_cwd) + &
+             hio_cwd_bg_in_cwdsc(io_si, i_cwd) = hio_cwd_bg_in_cwdsc(io_si, i_cwd) + &
                    flux_diags_c%cwd_bg_input(i_cwd) * g_per_kg
 
          end do
@@ -3325,74 +3325,74 @@ end subroutine flush_hvars
     type(ed_cohort_type),pointer :: ccohort
     real(r8) :: per_dt_tstep          ! Time step in frequency units (/s)
 
-    associate( hio_gpp_si         => this%hvars(ih_gpp_si)%r81d, &
-               hio_npp_si         => this%hvars(ih_npp_si)%r81d, &
-               hio_aresp_si       => this%hvars(ih_aresp_si)%r81d, &
-               hio_maint_resp_si  => this%hvars(ih_maint_resp_si)%r81d, &
-               hio_growth_resp_si => this%hvars(ih_growth_resp_si)%r81d, &
-               hio_c_stomata_si   => this%hvars(ih_c_stomata_si)%r81d, &
-               hio_c_lblayer_si   => this%hvars(ih_c_lblayer_si)%r81d, &
-               hio_nep_si         => this%hvars(ih_nep_si)%r81d, & 
-               hio_ar_si_scpf     => this%hvars(ih_ar_si_scpf)%r82d, &
-               hio_ar_grow_si_scpf   => this%hvars(ih_ar_grow_si_scpf)%r82d, &
-               hio_ar_maint_si_scpf  => this%hvars(ih_ar_maint_si_scpf)%r82d, &
-               hio_ar_agsapm_si_scpf => this%hvars(ih_ar_agsapm_si_scpf)%r82d, &
-               hio_ar_darkm_si_scpf  => this%hvars(ih_ar_darkm_si_scpf)%r82d, &
-               hio_ar_crootm_si_scpf => this%hvars(ih_ar_crootm_si_scpf)%r82d, &
-               hio_ar_frootm_si_scpf => this%hvars(ih_ar_frootm_si_scpf)%r82d, &
-               hio_gpp_canopy_si     => this%hvars(ih_gpp_canopy_si)%r81d, &
-               hio_ar_canopy_si      => this%hvars(ih_ar_canopy_si)%r81d, &
-               hio_gpp_understory_si => this%hvars(ih_gpp_understory_si)%r81d, &
-               hio_ar_understory_si  => this%hvars(ih_ar_understory_si)%r81d, &
-               hio_rdark_canopy_si_sz             => this%hvars(ih_rdark_canopy_si_sz)%r82d, &
-               hio_livestem_mr_canopy_si_sz       => this%hvars(ih_livestem_mr_canopy_si_sz)%r82d, &
-               hio_livecroot_mr_canopy_si_sz      => this%hvars(ih_livecroot_mr_canopy_si_sz)%r82d, &
-               hio_froot_mr_canopy_si_sz          => this%hvars(ih_froot_mr_canopy_si_sz)%r82d, &
-               hio_resp_g_canopy_si_sz            => this%hvars(ih_resp_g_canopy_si_sz)%r82d, &
-               hio_resp_m_canopy_si_sz            => this%hvars(ih_resp_m_canopy_si_sz)%r82d, &
-               hio_rdark_understory_si_sz         => this%hvars(ih_rdark_understory_si_sz)%r82d, &
-               hio_livestem_mr_understory_si_sz   => this%hvars(ih_livestem_mr_understory_si_sz)%r82d, &
-               hio_livecroot_mr_understory_si_sz  => this%hvars(ih_livecroot_mr_understory_si_sz)%r82d, &
-               hio_froot_mr_understory_si_sz      => this%hvars(ih_froot_mr_understory_si_sz)%r82d, &
-               hio_resp_g_understory_si_sz        => this%hvars(ih_resp_g_understory_si_sz)%r82d, &
-               hio_resp_m_understory_si_sz        => this%hvars(ih_resp_m_understory_si_sz)%r82d, &
-               hio_leaf_mr_si         => this%hvars(ih_leaf_mr_si)%r81d, &
-               hio_froot_mr_si        => this%hvars(ih_froot_mr_si)%r81d, &
-               hio_livecroot_mr_si    => this%hvars(ih_livecroot_mr_si)%r81d, &
-               hio_livestem_mr_si     => this%hvars(ih_livestem_mr_si)%r81d, &
-               hio_gpp_si_age         => this%hvars(ih_gpp_si_age)%r82d, &
-               hio_npp_si_age         => this%hvars(ih_npp_si_age)%r82d, &
-               hio_c_stomata_si_age   => this%hvars(ih_c_stomata_si_age)%r82d, &
-               hio_c_lblayer_si_age   => this%hvars(ih_c_lblayer_si_age)%r82d, &
-               hio_parsun_z_si_cnlf     => this%hvars(ih_parsun_z_si_cnlf)%r82d, &
-               hio_parsha_z_si_cnlf     => this%hvars(ih_parsha_z_si_cnlf)%r82d, &
-               hio_ts_net_uptake_si_cnlf => this%hvars(ih_ts_net_uptake_si_cnlf)%r82d, &
-               hio_parsun_z_si_cnlfpft  => this%hvars(ih_parsun_z_si_cnlfpft)%r82d, &
-               hio_parsha_z_si_cnlfpft  => this%hvars(ih_parsha_z_si_cnlfpft)%r82d, &
-               hio_laisun_z_si_cnlf     => this%hvars(ih_laisun_z_si_cnlf)%r82d, &
-               hio_laisha_z_si_cnlf     => this%hvars(ih_laisha_z_si_cnlf)%r82d, &
-               hio_laisun_z_si_cnlfpft  => this%hvars(ih_laisun_z_si_cnlfpft)%r82d, &
-               hio_laisha_z_si_cnlfpft  => this%hvars(ih_laisha_z_si_cnlfpft)%r82d, &
-               hio_laisun_top_si_can     => this%hvars(ih_laisun_top_si_can)%r82d, &
-               hio_laisha_top_si_can     => this%hvars(ih_laisha_top_si_can)%r82d, &
-               hio_fabd_sun_si_cnlfpft  => this%hvars(ih_fabd_sun_si_cnlfpft)%r82d, &
-               hio_fabd_sha_si_cnlfpft  => this%hvars(ih_fabd_sha_si_cnlfpft)%r82d, &
-               hio_fabi_sun_si_cnlfpft  => this%hvars(ih_fabi_sun_si_cnlfpft)%r82d, &
-               hio_fabi_sha_si_cnlfpft  => this%hvars(ih_fabi_sha_si_cnlfpft)%r82d, &
-               hio_fabd_sun_si_cnlf  => this%hvars(ih_fabd_sun_si_cnlf)%r82d, &
-               hio_fabd_sha_si_cnlf  => this%hvars(ih_fabd_sha_si_cnlf)%r82d, &
-               hio_fabi_sun_si_cnlf  => this%hvars(ih_fabi_sun_si_cnlf)%r82d, &
-               hio_fabi_sha_si_cnlf  => this%hvars(ih_fabi_sha_si_cnlf)%r82d, &
-               hio_parprof_dir_si_cnlf  => this%hvars(ih_parprof_dir_si_cnlf)%r82d, &
-               hio_parprof_dif_si_cnlf  => this%hvars(ih_parprof_dif_si_cnlf)%r82d, &
-               hio_parprof_dir_si_cnlfpft  => this%hvars(ih_parprof_dir_si_cnlfpft)%r82d, &
-               hio_parprof_dif_si_cnlfpft  => this%hvars(ih_parprof_dif_si_cnlfpft)%r82d, &
-               hio_fabd_sun_top_si_can  => this%hvars(ih_fabd_sun_top_si_can)%r82d, &
-               hio_fabd_sha_top_si_can  => this%hvars(ih_fabd_sha_top_si_can)%r82d, &
-               hio_fabi_sun_top_si_can  => this%hvars(ih_fabi_sun_top_si_can)%r82d, &
-               hio_fabi_sha_top_si_can  => this%hvars(ih_fabi_sha_top_si_can)%r82d, &
-               hio_parsun_top_si_can     => this%hvars(ih_parsun_top_si_can)%r82d, &
-               hio_parsha_top_si_can     => this%hvars(ih_parsha_top_si_can)%r82d &
+    associate( hio_gpp         => this%hvars(ih_gpp)%r81d, &
+               hio_npp         => this%hvars(ih_npp)%r81d, &
+               hio_aresp       => this%hvars(ih_aresp)%r81d, &
+               hio_maint_resp  => this%hvars(ih_maint_resp)%r81d, &
+               hio_growth_resp => this%hvars(ih_growth_resp)%r81d, &
+               hio_c_stomata   => this%hvars(ih_c_stomata)%r81d, &
+               hio_c_lblayer   => this%hvars(ih_c_lblayer)%r81d, &
+               hio_nep         => this%hvars(ih_nep)%r81d, & 
+               hio_ar_scpf     => this%hvars(ih_ar_scpf)%r82d, &
+               hio_ar_grow_scpf   => this%hvars(ih_ar_grow_scpf)%r82d, &
+               hio_ar_maint_scpf  => this%hvars(ih_ar_maint_scpf)%r82d, &
+               hio_ar_agsapm_scpf => this%hvars(ih_ar_agsapm_scpf)%r82d, &
+               hio_ar_darkm_scpf  => this%hvars(ih_ar_darkm_scpf)%r82d, &
+               hio_ar_crootm_scpf => this%hvars(ih_ar_crootm_scpf)%r82d, &
+               hio_ar_frootm_scpf => this%hvars(ih_ar_frootm_scpf)%r82d, &
+               hio_gpp_canopy     => this%hvars(ih_gpp_canopy)%r81d, &
+               hio_ar_canopy      => this%hvars(ih_ar_canopy)%r81d, &
+               hio_gpp_understory => this%hvars(ih_gpp_understory)%r81d, &
+               hio_ar_understory  => this%hvars(ih_ar_understory)%r81d, &
+               hio_rdark_canopy_sz             => this%hvars(ih_rdark_canopy_sz)%r82d, &
+               hio_livestem_mr_canopy_sz       => this%hvars(ih_livestem_mr_canopy_sz)%r82d, &
+               hio_livecroot_mr_canopy_sz      => this%hvars(ih_livecroot_mr_canopy_sz)%r82d, &
+               hio_froot_mr_canopy_sz          => this%hvars(ih_froot_mr_canopy_sz)%r82d, &
+               hio_resp_g_canopy_sz            => this%hvars(ih_resp_g_canopy_sz)%r82d, &
+               hio_resp_m_canopy_sz            => this%hvars(ih_resp_m_canopy_sz)%r82d, &
+               hio_rdark_understory_sz         => this%hvars(ih_rdark_understory_sz)%r82d, &
+               hio_livestem_mr_understory_sz   => this%hvars(ih_livestem_mr_understory_sz)%r82d, &
+               hio_livecroot_mr_understory_sz  => this%hvars(ih_livecroot_mr_understory_sz)%r82d, &
+               hio_froot_mr_understory_sz      => this%hvars(ih_froot_mr_understory_sz)%r82d, &
+               hio_resp_g_understory_sz        => this%hvars(ih_resp_g_understory_sz)%r82d, &
+               hio_resp_m_understory_sz        => this%hvars(ih_resp_m_understory_sz)%r82d, &
+               hio_leaf_mr         => this%hvars(ih_leaf_mr)%r81d, &
+               hio_froot_mr        => this%hvars(ih_froot_mr)%r81d, &
+               hio_livecroot_mr    => this%hvars(ih_livecroot_mr)%r81d, &
+               hio_livestem_mr     => this%hvars(ih_livestem_mr)%r81d, &
+               hio_gpp_age         => this%hvars(ih_gpp_age)%r82d, &
+               hio_npp_age         => this%hvars(ih_npp_age)%r82d, &
+               hio_c_stomata_age   => this%hvars(ih_c_stomata_age)%r82d, &
+               hio_c_lblayer_age   => this%hvars(ih_c_lblayer_age)%r82d, &
+               hio_parsun_z_cnlf     => this%hvars(ih_parsun_z_cnlf)%r82d, &
+               hio_parsha_z_cnlf     => this%hvars(ih_parsha_z_cnlf)%r82d, &
+               hio_ts_net_uptake_cnlf => this%hvars(ih_ts_net_uptake_cnlf)%r82d, &
+               hio_parsun_z_cnlfpft  => this%hvars(ih_parsun_z_cnlfpft)%r82d, &
+               hio_parsha_z_cnlfpft  => this%hvars(ih_parsha_z_cnlfpft)%r82d, &
+               hio_laisun_z_cnlf     => this%hvars(ih_laisun_z_cnlf)%r82d, &
+               hio_laisha_z_cnlf     => this%hvars(ih_laisha_z_cnlf)%r82d, &
+               hio_laisun_z_cnlfpft  => this%hvars(ih_laisun_z_cnlfpft)%r82d, &
+               hio_laisha_z_cnlfpft  => this%hvars(ih_laisha_z_cnlfpft)%r82d, &
+               hio_laisun_top_can     => this%hvars(ih_laisun_top_can)%r82d, &
+               hio_laisha_top_can     => this%hvars(ih_laisha_top_can)%r82d, &
+               hio_fabd_sun_cnlfpft  => this%hvars(ih_fabd_sun_cnlfpft)%r82d, &
+               hio_fabd_sha_cnlfpft  => this%hvars(ih_fabd_sha_cnlfpft)%r82d, &
+               hio_fabi_sun_cnlfpft  => this%hvars(ih_fabi_sun_cnlfpft)%r82d, &
+               hio_fabi_sha_cnlfpft  => this%hvars(ih_fabi_sha_cnlfpft)%r82d, &
+               hio_fabd_sun_cnlf  => this%hvars(ih_fabd_sun_cnlf)%r82d, &
+               hio_fabd_sha_cnlf  => this%hvars(ih_fabd_sha_cnlf)%r82d, &
+               hio_fabi_sun_cnlf  => this%hvars(ih_fabi_sun_cnlf)%r82d, &
+               hio_fabi_sha_cnlf  => this%hvars(ih_fabi_sha_cnlf)%r82d, &
+               hio_parprof_dir_cnlf  => this%hvars(ih_parprof_dir_cnlf)%r82d, &
+               hio_parprof_dif_cnlf  => this%hvars(ih_parprof_dif_cnlf)%r82d, &
+               hio_parprof_dir_cnlfpft  => this%hvars(ih_parprof_dir_cnlfpft)%r82d, &
+               hio_parprof_dif_cnlfpft  => this%hvars(ih_parprof_dif_cnlfpft)%r82d, &
+               hio_fabd_sun_top_can  => this%hvars(ih_fabd_sun_top_can)%r82d, &
+               hio_fabd_sha_top_can  => this%hvars(ih_fabd_sha_top_can)%r82d, &
+               hio_fabi_sun_top_can  => this%hvars(ih_fabi_sun_top_can)%r82d, &
+               hio_fabi_sha_top_can  => this%hvars(ih_fabi_sha_top_can)%r82d, &
+               hio_parsun_top_can     => this%hvars(ih_parsun_top_can)%r82d, &
+               hio_parsha_top_can     => this%hvars(ih_parsha_top_can)%r82d &
                )
 
 
@@ -3404,7 +3404,7 @@ end subroutine flush_hvars
       do s = 1,nsites
          
          io_si  = this%iovar_map(nc)%site_index(s)
-         hio_nep_si(io_si) = -bc_in(s)%tot_het_resp ! (gC/m2/s)
+         hio_nep(io_si) = -bc_in(s)%tot_het_resp ! (gC/m2/s)
          
          ipa = 0
          cpatch => sites(s)%oldest_patch
@@ -3421,18 +3421,18 @@ end subroutine flush_hvars
                  canopy_area_by_age(cpatch%age_class) + cpatch%total_canopy_area
 
             ! Canopy resitance terms
-            hio_c_stomata_si_age(io_si,cpatch%age_class) = &
-                 hio_c_stomata_si_age(io_si,cpatch%age_class) + &
+            hio_c_stomata_age(io_si,cpatch%age_class) = &
+                 hio_c_stomata_age(io_si,cpatch%age_class) + &
                  cpatch%c_stomata * cpatch%total_canopy_area
             
-            hio_c_lblayer_si_age(io_si,cpatch%age_class) = &
-                 hio_c_lblayer_si_age(io_si,cpatch%age_class) + &
+            hio_c_lblayer_age(io_si,cpatch%age_class) = &
+                 hio_c_lblayer_age(io_si,cpatch%age_class) + &
                  cpatch%c_lblayer * cpatch%total_canopy_area
             
-            hio_c_stomata_si(io_si) = hio_c_stomata_si(io_si) + &
+            hio_c_stomata(io_si) = hio_c_stomata(io_si) + &
                  cpatch%c_stomata * cpatch%total_canopy_area
             
-            hio_c_lblayer_si(io_si) = hio_c_lblayer_si(io_si) + &
+            hio_c_lblayer(io_si) = hio_c_lblayer(io_si) + &
                  cpatch%c_lblayer * cpatch%total_canopy_area
 
             ccohort => cpatch%shortest
@@ -3451,113 +3451,113 @@ end subroutine flush_hvars
                              sz => ccohort%size_class )
                     
                   ! scale up cohort fluxes to the site level
-                  hio_npp_si(io_si) = hio_npp_si(io_si) + &
+                  hio_npp(io_si) = hio_npp(io_si) + &
                         npp * g_per_kg * n_perm2 * per_dt_tstep
                   
-                  hio_gpp_si(io_si) = hio_gpp_si(io_si) + &
+                  hio_gpp(io_si) = hio_gpp(io_si) + &
                         ccohort%gpp_tstep * g_per_kg * n_perm2 * per_dt_tstep
-                  hio_aresp_si(io_si) = hio_aresp_si(io_si) + &
+                  hio_aresp(io_si) = hio_aresp(io_si) + &
                         aresp * g_per_kg * n_perm2 * per_dt_tstep
-                  hio_growth_resp_si(io_si) = hio_growth_resp_si(io_si) + &
+                  hio_growth_resp(io_si) = hio_growth_resp(io_si) + &
                         resp_g * g_per_kg * n_perm2 * per_dt_tstep
-                  hio_maint_resp_si(io_si) = hio_maint_resp_si(io_si) + &
+                  hio_maint_resp(io_si) = hio_maint_resp(io_si) + &
                         ccohort%resp_m * g_per_kg * n_perm2 * per_dt_tstep
 
                   ! Add up the total Net Ecosystem Production
                   ! for this timestep.  [gC/m2/s]
-                  hio_nep_si(io_si) = hio_nep_si(io_si) + &
+                  hio_nep(io_si) = hio_nep(io_si) + &
                        npp * g_per_kg * n_perm2 * per_dt_tstep
 
                   ! aggregate MR fluxes to the site level
-                  hio_leaf_mr_si(io_si) = hio_leaf_mr_si(io_si) + ccohort%rdark &
+                  hio_leaf_mr(io_si) = hio_leaf_mr(io_si) + ccohort%rdark &
                        * n_perm2 *  sec_per_day * days_per_year
-                  hio_froot_mr_si(io_si) = hio_froot_mr_si(io_si) + ccohort%froot_mr &
+                  hio_froot_mr(io_si) = hio_froot_mr(io_si) + ccohort%froot_mr &
                        * n_perm2 *  sec_per_day * days_per_year
-                  hio_livecroot_mr_si(io_si) = hio_livecroot_mr_si(io_si) + ccohort%livecroot_mr &
+                  hio_livecroot_mr(io_si) = hio_livecroot_mr(io_si) + ccohort%livecroot_mr &
                        * n_perm2 *  sec_per_day * days_per_year
-                  hio_livestem_mr_si(io_si) = hio_livestem_mr_si(io_si) + ccohort%livestem_mr &
+                  hio_livestem_mr(io_si) = hio_livestem_mr(io_si) + ccohort%livestem_mr &
                        * n_perm2 *  sec_per_day * days_per_year
 
                   ! Total AR (kgC/m2/yr) = (kgC/plant/step) / (s/step) * (plant/m2) * (s/yr)
-                  hio_ar_si_scpf(io_si,scpf)    =   hio_ar_si_scpf(io_si,scpf) + &
+                  hio_ar_scpf(io_si,scpf)    =   hio_ar_scpf(io_si,scpf) + &
                         (ccohort%resp_tstep/dt_tstep) * n_perm2 * sec_per_day * days_per_year
 
                   ! Growth AR (kgC/m2/yr)
-                  hio_ar_grow_si_scpf(io_si,scpf) = hio_ar_grow_si_scpf(io_si,scpf) + &
+                  hio_ar_grow_scpf(io_si,scpf) = hio_ar_grow_scpf(io_si,scpf) + &
                         (resp_g/dt_tstep) * n_perm2 * sec_per_day * days_per_year
 
                   ! Maint AR (kgC/m2/yr)
-                  hio_ar_maint_si_scpf(io_si,scpf) = hio_ar_maint_si_scpf(io_si,scpf) + &
+                  hio_ar_maint_scpf(io_si,scpf) = hio_ar_maint_scpf(io_si,scpf) + &
                         (ccohort%resp_m/dt_tstep) * n_perm2 * sec_per_day * days_per_year
                   
                   ! Maintenance AR partition variables are stored as rates (kgC/plant/s)
                   ! (kgC/m2/yr) = (kgC/plant/s) * (plant/m2) * (s/yr)
-                  hio_ar_agsapm_si_scpf(io_si,scpf) = hio_ar_agsapm_si_scpf(io_si,scpf) + &
+                  hio_ar_agsapm_scpf(io_si,scpf) = hio_ar_agsapm_scpf(io_si,scpf) + &
                         ccohort%livestem_mr * n_perm2 * sec_per_day * days_per_year
 
                   ! (kgC/m2/yr) = (kgC/plant/s) * (plant/m2) * (s/yr)
-                  hio_ar_darkm_si_scpf(io_si,scpf) = hio_ar_darkm_si_scpf(io_si,scpf) + &
+                  hio_ar_darkm_scpf(io_si,scpf) = hio_ar_darkm_scpf(io_si,scpf) + &
                         ccohort%rdark * n_perm2 *  sec_per_day * days_per_year
 
                   ! (kgC/m2/yr) = (kgC/plant/s) * (plant/m2) * (s/yr)
-                  hio_ar_crootm_si_scpf(io_si,scpf) = hio_ar_crootm_si_scpf(io_si,scpf) + &
+                  hio_ar_crootm_scpf(io_si,scpf) = hio_ar_crootm_scpf(io_si,scpf) + &
                         ccohort%livecroot_mr * n_perm2 * sec_per_day * days_per_year
 
                   ! (kgC/m2/yr) = (kgC/plant/s) * (plant/m2) * (s/yr)
-                  hio_ar_frootm_si_scpf(io_si,scpf) = hio_ar_frootm_si_scpf(io_si,scpf) + &
+                  hio_ar_frootm_scpf(io_si,scpf) = hio_ar_frootm_scpf(io_si,scpf) + &
                         ccohort%froot_mr * n_perm2  * sec_per_day * days_per_year
 
 
                   ! accumulate fluxes per patch age bin
-                  hio_gpp_si_age(io_si,cpatch%age_class) = hio_gpp_si_age(io_si,cpatch%age_class) &
+                  hio_gpp_age(io_si,cpatch%age_class) = hio_gpp_age(io_si,cpatch%age_class) &
                        + ccohort%gpp_tstep * ccohort%n * g_per_kg * per_dt_tstep
-                  hio_npp_si_age(io_si,cpatch%age_class) = hio_npp_si_age(io_si,cpatch%age_class) &
+                  hio_npp_age(io_si,cpatch%age_class) = hio_npp_age(io_si,cpatch%age_class) &
                        + npp * ccohort%n * g_per_kg * per_dt_tstep
 
                   ! accumulate fluxes on canopy- and understory- separated fluxes
                   if (ccohort%canopy_layer .eq. 1) then
                      !
                      ! bulk fluxes are in gC / m2 / s
-                     hio_gpp_canopy_si(io_si) = hio_gpp_canopy_si(io_si) + &
+                     hio_gpp_canopy(io_si) = hio_gpp_canopy(io_si) + &
                           ccohort%gpp_tstep * g_per_kg * n_perm2 * per_dt_tstep                     
-                     hio_ar_canopy_si(io_si) = hio_ar_canopy_si(io_si) + &
+                     hio_ar_canopy(io_si) = hio_ar_canopy(io_si) + &
                           aresp * g_per_kg * n_perm2 * per_dt_tstep                     
 
                      !
                      ! size-resolved respiration fluxes are in kg C / ha / yr
-                     hio_rdark_canopy_si_sz(io_si,sz) = hio_rdark_canopy_si_sz(io_si,sz) + &
+                     hio_rdark_canopy_sz(io_si,sz) = hio_rdark_canopy_sz(io_si,sz) + &
                           ccohort%rdark  * ccohort%n * sec_per_day * days_per_year
-                     hio_livestem_mr_canopy_si_sz(io_si,sz) = hio_livestem_mr_canopy_si_sz(io_si,sz) + &
+                     hio_livestem_mr_canopy_sz(io_si,sz) = hio_livestem_mr_canopy_sz(io_si,sz) + &
                           ccohort%livestem_mr  * ccohort%n * sec_per_day * days_per_year
-                     hio_livecroot_mr_canopy_si_sz(io_si,sz) = hio_livecroot_mr_canopy_si_sz(io_si,sz) + &
+                     hio_livecroot_mr_canopy_sz(io_si,sz) = hio_livecroot_mr_canopy_sz(io_si,sz) + &
                           ccohort%livecroot_mr  * ccohort%n * sec_per_day * days_per_year
-                     hio_froot_mr_canopy_si_sz(io_si,sz) = hio_froot_mr_canopy_si_sz(io_si,sz) + &
+                     hio_froot_mr_canopy_sz(io_si,sz) = hio_froot_mr_canopy_sz(io_si,sz) + &
                           ccohort%froot_mr  * ccohort%n * sec_per_day * days_per_year
-                     hio_resp_g_canopy_si_sz(io_si,sz) = hio_resp_g_canopy_si_sz(io_si,sz) + &
+                     hio_resp_g_canopy_sz(io_si,sz) = hio_resp_g_canopy_sz(io_si,sz) + &
                           resp_g  * ccohort%n * sec_per_day * days_per_year * per_dt_tstep 
-                     hio_resp_m_canopy_si_sz(io_si,sz) = hio_resp_m_canopy_si_sz(io_si,sz) + &
+                     hio_resp_m_canopy_sz(io_si,sz) = hio_resp_m_canopy_sz(io_si,sz) + &
                           ccohort%resp_m  * ccohort%n * sec_per_day * days_per_year * per_dt_tstep 
                   else
                      !
                      ! bulk fluxes are in gC / m2 / s
-                     hio_gpp_understory_si(io_si) = hio_gpp_understory_si(io_si) + &
+                     hio_gpp_understory(io_si) = hio_gpp_understory(io_si) + &
                           ccohort%gpp_tstep * g_per_kg * n_perm2 * per_dt_tstep                     
-                     hio_ar_understory_si(io_si) = hio_ar_understory_si(io_si) + &
+                     hio_ar_understory(io_si) = hio_ar_understory(io_si) + &
                           aresp * g_per_kg * n_perm2 * per_dt_tstep                     
 
                      !
                      ! size-resolved respiration fluxes are in kg C / ha / yr
-                     hio_rdark_understory_si_sz(io_si,sz) = hio_rdark_understory_si_sz(io_si,sz) + &
+                     hio_rdark_understory_sz(io_si,sz) = hio_rdark_understory_sz(io_si,sz) + &
                           ccohort%rdark  * ccohort%n * sec_per_day * days_per_year
-                     hio_livestem_mr_understory_si_sz(io_si,sz) = hio_livestem_mr_understory_si_sz(io_si,sz) + &
+                     hio_livestem_mr_understory_sz(io_si,sz) = hio_livestem_mr_understory_sz(io_si,sz) + &
                           ccohort%livestem_mr  * ccohort%n * sec_per_day * days_per_year
-                     hio_livecroot_mr_understory_si_sz(io_si,sz) = hio_livecroot_mr_understory_si_sz(io_si,sz) + &
+                     hio_livecroot_mr_understory_sz(io_si,sz) = hio_livecroot_mr_understory_sz(io_si,sz) + &
                           ccohort%livecroot_mr  * ccohort%n * sec_per_day * days_per_year
-                     hio_froot_mr_understory_si_sz(io_si,sz) = hio_froot_mr_understory_si_sz(io_si,sz) + &
+                     hio_froot_mr_understory_sz(io_si,sz) = hio_froot_mr_understory_sz(io_si,sz) + &
                           ccohort%froot_mr  * ccohort%n * sec_per_day * days_per_year
-                     hio_resp_g_understory_si_sz(io_si,sz) = hio_resp_g_understory_si_sz(io_si,sz) + &
+                     hio_resp_g_understory_sz(io_si,sz) = hio_resp_g_understory_sz(io_si,sz) + &
                           resp_g  * ccohort%n * sec_per_day * days_per_year * per_dt_tstep 
-                     hio_resp_m_understory_si_sz(io_si,sz) = hio_resp_m_understory_si_sz(io_si,sz) + &
+                     hio_resp_m_understory_sz(io_si,sz) = hio_resp_m_understory_sz(io_si,sz) + &
                           ccohort%resp_m  * ccohort%n * sec_per_day * days_per_year * per_dt_tstep 
                   endif
                 end associate
@@ -3567,7 +3567,7 @@ end subroutine flush_hvars
                ican = ccohort%canopy_layer
                do ileaf=1,ccohort%nv
                   cnlf_indx = ileaf + (ican-1) * nlevleaf
-                  hio_ts_net_uptake_si_cnlf(io_si, cnlf_indx) = hio_ts_net_uptake_si_cnlf(io_si, cnlf_indx) + &
+                  hio_ts_net_uptake_cnlf(io_si, cnlf_indx) = hio_ts_net_uptake_cnlf(io_si, cnlf_indx) + &
                        ccohort%ts_net_uptake(ileaf) * g_per_kg * per_dt_tstep * ccohort%c_area / AREA
                end do
 
@@ -3583,70 +3583,70 @@ end subroutine flush_hvars
                      cnlf_indx = ileaf + (ican-1) * nlevleaf
                      !
                      ! first do all the canopy x leaf x pft calculations
-                     hio_parsun_z_si_cnlfpft(io_si,cnlfpft_indx) = hio_parsun_z_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_parsun_z_cnlfpft(io_si,cnlfpft_indx) = hio_parsun_z_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%ed_parsun_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_parsha_z_si_cnlfpft(io_si,cnlfpft_indx) = hio_parsha_z_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_parsha_z_cnlfpft(io_si,cnlfpft_indx) = hio_parsha_z_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%ed_parsha_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
                      !
-                     hio_laisun_z_si_cnlfpft(io_si,cnlfpft_indx) = hio_laisun_z_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_laisun_z_cnlfpft(io_si,cnlfpft_indx) = hio_laisun_z_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%ed_laisun_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_laisha_z_si_cnlfpft(io_si,cnlfpft_indx) = hio_laisha_z_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_laisha_z_cnlfpft(io_si,cnlfpft_indx) = hio_laisha_z_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%ed_laisha_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
                      !
-                     hio_fabd_sun_si_cnlfpft(io_si,cnlfpft_indx) = hio_fabd_sun_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_fabd_sun_cnlfpft(io_si,cnlfpft_indx) = hio_fabd_sun_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%fabd_sun_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_fabd_sha_si_cnlfpft(io_si,cnlfpft_indx) = hio_fabd_sha_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_fabd_sha_cnlfpft(io_si,cnlfpft_indx) = hio_fabd_sha_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%fabd_sha_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_fabi_sun_si_cnlfpft(io_si,cnlfpft_indx) = hio_fabi_sun_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_fabi_sun_cnlfpft(io_si,cnlfpft_indx) = hio_fabi_sun_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%fabi_sun_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_fabi_sha_si_cnlfpft(io_si,cnlfpft_indx) = hio_fabi_sha_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_fabi_sha_cnlfpft(io_si,cnlfpft_indx) = hio_fabi_sha_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%fabi_sha_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
                      !
-                     hio_parprof_dir_si_cnlfpft(io_si,cnlfpft_indx) = hio_parprof_dir_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_parprof_dir_cnlfpft(io_si,cnlfpft_indx) = hio_parprof_dir_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%parprof_pft_dir_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_parprof_dif_si_cnlfpft(io_si,cnlfpft_indx) = hio_parprof_dif_si_cnlfpft(io_si,cnlfpft_indx) + &
+                     hio_parprof_dif_cnlfpft(io_si,cnlfpft_indx) = hio_parprof_dif_cnlfpft(io_si,cnlfpft_indx) + &
                           cpatch%parprof_pft_dif_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
                      !
                      ! summarize across all PFTs
-                     hio_parsun_z_si_cnlf(io_si,cnlf_indx) = hio_parsun_z_si_cnlf(io_si,cnlf_indx) + &
+                     hio_parsun_z_cnlf(io_si,cnlf_indx) = hio_parsun_z_cnlf(io_si,cnlf_indx) + &
                           cpatch%ed_parsun_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_parsha_z_si_cnlf(io_si,cnlf_indx) = hio_parsha_z_si_cnlf(io_si,cnlf_indx) + &
+                     hio_parsha_z_cnlf(io_si,cnlf_indx) = hio_parsha_z_cnlf(io_si,cnlf_indx) + &
                           cpatch%ed_parsha_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
                      !
-                     hio_laisun_z_si_cnlf(io_si,cnlf_indx) = hio_laisun_z_si_cnlf(io_si,cnlf_indx) + &
+                     hio_laisun_z_cnlf(io_si,cnlf_indx) = hio_laisun_z_cnlf(io_si,cnlf_indx) + &
                           cpatch%ed_laisun_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_laisha_z_si_cnlf(io_si,cnlf_indx) = hio_laisha_z_si_cnlf(io_si,cnlf_indx) + &
+                     hio_laisha_z_cnlf(io_si,cnlf_indx) = hio_laisha_z_cnlf(io_si,cnlf_indx) + &
                           cpatch%ed_laisha_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
                      !
-                     hio_fabd_sun_si_cnlf(io_si,cnlf_indx) = hio_fabd_sun_si_cnlf(io_si,cnlf_indx) + &
+                     hio_fabd_sun_cnlf(io_si,cnlf_indx) = hio_fabd_sun_cnlf(io_si,cnlf_indx) + &
                           cpatch%fabd_sun_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_fabd_sha_si_cnlf(io_si,cnlf_indx) = hio_fabd_sha_si_cnlf(io_si,cnlf_indx) + &
+                     hio_fabd_sha_cnlf(io_si,cnlf_indx) = hio_fabd_sha_cnlf(io_si,cnlf_indx) + &
                           cpatch%fabd_sha_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_fabi_sun_si_cnlf(io_si,cnlf_indx) = hio_fabi_sun_si_cnlf(io_si,cnlf_indx) + &
+                     hio_fabi_sun_cnlf(io_si,cnlf_indx) = hio_fabi_sun_cnlf(io_si,cnlf_indx) + &
                           cpatch%fabi_sun_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
-                     hio_fabi_sha_si_cnlf(io_si,cnlf_indx) = hio_fabi_sha_si_cnlf(io_si,cnlf_indx) + &
+                     hio_fabi_sha_cnlf(io_si,cnlf_indx) = hio_fabi_sha_cnlf(io_si,cnlf_indx) + &
                           cpatch%fabi_sha_z(ican,ipft,ileaf) * cpatch%area * AREA_INV
 
                   end do
                   !
                   ! summarize just the top leaf level across all PFTs, for each canopy level
-                  hio_parsun_top_si_can(io_si,ican) = hio_parsun_top_si_can(io_si,ican) + &
+                  hio_parsun_top_can(io_si,ican) = hio_parsun_top_can(io_si,ican) + &
                        cpatch%ed_parsun_z(ican,ipft,1) * cpatch%area * AREA_INV
-                  hio_parsha_top_si_can(io_si,ican) = hio_parsha_top_si_can(io_si,ican) + &
+                  hio_parsha_top_can(io_si,ican) = hio_parsha_top_can(io_si,ican) + &
                        cpatch%ed_parsha_z(ican,ipft,1) * cpatch%area * AREA_INV
                   !
-                  hio_laisun_top_si_can(io_si,ican) = hio_laisun_top_si_can(io_si,ican) + &
+                  hio_laisun_top_can(io_si,ican) = hio_laisun_top_can(io_si,ican) + &
                        cpatch%ed_laisun_z(ican,ipft,1) * cpatch%area * AREA_INV
-                  hio_laisha_top_si_can(io_si,ican) = hio_laisha_top_si_can(io_si,ican) + &
+                  hio_laisha_top_can(io_si,ican) = hio_laisha_top_can(io_si,ican) + &
                        cpatch%ed_laisha_z(ican,ipft,1) * cpatch%area * AREA_INV
                   !
-                  hio_fabd_sun_top_si_can(io_si,ican) = hio_fabd_sun_top_si_can(io_si,ican) + &
+                  hio_fabd_sun_top_can(io_si,ican) = hio_fabd_sun_top_can(io_si,ican) + &
                        cpatch%fabd_sun_z(ican,ipft,1) * cpatch%area * AREA_INV
-                  hio_fabd_sha_top_si_can(io_si,ican) = hio_fabd_sha_top_si_can(io_si,ican) + &
+                  hio_fabd_sha_top_can(io_si,ican) = hio_fabd_sha_top_can(io_si,ican) + &
                        cpatch%fabd_sha_z(ican,ipft,1) * cpatch%area * AREA_INV
-                  hio_fabi_sun_top_si_can(io_si,ican) = hio_fabi_sun_top_si_can(io_si,ican) + &
+                  hio_fabi_sun_top_can(io_si,ican) = hio_fabi_sun_top_can(io_si,ican) + &
                        cpatch%fabi_sun_z(ican,ipft,1) * cpatch%area * AREA_INV
-                  hio_fabi_sha_top_si_can(io_si,ican) = hio_fabi_sha_top_si_can(io_si,ican) + &
+                  hio_fabi_sha_top_can(io_si,ican) = hio_fabi_sha_top_can(io_si,ican) + &
                        cpatch%fabi_sha_z(ican,ipft,1) * cpatch%area * AREA_INV
                   !
                end do
@@ -3658,9 +3658,9 @@ end subroutine flush_hvars
                   ! calculate where we are on multiplexed dimensions
                   cnlf_indx = ileaf + (ican-1) * nlevleaf
                   !
-                  hio_parprof_dir_si_cnlf(io_si,cnlf_indx) = hio_parprof_dir_si_cnlf(io_si,cnlf_indx) + &
+                  hio_parprof_dir_cnlf(io_si,cnlf_indx) = hio_parprof_dir_cnlf(io_si,cnlf_indx) + &
                        cpatch%parprof_dir_z(ican,ileaf) * cpatch%area * AREA_INV
-                  hio_parprof_dif_si_cnlf(io_si,cnlf_indx) = hio_parprof_dif_si_cnlf(io_si,cnlf_indx) + &
+                  hio_parprof_dif_cnlf(io_si,cnlf_indx) = hio_parprof_dif_cnlf(io_si,cnlf_indx) + &
                        cpatch%parprof_dif_z(ican,ileaf) * cpatch%area * AREA_INV
                end do
             end do
@@ -3671,34 +3671,34 @@ end subroutine flush_hvars
 
          do ipa2 = 1, nlevage
             if (patch_area_by_age(ipa2) .gt. tiny) then
-               hio_gpp_si_age(io_si, ipa2) = hio_gpp_si_age(io_si, ipa2) / (patch_area_by_age(ipa2))
-               hio_npp_si_age(io_si, ipa2) = hio_npp_si_age(io_si, ipa2) / (patch_area_by_age(ipa2))
+               hio_gpp_age(io_si, ipa2) = hio_gpp_age(io_si, ipa2) / (patch_area_by_age(ipa2))
+               hio_npp_age(io_si, ipa2) = hio_npp_age(io_si, ipa2) / (patch_area_by_age(ipa2))
             else
-               hio_gpp_si_age(io_si, ipa2) = 0._r8
-               hio_npp_si_age(io_si, ipa2) = 0._r8
+               hio_gpp_age(io_si, ipa2) = 0._r8
+               hio_npp_age(io_si, ipa2) = 0._r8
             endif
 
             ! Normalize resistance diagnostics
             if (canopy_area_by_age(ipa2) .gt. tiny) then
-               hio_c_stomata_si_age(io_si,ipa2) = &
-                    hio_c_stomata_si_age(io_si,ipa2) / canopy_area_by_age(ipa2)
+               hio_c_stomata_age(io_si,ipa2) = &
+                    hio_c_stomata_age(io_si,ipa2) / canopy_area_by_age(ipa2)
 
-               hio_c_lblayer_si_age(io_si,ipa2) = &
-                    hio_c_lblayer_si_age(io_si,ipa2) / canopy_area_by_age(ipa2)
+               hio_c_lblayer_age(io_si,ipa2) = &
+                    hio_c_lblayer_age(io_si,ipa2) / canopy_area_by_age(ipa2)
             else
-               hio_c_stomata_si_age(io_si,ipa2) = 0._r8
-               hio_c_lblayer_si_age(io_si,ipa2) = 0._r8
+               hio_c_stomata_age(io_si,ipa2) = 0._r8
+               hio_c_lblayer_age(io_si,ipa2) = 0._r8
             end if
             
          end do
          
          ! Normalize resistance diagnostics
          if ( sum(canopy_area_by_age(1:nlevage)) .gt. tiny) then
-            hio_c_stomata_si(io_si) = hio_c_stomata_si(io_si) / sum(canopy_area_by_age(1:nlevage))
-            hio_c_lblayer_si(io_si) = hio_c_lblayer_si(io_si) / sum(canopy_area_by_age(1:nlevage))
+            hio_c_stomata(io_si) = hio_c_stomata(io_si) / sum(canopy_area_by_age(1:nlevage))
+            hio_c_lblayer(io_si) = hio_c_lblayer(io_si) / sum(canopy_area_by_age(1:nlevage))
          else
-            hio_c_stomata_si(io_si) = 0._r8
-            hio_c_lblayer_si(io_si) = 0._r8
+            hio_c_stomata(io_si) = 0._r8
+            hio_c_lblayer(io_si) = 0._r8
          end if
 
      enddo ! site loop
@@ -3737,9 +3737,9 @@ end subroutine update_history_hifrq
 !    integer  :: io_shsl  ! The combined "SH"ell "S"oil "L"ayer index in the IO array
     real(r8), parameter :: tiny = 1.e-5_r8      ! some small number
     real(r8) :: ncohort_scpf(nlevsclass*maxpft)  ! Bins to count up cohorts counts used in weighting
-    ! should be "hio_nplant_si_scpf"
+    ! should be "hio_nplant_scpf"
     real(r8) :: nplant_scpf(nlevsclass*maxpft)  ! Bins to count up cohorts counts used in weighting
-                                                   ! should be "hio_nplant_si_scpf"
+                                                   ! should be "hio_nplant_scpf"
     real(r8) :: number_fraction
     real(r8) :: number_fraction_rate
     real(r8) :: mean_aroot
@@ -3783,7 +3783,7 @@ end subroutine update_history_hifrq
     associate( hio_errh2o_scpf  => this%hvars(ih_errh2o_scpf)%r82d, &
           hio_tran_scpf         => this%hvars(ih_tran_scpf)%r82d, &
           hio_sapflow_scpf      => this%hvars(ih_sapflow_scpf)%r82d, &
-          hio_sapflow_si        => this%hvars(ih_sapflow_si)%r81d, & 
+          hio_sapflow        => this%hvars(ih_sapflow)%r81d, & 
           hio_iterh1_scpf       => this%hvars(ih_iterh1_scpf)%r82d, &          
           hio_iterh2_scpf       => this%hvars(ih_iterh2_scpf)%r82d, &           
           hio_ath_scpf          => this%hvars(ih_ath_scpf)%r82d, &               
@@ -3799,17 +3799,17 @@ end subroutine update_history_hifrq
           hio_sflc_scpf          => this%hvars(ih_sflc_scpf)%r82d, &                     
           hio_lflc_scpf          => this%hvars(ih_lflc_scpf)%r82d, &                   
           hio_btran_scpf        => this%hvars(ih_btran_scpf)%r82d, &
-          hio_h2oveg_si         => this%hvars(ih_h2oveg_si)%r81d, &
-          hio_nplant_si_scpf    => this%hvars(ih_nplant_si_scpf)%r82d, &
-          hio_nplant_si_capf    => this%hvars(ih_nplant_si_capf)%r82d, &
-          hio_h2oveg_hydro_err_si   => this%hvars(ih_h2oveg_hydro_err_si)%r81d, &
-          hio_rootwgt_soilvwc_si    => this%hvars(ih_rootwgt_soilvwc_si)%r81d, &
-          hio_rootwgt_soilvwcsat_si => this%hvars(ih_rootwgt_soilvwcsat_si)%r81d, & 
-          hio_rootwgt_soilmatpot_si => this%hvars(ih_rootwgt_soilmatpot_si)%r81d, &
+          hio_h2oveg         => this%hvars(ih_h2oveg)%r81d, &
+          hio_nplant_scpf    => this%hvars(ih_nplant_scpf)%r82d, &
+          hio_nplant_capf    => this%hvars(ih_nplant_capf)%r82d, &
+          hio_h2oveg_hydro_err   => this%hvars(ih_h2oveg_hydro_err)%r81d, &
+          hio_rootwgt_soilvwc    => this%hvars(ih_rootwgt_soilvwc)%r81d, &
+          hio_rootwgt_soilvwcsat => this%hvars(ih_rootwgt_soilvwcsat)%r81d, & 
+          hio_rootwgt_soilmatpot => this%hvars(ih_rootwgt_soilmatpot)%r81d, &
           hio_soilmatpot_sl         => this%hvars(ih_soilmatpot_sl)%r82d, &
           hio_soilvwc_sl            => this%hvars(ih_soilvwc_sl)%r82d, &
           hio_soilvwcsat_sl         => this%hvars(ih_soilvwcsat_sl)%r82d, &
-          hio_rootuptake_si         => this%hvars(ih_rootuptake_si)%r81d, &
+          hio_rootuptake         => this%hvars(ih_rootuptake)%r81d, &
           hio_rootuptake_sl         => this%hvars(ih_rootuptake_sl)%r82d, &
           hio_rootuptake0_scpf      => this%hvars(ih_rootuptake0_scpf)%r82d, &
           hio_rootuptake10_scpf     => this%hvars(ih_rootuptake10_scpf)%r82d, &
@@ -3833,8 +3833,8 @@ end subroutine update_history_hifrq
 
          io_si  = this%iovar_map(nc)%site_index(s)
          
-         hio_h2oveg_si(io_si)              = site_hydr%h2oveg
-         hio_h2oveg_hydro_err_si(io_si)    = site_hydr%h2oveg_hydro_err
+         hio_h2oveg(io_si)              = site_hydr%h2oveg
+         hio_h2oveg_hydro_err(io_si)    = site_hydr%h2oveg_hydro_err
 
         
          
@@ -3865,14 +3865,14 @@ end subroutine update_history_hifrq
             
          end do
          
-         hio_rootwgt_soilvwc_si(io_si)    = mean_soil_vwc/areaweight
-         hio_rootwgt_soilvwcsat_si(io_si) = mean_soil_vwcsat/areaweight
-         hio_rootwgt_soilmatpot_si(io_si) = mean_soil_matpot/areaweight
+         hio_rootwgt_soilvwc(io_si)    = mean_soil_vwc/areaweight
+         hio_rootwgt_soilvwcsat(io_si) = mean_soil_vwcsat/areaweight
+         hio_rootwgt_soilmatpot(io_si) = mean_soil_matpot/areaweight
          
-         hio_rootuptake_si(io_si) = sum(site_hydr%rootuptake_sl,dim=1)
+         hio_rootuptake(io_si) = sum(site_hydr%rootuptake_sl,dim=1)
          hio_rootuptake_sl(io_si,:) = 0._r8
          hio_rootuptake_sl(io_si,jr1:jr2) = site_hydr%rootuptake_sl(1:nlevrhiz)
-         hio_rootuptake_si(io_si) = sum(site_hydr%sapflow_scpf)
+         hio_rootuptake(io_si) = sum(site_hydr%sapflow_scpf)
 
          ! Normalization counters
          nplant_scpf(:) = 0._r8
@@ -4012,14 +4012,14 @@ end subroutine update_history_hifrq
 
          if(hlm_use_ed_st3.eq.ifalse) then
             do iscpf=1,nlevsclass*numpft
-               if( abs(hio_nplant_si_scpf(io_si, iscpf)-nplant_scpf(iscpf)) > 1.0E-8_r8 ) then
+               if( abs(hio_nplant_scpf(io_si, iscpf)-nplant_scpf(iscpf)) > 1.0E-8_r8 ) then
                   write(fates_log(),*) 'numpft:',numpft
                   write(fates_log(),*) 'nlevsclass:',nlevsclass
                   write(fates_log(),*) 'scpf:',iscpf
                   write(fates_log(),*) 'io_si:',io_si
-                  write(fates_log(),*) 'hio_nplant_si_scpf:',hio_nplant_si_scpf(io_si, iscpf)
+                  write(fates_log(),*) 'hio_nplant_scpf:',hio_nplant_scpf(io_si, iscpf)
                   write(fates_log(),*) 'nplant_scpf:',nplant_scpf(iscpf)
-                  write(fates_log(),*) 'nplant check on hio_nplant_si_scpf fails during hydraulics history updates'
+                  write(fates_log(),*) 'nplant check on hio_nplant_scpf fails during hydraulics history updates'
                   call endrun(msg=errMsg(sourcefile, __LINE__))
                end if
             end do
@@ -4131,136 +4131,136 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='NPATCHES', units='none',                &
          long='Total number of ED patches per site', use_default='active',      &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,    &
-         ivar=ivar, initialize=initialize_variables, index = ih_npatches_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_npatches)
 
     call this%set_history_var(vname='NCOHORTS', units='none',                &
          long='Total number of ED cohorts per site', use_default='active',      &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,    &
-         ivar=ivar, initialize=initialize_variables, index = ih_ncohorts_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_ncohorts)
     
     ! Patch variables
     call this%set_history_var(vname='TRIMMING', units='none',                   &
          long='Degree to which canopy expansion is limited by leaf economics',  & 
          use_default='active', &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,    &
-         ivar=ivar, initialize=initialize_variables, index = ih_trimming_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_trimming)
     
     call this%set_history_var(vname='AREA_PLANT', units='m2',                   &
          long='area occupied by all plants', use_default='active',              &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,    &
-         ivar=ivar, initialize=initialize_variables, index = ih_area_plant_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_area_plant)
     
     call this%set_history_var(vname='AREA_TREES', units='m2',                   &
          long='area occupied by woody plants', use_default='active',            &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,    &
-         ivar=ivar, initialize=initialize_variables, index = ih_area_trees_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_area_trees)
 
     call this%set_history_var(vname='COLD_STATUS', units='0,1,2', &
           long='Site level cold status, 0=not cold-dec, 1=too cold for leaves, 2=not-too cold',  &
           use_default='active',                                                  &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-          ivar=ivar, initialize=initialize_variables, index = ih_site_cstatus_si )
+          ivar=ivar, initialize=initialize_variables, index = ih_cstatus )
 
     call this%set_history_var(vname='DROUGHT_STATUS', units='0,1,2,3', &
           long='Site level drought status, <2 too dry for leaves, >=2 not-too dry', &
           use_default='active',                                                  &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-          ivar=ivar, initialize=initialize_variables, index = ih_site_dstatus_si)
+          ivar=ivar, initialize=initialize_variables, index = ih_dstatus)
 
     call this%set_history_var(vname='GDD', units='degC',  &
          long='site level growing degree days',                &
          use_default='active',                                                 &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_gdd_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_gdd)
     
     call this%set_history_var(vname='NCHILLDAYS', units = 'days', &
          long='site level number of chill days', &
          use_default='active',                                                 &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_site_nchilldays_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_nchilldays)
 
     call this%set_history_var(vname='NCOLDDAYS', units = 'days', &
          long='site level number of cold days', &
          use_default='active',                                                 &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_site_ncolddays_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_ncolddays)
 
     call this%set_history_var(vname='DAYSINCE_COLDLEAFOFF', units='days', &
          long='site level days elapsed since cold leaf drop', &
          use_default='active',                                                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_cleafoff_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_cleafoff)
 
     call this%set_history_var(vname='DAYSINCE_COLDLEAFON', units='days', &
          long='site level days elapsed since cold leaf flush', &
          use_default='active',                                                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_cleafon_si) 
+         ivar=ivar, initialize=initialize_variables, index = ih_cleafon) 
 
     call this%set_history_var(vname='DAYSINCE_DROUGHTLEAFOFF', units='days', &
          long='site level days elapsed since drought leaf drop', &
          use_default='active',                                                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_dleafoff_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_dleafoff)
     
     call this%set_history_var(vname='DAYSINCE_DROUGHTLEAFON', units='days', &
          long='site level days elapsed since drought leaf flush', &
          use_default='active',                                                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_dleafon_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_dleafon)
 
     call this%set_history_var(vname='MEANLIQVOL_DROUGHTPHEN', units='m3/m3', &
          long='site level mean liquid water volume for drought phen', &
          use_default='active',                                                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_meanliqvol_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_meanliqvol)
 
     call this%set_history_var(vname='CANOPY_SPREAD', units='0-1',               &
          long='Scaling factor between tree basal area and canopy area',         &
          use_default='active',                                                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,    &
-         ivar=ivar, initialize=initialize_variables, index = ih_canopy_spread_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_canopy_spread)
 
     
     call this%set_history_var(vname='BIOMASS_BY_PFT', units='gC/m2',                   &
          long='total PFT level biomass', use_default='active',                     &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_biomass_si_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_biomass_pft )
 
     call this%set_history_var(vname='LEAFBIOMASS_BY_PFT', units='gC/m2',              &
          long='total PFT level leaf biomass', use_default='active',                &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_leafbiomass_si_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_leafbiomass_pft )
 
     call this%set_history_var(vname='STOREBIOMASS_BY_PFT',  units='gC/m2',            &
          long='total PFT level stored biomass', use_default='active',              &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_storebiomass_si_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_storebiomass_pft )
 
     call this%set_history_var(vname='CROWNAREA_BY_PFT',  units='m2/ha',            &
          long='total PFT level crown area', use_default='inactive',              &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_crownarea_si_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_crownarea_pft )
     
     call this%set_history_var(vname='CANOPYCROWNAREA_BY_PFT',  units='m2/ha',            &
          long='total PFT-level canopy-layer crown area', use_default='inactive',     &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_canopycrownarea_si_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_canopycrownarea_pft )
     
     call this%set_history_var(vname='NINDIVS_BY_PFT',  units='indiv / m2',            &
          long='total PFT level number of individuals', use_default='active',       &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_nindivs_si_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_nindivs_pft )
 
     call this%set_history_var(vname='RECRUITMENT_BY_PFT',  units='indiv/ha/yr',            &
          long='Rate of recruitment by PFT', use_default='active',       &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_recruitment_si_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_recruitment_pft )
 
     call this%set_history_var(vname='MORTALITY_BY_PFT',  units='indiv/ha/yr',            &
          long='Rate of total mortality by PFT', use_default='active',       &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_mortality_si_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_mortality_pft )
 
 
     
@@ -4268,33 +4268,33 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='PATCHAREA_BY_AGE', units='m2/m2',             &
          long='patch area by age bin', use_default='active',                     &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_area_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_area_age )
 
     call this%set_history_var(vname='LAI_BY_AGE', units='m2/m2',                   &
          long='leaf area index by age bin', use_default='active',                     &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_lai_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_lai_age )
 
     call this%set_history_var(vname='CANOPYAREA_BY_AGE', units='m2/m2',             &
          long='canopy area by age bin', use_default='active',                     &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_canopy_area_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_canopy_area_age )
     
     call this%set_history_var(vname='NCL_BY_AGE', units='--',                   &
          long='number of canopy levels by age bin', use_default='inactive',             &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_ncl_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_ncl_age )
 
     call this%set_history_var(vname='NPATCH_BY_AGE', units='--',                   &
          long='number of patches by age bin', use_default='inactive',                     &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_npatches_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_npatches_age )
 
     call this%set_history_var(vname='BIOMASS_BY_AGE', units='kgC/m2',                   &
          long='Total Biomass within a given patch age bin', &
          use_default='inactive',                     &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_biomass_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_biomass_age )
  
     if ( ED_val_comp_excln .lt. 0._r8 ) then ! only valid when "strict ppa" enabled
        tempstring = 'active'
@@ -4305,18 +4305,18 @@ end subroutine update_history_hifrq
          long='product of zstar and patch area by age bin (divide by PATCH_AREA_BY_AGE to get mean zstar)', &
          use_default=trim(tempstring),                     &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_zstar_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_zstar_age )
 
     
     call this%set_history_var(vname='CANOPY_HEIGHT_DIST', units='m2/m2',                   &
          long='canopy height distribution', use_default='active',                     &
          avgflag='A', vtype=site_height_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_canopy_height_dist_si_height )
+         ivar=ivar, initialize=initialize_variables, index = ih_canopy_height_dist_height )
 
     call this%set_history_var(vname='LEAF_HEIGHT_DIST', units='m2/m2',                   &
          long='leaf height distribution', use_default='active',                     &
          avgflag='A', vtype=site_height_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_leaf_height_dist_si_height )
+         ivar=ivar, initialize=initialize_variables, index = ih_leaf_height_dist_height )
 
    
 
@@ -4325,30 +4325,30 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='SECONDARY_FOREST_FRACTION', units='m2/m2', &
          long='Secondary forest fraction', use_default='inactive', &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_fraction_secondary_forest_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fraction_secondary_forest )
 
     call this%set_history_var(vname='WOOD_PRODUCT', units='gC/m2', &
          long='Total wood product from logging', use_default='inactive', &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_woodproduct_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_woodproduct )
 
     call this%set_history_var(vname='SECONDARY_FOREST_BIOMASS', units='kgC/m2', &
          long='Biomass on secondary lands (per total site area, mult by SECONDARY_FOREST_FRACTION to get per secondary forest area)',&
          use_default='inactive', &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_biomass_secondary_forest_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_biomass_secondary_forest )
 
     call this%set_history_var(vname='SECONDARY_AREA_AGE_ANTHRO_DIST', units='m2/m2', &
          long='Secondary forest patch area age distribution since anthropgenic disturbance', &
          use_default='inactive', &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_agesince_anthrodist_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_agesince_anthrodist_age )
 
     call this%set_history_var(vname='SECONDARY_AREA_PATCH_AGE_DIST', units='m2/m2', &
          long='Secondary forest patch area age distribution since any kind of disturbance', &
          use_default='inactive', &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_secondaryforest_area_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_secondaryforest_area_age )
 
 
     ! Fire Variables
@@ -4356,124 +4356,124 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='FIRE_NESTEROV_INDEX', units='none',       &
          long='nesterov_fire_danger index', use_default='active',               &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_nesterov_fire_danger_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_nesterov_fire_danger)
 
     call this%set_history_var(vname='FIRE_IGNITIONS', units='number/km2/day',       &
          long='number of ignitions', use_default='active',               &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_nignitions_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_nignitions)
 
     call this%set_history_var(vname='FIRE_FDI', units='none',       &
          long='probability that an ignition will lead to a fire', use_default='active',               &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_fdi_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_fdi)
 
     call this%set_history_var(vname='FIRE_ROS', units='m/min',                 &
          long='fire rate of spread m/min', use_default='active',                &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_spitfire_ros_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_spitfire_ros)
 
     call this%set_history_var(vname='FIRE_ROS_AREA_PRODUCT', units='m/min',                 &
          long='product of fire rate of spread (m/min) and burned area (fraction)--divide by FIRE_AREA to get burned-area-weighted-mean ROS', use_default='active',                &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_ros_area_product_si)
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_ros_area_product)
 
     call this%set_history_var(vname='EFFECT_WSPEED', units='none',             &
          long ='effective windspeed for fire spread', use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_effect_wspeed_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_effect_wspeed )
 
     call this%set_history_var(vname='FIRE_TFC_ROS', units='kgC/m2',              &
          long ='total fuel consumed', use_default='active',                     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_tfc_ros_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_tfc_ros )
 
     call this%set_history_var(vname='FIRE_TFC_ROS_AREA_PRODUCT', units='kgC/m2',              &
          long ='product of total fuel consumed and burned area--divide by FIRE_AREA to get burned-area-weighted-mean TFC', use_default='active',                     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_tfc_ros_area_product_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_tfc_ros_area_product )
 
     call this%set_history_var(vname='FIRE_INTENSITY', units='kJ/m/s',          &
          long='spitfire fire intensity: kJ/m/s', use_default='active',          &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_intensity_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_intensity )
 
     call this%set_history_var(vname='FIRE_INTENSITY_AREA_PRODUCT', units='kJ/m/s',          &
          long='spitfire product of fire intensity and burned area (divide by FIRE_AREA to get area-weighted mean intensity)', &
          use_default='active',          &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_intensity_area_product_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_intensity_area_product )
 
     call this%set_history_var(vname='FIRE_AREA', units='fraction',             &
          long='spitfire fire area burn fraction', use_default='active',                    &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_area_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_area )
 
     call this%set_history_var(vname='FIRE_FUEL_MEF', units='m',                &
          long='spitfire fuel moisture',  use_default='active',                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_fuel_mef_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_fuel_mef )
 
     call this%set_history_var(vname='FIRE_FUEL_BULKD', units='kg biomass/m3',              &
          long='spitfire fuel bulk density',  use_default='active',              &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_fuel_bulkd_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_fuel_bulkd )
 
     call this%set_history_var(vname='FIRE_FUEL_EFF_MOIST', units='m',          &
          long='spitfire fuel moisture', use_default='active',                   &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_fuel_eff_moist_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_fuel_eff_moist )
 
     call this%set_history_var(vname='FIRE_FUEL_SAV', units='per m',                &
          long='spitfire fuel surface/volume ',  use_default='active',           &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_fuel_sav_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_fuel_sav )
 
     call this%set_history_var(vname='SUM_FUEL', units='gC m-2',                &
          long='total ground fuel related to ros (omits 1000hr fuels)',          & 
          use_default='active',                                                  & 
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_sum_fuel_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_sum_fuel )
 
     call this%set_history_var(vname='FRAGMENTATION_SCALER', units='unitless (0-1)',                &
          long='factor by which litter/cwd fragmentation proceeds relative to max rate',          & 
          use_default='active',                                                  & 
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fragmentation_scaler_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fragmentation_scaler )
 
     call this%set_history_var(vname='FUEL_MOISTURE_BY_NFSC', units='-',                &
          long='spitfire size-resolved fuel moisture', use_default='active',       &
          avgflag='A', vtype=site_fuel_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_litter_moisture_si_fuel )
+         ivar=ivar, initialize=initialize_variables, index = ih_litter_moisture_fuel )
 
     call this%set_history_var(vname='FUEL_AMOUNT_BY_NFSC', units='kg C / m2',                &
          long='spitfire size-resolved fuel quantity', use_default='active',       &
          avgflag='A', vtype=site_fuel_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fuel_amount_si_fuel )
+         ivar=ivar, initialize=initialize_variables, index = ih_fuel_amount_fuel )
 
     call this%set_history_var(vname='AREA_BURNT_BY_AGE', units='m2/m2', &
          long='spitfire area burnt by patch age (divide by patch_area_by_age to get burnt fraction by age)', &
          use_default='active', &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_area_burnt_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_area_burnt_age )
 
     call this%set_history_var(vname='FIRE_INTENSITY_BY_AGE', units='kJ/m/2', &
          long='product of fire intensity and burned area, resolved by patch age (so divide by AREA_BURNT_BY_PATCH_AGE to get burned-area-weighted-average intensity', &
          use_default='active', &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_intensity_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_intensity_age )
 
     call this%set_history_var(vname='SUM_FUEL_BY_AGE', units='gC / m2 of site area', &
          long='spitfire ground fuel related to ros (omits 1000hr fuels) within each patch age bin (divide by patch_area_by_age to get fuel per unit area of that-age patch)', &
          use_default='active', &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_sum_fuel_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_sum_fuel_age )
 
     call this%set_history_var(vname='BURNT_LITTER_FRAC_AREA_PRODUCT_BY_NFSC', units='fraction', &
          long='product of fraction of fuel burnt and burned area (divide by FIRE_AREA to get burned-area-weighted mean fraction fuel burnt)', &
          use_default='active', &
          avgflag='A', vtype=site_fuel_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_burnt_frac_litter_si_fuel )
+         ivar=ivar, initialize=initialize_variables, index = ih_burnt_frac_litter_fuel )
 
 
     ! Litter Variables
@@ -4481,22 +4481,22 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='LITTER_IN', units='gC m-2 s-1',           &
          long='FATES litter flux in',  use_default='active',                   &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_litter_in_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_litter_in )
 
     call this%set_history_var(vname='LITTER_OUT', units='gC m-2 s-1',          &
          long='FATES litter flux out',  use_default='active',                  & 
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_litter_out_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_litter_out )
 
     call this%set_history_var(vname='SEED_BANK', units='gC m-2',               &
          long='Total Seed Mass of all PFTs',  use_default='active',             &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_seed_bank_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_seed_bank )
 
     call this%set_history_var(vname='SEEDS_IN', units='gC m-2 s-1',            &
          long='Seed Production Rate',  use_default='active',                    &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_seeds_in_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_seeds_in )
 
     call this%set_history_var(vname='LITTER_IN_BY_EL', units='kg ha-1 d-1',         &
          long='FATES litter flux in',  use_default='active',                      &
@@ -4538,89 +4538,89 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='STOREC', units='kgC ha-1',                      &
          long='Total carbon in live plant storage', use_default='active',          &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_storec_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_storec )
     
     call this%set_history_var(vname='TOTVEGC', units='kgC ha-1',                     &
          long='Total carbon in live plants', use_default='active',                 &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_totvegc_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_totvegc )
     
     call this%set_history_var(vname='SAPWC', units='kgC ha-1',                       &
          long='Total carbon in live plant sapwood', use_default='active',          &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_sapwc_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_sapwc )
     
     call this%set_history_var(vname='LEAFC', units='kgC ha-1',                       &
          long='Total carbon in live plant leaves', use_default='active',           &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_leafc_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_leafc )
     
     call this%set_history_var(vname='FNRTC', units='kgC ha-1',                       &
          long='Total carbon in live plant fine-roots', use_default='active',       &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fnrtc_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fnrtc )
 
     call this%set_history_var(vname='REPROC', units='kgC ha-1',                          &
          long='Total carbon in live plant reproductive tissues', use_default='active', &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-         ivar=ivar, initialize=initialize_variables, index = ih_reproc_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_reproc )
 
     call this%set_history_var(vname='CEFFLUX', units='kgC/ha/day', &
          long='carbon efflux, root to soil', use_default='active', &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cefflux_si )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cefflux )
     
 
     nitrogen_active_if: if(any(element_list(:)==nitrogen_element)) then
        call this%set_history_var(vname='STOREN', units='kgN ha-1',                      &
             long='Total nitrogen in live plant storage', use_default='active',          &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_storen_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_storen )
        
        call this%set_history_var(vname='TOTVEGN', units='kgN ha-1',                     &
             long='Total nitrogen in live plants', use_default='active',                 &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_totvegn_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_totvegn )
        
        call this%set_history_var(vname='SAPWN', units='kgN ha-1',                       &
             long='Total nitrogen in live plant sapwood', use_default='active',          &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_sapwn_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_sapwn )
        
        call this%set_history_var(vname='LEAFN', units='kgN ha-1',                       &
             long='Total nitrogen in live plant leaves', use_default='active',           &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_leafn_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_leafn )
        
        call this%set_history_var(vname='FNRTN', units='kgN ha-1',                       &
             long='Total nitrogen in live plant fine-roots', use_default='active',       &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_fnrtn_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_fnrtn )
        
        call this%set_history_var(vname='REPRON', units='kgN ha-1',                          &
             long='Total nitrogen in live plant reproductive tissues', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_repron_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_repron )
 
        call this%set_history_var(vname='NUPTAKE', units='kgN d-1 ha-1',                          &
             long='Total nitrogen uptake by plants per sq meter per day', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_nuptake_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_nuptake )
 
        call this%set_history_var(vname='NEFFLUX', units='kgN d-1 ha-1',                          &
             long='Nitrogen effluxed from plant (unused)', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_nefflux_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_nefflux )
 
        call this%set_history_var(vname='NNEED_GROW', units='kgN d-1 ha-1',                          &
             long='(Approx) plant nitrogen needed to satisfy growth', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_nneedgrow_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_nneedgrow )
 
        call this%set_history_var(vname='NNEED_MAX', units='kgN d-1 ha-1',                          &
             long='(Approx) plant nitrogen needed to reach maximum capacity', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_nneedmax_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_nneedmax )
        
     end if nitrogen_active_if
 
@@ -4629,52 +4629,52 @@ end subroutine update_history_hifrq
        call this%set_history_var(vname='STOREP', units='kgP ha-1',                      &
             long='Total phosphorus in live plant storage', use_default='active',          &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_storep_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_storep )
        
        call this%set_history_var(vname='TOTVEGP', units='kgP ha-1',                     &
             long='Total phosphorus in live plants', use_default='active',                 &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_totvegp_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_totvegp )
        
        call this%set_history_var(vname='SAPWP', units='kgP ha-1',                       &
             long='Total phosphorus in live plant sapwood', use_default='active',          &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_sapwp_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_sapwp )
        
        call this%set_history_var(vname='LEAFP', units='kgP ha-1',                       &
             long='Total phosphorus in live plant leaves', use_default='active',           &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_leafp_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_leafp )
        
        call this%set_history_var(vname='FNRTP', units='kgP ha-1',                       &
             long='Total phosphorus in live plant fine-roots', use_default='active',       &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-            ivar=ivar, initialize=initialize_variables, index = ih_fnrtp_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_fnrtp )
        
        call this%set_history_var(vname='REPROP', units='kgP ha-1',                          &
             long='Total phosphorus in live plant reproductive tissues', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_reprop_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_reprop )
 
        call this%set_history_var(vname='PUPTAKE', units='kgP ha-1 d-1',                          &
             long='Total phosphorus uptake by plants per sq meter per day', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_puptake_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_puptake )
 
        call this%set_history_var(vname='PEFFLUX', units='kgP ha-1 d-1',                          &
             long='Phosphorus effluxed from plant (unused)', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_pefflux_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_pefflux )
        
        call this%set_history_var(vname='PNEED_GROW', units='kgP ha-1 d-1',                          &
             long='Plant phosphorus needed to satisfy growth', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_pneedgrow_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_pneedgrow )
 
        call this%set_history_var(vname='PNEED_MAX', units='kgP ha-1 d-1', &
             long='Plant phosphorus needed to reach maximum capacity', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,       &
-            ivar=ivar, initialize=initialize_variables, index = ih_pneedmax_si )
+            ivar=ivar, initialize=initialize_variables, index = ih_pneedmax )
        
        
     end if phosphorus_active_if
@@ -4686,112 +4686,112 @@ end subroutine update_history_hifrq
 !    call this%set_history_var(vname='ED_bstore', units='gC m-2',                  &
 !         long='Storage biomass', use_default='active',                          &
 !         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bstore_si )
+!         ivar=ivar, initialize=initialize_variables, index = ih_bstore )
 
 !    call this%set_history_var(vname='ED_bdead', units='gC m-2',                   &
 !         long='Dead (structural) biomass (live trees, not CWD)',                &
 !         use_default='active',                                                  &
 !         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bdead_si )
+!         ivar=ivar, initialize=initialize_variables, index = ih_bdead )
 
 !    call this%set_history_var(vname='ED_balive', units='gC m-2',                  &
 !         long='Live biomass', use_default='active',                             &
 !         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_balive_si )
+!         ivar=ivar, initialize=initialize_variables, index = ih_balive )
 
 !    call this%set_history_var(vname='ED_bleaf', units='gC m-2',                   &
 !         long='Leaf biomass',  use_default='active',                            &
 !         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bleaf_si )
+!         ivar=ivar, initialize=initialize_variables, index = ih_bleaf )
 
 !    call this%set_history_var(vname='ED_bsapwood', units='gC m-2',                 &
 !         long='Sapwood biomass',  use_default='active',                            &
 !         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bsapwood_si )    
+!         ivar=ivar, initialize=initialize_variables, index = ih_bsapwood )    
 
 !    call this%set_history_var(vname='ED_bfineroot', units='gC m-2',                 &
 !         long='Fine root biomass',  use_default='active',                            &
 !         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bfineroot_si )    
+!         ivar=ivar, initialize=initialize_variables, index = ih_bfineroot )    
 
 !    call this%set_history_var(vname='ED_biomass', units='gC m-2',                  &
 !         long='Total biomass',  use_default='active',                           &
 !         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_btotal_si )
+!         ivar=ivar, initialize=initialize_variables, index = ih_btotal )
 
     
     call this%set_history_var(vname='AGB', units='gC m-2',                  &
          long='Aboveground biomass',  use_default='active',                           &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_agb_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_agb )
 
     call this%set_history_var(vname='TOTVEGC_CANOPY', units='gC m-2',                   &
          long='Biomass of canopy plants',  use_default='active',                            &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_canopy_biomass_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_canopy_biomass )
 
     call this%set_history_var(vname='TOTVEGC_UNDERSTORY', units='gC m-2',                   &
          long='Biomass of understory plants',  use_default='active',                            &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_understory_biomass_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_understory_biomass )
 
     ! disturbance rates
     call this%set_history_var(vname='PRIMARYLAND_PATCHFUSION_ERROR', units='m2 m-2 d-1',                   &
          long='Error in total primary lands associated with patch fusion',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_primaryland_fusion_error_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_primaryland_fusion_error )
 
     call this%set_history_var(vname='DISTURBANCE_RATE_P2P', units='m2 m-2 d-1',                   &
          long='Disturbance rate from primary to primary lands',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_disturbance_rate_p2p_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_disturbance_rate_p2p )
 
     call this%set_history_var(vname='DISTURBANCE_RATE_P2S', units='m2 m-2 d-1',                   &
          long='Disturbance rate from primary to secondary lands',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_disturbance_rate_p2s_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_disturbance_rate_p2s )
 
     call this%set_history_var(vname='DISTURBANCE_RATE_S2S', units='m2 m-2 d-1',                   &
          long='Disturbance rate from secondary to secondary lands',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_disturbance_rate_s2s_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_disturbance_rate_s2s )
 
     call this%set_history_var(vname='DISTURBANCE_RATE_FIRE', units='m2 m-2 d-1',                   &
          long='Disturbance rate from fire',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fire_disturbance_rate_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fire_disturbance_rate )
 
     call this%set_history_var(vname='DISTURBANCE_RATE_LOGGING', units='m2 m-2 d-1',                   &
          long='Disturbance rate from logging',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_logging_disturbance_rate_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_logging_disturbance_rate )
 
     call this%set_history_var(vname='DISTURBANCE_RATE_TREEFALL', units='m2 m-2 d-1',                   &
          long='Disturbance rate from treefall',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fall_disturbance_rate_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_fall_disturbance_rate )
 
     call this%set_history_var(vname='DISTURBANCE_RATE_POTENTIAL', units='m2 m-2 d-1',                   &
          long='Potential (i.e., including unresolved) disturbance rate',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_potential_disturbance_rate_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_potential_disturbance_rate )
 
     call this%set_history_var(vname='HARVEST_CARBON_FLUX', units='kg C m-2 d-1',                   &
          long='Harvest carbon flux',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_harvest_carbonflux_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_harvest_carbonflux )
 
     ! Canopy Resistance 
 
     call this%set_history_var(vname='COND_STOMATA', units='umol m-2 s-1',                   &
          long='mean stomatal conductance', use_default='active',                   &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_c_stomata_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_c_stomata )
 
     call this%set_history_var(vname='COND_LBLAYER', units='umol m-2 s-1',                   &
          long='mean leaf boundary layer conductance', use_default='active',                   &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_c_lblayer_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_c_lblayer )
 
 
     ! Ecosystem Carbon Fluxes (updated rapidly, upfreq=2)
@@ -4799,71 +4799,71 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='NPP', units='gC/m^2/s',                &
          long='net primary production',  use_default='active',      &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_npp_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_npp )
 
     call this%set_history_var(vname='GPP', units='gC/m^2/s',                   &
          long='gross primary production',  use_default='active',                &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_gpp_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_gpp )
 
     call this%set_history_var(vname='AR', units='gC/m^2/s',                 &
          long='autotrophic respiration', use_default='active',                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_aresp_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_aresp )
 
     call this%set_history_var(vname='GROWTH_RESP', units='gC/m^2/s',           &
          long='growth respiration', use_default='active',                       &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_growth_resp_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_growth_resp )
 
     call this%set_history_var(vname='MAINT_RESP', units='gC/m^2/s',            &
          long='maintenance respiration', use_default='active',                  &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_maint_resp_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_maint_resp )
 
     ! Canopy resistance 
 
     call this%set_history_var(vname='COND_STOMATA_BY_AGE', units='umol m-2 s-1',                   &
          long='mean stomatal conductance - by patch age', use_default='inactive', &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_c_stomata_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_c_stomata_age )
 
     call this%set_history_var(vname='COND_LBLAYER_BY_AGE', units='umol m-2 s-1',                   &
          long='mean leaf boundary layer conductance - by patch age', use_default='inactive', &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_c_lblayer_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_c_lblayer_age )
 
     ! fast fluxes by age bin
     call this%set_history_var(vname='NPP_BY_AGE', units='gC/m^2/s',                   &
          long='net primary productivity by age bin', use_default='inactive',           &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2, &
-         ivar=ivar, initialize=initialize_variables, index = ih_npp_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_npp_age )
 
     call this%set_history_var(vname='GPP_BY_AGE', units='gC/m^2/s',                   &
          long='gross primary productivity by age bin', use_default='inactive',         &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2, &
-         ivar=ivar, initialize=initialize_variables, index = ih_gpp_si_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_gpp_age )
 
     ! fast fluxes separated canopy/understory
     call this%set_history_var(vname='GPP_CANOPY', units='gC/m^2/s',                   &
          long='gross primary production of canopy plants',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_gpp_canopy_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_gpp_canopy )
 
     call this%set_history_var(vname='AR_CANOPY', units='gC/m^2/s',                 &
          long='autotrophic respiration of canopy plants', use_default='active',       &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_ar_canopy_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_ar_canopy )
 
     call this%set_history_var(vname='GPP_UNDERSTORY', units='gC/m^2/s',                   &
          long='gross primary production of understory plants',  use_default='active',     &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_gpp_understory_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_gpp_understory )
 
     call this%set_history_var(vname='AR_UNDERSTORY', units='gC/m^2/s',                 &
          long='autotrophic respiration of understory plants', use_default='active',       &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_ar_understory_si )
+         ivar=ivar, initialize=initialize_variables, index = ih_ar_understory )
 
 
     ! fast radiative fluxes resolved through the canopy
@@ -4871,268 +4871,268 @@ end subroutine update_history_hifrq
          long='PAR absorbed in the sun by each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parsun_z_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_parsun_z_cnlf )
 
     call this%set_history_var(vname='PARSHA_BY_CNLF', units='W/m2',                 &
          long='PAR absorbed in the shade by each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parsha_z_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_parsha_z_cnlf )
 
     call this%set_history_var(vname='PARSUN_BY_CNLFPFT', units='W/m2',                 &
          long='PAR absorbed in the sun by each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parsun_z_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_parsun_z_cnlfpft )
 
     call this%set_history_var(vname='PARSHA_BY_CNLFPFT', units='W/m2',                 &
          long='PAR absorbed in the shade by each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parsha_z_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_parsha_z_cnlfpft )
 
     call this%set_history_var(vname='PARSUN_CAN', units='W/m2',                 &
          long='PAR absorbed in the sun by top leaf layer in each canopy layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parsun_top_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_parsun_top_can )
 
     call this%set_history_var(vname='PARSHA_CAN', units='W/m2',                 &
          long='PAR absorbed in the shade by top leaf layer in each canopy layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parsha_top_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_parsha_top_can )
 
     call this%set_history_var(vname='LAISUN_BY_CNLF', units='m2/m2',                 &
          long='LAI in the sun by each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_laisun_z_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_laisun_z_cnlf )
 
     call this%set_history_var(vname='LAISHA_BY_CNLF', units='m2/m2',                 &
          long='LAI in the shade by each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_laisha_z_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_laisha_z_cnlf )
 
     call this%set_history_var(vname='LAISUN_BY_CNLFPFT', units='m2/m2',                 &
          long='LAI in the sun by each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_laisun_z_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_laisun_z_cnlfpft )
 
     call this%set_history_var(vname='LAISHA_BY_CNLFPFT', units='m2/m2',                 &
          long='LAI in the shade by each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_laisha_z_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_laisha_z_cnlfpft )
 
     call this%set_history_var(vname='LAISUN_TOP_CAN', units='m2/m2',                 &
          long='LAI in the sun by the top leaf layer of each canopy layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_laisun_top_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_laisun_top_can )
 
     call this%set_history_var(vname='LAISHA_TOP_CAN', units='m2/m2',                 &
          long='LAI in the shade by the top leaf layer of each canopy layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_laisha_top_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_laisha_top_can )
 
     call this%set_history_var(vname='FABD_SUN_BY_CNLFPFT', units='fraction',                 &
          long='sun fraction of direct light absorbed by each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sun_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sun_cnlfpft )
 
     call this%set_history_var(vname='FABD_SHA_BY_CNLFPFT', units='fraction',                 &
          long='shade fraction of direct light absorbed by each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sha_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sha_cnlfpft )
 
     call this%set_history_var(vname='FABI_SUN_BY_CNLFPFT', units='fraction',                 &
          long='sun fraction of indirect light absorbed by each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sun_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sun_cnlfpft )
 
     call this%set_history_var(vname='FABI_SHA_BY_CNLFPFT', units='fraction',                 &
          long='shade fraction of indirect light absorbed by each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sha_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sha_cnlfpft )
 
     call this%set_history_var(vname='FABD_SUN_BY_CNLF', units='fraction',                 &
          long='sun fraction of direct light absorbed by each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sun_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sun_cnlf )
 
     call this%set_history_var(vname='FABD_SHA_BY_CNLF', units='fraction',                 &
          long='shade fraction of direct light absorbed by each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sha_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sha_cnlf )
 
     call this%set_history_var(vname='FABI_SUN_CNLF', units='fraction',                 &
          long='sun fraction of indirect light absorbed by each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sun_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sun_cnlf )
 
     call this%set_history_var(vname='FABI_SHA_BY_CNLF', units='fraction',                 &
          long='shade fraction of indirect light absorbed by each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sha_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sha_cnlf )
 
     call this%set_history_var(vname='PARPROF_DIR_BY_CNLFPFT', units='W/m2',                 &
          long='Radiative profile of direct PAR through each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parprof_dir_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_parprof_dir_cnlfpft )
 
     call this%set_history_var(vname='PARPROF_DIF_BY_CNLFPFT', units='W/m2',                 &
          long='Radiative profile of diffuse PAR through each canopy, leaf, and PFT', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlfpft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parprof_dif_si_cnlfpft )
+         ivar=ivar, initialize=initialize_variables, index = ih_parprof_dif_cnlfpft )
 
     call this%set_history_var(vname='PARPROF_DIR_BY_CNLF', units='W/m2',                 &
          long='Radiative profile of direct PAR through each canopy and leaf layer (averaged across PFTs)', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parprof_dir_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_parprof_dir_cnlf )
 
     call this%set_history_var(vname='PARPROF_DIF_BY_CNLF', units='W/m2',                 &
          long='Radiative profile of diffuse PAR through each canopy and leaf layer (averaged across PFTs)', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_parprof_dif_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_parprof_dif_cnlf )
 
     call this%set_history_var(vname='FABD_SUN_TOPLF_BY_CN', units='fraction',                 &
          long='sun fraction of direct light absorbed by the top leaf layer of each canopy layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sun_top_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sun_top_can )
 
     call this%set_history_var(vname='FABD_SHA_TOPLF_BY_CN', units='fraction',                 &
          long='shade fraction of direct light absorbed by the top leaf layer of each canopy layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sha_top_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabd_sha_top_can )
 
     call this%set_history_var(vname='FABI_SUN_TOPLF_BY_CN', units='fraction',                 &
          long='sun fraction of indirect light absorbed by the top leaf layer of each canopy layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sun_top_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sun_top_can )
 
     call this%set_history_var(vname='FABI_SHA_TOPLF_BY_CN', units='fraction',                 &
          long='shade fraction of indirect light absorbed by the top leaf layer of each canopy layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sha_top_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_fabi_sha_top_can )
 
     !!! canopy-resolved fluxes and structure
     call this%set_history_var(vname='NET_C_UPTAKE_BY_CNLF', units='gC/m2/s',                 &
          long='net carbon uptake by each canopy and leaf layer per unit ground area (i.e. divide by CROWNAREA_CNLF to make per leaf area)', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=2,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_ts_net_uptake_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_ts_net_uptake_cnlf )
 
     call this%set_history_var(vname='CROWNAREA_BY_CNLF', units='m2/m2',                 &
          long='total crown area that is occupied by leaves in each canopy and leaf layer', &
          use_default='inactive',       &
          avgflag='A', vtype=site_cnlf_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_crownarea_si_cnlf )
+         ivar=ivar, initialize=initialize_variables, index = ih_crownarea_cnlf )
 
     call this%set_history_var(vname='CROWNAREA_BY_CN', units='m2/m2',                 &
          long='total crown area in each canopy layer', &
          use_default='active',       &
          avgflag='A', vtype=site_can_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_crownarea_si_can )
+         ivar=ivar, initialize=initialize_variables, index = ih_crownarea_can )
 
     ! slow carbon fluxes associated with mortality from or transfer betweeen canopy and understory
     call this%set_history_var(vname='DEMOTION_CARBONFLUX', units = 'gC/m2/s',               &
           long='demotion-associated biomass carbon flux from canopy to understory', use_default='active',   &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_demotion_carbonflux_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_demotion_carbonflux )
 
     call this%set_history_var(vname='PROMOTION_CARBONFLUX', units = 'gC/m2/s',               &
           long='promotion-associated biomass carbon flux from understory to canopy', use_default='active',   &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_promotion_carbonflux_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_promotion_carbonflux )
 
     call this%set_history_var(vname='MORTALITY_CARBONFLUX_CANOPY', units = 'gC/m2/s',               &
           long='flux of biomass carbon from live to dead pools from mortality of canopy plants', use_default='active',   &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_canopy_mortality_carbonflux_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_canopy_mortality_carbonflux )
 
     call this%set_history_var(vname='MORTALITY_CARBONFLUX_UNDERSTORY', units = 'gC/m2/s',               &
           long='flux of biomass carbon from live to dead pools from mortality of understory plants',use_default='active',&
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_understory_mortality_carbonflux_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_understory_mortality_carbonflux )
 
     ! size class by age dimensioned variables
     call this%set_history_var(vname='NPLANT_BY_SCAG',units = 'plants/ha',               &
           long='number of plants per hectare in each size x age class', use_default='active',   &
           avgflag='A', vtype=site_scag_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_si_scag )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_scag )
 
     call this%set_history_var(vname='NPLANT_CANOPY_BY_SCAG',units = 'plants/ha',               &
           long='number of plants per hectare in canopy in each size x age class', use_default='inactive',   &
           avgflag='A', vtype=site_scag_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_canopy_si_scag )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_canopy_scag )
 
     call this%set_history_var(vname='NPLANT_UNDERSTORY_BY_SCAG',units = 'plants/ha',               &
           long='number of plants per hectare in understory in each size x age class', use_default='inactive',   &
           avgflag='A', vtype=site_scag_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_understory_si_scag )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_understory_scag )
 
     call this%set_history_var(vname='DDBH_CANOPY_BY_SCAG',units = 'cm/yr/ha',               &
           long='growth rate of canopy plantsnumber of plants per hectare in canopy in each size x age class', &
           use_default='inactive', avgflag='A', vtype=site_scag_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_canopy_si_scag )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_canopy_scag )
 
     call this%set_history_var(vname='DDBH_UNDERSTORY_BY_SCAG',units = 'cm/yr/ha',               &
           long='growth rate of understory plants in each size x age class', use_default='inactive',   &
           avgflag='A', vtype=site_scag_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_understory_si_scag )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_understory_scag )
 
     call this%set_history_var(vname='MORTALITY_CANOPY_BY_SCAG',units = 'plants/ha/yr',               &
           long='mortality rate of canopy plants in each size x age class', use_default='inactive',   &
           avgflag='A', vtype=site_scag_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_canopy_si_scag )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_canopy_scag )
 
     call this%set_history_var(vname='MORTALITY_UNDERSTORY_BY_SCAG',units = 'plants/ha/yr',               &
           long='mortality rate of understory plantsin each size x age class', use_default='inactive',   &
           avgflag='A', vtype=site_scag_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_understory_si_scag )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_understory_scag )
 
     ! size x age x pft dimensioned
     call this%set_history_var(vname='NPLANT_BY_SCAGPFT',units = 'plants/ha',               &
           long='number of plants per hectare in each size x age x pft class', use_default='inactive',   &
           avgflag='A', vtype=site_scagpft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_si_scagpft )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_scagpft )
 
     ! age x pft dimensioned
     call this%set_history_var(vname='NPP_BY_AGEPFT',units = 'kgC/m2/yr',               &
           long='NPP per PFT in each age bin', use_default='inactive',   &
           avgflag='A', vtype=site_agepft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_si_agepft )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_agepft )
 
     call this%set_history_var(vname='BIOMASS_BY_AGEPFT',units = 'kg C / m2',               &
           long='biomass per PFT in each age bin', use_default='inactive',   &
           avgflag='A', vtype=site_agepft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_biomass_si_agepft )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_biomass_agepft )
 
     call this%set_history_var(vname='SCORCH_HEIGHT_BY_AGEPFT',units = 'm',               &
           long='SPITFIRE Flame Scorch Height (calculated per PFT in each patch age bin)', &
           use_default='active',   &
           avgflag='A', vtype=site_agepft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_scorch_height_si_agepft )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_scorch_height_agepft )
 
 
     ! Carbon Flux (grid dimension x scpf) (THESE ARE DEFAULT INACTIVE!!!
@@ -5142,676 +5142,676 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='GPP_BY_SCPF', units='kgC/m2/yr',            &
           long='gross primary production by pft/size', use_default='inactive',           &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_gpp_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_gpp_scpf )
 
     call this%set_history_var(vname='GPP_CANOPY_BY_SCPF', units='kgC/m2/yr',            &
           long='gross primary production of canopy plants by pft/size ', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_gpp_canopy_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_gpp_canopy_scpf )
 
     call this%set_history_var(vname='AR_CANOPY_BY_SCPF', units='kgC/m2/yr',            &
           long='autotrophic respiration of canopy plants by pft/size', use_default='inactive',           &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ar_canopy_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ar_canopy_scpf )
 
     call this%set_history_var(vname='GPP_UNDERSTORY_BY_SCPF', units='kgC/m2/yr',            &
           long='gross primary production of understory plants by pft/size', use_default='inactive',           &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_gpp_understory_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_gpp_understory_scpf )
 
     call this%set_history_var(vname='AR_UNDERSTORY_BY_SCPF', units='kgC/m2/yr',            &
           long='autotrophic respiration of understory plants by pft/size', use_default='inactive',           &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ar_understory_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ar_understory_scpf )
 
     call this%set_history_var(vname='NPP_BY_SCPF', units='kgC/m2/yr',            &
           long='total net primary production by pft/size', use_default='inactive',       &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_totl_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_totl_scpf )
 
     call this%set_history_var(vname='NPP_LEAF_BY_SCPF', units='kgC/m2/yr',       &
           long='NPP flux into leaves by pft/size', use_default='inactive',               &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_leaf_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_leaf_scpf )
 
    call this%set_history_var(vname='NPP_SEED_BY_SCPF', units='kgC/m2/yr',       &
          long='NPP flux into seeds by pft/size', use_default='inactive',                &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_seed_si_scpf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_seed_scpf )
 
    call this%set_history_var(vname='NPP_FNRT_BY_SCPF', units='kgC/m2/yr',       &
          long='NPP flux into fine roots by pft/size', use_default='inactive',           &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_fnrt_si_scpf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_fnrt_scpf )
 
    call this%set_history_var(vname='NPP_BGSW_BY_SCPF', units='kgC/m2/yr',       &
          long='NPP flux into below-ground sapwood by pft/size', use_default='inactive', &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_bgsw_si_scpf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_bgsw_scpf )
 
    call this%set_history_var(vname='NPP_BGDW_BY_SCPF', units='kgC/m2/yr',       &
          long='NPP flux into below-ground deadwood by pft/size', use_default='inactive', &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_bgdw_si_scpf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_bgdw_scpf )
 
    call this%set_history_var(vname='NPP_AGSW_BY_SCPF', units='kgC/m2/yr',       &
          long='NPP flux into above-ground sapwood by pft/size', use_default='inactive', &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_agsw_si_scpf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_agsw_scpf )
 
    call this%set_history_var(vname = 'NPP_AGDW_BY_SCPF', units='kgC/m2/yr',    &
          long='NPP flux into above-ground deadwood by pft/size', use_default='inactive', &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_agdw_si_scpf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_agdw_scpf )
 
    call this%set_history_var(vname = 'NPP_STOR_BY_SCPF', units='kgC/m2/yr',    &
          long='NPP flux into storage by pft/size', use_default='inactive',              &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stor_si_scpf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stor_scpf )
 
     call this%set_history_var(vname='DDBH_BY_SCPF', units = 'cm/yr/ha',         &
           long='diameter growth increment by pft/size',use_default='inactive',          &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,   &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_scpf )
 
     call this%set_history_var(vname='GROWTHFLUX_BY_SCPF', units = 'n/yr/ha',         &
           long='flux of individuals into a given size class bin via growth and recruitment',use_default='inactive',          &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,   &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_growthflux_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_growthflux_scpf )
 
     call this%set_history_var(vname='GROWTHFLUX_FUSION_BY_SCPF', units = 'n/yr/ha',         &
           long='flux of individuals into a given size class bin via fusion',use_default='inactive',          &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,   &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_growthflux_fusion_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_growthflux_fusion_scpf )
 
     call this%set_history_var(vname='DDBH_CANOPY_BY_SCPF', units = 'cm/yr/ha',         &
           long='diameter growth increment by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_canopy_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_canopy_scpf )
 
     call this%set_history_var(vname='DDBH_UNDERSTORY_BY_SCPF', units = 'cm/yr/ha',         &
           long='diameter growth increment by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_understory_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_understory_scpf )
 
     call this%set_history_var(vname='BA_BY_SCPF', units = 'm2/ha',               &
           long='basal area by pft/size', use_default='inactive',   &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ba_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ba_scpf )
 
     call this%set_history_var(vname='AGB_BY_SCPF', units = 'kgC/m2', &
          long='Aboveground biomass by pft/size', use_default='inactive', &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_agb_si_scpf ) 
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_agb_scpf ) 
 
     call this%set_history_var(vname='NPLANT_BY_SCPF', units = 'N/ha',         &
           long='stem number density by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_scpf )
 
     call this%set_history_var(vname='NPLANT_BY_CAPF', units = 'N/ha',       &
          long='stem number density by pft/coage', use_default='inactive', &
          avgflag='A', vtype=site_coage_pft_r8, hlms='CLM:ELM',flushval=0.0_r8,     &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_si_capf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_capf )
 
     call this%set_history_var(vname='M1_BY_SCPF', units = 'N/ha/yr',          &
           long='background mortality by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m1_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m1_scpf )
     
     call this%set_history_var(vname='M2_BY_SCPF', units = 'N/ha/yr',          &
           long='hydraulic mortality by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m2_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m2_scpf )
 
     call this%set_history_var(vname='M3_BY_SCPF', units = 'N/ha/yr',          &
           long='carbon starvation mortality by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m3_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m3_scpf )
 
     call this%set_history_var(vname='M4_BY_SCPF', units = 'N/ha/yr',          &
           long='impact mortality by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m4_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m4_scpf )
 
     call this%set_history_var(vname='M5_BY_SCPF', units = 'N/ha/yr',          &
           long='fire mortality by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m5_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m5_scpf )
 
     call this%set_history_var(vname='CROWNFIREMORT_BY_SCPF', units = 'N/ha/yr',          &
           long='crown fire mortality by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_crownfiremort_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_crownfiremort_scpf )
 
     call this%set_history_var(vname='CAMBIALFIREMORT_BY_SCPF', units = 'N/ha/yr',          &
           long='cambial fire mortality by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cambialfiremort_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cambialfiremort_scpf )
 
     call this%set_history_var(vname='M6_BY_SCPF', units = 'N/ha/yr',          &
           long='termination mortality by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m6_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m6_scpf )
 
     call this%set_history_var(vname='M7_BY_SCPF', units = 'N/ha/event',               &
           long='logging mortality by pft/size',use_default='inactive',           &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m7_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m7_scpf )
 
     call this%set_history_var(vname='M8_BY_SCPF', units = 'N/ha/yr',          &
           long='freezing mortality by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m8_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m8_scpf )
 
     call this%set_history_var(vname='M9_BY_SCPF', units = 'N/ha/yr',          &
           long='senescence mortality by pft/size',use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m9_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m9_scpf )
 
     call this%set_history_var(vname='M10_BY_SCPF', units = 'N/ha/yr',         &
          long='age senescence mortality by pft/size',use_default='inactive', &
          avgflag='A', vtype =site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,     &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m10_si_scpf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m10_scpf )
     
     call this%set_history_var(vname='M10_BY_CAPF',units='N/ha/yr',         &
          long='age senescence mortality by pft/cohort age',use_default='inactive', &
          avgflag='A', vtype =site_coage_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,         &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index =ih_m10_si_capf )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index =ih_m10_capf )
 
     call this%set_history_var(vname='MORTALITY_CANOPY_BY_SCPF', units = 'N/ha/yr',          &
           long='total mortality of canopy plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_canopy_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_canopy_scpf )
 
     call this%set_history_var(vname='C13DISC_BY_SCPF', units = 'per mil',               &
          long='C13 discrimination by pft/size',use_default='inactive',           &
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_c13disc_si_scpf ) 
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_c13disc_scpf ) 
 
     call this%set_history_var(vname='BSTOR_CANOPY_BY_SCPF', units = 'kgC/ha',          &
           long='biomass carbon in storage pools of canopy plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstor_canopy_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstor_canopy_scpf )
 
     call this%set_history_var(vname='BLEAF_CANOPY_BY_SCPF', units = 'kgC/ha',          &
           long='biomass carbon in leaf of canopy plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bleaf_canopy_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bleaf_canopy_scpf )
 
     call this%set_history_var(vname='NPLANT_CANOPY_BY_SCPF', units = 'N/ha',         &
           long='stem number of canopy plants density by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_canopy_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_canopy_scpf )
 
     call this%set_history_var(vname='MORTALITY_UNDERSTORY_BY_SCPF', units = 'N/ha/yr',          &
           long='total mortality of understory plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_understory_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_understory_scpf )
 
     call this%set_history_var(vname='BSTOR_UNDERSTORY_BY_SCPF', units = 'kgC/ha',          &
           long='biomass carbon in storage pools of understory plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstor_understory_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstor_understory_scpf )
 
     call this%set_history_var(vname='BLEAF_UNDERSTORY_BY_SCPF', units = 'kgC/ha',          &
           long='biomass carbon in leaf of understory plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bleaf_understory_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bleaf_understory_scpf )
 
     call this%set_history_var(vname='NPLANT_UNDERSTORY_BY_SCPF', units = 'N/ha',         &
           long='stem number of understory plants density by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_understory_si_scpf )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_understory_scpf )
 
     call this%set_history_var(vname='CWD_AG_BY_CWDSC', units='gC/m^2', &
           long='size-resolved AG CWD stocks', use_default='inactive', &
           avgflag='A', vtype=site_cwdsc_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_ag_si_cwdsc )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_ag_cwdsc )
 
     call this%set_history_var(vname='CWD_BG_BY_CWDSC', units='gC/m^2', &
           long='size-resolved BG CWD stocks', use_default='inactive', &
           avgflag='A', vtype=site_cwdsc_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_bg_si_cwdsc )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_bg_cwdsc )
 
     call this%set_history_var(vname='CWD_AG_IN_BY_CWDSC', units='gC/m^2/y', &
           long='size-resolved AG CWD input', use_default='inactive', &
           avgflag='A', vtype=site_cwdsc_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_ag_in_si_cwdsc )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_ag_in_cwdsc )
 
     call this%set_history_var(vname='CWD_BG_IN_BY_CWDSC', units='gC/m^2/y', &
           long='size-resolved BG CWD input', use_default='inactive', &
           avgflag='A', vtype=site_cwdsc_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_bg_in_si_cwdsc )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_bg_in_cwdsc )
 
     call this%set_history_var(vname='CWD_AG_OUT_BY_CWDSC', units='gC/m^2/y', &
           long='size-resolved AG CWD output', use_default='inactive', &
           avgflag='A', vtype=site_cwdsc_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_ag_out_si_cwdsc )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_ag_out_cwdsc )
 
     call this%set_history_var(vname='CWD_BG_OUT_BY_CWDSC', units='gC/m^2/y', &
           long='size-resolved BG CWD output', use_default='inactive', &
           avgflag='A', vtype=site_cwdsc_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_bg_out_si_cwdsc )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cwd_bg_out_cwdsc )
 
     ! Size structured diagnostics that require rapid updates (upfreq=2)
 
     call this%set_history_var(vname='AR_BY_SCPF',units = 'kgC/m2/yr',          &
           long='total autotrophic respiration per m2 per year by pft/size',use_default='inactive',&
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_si_scpf )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_scpf )
     
     call this%set_history_var(vname='AR_GROW_BY_SCPF',units = 'kgC/m2/yr',          &
           long='growth autotrophic respiration per m2 per year by pft/size',use_default='inactive',&
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_grow_si_scpf )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_grow_scpf )
 
     call this%set_history_var(vname='AR_MAINT_BY_SCPF',units = 'kgC/m2/yr',          &
           long='maintenance autotrophic respiration per m2 per year by pft/size',use_default='inactive',&
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_maint_si_scpf )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_maint_scpf )
 
     call this%set_history_var(vname='AR_DARKM_BY_SCPF',units = 'kgC/m2/yr',          &
           long='dark portion of maintenance autotrophic respiration per m2 per year by pft/size',use_default='inactive',&
           avgflag='A', vtype=site_size_pft_r8,hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_darkm_si_scpf )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_darkm_scpf )
 
     call this%set_history_var(vname='AR_AGSAPM_BY_SCPF',units = 'kgC/m2/yr',          &
           long='above-ground sapwood maintenance autotrophic respiration per m2 per year by pft/size',use_default='inactive',&
           avgflag='A', vtype=site_size_pft_r8,hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_agsapm_si_scpf )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_agsapm_scpf )
     
     call this%set_history_var(vname='AR_CROOTM_BY_SCPF',units = 'kgC/m2/yr',          &
           long='below-ground sapwood maintenance autotrophic respiration per m2 per year by pft/size',use_default='inactive',&
           avgflag='A', vtype=site_size_pft_r8,hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_crootm_si_scpf )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_crootm_scpf )
 
     call this%set_history_var(vname='AR_FROOTM_BY_SCPF',units = 'kgC/m2/yr',          &
           long='fine root maintenance autotrophic respiration per m2 per year by pft/size',use_default='inactive',&
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_frootm_si_scpf )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_ar_frootm_scpf )
 
     ! size-class only variables
 
     call this%set_history_var(vname='DDBH_CANOPY_BY_SZ', units = 'cm/yr/ha',         &
           long='diameter growth increment by pft/size',use_default='active', &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_canopy_sz )
 
     call this%set_history_var(vname='DDBH_UNDERSTORY_BY_SZ', units = 'cm/yr/ha',         &
           long='diameter growth increment by pft/size',use_default='active', &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ddbh_understory_sz )
 
     call this%set_history_var(vname='YESTERDAYCANLEV_CANOPY_BY_SZ', units = 'indiv/ha',               &
           long='Yesterdays canopy level for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_yesterdaycanopylevel_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_yesterdaycanopylevel_canopy_sz )
 
     call this%set_history_var(vname='YESTERDAYCANLEV_UNDERSTORY_BY_SZ', units = 'indiv/ha',               &
           long='Yesterdays canopy level for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_yesterdaycanopylevel_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_yesterdaycanopylevel_understory_sz )
 
     call this%set_history_var(vname='BA_BY_SZ', units = 'm2/ha',               &
           long='basal area by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ba_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_ba_sz )
 
     call this%set_history_var(vname='AGB_BY_SZ', units = 'kgC/m2',               &
           long='Aboveground biomass by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_agb_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_agb_sz )
 
     call this%set_history_var(vname='BIOMASS_BY_SZ', units = 'kgC/m2',               &
           long='Total biomass by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_biomass_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_biomass_sz )
 
     call this%set_history_var(vname='DEMOTION_RATE_BY_SZ', units = 'indiv/ha/yr',               &
           long='demotion rate from canopy to understory by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_demotion_rate_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_demotion_rate_sz )
 
     call this%set_history_var(vname='PROMOTION_RATE_BY_SZ', units = 'indiv/ha/yr',               &
           long='promotion rate from understory to canopy by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_promotion_rate_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_promotion_rate_sz )
 
     call this%set_history_var(vname='NPLANT_CANOPY_BY_SZ', units = 'indiv/ha',               &
           long='number of canopy plants by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_canopy_sz )
   
     call this%set_history_var(vname='LAI_CANOPY_BY_SZ', units = 'm2/m2',               &
           long='Leaf are index (LAI) by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_lai_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_lai_canopy_sz )
 
     call this%set_history_var(vname='SAI_CANOPY_BY_SZ', units = 'm2/m2',               &
           long='stem area index(SAI) by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_sai_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_sai_canopy_sz )
 
     call this%set_history_var(vname='MORTALITY_CANOPY_BY_SZ', units = 'indiv/ha/yr',               &
           long='total mortality of canopy trees by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_canopy_sz )
 
     call this%set_history_var(vname='NPLANT_UNDERSTORY_BY_SZ', units = 'indiv/ha',               &
           long='number of understory plants by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_understory_sz )
 
     call this%set_history_var(vname='LAI_UNDERSTORY_BY_SZ', units = 'indiv/ha',               &
           long='number of understory plants by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_lai_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_lai_understory_sz )
 
     call this%set_history_var(vname='SAI_UNDERSTORY_BY_SZ', units = 'indiv/ha',               &
           long='number of understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_sai_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_sai_understory_sz )
 
     call this%set_history_var(vname='NPLANT_BY_SZ', units = 'indiv/ha',               &
           long='number of plants by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_sz )
 
     call this%set_history_var(vname='NPLANT_BY_CACLS', units = 'indiv/ha',          &
          long='number of plants by coage class', use_default='active',   &
          avgflag='A', vtype=site_coage_r8, hlms='CLM:ELM', flushval=0.0_r8,     &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_si_cacls )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_nplant_cacls )
 
     call this%set_history_var(vname='M1_BY_SZ', units = 'N/ha/yr',          &
           long='background mortality by size', use_default='active', &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m1_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m1_sz )
     
     call this%set_history_var(vname='M2_BY_SZ', units = 'N/ha/yr',          &
           long='hydraulic mortality by size',use_default='active', &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m2_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m2_sz )
 
     call this%set_history_var(vname='M3_BY_SZ', units = 'N/ha/yr',          &
           long='carbon starvation mortality by size', use_default='active', &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m3_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m3_sz )
 
     call this%set_history_var(vname='M4_BY_SZ', units = 'N/ha/yr',          &
           long='impact mortality by size',use_default='active', &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m4_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m4_sz )
 
     call this%set_history_var(vname='M5_BY_SZ', units = 'N/ha/yr',          &
           long='fire mortality by size',use_default='active', &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m5_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m5_sz )
 
     call this%set_history_var(vname='M6_BY_SZ', units = 'N/ha/yr',          &
           long='termination mortality by size',use_default='active', &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m6_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m6_sz )
 
     call this%set_history_var(vname='M7_BY_SZ', units = 'N/ha/event',               &
           long='logging mortality by size',use_default='active',           &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m7_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m7_sz )
 
     call this%set_history_var(vname='M8_BY_SZ', units = 'N/ha/event',               &
           long='freezing mortality by size',use_default='active',           &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m8_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m8_sz )
 
     call this%set_history_var(vname='M9_BY_SZ', units = 'N/ha/yr',              &
           long='senescence mortality by size',use_default='active',         &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m9_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m9_sz )
 
     call this%set_history_var(vname='M10_BY_SZ', units = 'N/ha/yr',              &
           long='age senescence mortality by size',use_default='active',         &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,     &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m10_si_sz ) 
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m10_sz ) 
 
     call this%set_history_var(vname='M10_BY_CACLS', units = 'N/ha/yr',             &
           long='age senescence mortality by cohort age',use_default='active',      &
           avgflag='A', vtype=site_coage_r8, hlms='CLM:ELM', flushval=0.0_r8,     &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m10_si_cacls )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_m10_cacls )
 
     call this%set_history_var(vname='CARBON_BALANCE_CANOPY_BY_SZ', units = 'kg C / ha / yr', &
           long='CARBON_BALANCE for canopy plants by size class', use_default='inactive',    &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_carbon_balance_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_carbon_balance_canopy_sz )
 
     call this%set_history_var(vname='CARBON_BALANCE_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr', &
           long='CARBON_BALANCE for understory plants by size class', use_default='inactive',    &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_carbon_balance_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_carbon_balance_understory_sz )
     
     call this%set_history_var(vname='MORTALITY_UNDERSTORY_BY_SZ', units = 'indiv/ha/yr',               &
           long='total mortality of understory trees by size class', use_default='active',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_understory_sz )
 
     call this%set_history_var(vname='TRIMMING_CANOPY_BY_SZ', units = 'indiv/ha',               &
           long='trimming term of canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_trimming_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_trimming_canopy_sz )
 
     call this%set_history_var(vname='TRIMMING_UNDERSTORY_BY_SZ', units = 'indiv/ha',               &
           long='trimming term of understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_trimming_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_trimming_understory_sz )
 
     call this%set_history_var(vname='CROWN_AREA_CANOPY_BY_SZ', units = 'm2/ha',               &
           long='total crown area of canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_crown_area_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_crown_area_canopy_sz )
 
     call this%set_history_var(vname='CROWN_AREA_UNDERSTORY_BY_SZ', units = 'm2/ha',               &
           long='total crown area of understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_crown_area_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_crown_area_understory_sz )
 
     call this%set_history_var(vname='LEAF_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='LEAF_MD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_leaf_md_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_leaf_md_canopy_sz )
     
     call this%set_history_var(vname='ROOT_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='ROOT_MD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_root_md_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_root_md_canopy_sz )
 
     call this%set_history_var(vname='BSTORE_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='BSTORE_MD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstore_md_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstore_md_canopy_sz )
 
     call this%set_history_var(vname='BDEAD_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='BDEAD_MD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bdead_md_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bdead_md_canopy_sz )
 
     call this%set_history_var(vname='BSW_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='BSW_MD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bsw_md_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bsw_md_canopy_sz )
 
     call this%set_history_var(vname='SEED_PROD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='SEED_PROD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_seed_prod_canopy_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_seed_prod_canopy_sz )
     
    call this%set_history_var(vname='NPP_LEAF_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_LEAF for canopy plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=-999.9_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_leaf_canopy_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_leaf_canopy_sz )
     
    call this%set_history_var(vname='NPP_FROOT_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_FROOT for canopy plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_fnrt_canopy_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_fnrt_canopy_sz )
     
    call this%set_history_var(vname='NPP_BSW_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_BSW for canopy plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_sapw_canopy_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_sapw_canopy_sz )
     
    call this%set_history_var(vname='NPP_BDEAD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_BDEAD for canopy plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_dead_canopy_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_dead_canopy_sz )
     
    call this%set_history_var(vname='NPP_BSEED_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_BSEED for canopy plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_seed_canopy_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_seed_canopy_sz )
     
    call this%set_history_var(vname='NPP_STORE_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_STORE for canopy plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stor_canopy_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stor_canopy_sz )
     
     call this%set_history_var(vname='LEAF_MR', units = 'kg C / m2 / yr',               &
           long='RDARK (leaf maintenance respiration)', use_default='active',   &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_leaf_mr_si )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_leaf_mr )
     
     call this%set_history_var(vname='FROOT_MR', units = 'kg C / m2 / yr',               &
           long='fine root maintenance respiration)', use_default='active',   &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_froot_mr_si )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_froot_mr )
     
     call this%set_history_var(vname='LIVECROOT_MR', units = 'kg C / m2 / yr',               &
           long='live coarse root maintenance respiration)', use_default='active',   &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livecroot_mr_si )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livecroot_mr )
     
     call this%set_history_var(vname='LIVESTEM_MR', units = 'kg C / m2 / yr',               &
           long='live stem maintenance respiration)', use_default='active',   &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livestem_mr_si )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livestem_mr )
     
     call this%set_history_var(vname='RDARK_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='RDARK for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_rdark_canopy_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_rdark_canopy_sz )
     
     call this%set_history_var(vname='LIVESTEM_MR_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='LIVESTEM_MR for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livestem_mr_canopy_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livestem_mr_canopy_sz )
     
     call this%set_history_var(vname='LIVECROOT_MR_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='LIVECROOT_MR for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livecroot_mr_canopy_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livecroot_mr_canopy_sz )
     
     call this%set_history_var(vname='FROOT_MR_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='FROOT_MR for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_froot_mr_canopy_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_froot_mr_canopy_sz )
     
     call this%set_history_var(vname='RESP_G_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='RESP_G for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_resp_g_canopy_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_resp_g_canopy_sz )
     
     call this%set_history_var(vname='RESP_M_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
           long='RESP_M for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_resp_m_canopy_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_resp_m_canopy_sz )
 
     call this%set_history_var(vname='LEAF_MD_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='LEAF_MD for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_leaf_md_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_leaf_md_understory_sz )
     
     call this%set_history_var(vname='ROOT_MD_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='ROOT_MD for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_root_md_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_root_md_understory_sz )
 
     call this%set_history_var(vname='BSTORE_MD_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='BSTORE_MD for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstore_md_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstore_md_understory_sz )
     
     call this%set_history_var(vname='BDEAD_MD_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='BDEAD_MD for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bdead_md_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bdead_md_understory_sz )
 
     call this%set_history_var(vname='BSW_MD_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='BSW_MD for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bsw_md_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bsw_md_understory_sz )
     
     call this%set_history_var(vname='SEED_PROD_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='SEED_PROD for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_seed_prod_understory_si_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_seed_prod_understory_sz )
     
    call this%set_history_var(vname='NPP_LEAF_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_LEAF for understory plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_leaf_understory_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_leaf_understory_sz )
     
    call this%set_history_var(vname='NPP_FROOT_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_FROOT for understory plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_fnrt_understory_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_fnrt_understory_sz )
     
    call this%set_history_var(vname='NPP_BSW_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_BSW for understory plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_sapw_understory_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_sapw_understory_sz )
     
    call this%set_history_var(vname='NPP_BDEAD_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_BDEAD for understory plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_dead_understory_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_dead_understory_sz )
     
    call this%set_history_var(vname='NPP_BSEED_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_BSEED for understory plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_seed_understory_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_seed_understory_sz )
     
    call this%set_history_var(vname='NPP_STORE_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
          long='NPP_STORE for understory plants by size class', use_default='inactive',   &
          avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stor_understory_si_sz )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stor_understory_sz )
     
     call this%set_history_var(vname='RDARK_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='RDARK for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_rdark_understory_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_rdark_understory_sz )
     
     call this%set_history_var(vname='LIVESTEM_MR_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='LIVESTEM_MR for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livestem_mr_understory_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livestem_mr_understory_sz )
     
     call this%set_history_var(vname='LIVECROOT_MR_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='LIVECROOT_MR for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livecroot_mr_understory_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_livecroot_mr_understory_sz )
     
     call this%set_history_var(vname='FROOT_MR_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='FROOT_MR for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_froot_mr_understory_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_froot_mr_understory_sz )
     
     call this%set_history_var(vname='RESP_G_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='RESP_G for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_resp_g_understory_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_resp_g_understory_sz )
     
     call this%set_history_var(vname='RESP_M_UNDERSTORY_BY_SZ', units = 'kg C / ha / yr',               &
           long='RESP_M for understory plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_resp_m_understory_si_sz )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_resp_m_understory_sz )
 
 
     ! CARBON BALANCE VARIABLES THAT DEPEND ON HLM BGC INPUTS
@@ -5819,12 +5819,12 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='NEP', units='gC/m^2/s', &
           long='net ecosystem production', use_default='active', &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_nep_si )
+          upfreq=2, ivar=ivar, initialize=initialize_variables, index = ih_nep )
 
     call this%set_history_var(vname='Fire_CLOSS', units='gC/m^2/s', &
           long='ED/SPitfire Carbon loss to atmosphere', use_default='active', &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_fire_c_to_atm_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_fire_c_to_atm )
    
     call this%set_history_var(vname='FIRE_FLUX_BY_EL', units='g/m^2/s', &
           long='ED-spitfire loss to atmosphere of elements', use_default='active', &
@@ -5834,12 +5834,12 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='CBALANCE_ERROR_FATES', units='mgC/day',  &
          long='total carbon error, FATES', use_default='active', &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cbal_err_fates_si )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_cbal_err_fates )
 
     call this%set_history_var(vname='TOTALC_ERROR', units='mgC/day',  &
          long='total error, FATES mass-balance', use_default='active', &
          avgflag='A', vtype=site_elem_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_err_fates_si )
+         upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_err_fates )
 
     call this%set_history_var(vname='LITTER_FINES_AG_BY_EL', units='kg ha-1', &
           long='mass of above ground  litter in fines (leaves,nonviable seed)', use_default='active', &
@@ -6016,32 +6016,32 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='NPP_LEAF', units='kgC/m2/yr',       &
           long='NPP flux into leaves', use_default='active',               &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_leaf_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_leaf )
 
     call this%set_history_var(vname='NPP_SEED', units='kgC/m2/yr',       &
           long='NPP flux into seeds', use_default='active',               &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_seed_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_seed )
 
     call this%set_history_var(vname='NPP_STEM', units='kgC/m2/yr',       &
           long='NPP flux into stem', use_default='active',               &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stem_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stem )
 
     call this%set_history_var(vname='NPP_FROOT', units='kgC/m2/yr',       &
           long='NPP flux into fine roots', use_default='active',               &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_froot_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_froot )
 
     call this%set_history_var(vname='NPP_CROOT', units='kgC/m2/yr',       &
           long='NPP flux into coarse roots', use_default='active',               &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_croot_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_croot )
 
     call this%set_history_var(vname='NPP_STOR', units='kgC/m2/yr',       &
           long='NPP flux into storage tissues', use_default='active',               &
           avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stor_si )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_stor )
 
 
     ! PLANT HYDRAULICS
@@ -6066,7 +6066,7 @@ end subroutine update_history_hifrq
        call this%set_history_var(vname='FATES_SAPFLOW', units='kg/ha/s', &
              long='areal sap flow rate', use_default='active', &
              avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-             upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_sapflow_si )
+             upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_sapflow )
 
        
        call this%set_history_var(vname='FATES_ITERH1_BY_SCPF', units='count/indiv/step', &
@@ -6149,17 +6149,17 @@ end subroutine update_history_hifrq
        call this%set_history_var(vname='FATES_ROOTWGT_SOILVWC', units='m3 m-3', &
             long='soil volumetric water content, weighted by root area', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-            upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_rootwgt_soilvwc_si )
+            upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_rootwgt_soilvwc )
 
        call this%set_history_var(vname='FATES_ROOTWGT_SOILVWCSAT', units='m3 m-3', &
             long='soil saturated volumetric water content, weighted by root area', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-            upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_rootwgt_soilvwcsat_si )
+            upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_rootwgt_soilvwcsat )
        
        call this%set_history_var(vname='FATES_ROOTWGT_SOILMATPOT', units='MPa', &
             long='soil matric potential, weighted by root area', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-            upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_rootwgt_soilmatpot_si )
+            upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_rootwgt_soilmatpot )
        
        call this%set_history_var(vname='FATES_SOILMATPOT_BY_SL', units='MPa', &
             long='soil water matric potenial by soil layer', use_default='inactive', &
@@ -6179,7 +6179,7 @@ end subroutine update_history_hifrq
        call this%set_history_var(vname='FATES_ROOTUPTAKE', units='kg ha-1 s-1', &
             long='root water uptake rate', use_default='active', &
             avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=hlm_hio_ignore_val,    &
-            upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_rootuptake_si )
+            upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_rootuptake )
        
        call this%set_history_var(vname='FATES_ROOTUPTAKE_BY_SL', units='kg ha-1 s-1', &
             long='root water uptake rate by soil layer', use_default='inactive', &
@@ -6209,32 +6209,32 @@ end subroutine update_history_hifrq
        call this%set_history_var(vname='H2OVEG', units = 'kg/m2',               &
              long='water stored inside vegetation tissues (leaf, stem, roots)', use_default='inactive',   &
              avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-             upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_si )
+             upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg )
 
        call this%set_history_var(vname='H2OVEG_DEAD', units = 'kg/m2',               &
              long='cumulative plant_stored_h2o in dead biomass due to mortality', use_default='inactive',   &
              avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-             upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_dead_si )
+             upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_dead )
 
        call this%set_history_var(vname='H2OVEG_RECRUIT', units = 'kg/m2',               &
              long='amount of water in new recruits', use_default='inactive',   &
              avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-             upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_recruit_si )
+             upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_recruit )
     
        call this%set_history_var(vname='H2OVEG_GROWTURN_ERR', units = 'kg/m2',               &
              long='cumulative net borrowed (+) or lost (-) from plant_stored_h2o due to combined growth & turnover', use_default='inactive',   &
              avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-             upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_growturn_err_si )
+             upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_growturn_err )
     
        call this%set_history_var(vname='H2OVEG_PHENO_ERR', units = 'kg/m2',               &
              long='cumulative net borrowed (+) from plant_stored_h2o due to leaf emergence', use_default='inactive',   &
              avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-             upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_pheno_err_si )
+             upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_pheno_err )
      
        call this%set_history_var(vname='H2OVEG_HYDRO_ERR', units = 'kg/m2',               &
              long='cumulative net borrowed (+) from plant_stored_h2o due to plant hydrodynamics', use_default='inactive',   &
              avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-             upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_hydro_err_si )
+             upfreq=4, ivar=ivar, initialize=initialize_variables, index = ih_h2oveg_hydro_err )
     end if hydro_active_if 
 
     ! Must be last thing before return
