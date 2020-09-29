@@ -631,7 +631,6 @@ module FatesHistoryInterfaceMod
   ! more for things like flushing
   type, public :: iovar_map_type
      integer, allocatable :: site_index(:)   ! maps site indexes to the HIO site position
-     integer, allocatable :: patch1_index(:) ! maps site index to the HIO patch 1st position
   end type iovar_map_type
 
 
@@ -1689,8 +1688,6 @@ end subroutine flush_hvars
     integer  :: s        ! The local site index
     integer  :: io_si     ! The site index of the IO array
     integer  :: ipa, ipa2 ! The local "I"ndex of "PA"tches 
-    integer  :: io_pa    ! The patch index of the IO array
-    integer  :: io_pa1   ! The first patch index in the IO array for each site
     integer  :: io_soipa 
     integer  :: lb1,ub1,lb2,ub2  ! IO array bounds for the calling thread
     integer  :: ivar             ! index of IO variable object vector
@@ -1880,7 +1877,7 @@ end subroutine flush_hvars
                hio_m10_si_scls         => this%hvars(ih_m10_si_scls)%r82d, &
                hio_m10_si_cacls        => this%hvars(ih_m10_si_cacls)%r82d, &
               
-	       hio_c13disc_si_scpf     => this%hvars(ih_c13disc_si_scpf)%r82d, &                    
+               hio_c13disc_si_scpf     => this%hvars(ih_c13disc_si_scpf)%r82d, &                    
 
                hio_cwd_elcwd           => this%hvars(ih_cwd_elcwd)%r82d, &
                hio_cwd_ag_elem         => this%hvars(ih_cwd_ag_elem)%r82d, &
@@ -2010,8 +2007,6 @@ end subroutine flush_hvars
       do s = 1,nsites
          
          io_si  = this%iovar_map(nc)%site_index(s)
-         io_pa1 = this%iovar_map(nc)%patch1_index(s)
-         io_soipa = io_pa1-1
 
          ! Total carbon model error [kgC/day -> mgC/day]
          hio_cbal_err_fates_si(io_si) = &
@@ -2101,8 +2096,6 @@ end subroutine flush_hvars
          cpatch => sites(s)%oldest_patch
          do while(associated(cpatch))
             
-            io_pa = io_pa1 + ipa
-
             ! Increment the number of patches per site
             hio_npatches_si(io_si) = hio_npatches_si(io_si) + 1._r8
 
@@ -3290,9 +3283,6 @@ end subroutine flush_hvars
     integer  :: s        ! The local site index
     integer  :: io_si     ! The site index of the IO array
     integer  :: ipa      ! The local "I"ndex of "PA"tches 
-    integer  :: io_pa    ! The patch index of the IO array
-    integer  :: io_pa1   ! The first patch index in the IO array for each site
-    integer  :: io_soipa 
     integer  :: lb1,ub1,lb2,ub2  ! IO array bounds for the calling thread
     integer  :: ivar             ! index of IO variable object vector
     integer  :: ft               ! functional type index
@@ -3389,9 +3379,6 @@ end subroutine flush_hvars
       do s = 1,nsites
          
          io_si  = this%iovar_map(nc)%site_index(s)
-         io_pa1 = this%iovar_map(nc)%patch1_index(s)
-         io_soipa = io_pa1-1
-         
          hio_nep_si(io_si) = -bc_in(s)%tot_het_resp ! (gC/m2/s)
          
          ipa = 0
@@ -3402,8 +3389,6 @@ end subroutine flush_hvars
 
          do while(associated(cpatch))
             
-            io_pa = io_pa1 + ipa
-
             patch_area_by_age(cpatch%age_class)  = &
                  patch_area_by_age(cpatch%age_class) + cpatch%area
 
