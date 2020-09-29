@@ -76,7 +76,7 @@ contains
     integer :: dk_index
     integer :: lb1, ub1, lb2, ub2
     
-    this%vname = vname
+    this%vname = 'FATES_'//vname
     this%units = units
     this%long  = long
     this%use_default = use_default
