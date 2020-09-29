@@ -107,99 +107,99 @@ contains
     select case(trim(vtype))
     case(patch_r8)
        allocate(this%r81d(lb1:ub1))
-       this%r81d(:) = flushval
+       this%r81d(:) = hlm_hio_ignore_val
 
     case(site_r8)
        allocate(this%r81d(lb1:ub1))
-       this%r81d(:) = flushval
+       this%r81d(:) = hlm_hio_ignore_val
 
     case(patch_ground_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(patch_size_pft_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_ground_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_size_pft_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_size_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_coage_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_coage_pft_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_pft_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_age_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_height_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_fuel_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_cwdsc_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_can_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_cnlf_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_cnlfpft_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_scag_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_scagpft_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case(site_agepft_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
    case(site_elem_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
    case(site_elpft_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
    
    case(site_elcwd_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
    case(site_elage_r8)
        allocate(this%r82d(lb1:ub1, lb2:ub2))
-       this%r82d(:,:) = flushval
+       this%r82d(:,:) = hlm_hio_ignore_val
 
     case default
        write(fates_log(),*) 'Incompatible vtype passed to set_history_var'

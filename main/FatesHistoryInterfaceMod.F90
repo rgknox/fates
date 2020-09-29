@@ -1445,15 +1445,20 @@ end function levcapf_index
 
  subroutine flush_hvars(this,nc,upfreq_in)
  
-   class(fates_history_interface_type)        :: this
-   integer,intent(in)                     :: nc
-   integer,intent(in)                     :: upfreq_in
-   integer                      :: ivar
-   integer                      :: lb1,ub1,lb2,ub2
+   class(fates_history_interface_type) :: this
+   integer,intent(in)                  :: nc
+   integer,intent(in)                  :: upfreq_in
+   integer                             :: ivar
+   integer                             :: lb1,ub1,lb2,ub2
 
    do ivar=1,ubound(this%hvars,1)
       if (this%hvars(ivar)%upfreq == upfreq_in) then ! Only flush variables with update on dynamics step
-         call this%hvars(ivar)%flush(nc, this%dim_bounds, this%dim_kinds)
+         
+         if(this%dim_kinds(this%hvars(ivar)%dim_kinds_index)%ndims == 1) then
+            this%hvars(ivar)%r81d(this%iovar_map(nc)%site_index(:)) = this%hvars(ivar)%flushval
+         else
+            this%hvars(ivar)%r82d(this%iovar_map(nc)%site_index(:),:) = this%hvars(ivar)%flushval
+         end if
          
       end if
    end do
@@ -2015,6 +2020,12 @@ end subroutine flush_hvars
       do s = 1,nsites
          
          io_si  = this%iovar_map(nc)%site_index(s)
+
+         if(nsites /= ubound(this%iovar_map(nc)%site_index)) then
+            print*,"NSITE DNE SIZE OF SITE_INDEX"
+            stop
+         end if
+         
 
          ! Total carbon model error [kgC/day -> mgC/day]
          hio_cbal_err_fates_si(io_si) = &
