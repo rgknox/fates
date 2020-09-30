@@ -15,6 +15,7 @@ module FatesHistoryVariableType
   use FatesIOVariableKindMod, only : site_elem_r8, site_elpft_r8
   use FatesIOVariableKindMod, only : site_elcwd_r8, site_elage_r8
   use FatesIOVariableKindMod, only : iotype_index
+  use FatesInterfaceTypesMod, only : hlm_hio_ignore_val
 
   implicit none
   private        ! By default everything is private
