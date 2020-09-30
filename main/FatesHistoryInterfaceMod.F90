@@ -208,8 +208,6 @@ module FatesHistoryInterfaceMod
   integer :: ih_bleaf_canopy_scpf
   integer :: ih_bleaf_understory_scpf
 
-
-
   integer :: ih_totvegn_scpf
   integer :: ih_leafn_scpf
   integer :: ih_fnrtn_scpf
@@ -254,8 +252,8 @@ module FatesHistoryInterfaceMod
   integer :: ih_gpp_canopy
   integer :: ih_ar_understory
   integer :: ih_gpp_understory
-  integer :: ih_canopy_biomass
-  integer :: ih_understory_biomass
+  integer :: ih_canopy_totvegc
+  integer :: ih_understory_totvegc
 
   integer :: ih_primaryland_fusion_error
   integer :: ih_disturbance_rate_p2p
@@ -280,7 +278,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_nplant_scagpft
 
   ! Indices to site by patch age by pft variables
-  integer :: ih_biomass_agepft
+  integer :: ih_totvegc_agepft
   integer :: ih_npp_agepft
   integer :: ih_scorch_height_agepft
 
@@ -315,7 +313,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_livestem_mr
   integer :: ih_livecroot_mr
   integer :: ih_fraction_secondary_forest
-  integer :: ih_biomass_secondary_forest
+  integer :: ih_totvegc_secondary_forest
   integer :: ih_woodproduct
   integer :: ih_h2oveg
   integer :: ih_h2oveg_dead
@@ -428,7 +426,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_ddbh_canopy_sz
   integer :: ih_ddbh_understory_sz
   integer :: ih_agb_sz
-  integer :: ih_biomass_sz
+  integer :: ih_totvegc_sz
 
   ! mortality vars
   integer :: ih_m1_sz
@@ -490,7 +488,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_yesterdaycanopylevel_understory_sz
 
   ! indices to (site x pft) variables
-  integer :: ih_biomass_pft
+  integer :: ih_totvegc_pft
   integer :: ih_leafbiomass_pft
   integer :: ih_storebiomass_pft
   integer :: ih_nindivs_pft
@@ -508,7 +506,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_ncl_age
   integer :: ih_npatches_age
   integer :: ih_zstar_age
-  integer :: ih_biomass_age
+  integer :: ih_totvegc_age
   integer :: ih_c_stomata_age
   integer :: ih_c_lblayer_age
   integer :: ih_agesince_anthrodist_age
@@ -1759,7 +1757,7 @@ end subroutine flush_hvars
                hio_area_plant       => this%hvars(ih_area_plant)%r81d, &
                hio_area_trees  => this%hvars(ih_area_trees)%r81d, & 
                hio_canopy_spread    => this%hvars(ih_canopy_spread)%r81d, &
-               hio_biomass_pft      => this%hvars(ih_biomass_pft)%r82d, &
+               hio_totvegc_pft      => this%hvars(ih_totvegc_pft)%r82d, &
                hio_leafbiomass_pft  => this%hvars(ih_leafbiomass_pft)%r82d, &
                hio_storebiomass_pft => this%hvars(ih_storebiomass_pft)%r82d, &
                hio_nindivs_pft      => this%hvars(ih_nindivs_pft)%r82d, &
@@ -1796,8 +1794,8 @@ end subroutine flush_hvars
                hio_seed_decay_elem     => this%hvars(ih_seed_decay_elem)%r82d, &
                hio_seed_germ_elem      => this%hvars(ih_seed_germ_elem)%r82d, &
                hio_agb              => this%hvars(ih_agb)%r81d, &
-               hio_canopy_biomass   => this%hvars(ih_canopy_biomass)%r81d, &
-               hio_understory_biomass   => this%hvars(ih_understory_biomass)%r81d, &
+               hio_canopy_totvegc   => this%hvars(ih_canopy_totvegc)%r81d, &
+               hio_understory_totvegc   => this%hvars(ih_understory_totvegc)%r81d, &
                hio_primaryland_fusion_error    => this%hvars(ih_primaryland_fusion_error)%r81d, &
                hio_disturbance_rate_p2p       => this%hvars(ih_disturbance_rate_p2p)%r81d, &
                hio_disturbance_rate_p2s       => this%hvars(ih_disturbance_rate_p2s)%r81d, &
@@ -1886,7 +1884,7 @@ end subroutine flush_hvars
                hio_fines_bg_elem       => this%hvars(ih_fines_ag_elem)%r82d, &
                hio_ba_sz          => this%hvars(ih_ba_sz)%r82d, &
                hio_agb_sz          => this%hvars(ih_agb_sz)%r82d, &
-               hio_biomass_sz          => this%hvars(ih_biomass_sz)%r82d, &
+               hio_totvegc_sz          => this%hvars(ih_totvegc_sz)%r82d, &
                hio_nplant_sz         => this%hvars(ih_nplant_sz)%r82d, &
                hio_nplant_cacls        => this%hvars(ih_nplant_cacls)%r82d, &
                hio_nplant_canopy_sz         => this%hvars(ih_nplant_canopy_sz)%r82d, &
@@ -1935,7 +1933,7 @@ end subroutine flush_hvars
                hio_npp_stor_understory_sz     => this%hvars(ih_npp_stor_understory_sz)%r82d, &
                hio_nplant_scagpft                => this%hvars(ih_nplant_scagpft)%r82d, &
                hio_npp_agepft                    => this%hvars(ih_npp_agepft)%r82d, &
-               hio_biomass_agepft                => this%hvars(ih_biomass_agepft)%r82d, &
+               hio_totvegc_agepft                => this%hvars(ih_totvegc_agepft)%r82d, &
                hio_scorch_height_agepft          => this%hvars(ih_scorch_height_agepft)%r82d, &
                hio_yesterdaycanopylevel_canopy_sz     => this%hvars(ih_yesterdaycanopylevel_canopy_sz)%r82d, &
                hio_yesterdaycanopylevel_understory_sz => this%hvars(ih_yesterdaycanopylevel_understory_sz)%r82d, &
@@ -1945,9 +1943,9 @@ end subroutine flush_hvars
                hio_ncl_age          => this%hvars(ih_ncl_age)%r82d, &
                hio_npatches_age     => this%hvars(ih_npatches_age)%r82d, &
                hio_zstar_age        => this%hvars(ih_zstar_age)%r82d, &
-               hio_biomass_age        => this%hvars(ih_biomass_age)%r82d, &
+               hio_totvegc_age        => this%hvars(ih_totvegc_age)%r82d, &
                hio_fraction_secondary_forest   => this%hvars(ih_fraction_secondary_forest)%r81d, &
-               hio_biomass_secondary_forest    => this%hvars(ih_biomass_secondary_forest)%r81d, &
+               hio_totvegc_secondary_forest    => this%hvars(ih_totvegc_secondary_forest)%r81d, &
                hio_woodproduct                 => this%hvars(ih_woodproduct)%r81d, &
                hio_agesince_anthrodist_age     => this%hvars(ih_agesince_anthrodist_age)%r82d, &
                hio_secondaryforest_area_age    => this%hvars(ih_secondaryforest_area_age)%r82d, &
@@ -2264,16 +2262,16 @@ end subroutine flush_hvars
                      hio_nindivs_pft(io_si,ft) = hio_nindivs_pft(io_si,ft) + &
                            ccohort%n * AREA_INV
                      
-                     hio_biomass_pft(io_si, ft) = hio_biomass_pft(io_si, ft) + &
+                     hio_totvegc_pft(io_si, ft) = hio_totvegc_pft(io_si, ft) + &
                            (ccohort%n * AREA_INV) * total_m * g_per_kg
 
                      ! update total biomass per age bin
-                     hio_biomass_age(io_si,cpatch%age_class) = hio_biomass_age(io_si,cpatch%age_class) &
+                     hio_totvegc_age(io_si,cpatch%age_class) = hio_totvegc_age(io_si,cpatch%age_class) &
                            + total_m * ccohort%n * AREA_INV
                      
                      ! track the total biomass on all secondary lands
                      if ( cpatch%anthro_disturbance_label .eq. secondaryforest ) then
-                         hio_biomass_secondary_forest(io_si) = hio_biomass_secondary_forest(io_si) + &
+                         hio_totvegc_secondary_forest(io_si) = hio_totvegc_secondary_forest(io_si) + &
                                total_m * ccohort%n * AREA_INV
                      endif
               
@@ -2477,7 +2475,7 @@ end subroutine flush_hvars
                          total_m * ccohort%n * prt_params%allom_agb_frac(ccohort%pft) * AREA_INV
 
 
-                    hio_biomass_sz(io_si,sz) = hio_biomass_sz(io_si,sz) + &
+                    hio_totvegc_sz(io_si,sz) = hio_totvegc_sz(io_si,sz) + &
                           total_m * ccohort%n * AREA_INV
 
                     ! update size-class x patch-age related quantities
@@ -2502,7 +2500,7 @@ end subroutine flush_hvars
                     hio_npp_agepft(io_si,iagepft) = hio_npp_agepft(io_si,iagepft) + &
                          ccohort%n * ccohort%npp_acc_hold * AREA_INV
 
-                    hio_biomass_agepft(io_si,iagepft) = hio_biomass_agepft(io_si,iagepft) + &
+                    hio_totvegc_agepft(io_si,iagepft) = hio_totvegc_agepft(io_si,iagepft) + &
                           total_m * ccohort%n * AREA_INV
 
                     ! update SCPF/SZ- and canopy/subcanopy- partitioned quantities
@@ -2518,7 +2516,7 @@ end subroutine flush_hvars
                        hio_bleaf_canopy_scpf(io_si,scpf) = hio_bleaf_canopy_scpf(io_si,scpf) + &
                              leaf_m * ccohort%n
 
-                       hio_canopy_biomass(io_si) = hio_canopy_biomass(io_si) + n_perm2 * total_m * g_per_kg
+                       hio_canopy_totvegc(io_si) = hio_canopy_totvegc(io_si) + n_perm2 * total_m * g_per_kg
 
                        !hio_mortality_canopy_scpf(io_si,scpf) = hio_mortality_canopy_scpf(io_si,scpf)+ &
                        !    (ccohort%bmort + ccohort%hmort + ccohort%cmort + &
@@ -2611,7 +2609,7 @@ end subroutine flush_hvars
                              store_m * ccohort%n
                        hio_bleaf_understory_scpf(io_si,scpf) = hio_bleaf_understory_scpf(io_si,scpf) + &
                              leaf_m  * ccohort%n
-                       hio_understory_biomass(io_si) = hio_understory_biomass(io_si) + &
+                       hio_understory_totvegc(io_si) = hio_understory_totvegc(io_si) + &
                              n_perm2 * total_m * g_per_kg
 
                        !hio_mortality_understory_scpf(io_si,scpf) = hio_mortality_understory_scpf(io_si,scpf)+ &
@@ -4209,10 +4207,10 @@ end subroutine update_history_hifrq
          ivar=ivar, initialize=initialize_variables, index = ih_canopy_spread)
 
     
-    call this%set_history_var(vname='BIOMASS_BY_PFT', units='gC/m2',                   &
+    call this%set_history_var(vname='TOTVEGC_BY_PFT', units='gC/m2',                   &
          long='total PFT level biomass', use_default='active',                     &
          avgflag='A', vtype=site_pft_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_biomass_pft )
+         ivar=ivar, initialize=initialize_variables, index = ih_totvegc_pft )
 
     call this%set_history_var(vname='LEAFBIOMASS_BY_PFT', units='gC/m2',              &
          long='total PFT level leaf biomass', use_default='active',                &
@@ -4277,11 +4275,11 @@ end subroutine update_history_hifrq
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
          ivar=ivar, initialize=initialize_variables, index = ih_npatches_age )
 
-    call this%set_history_var(vname='BIOMASS_BY_AGE', units='kgC/m2',                   &
+    call this%set_history_var(vname='TOTVEGC_BY_AGE', units='kgC/m2',                   &
          long='Total Biomass within a given patch age bin', &
          use_default='inactive',                     &
          avgflag='A', vtype=site_age_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_biomass_age )
+         ivar=ivar, initialize=initialize_variables, index = ih_totvegc_age )
  
     if ( ED_val_comp_excln .lt. 0._r8 ) then ! only valid when "strict ppa" enabled
        tempstring = 'active'
@@ -4319,11 +4317,11 @@ end subroutine update_history_hifrq
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
          ivar=ivar, initialize=initialize_variables, index = ih_woodproduct )
 
-    call this%set_history_var(vname='SECONDARY_FOREST_BIOMASS', units='kgC/m2', &
+    call this%set_history_var(vname='SECONDARY_FOREST_TOTVEGC', units='kgC/m2', &
          long='Biomass on secondary lands (per total site area, mult by SECONDARY_FOREST_FRACTION to get per secondary forest area)',&
          use_default='inactive', &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1, &
-         ivar=ivar, initialize=initialize_variables, index = ih_biomass_secondary_forest )
+         ivar=ivar, initialize=initialize_variables, index = ih_totvegc_secondary_forest )
 
     call this%set_history_var(vname='SECONDARY_AREA_AGE_ANTHRO', units='m2/m2', &
          long='Secondary forest patch area age distribution since anthropgenic disturbance', &
@@ -4675,12 +4673,12 @@ end subroutine update_history_hifrq
     call this%set_history_var(vname='TOTVEGC_CANOPY', units='gC m-2',                   &
          long='Biomass of canopy plants',  use_default='active',                            &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_canopy_biomass )
+         ivar=ivar, initialize=initialize_variables, index = ih_canopy_totvegc )
 
     call this%set_history_var(vname='TOTVEGC_USTORY', units='gC m-2',                   &
          long='Biomass of understory plants',  use_default='active',                            &
          avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-         ivar=ivar, initialize=initialize_variables, index = ih_understory_biomass )
+         ivar=ivar, initialize=initialize_variables, index = ih_understory_totvegc )
 
     ! disturbance rates
     call this%set_history_var(vname='PRIMARY_PATCHFUSION_ERROR', units='m2 m-2 d-1',                   &
@@ -5072,10 +5070,10 @@ end subroutine update_history_hifrq
           avgflag='A', vtype=site_agepft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_npp_agepft )
 
-    call this%set_history_var(vname='BIOMASS_BY_AGEPFT',units = 'kg C / m2',               &
+    call this%set_history_var(vname='TOTVEGC_BY_AGEPFT',units = 'kg C / m2',               &
           long='biomass per PFT in each age bin', use_default='inactive',   &
           avgflag='A', vtype=site_agepft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_biomass_agepft )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_totvegc_agepft )
 
     call this%set_history_var(vname='SCORCH_HEIGHT_BY_AGEPFT',units = 'm',               &
           long='SPITFIRE Flame Scorch Height (calculated per PFT in each patch age bin)', &
@@ -5278,12 +5276,12 @@ end subroutine update_history_hifrq
          avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_c13disc_scpf ) 
 
-    call this%set_history_var(vname='BSTOR_CANOPY_BY_SCPF', units = 'kgC/ha',          &
+    call this%set_history_var(vname='STOREC_CANOPY_BY_SCPF', units = 'kgC/ha',          &
           long='biomass carbon in storage pools of canopy plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstor_canopy_scpf )
 
-    call this%set_history_var(vname='BLEAF_CANOPY_BY_SCPF', units = 'kgC/ha',          &
+    call this%set_history_var(vname='LEAFC_CANOPY_BY_SCPF', units = 'kgC/ha',          &
           long='biomass carbon in leaf of canopy plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bleaf_canopy_scpf )
@@ -5298,12 +5296,12 @@ end subroutine update_history_hifrq
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_mortality_understory_scpf )
 
-    call this%set_history_var(vname='BSTOR_USTORY_BY_SCPF', units = 'kgC/ha',          &
+    call this%set_history_var(vname='STOREC_USTORY_BY_SCPF', units = 'kgC/ha',          &
           long='biomass carbon in storage pools of understory plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstor_understory_scpf )
 
-    call this%set_history_var(vname='BLEAF_USTORY_BY_SCPF', units = 'kgC/ha',          &
+    call this%set_history_var(vname='LEAFC_USTORY_BY_SCPF', units = 'kgC/ha',          &
           long='biomass carbon in leaf of understory plants by pft/size', use_default='inactive', &
           avgflag='A', vtype=site_size_pft_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bleaf_understory_scpf )
@@ -5412,10 +5410,10 @@ end subroutine update_history_hifrq
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_agb_sz )
 
-    call this%set_history_var(vname='BIOMASS_BY_SZ', units = 'kgC/m2',               &
+    call this%set_history_var(vname='TOTVEGC_BY_SZ', units = 'kgC/m2',               &
           long='Total biomass by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
-          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_biomass_sz )
+          upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_totvegc_sz )
 
     call this%set_history_var(vname='DEMOTION_RATE_BY_SZ', units = 'indiv/ha/yr',               &
           long='demotion rate from canopy to understory by size class', use_default='inactive',   &
@@ -5572,18 +5570,18 @@ end subroutine update_history_hifrq
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_root_md_canopy_sz )
 
-    call this%set_history_var(vname='BSTORE_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
-          long='BSTORE_MD for canopy plants by size class', use_default='inactive',   &
+    call this%set_history_var(vname='STORE_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
+          long='STORE_MD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bstore_md_canopy_sz )
 
-    call this%set_history_var(vname='BDEAD_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
-          long='BDEAD_MD for canopy plants by size class', use_default='inactive',   &
+    call this%set_history_var(vname='DEAD_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
+          long='DEAD_MD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bdead_md_canopy_sz )
 
-    call this%set_history_var(vname='BSW_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
-          long='BSW_MD for canopy plants by size class', use_default='inactive',   &
+    call this%set_history_var(vname='SAPW_MD_CANOPY_BY_SZ', units = 'kg C / ha / yr',               &
+          long='SAPW_MD for canopy plants by size class', use_default='inactive',   &
           avgflag='A', vtype=site_size_r8, hlms='CLM:ELM', flushval=0.0_r8,    &
           upfreq=1, ivar=ivar, initialize=initialize_variables, index = ih_bsw_md_canopy_sz )
 
