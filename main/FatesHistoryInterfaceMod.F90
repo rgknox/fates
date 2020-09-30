@@ -244,14 +244,6 @@ module FatesHistoryInterfaceMod
   integer :: ih_daily_rh
   integer :: ih_daily_prec
  
- ! integer :: ih_bstore
- ! integer :: ih_bdead
- ! integer :: ih_balive
- ! integer :: ih_bleaf
- ! integer :: ih_bsapwood
- ! integer :: ih_bfineroot
- ! integer :: ih_btotal
-
   integer :: ih_agb
   integer :: ih_npp
   integer :: ih_gpp
@@ -1803,13 +1795,6 @@ end subroutine flush_hvars
                hio_seed_in_extern_elem => this%hvars(ih_seeds_in_extern_elem)%r82d, & 
                hio_seed_decay_elem     => this%hvars(ih_seed_decay_elem)%r82d, &
                hio_seed_germ_elem      => this%hvars(ih_seed_germ_elem)%r82d, &
-!               hio_bstore           => this%hvars(ih_bstore)%r81d, &
-!               hio_bdead            => this%hvars(ih_bdead)%r81d, &
-!               hio_balive           => this%hvars(ih_balive)%r81d, &
-!               hio_bleaf            => this%hvars(ih_bleaf)%r81d, &
-!               hio_bsapwood         => this%hvars(ih_bsapwood)%r81d, &
-!               hio_bfineroot        => this%hvars(ih_bfineroot)%r81d, &
-!               hio_btotal           => this%hvars(ih_btotal)%r81d, &
                hio_agb              => this%hvars(ih_agb)%r81d, &
                hio_canopy_biomass   => this%hvars(ih_canopy_biomass)%r81d, &
                hio_understory_biomass   => this%hvars(ih_understory_biomass)%r81d, &
@@ -2264,14 +2249,6 @@ end subroutine flush_hvars
                           this%hvars(ih_sapwc)%r81d(io_si)+ ccohort%n * sapw_m
                      this%hvars(ih_totvegc)%r81d(io_si) = &
                           this%hvars(ih_totvegc)%r81d(io_si)+ ccohort%n * total_m
-
-!                     hio_bleaf(io_si)     = hio_bleaf(io_si)  + n_perm2 * leaf_m  * g_per_kg
-!                     hio_bstore(io_si)    = hio_bstore(io_si) + n_perm2 * store_m * g_per_kg
-!                     hio_bdead(io_si)     = hio_bdead(io_si)  + n_perm2 * struct_m * g_per_kg
-!                     hio_balive(io_si)    = hio_balive(io_si) + n_perm2 * alive_m * g_per_kg
-!                     hio_bsapwood(io_si)  = hio_bsapwood(io_si)   + n_perm2 * sapw_m  * g_per_kg
-!                     hio_bfineroot(io_si) = hio_bfineroot(io_si) + n_perm2 * fnrt_m * g_per_kg
-!                     hio_btotal(io_si)    = hio_btotal(io_si) + n_perm2 * total_m * g_per_kg
                      
                      hio_agb(io_si)       = hio_agb(io_si) + n_perm2 * g_per_kg * &
                            ( leaf_m + (sapw_m + struct_m + store_m) * prt_params%allom_agb_frac(ccohort%pft) )
@@ -4688,46 +4665,6 @@ end subroutine update_history_hifrq
        
        
     end if phosphorus_active_if
-
-
-    ! Consider deprecating the "ED_" variables  (RGK 08-2020)
-    ! They have been replaced, eg. STOREC = ED_bstore
-    
-!    call this%set_history_var(vname='ED_bstore', units='gC m-2',                  &
-!         long='Storage biomass', use_default='active',                          &
-!         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bstore )
-
-!    call this%set_history_var(vname='ED_bdead', units='gC m-2',                   &
-!         long='Dead (structural) biomass (live trees, not CWD)',                &
-!         use_default='active',                                                  &
-!         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bdead )
-
-!    call this%set_history_var(vname='ED_balive', units='gC m-2',                  &
-!         long='Live biomass', use_default='active',                             &
-!         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_balive )
-
-!    call this%set_history_var(vname='ED_bleaf', units='gC m-2',                   &
-!         long='Leaf biomass',  use_default='active',                            &
-!         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bleaf )
-
-!    call this%set_history_var(vname='ED_bsapwood', units='gC m-2',                 &
-!         long='Sapwood biomass',  use_default='active',                            &
-!         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bsapwood )    
-
-!    call this%set_history_var(vname='ED_bfineroot', units='gC m-2',                 &
-!         long='Fine root biomass',  use_default='active',                            &
-!         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_bfineroot )    
-
-!    call this%set_history_var(vname='ED_biomass', units='gC m-2',                  &
-!         long='Total biomass',  use_default='active',                           &
-!         avgflag='A', vtype=site_r8, hlms='CLM:ELM', flushval=0.0_r8, upfreq=1,   &
-!         ivar=ivar, initialize=initialize_variables, index = ih_btotal )
 
     
     call this%set_history_var(vname='AGB', units='gC m-2',                  &
