@@ -86,9 +86,6 @@ def CDLParseParam(file_name,param,dim_dic):
             ('int' in line))):
 
             isfound = True
-
-            print('Filling {}'.format(param.symbol))
-
             datatype = line.split()[0]
             if(datatype.strip()=="float"):
                 param.datatype = float_type
@@ -170,11 +167,7 @@ def CDLParseParam(file_name,param,dim_dic):
     isfound = False
     contents=contents[iline0:]
     for i,line in enumerate(contents):
-
         if(param.symbol in line):
-
-            print(param.symbol)
-            
             search_field=True
             lcount=0
             multi_line=''

@@ -56,9 +56,8 @@ dims = CDLParseDims(default_file_relpath)
 
 parms = {}
 for elem in var_list:
-    print(elem.var_sym,elem.var_name)
     parms[elem.var_sym] = CDLParseParam(default_file_relpath,cdl_param_type(elem.var_name,True,elem.numtype),dims)
-    print('Finished loading PFT parameters')
+print('Finished loading PFT parameters')
 
 f = open("f90src/UnitWrapMod.F90_in", "r")
 contents = f.readlines()
@@ -75,7 +74,6 @@ str=''
 icount=0
 
 for key, value in dims.items():
-    print('{}'.format(key))
     if(icount==0):
         str+=key
     else:
@@ -128,7 +126,6 @@ for symbol, var in parms.items():
     if(var.numtype==1):
         ins_l1='\t integer, pointer :: {}({}\n'.format(symbol,dim_alloc_str)
     contents.insert(index,ins_l1)
-    print(symbol,var.symbol)
 
 
 # Identify where we do the pointer assignments, and insert the pointer assignments
