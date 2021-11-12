@@ -239,7 +239,6 @@ def GetPFTParmFileSymbols(var_list,pft_filename):
                 found_retrieve = False
                 for j in range(0,-10,-1):
                     jj = np.max([0,i+j])
-                    print("line above: {}".format(contents[jj]))
                     if 'RetreiveParameterAllocate' in contents[jj]:
                         found_retrieve = True
                     if ('\'fates_' in contents[jj]) and (found_retrieve) and (not found_parm_name):
