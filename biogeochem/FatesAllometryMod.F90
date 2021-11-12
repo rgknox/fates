@@ -96,7 +96,6 @@ module FatesAllometryMod
   use FatesGlobals     , only : fates_log
   use FatesGlobals     , only : endrun => fates_endrun
   use EDTypesMod       , only : nlevleaf, dinc_ed
-  use EDTypesMod       , only : nclmax
 
 
   implicit none
@@ -586,7 +585,7 @@ contains
     real(r8), intent(in) :: c_area                    ! areal extent of canopy (m2)
     real(r8), intent(in) :: nplant                    ! number of individuals in cohort per ha
     integer, intent(in)  :: cl                        ! canopy layer index
-    real(r8), intent(in) :: canopy_lai(nclmax)        ! total leaf area index of 
+    real(r8), intent(in) :: canopy_lai(:)             ! total leaf area index of 
                                                       ! each canopy layer
     real(r8), intent(in) :: vcmax25top                ! maximum carboxylation rate at canopy
                                                       ! top, ref 25C
@@ -715,7 +714,7 @@ contains
     real(r8), intent(in) :: c_area             ! crown area (m2)
     real(r8), intent(in) :: nplant             ! number of plants
     integer, intent(in)  :: cl                 ! canopy layer index
-    real(r8), intent(in) :: canopy_lai(nclmax) ! total leaf area index of 
+    real(r8), intent(in) :: canopy_lai(:)      ! total leaf area index of 
                                                ! each canopy layer
     real(r8), intent(in) :: treelai            ! tree LAI for checking purposes only
     real(r8), intent(in) :: vcmax25top         ! maximum carboxylation rate at top of crown
@@ -2338,7 +2337,7 @@ contains
      ! the predicted structure based on the searched diameter is within a tolerance.
      ! ============================================================================
 
-     use FatesConstantsMod     , only : calloc_abs_error
+    
      ! Arguments
 
 

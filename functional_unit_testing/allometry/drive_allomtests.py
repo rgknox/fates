@@ -12,6 +12,7 @@ import code  # For development: code.interact(local=dict(globals(), **locals()))
 import sys
 sys.path.append('../shared/py_src')
 from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr
+from CDLParse import CDLParseDims, CDLParseParam, cdl_param_type
 
 # =======================================================================================
 # Set some constants. If they are used as constant arguments to the F90 routines,
@@ -33,7 +34,7 @@ cdo_reverse  = c_bool(0)                    # DO NOT GET REVERSE CROWN AREA
 # =======================================================================================
 
 allom_const_object = "./include/FatesConstantsMod.o"
-allom_wrap_object = "./include/AllomUnitWrap.o"
+allom_wrap_object = "./include/UnitWrapMod.o"
 allom_lib_object = "./include/FatesAllometryMod.o"
 
 # ==============================================================================
@@ -48,9 +49,15 @@ f90funclib = ctypes.CDLL(allom_lib_object,mode=ctypes.RTLD_GLOBAL)
 # Create aliases to all of the different routines, set return types for functions
 # =======================================================================================
 
-f90_pftalloc  = f90wraplib.__edpftvarcon_MOD_edpftvarconalloc    #(numpft)
-f90_pftset    = f90wraplib.__edpftvarcon_MOD_edpftvarconpyset
-f90_pftset.argtypes = [POINTER(c_int),POINTER(c_double),POINTER(c_int),c_char_p,c_long]
+f90_pftalloc  = f90wraplib.__prtparamsgeneric_MOD_prtparamsalloc 
+f90_pftalloc.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int),\
+                         POINTER(c_int),POINTER(c_int),POINTER(c_int),\
+                         POINTER(c_int),POINTER(c_int),POINTER(c_int),\
+                         POINTER(c_int),POINTER(c_int),POINTER(c_int)]
+
+f90_pftset    = f90wraplib.__prtparamsgeneric_MOD_prtparamspyset
+f90_pftset.argtypes = [POINTER(c_double),POINTER(c_int),POINTER(c_int),POINTER(c_int),c_char_p,c_long]
+
 f90_h2d       = f90funclib.__fatesallometrymod_MOD_h2d_allom     #(h,ipft,d,dddh)
 f90_h         = f90funclib.__fatesallometrymod_MOD_h_allom       #(d,ipft,h,dhdd)
 f90_bagw      = f90funclib.__fatesallometrymod_MOD_bagw_allom    #(d,ipft,bagw,dbagwdd)
@@ -168,6 +175,8 @@ parser.add_argument('--fin', '--input', dest='fnamein', type=str, help="Input CD
 args = parser.parse_args()
 
 
+dims = CDLParseDims(args.fnamein)
+
 # Read in the parameters of interest that are used in the fortran objects. These
 # parameters will be passed to the fortran allocation.
 # =======================================================================================
@@ -215,23 +224,24 @@ eparms['name'] = CDLParse(args.fnamein,parameter('fates_pftname'))
 eparms['vcmax25top'] = CDLParse(args.fnamein,parameter('fates_leaf_vcmax25top'))
 
 
-# Determine how many PFTs are here, also check to make sure that all parameters
-# have the same number
-# =======================================================================================
-numpft=-1
-for key, parm in parms.items():
-    if( (len(parm.vals) == numpft) or (numpft==-1) ):
-        numpft=len(parm.vals)
-    else:
-        print('Bad length in PFT parameter')
-        print('parameter: {}, vals:'.format(parm.symbol),parm.vals)
-
+numpft = dims['fates_pft']        
 
 # ==============================================================================
 # Allocate fortran PFT arrays
 # ==============================================================================
 
-iret=f90_pftalloc(ci(numpft))
+iret=f90_pftalloc(ci(dims['fates_NCWD']), \
+                  ci(dims['fates_history_age_bins']), \
+                  ci(dims['fates_history_height_bins']), \
+                  ci(dims['fates_history_size_bins']), \
+                  ci(dims['fates_history_coage_bins']), \
+                  ci(dims['fates_hydr_organs']), \
+                  ci(dims['fates_leafage_class']), \
+                  ci(dims['fates_litterclass']), \
+                  ci(dims['fates_pft']), \
+                  ci(dims['fates_prt_organs']), \
+                  ci(dims['fates_string_length']), \
+                  ci(dims['fates_hlm_pftno']))
 
 # ==============================================================================
 # Populate the Fortran PFT structure
@@ -240,11 +250,12 @@ iret=f90_pftalloc(ci(numpft))
 for ipft in range(numpft):
     for key, parm in parms.items():
         print('{} {} '.format(parm.symbol,parm.vals[ipft]))
-        iret=f90_pftset(c_int(ipft+1), \
-                        c_double(parm.vals[ipft]), \
+        iret=f90_pftset(c_double(parm.vals[ipft]), \
+                        c_int(int(parm.vals[ipft])), \
+                        c_int(ipft+1), \
                         c_int(0), \
                         c_char_p(parm.symbol.encode('utf-8')), \
-                        c_long(len(parm.symbol)))
+                        len(parm.symbol))
         
 
 # =========================================================================

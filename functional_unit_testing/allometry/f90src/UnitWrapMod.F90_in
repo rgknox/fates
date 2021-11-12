@@ -48,16 +48,31 @@ module FatesGlobals
 
 end module FatesGlobals
 
+
+module PRTParametersMod
+  use iso_c_binding, only : r8 => c_double
+  use iso_c_binding, only : i4 => c_int
+
+  
+
+  type,public ::  prt_param_type
+
+  ! VARIABLE-DEFINITIONS-HERE
+
+  end type prt_param_type
+
+  type(prt_param_type),public :: prt_params
+
+end module PRTParametersMod
+
+
 module PRTParamsGeneric
 
    use iso_c_binding, only : r8 => c_double
    use iso_c_binding, only : i4 => c_int
    use iso_c_binding, only : c_char
-   use PRTParametersMod, only : prt_params
-
-   integer,parameter :: SHR_KIND_CS = 80                     ! short char
-
-
+   use PRTParametersMod,only: prt_params
+   integer,parameter :: shr_kind_cs = 80                     ! short char
   type ptr_var1
      real(r8), dimension(:), pointer :: var_rp
      integer(i4), dimension(:), pointer :: var_ip
@@ -78,7 +93,9 @@ module PRTParamsGeneric
      type(ptr_var2), allocatable :: var2d(:)
   end type prt_params_ptr_type
 
+
   type(prt_params_ptr_type),  public :: prt_params_ptr
+
 
   integer :: numparm1d ! Number of different PFT parameters
   integer :: numparm2d
@@ -95,8 +112,8 @@ contains
       character(kind=c_char,len=*), intent(in) :: name
       real(r8),intent(in) :: rval
       integer(i4),intent(in) :: ival
-	  integer(i4),intent(in) :: indx1
-	  integer(i4),intent(in) :: indx2
+	   integer(i4),intent(in) :: indx1
+	   integer(i4),intent(in) :: indx2
       ! Locals
       logical :: npfound
       integer :: ip
@@ -104,14 +121,14 @@ contains
 
       namelen = len(trim(name))
 
-      	  if(debug) print*,"F90: ARGS: ",trim(name)," IPFT: ",indx1," D2: ",indx2," RVAL: ",rval," IVAL: ",ival
-
+      if(debug) print*,"F90: ARGS: ",trim(name),"INDX1: ",indx1,"INDX2: ",indx2," RVAL: ",rval," IVAL: ",ival
       ip=0
       npfound = .false.
       do ip=1,numparm1d
-
+         
          if (trim(name) == trim(prt_params_ptr%var1d(ip)%var_name ) ) then
-            print*,"F90: Found ",trim(name)," in lookup table"
+            if(debug) print*,"F90: Found ",trim(name)," in lookup table as index:",ip
+
             npfound = .true.
             if(prt_params_ptr%var1d(ip)%vtype == 1) then ! real
                prt_params_ptr%var1d(ip)%var_rp(indx1) = rval
@@ -126,7 +143,7 @@ contains
 
       do ip=1,numparm2d
          if (trim(name) == trim(prt_params_ptr%var2d(ip)%var_name ) ) then
-            print*,"F90: Found ",trim(name)," in lookup table"
+            if(debug) print*,"F90: Found ",trim(name)," in lookup table"
             npfound = .true.
             if(prt_params_ptr%var2d(ip)%vtype == 1) then ! real
                prt_params_ptr%var2d(ip)%var_rp(indx1,indx2) = rval
@@ -150,7 +167,7 @@ contains
 	  ! Perform a check to see if the target array is being filled
       if (trim(name) == 'fates_allom_d2h1') then
          if (prt_params%allom_d2h1(indx1) == rval) then
-            print*,"F90: POINTER CHECK PASSES:",rval," = ",prt_params%allom_d2h1(indx1)
+            if(debug) print*,"F90: POINTER CHECK PASSES:",rval," = ",prt_params%allom_d2h1(indx1)
          else
             print*,"F90: POINTER CHECK FAILS:",rval," != ",prt_params%allom_d2h1(indx1)
             stop
@@ -159,7 +176,7 @@ contains
 
       if (trim(name) == 'fates_wood_density' ) then
          if (prt_params%wood_density(indx1) == rval) then
-            print*,"F90: POINTER CHECK PASSES:",rval," = ",prt_params%wood_density(indx1)
+            if(debug) print*,"F90: POINTER CHECK PASSES:",rval," = ",prt_params%wood_density(indx1)
          else
             print*,"F90: POINTER CHECK FAILS:",rval," != ",prt_params%wood_density(indx1)
             stop
@@ -173,6 +190,7 @@ contains
   subroutine PRTParamsAlloc(ARGUMENT_IN1)
     !
     use FatesConstantsMod, only : fates_unset_r8
+	 use FatesConstantsMod, only : fates_unset_int
 
 	implicit none
 
@@ -185,19 +203,19 @@ contains
     !------------------------------------------------------------------------
 
     allocate( prt_params_ptr%var1d(100)) ! Make this plenty large
-	allocate( prt_params_ptr%var2d(100))
-	iv1=0
-	iv2=0
+	 allocate( prt_params_ptr%var2d(100))
+	 iv1=0
+	 iv2=0
 
 	! POINTER-SPECIFICATION-HERE (DO NOT REMOVE THIS LINE, OR MOVE IT)
 
 
-        numparm1d = iv1
+   numparm1d = iv1
 	numparm2d = iv2
 
-        print*,"F90: ALLOCATED ",numparm1d," 1D PARAMETERS"
-        print*,"F90: ALLOCATED ",numparm2d," 2D PARAMETERS"
-        print*,"FOR ",fates_pft," PFTs"
+   if(debug) print*,"F90: ALLOCATED ",numparm1d," 1D PARAMETERS"
+   if(debug) print*,"F90: ALLOCATED ",numparm2d," 2D PARAMETERS"
+   if(debug) print*,"FOR ",fates_pft," PFTs"
 
 	numpft = fates_pft
 

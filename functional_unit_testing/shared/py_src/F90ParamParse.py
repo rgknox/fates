@@ -17,7 +17,7 @@
 # =======================================================================================
 
 import code  # For development: code.interact(local=dict(globals(), **locals()))
-
+import numpy as np
 
 class f90_param_type:
 
@@ -26,12 +26,100 @@ class f90_param_type:
     # generated that denotes the PFT parameters used.
     # -----------------------------------------------
 
-    def __init__(self,var_sym):
+    def __init__(self,var_sym,var_name,in_f90,numtype):
 
         self.var_sym  = var_sym   # Name of parameter in FORTRAN code
-        self.var_name = ''        # Parameter's name in the parameter file
+        self.var_name = var_name  # Parameter's name in the parameter file
+        self.in_f90   = in_f90    # Are we passing this value to the f90 code?
+        self.numtype  = numtype   # Is this a real(r8)=0, integer=1 or char(len=64)=2
+        
+def GetParamsInFile(filename):
+    
+    # ---------------------------------------------------------------------
+    # This procedure will check a fortran file that contains
+    # parameters definitions only. It will create a list of those parameter
+    # names, which can then be used to auto-generate other fortran code
+    # that is used to read-in the parameters.
+    # ---------------------------------------------------------------------
+
+    # This just reads in the whole text file, and saves the text in "contents"
+    f = open(filename,"r")
+    contents = f.readlines()
+    f.close()
+
+    checkstrs = ['allocatable','pointer']
+    
+    strclose = ',)( '
+
+    blacklist = ['organ_param_id','nitr_recr_stoich','phos_recr_stoich','alloc_priority']
+    
+    var_list = []
+    found = False
+
+    for line in contents:
+        if checkstrs[0] in line.lower():
+            # We compare all in lower-case
+            # There may be more than one parameter in a line,
+            # so evaluate, pop-off, and try again
+
+            substr   = line.lower()
+
+            p1 = substr.find('::')+len('::')
+            
+            # Check for a comment symbol. If this
+            # symbol is commenting out the variable
+            # then we will ignore
+            pcomment = substr.find('!')
+            if(pcomment<0):
+                pcomment=1000
+
+            # This makes sure that if the line
+            # has a comment, that it does not come before
+            # the parameter symbol
+
+            if( (p1>len(checkstrs[0])) and (p1 < pcomment)):
+
+                # Identify the symbol by starting at the first
+                # character after the %, and ending at a list
+                # of possible symols including space
+                substr2=substr[p1:].lstrip()
+                    
+                pend=substr2.find('(')
+                if(pend<0):
+                    # This is likely a scalar
+                    # if so, go out to the comment
+                    # if no comment, just accept lenght as as
+                    pend=substr2.find('!')
+                    if(pend<0):
+                        pend=len(substr2)
+
+                found=True
+                substr2=substr2[:pend].rstrip()
+                if(not (substr2 in blacklist)):
+                    if(substr.find('integer')>-1):
+                        numtype=1
+                    elif(substr.find('real(r8)')>-1):
+                        numtype=0
+                    else:
+                        print("CANNOT PROCESS CHARACTERS")
+                        print("ADD {} TO BLACKLIST".format(substr2))
+                        exit(2)
+
+                    var_list.append(f90_param_type(substr2,'',True,numtype))
 
 
+
+    if(not found):
+        print('No parameters with prefix: {}'.format(checkstrs[0]))
+        print('were found in file: {}'.format(filename))
+        print('If this is expected, remove that file from search list.')
+        exit(2)
+
+    return(var_list)
+    
+
+
+        
 def GetSymbolUsage(filename,checkstr_in):
 
     # ---------------------------------------------------------------------
@@ -96,7 +184,17 @@ def GetSymbolUsage(filename,checkstr_in):
                             substr2=substr2[:pend]
                             pend0=pend
 
-                    var_list.append(f90_param_type(substr2))
+                    if(substr.find('integer')>-1):
+                        numtype=1
+                    elif(substr.find('real(r8)')>-1):
+                        numtype=0
+                    else:
+                        print("CANNOT PROCESS CHARACTERS")
+                        print("ADD {} TO BLACKLIST".format(substr2))
+                        exit(2)
+
+                    
+                    var_list.append(f90_param_type(substr2,'',True,numtype))
                     if(pend0!=-1):
                         substr=substr[pend0:]
                     else:
@@ -133,11 +231,33 @@ def GetPFTParmFileSymbols(var_list,pft_filename):
     contents = f.readlines()
     f.close()
 
-    var_name_list = []
     for var in var_list:
+
+        found_parm_name = False
         for i,line in enumerate(contents):
-            if (var.var_sym in line) and ('data' in line) and ('=' in line):
-                var.var_name = contents[i-2].split()[-1].strip('\'')
+            if (var.var_sym in line) and ('prt_params%' in line) and (not found_parm_name):
+                found_retrieve = False
+                for j in range(0,-10,-1):
+                    jj = np.max([0,i+j])
+                    print("line above: {}".format(contents[jj]))
+                    if 'RetreiveParameterAllocate' in contents[jj]:
+                        found_retrieve = True
+                    if ('\'fates_' in contents[jj]) and (found_retrieve) and (not found_parm_name):
+                        linestr = contents[jj]
+                        p0 = linestr.rfind('\'fates_')+1
+                        p1 = linestr[p0:].index('\'')+p0
+                        var.var_name = linestr[p0:p1]
+                        found_parm_name = True
+
+        if(not found_parm_name):
+            print('Could not find the parameter name for symbol: {} in PRTParamsFATESMod.F90'.format(var.var_sym))
+            exit(2)
+    
+    #var_name_list = []
+    #for var in var_list:
+    #    for i,line in enumerate(contents):
+    #        if (var.var_sym in line) and ('data' in line) and ('=' in line):
+    #            var.var_name = contents[i-2].split()[-1].strip('\'')
 
     return(var_list)
 

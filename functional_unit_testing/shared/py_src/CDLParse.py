@@ -24,7 +24,7 @@ no_data_fill='1.e-32'
 # ===================================
 class cdl_param_type:
 
-    def __init__(self,symbol):
+    def __init__(self,symbol,in_f90,numtype):
 
         self.datatype = -9
         self.dim_namelist = []
@@ -32,6 +32,9 @@ class cdl_param_type:
         self.ndims    = -9
         self.symbol   = symbol
         self.units    = 'NA'
+        self.in_f90   = in_f90
+        self.numtype  = numtype   # This is the type of number from the F90 code
+                                  # 0=r8, 1=int
 
     def Add1DToXD(self,val,indx):
 
@@ -51,7 +54,7 @@ class cdl_param_type:
         elif(self.ndims==2):
             n1 = self.dim_sizelist[0]
             n2 = self.dim_sizelist[1]
-            i2 = np.mod(indx,n2)
+            i2 = np.mod(indx+1,n2)
             i1 = int(indx/n2)
             self.data[i1,i2] = val
 
@@ -170,6 +173,8 @@ def CDLParseParam(file_name,param,dim_dic):
 
         if(param.symbol in line):
 
+            print(param.symbol)
+            
             search_field=True
             lcount=0
             multi_line=''
@@ -195,7 +200,7 @@ def CDLParseParam(file_name,param,dim_dic):
                     str=""
                     isnum=False
                     for s in str0:
-                        if (s.isdigit() or s=='.' or s=='-'):
+                        if (s.isdigit() or s=='.'):
                             str+=s
                             isnum=True
                         elif(s == '_'):
@@ -239,6 +244,10 @@ def CDLParseDims(file_name):
     fp = open(file_name,"r")
     contents = fp.readlines()
     fp.close()
+
+    if(len(contents)<1):
+        print("Missing or no-data file passed to CDLParseDims?")
+        exit(2)
 
     # Identify the line with the "dimensions:" tag
     # Also, identify the whatever line is next with a ':'

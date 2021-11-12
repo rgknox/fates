@@ -8,8 +8,8 @@
 import imp
 import code  # For development: code.interact(local=dict(globals(), **locals()))
 
-F90ParamParse = imp.load_source('F90ParamParse','py_modules/F90ParamParse.py')
-CDLParse = imp.load_source('CDLParse','py_modules/CDLParse.py')
+F90ParamParse = imp.load_source('F90ParamParse','../shared/py_src/F90ParamParse.py')
+CDLParse = imp.load_source('CDLParse','../shared/py_src/CDLParse.py')
 
 
 from F90ParamParse import f90_param_type, GetParamsInFile, GetPFTParmFileSymbols, MakeListUnique

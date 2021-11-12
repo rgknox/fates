@@ -3,6 +3,7 @@
 FC='gfortran -g -shared -fPIC'
 
 # First copy over the FatesConstants file, but change the types of the fates_r8 and fates_int
+# --------------------------------------------------------------------------------------------
 
 old_fates_r8_str=`grep -e integer ../../main/FatesConstantsMod.F90 | grep fates_r8 | sed 's/^[ \t]*//;s/[ \t]*$//'`
 new_fates_r8_str='use iso_c_binding, only: fates_r8  => c_double'
@@ -21,6 +22,21 @@ sed -i "/$old_fates_r8_str/d" f90src/FatesConstantsMod.F90
 sed -i "/$old_fates_int_str/d" f90src/FatesConstantsMod.F90
 
 sed -i "/private/d" f90src/FatesConstantsMod.F90
+
+
+# Now lest copy over EDTypesMod.F90's dinc_ed and nlevleaf to AllometryMod.F90 so we
+# dont need to copy over the whole module
+
+old_edtypes_str=`cat ../../biogeochem/FatesAllometryMod.F90 | grep EDTypes` #  | sed 's/^[ \t]*//;s/[ \t]*$//'`
+
+nlevleaf_str=`cat ../../main/EDTypesMod.F90 | grep nlevleaf | grep parameter`
+dinc_str=`cat ../../main/EDTypesMod.F90 | grep dinc_ed | grep parameter` # | sed 's/^[ \t]*//;s/[ \t]*$//'`
+
+sed "/implicit none/a $nlevleaf_str" ../../biogeochem/FatesAllometryMod.F90 > f90src/FatesAllometryMod.F90
+sed -i "/implicit none/a $dinc_str" f90src/FatesAllometryMod.F90
+
+sed -i "/$old_edtypes_str/d" f90src/FatesAllometryMod.F90
+
 
 # This re-writes the wrapper so that it uses all the correct parameters
 # in FatesAllometryMod.F90
@@ -43,9 +59,11 @@ rm -f include/*.mod
 
 ${FC} -I include/ -J include/ -o include/FatesConstantsMod.o  f90src/FatesConstantsMod.F90
 
-${FC} -I include/ -J include/ -o include/AllomUnitWrap.o f90src/AllomUnitWrap.F90
+#${FC} -I include/ -J include/ -o include/PRTParametersMod.o  ../../parteh/PRTParametersMod.F90
 
-${FC} -I include/ -J include/ -o include/FatesAllometryMod.o ../../biogeochem/FatesAllometryMod.F90
+${FC} -I include/ -J include/ -o include/UnitWrapMod.o f90src/UnitWrapMod.F90
+
+${FC} -I include/ -J include/ -o include/FatesAllometryMod.o f90src/FatesAllometryMod.F90
 
 
 #${FC} -g -o include/FatesConstantsMod.o  ../main/FatesConstantsMod.F90
