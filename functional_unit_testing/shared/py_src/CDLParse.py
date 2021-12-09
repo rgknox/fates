@@ -124,13 +124,14 @@ def CDLParseParam(file_name,param,dim_dic):
                 param.ndims = 0
 
 
-
-            # Allocate and initialize the data space
-            if(param.ndims>0):
-
-                param.data = -999*np.ones((param.dim_sizelist))
+            if(param.datatype == char_type):
+                param.data = np.empty(param.dim_sizelist[0], dtype = object)
             else:
-                param.data = -999*np.ones((1))
+                # Allocate and initialize the data space
+                if(param.ndims>0):
+                    param.data = -999*np.ones((param.dim_sizelist))
+                else:
+                    param.data = -999*np.ones((1))
 
 
 
@@ -210,17 +211,14 @@ def CDLParseParam(file_name,param,dim_dic):
                         exit(2)
 
             # This is a string
-            #            elif(param.datatype == 1):
-            #                for str0 in line_split:
-            #                    # Loop several times to trim stuff off
-            #                    for i in range(5):
-            #                        str0=str0.strip().strip('\"').strip(';').strip()
-            #                        param.vals.append(str0)
-
-
-#            if(param.symbol == 'fates_hydr_thetas_node'):
-
-
+            elif(param.datatype == char_type):
+                ii=0
+                for str0 in line_split:
+                    # Loop several times to trim stuff off
+                    for i in range(5):
+                        str0=str0.strip().strip('\"').strip(';').strip()
+                    param.data[ii] = str0
+                    ii=ii+1
 
 
     return(param)
