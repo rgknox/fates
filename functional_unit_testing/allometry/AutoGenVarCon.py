@@ -128,6 +128,21 @@ for symbol, var in parms.items():
     contents.insert(index,ins_l1)
 
 
+# Identify where we define the deallocations and write them in
+
+for i,str in enumerate(contents):
+    if 'VARIABLE-DEALLOCATIONS-HERE' in str:
+        index0=i
+
+index=index0+2
+for symbol, var in parms.items():
+    ins_l1='\t deallocate(prt_params%{})\n'.format(symbol)
+    contents.insert(index,ins_l1)
+
+
+
+    
+    
 # Identify where we do the pointer assignments, and insert the pointer assignments
 
 

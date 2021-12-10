@@ -89,8 +89,8 @@ module PRTParamsGeneric
 
 
   type prt_params_ptr_type
-     type(ptr_var1), allocatable :: var1d(:)
-     type(ptr_var2), allocatable :: var2d(:)
+     type(ptr_var1) :: var1d(200)
+     type(ptr_var2) :: var2d(200)
   end type prt_params_ptr_type
 
 
@@ -202,8 +202,6 @@ contains
     integer                    :: iv2
     !------------------------------------------------------------------------
 
-    allocate( prt_params_ptr%var1d(100)) ! Make this plenty large
-	 allocate( prt_params_ptr%var2d(100))
 	 iv1=0
 	 iv2=0
 
@@ -221,5 +219,17 @@ contains
 
     return
  end subroutine PRTParamsAlloc
+
+ subroutine PRTParamsDealloc()
+
+ 	use PRTParametersMod,only: prt_params
+	implicit none
+	
+ 	! VARIABLE-DEALLOCATIONS-HERE	
+
+	return
+ end subroutine PRTParamsDealloc
+
+
 
 end module PRTParamsGeneric
