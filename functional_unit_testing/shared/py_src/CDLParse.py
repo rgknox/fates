@@ -194,7 +194,7 @@ def CDLParseParam(file_name,param,dim_dic):
                     str=""
                     isnum=False
                     for s in str0:
-                        if (s.isdigit() or s=='.'):
+                        if (s.isdigit() or s=='.' or s.lower()=='e' or s=='-' or s=='+'):
                             str+=s
                             isnum=True
                         elif(s == '_'):
