@@ -156,10 +156,14 @@ contains
          end if
       end do
 
-
-
-      if(.not.npfound)then
-         print*,"F90: The parameter you loaded DNE: ",name(:)
+		if(.not.npfound)then
+         print*,"F90: The parameter you loaded DNE: ",name(:),numparm1d,numparm2d
+         do ip=1,numparm1d
+            print*,prt_params_ptr%var1d(ip)%var_name
+         end do
+         do ip=1,numparm2d
+            print*,prt_params_ptr%var2d(ip)%var_name
+         end do
          stop
       end if
 

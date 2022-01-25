@@ -78,13 +78,16 @@ def CDLParseParam(file_name,param,dim_dic):
     # ---------------------------------------------------------
     isfound = False
     for i,line in enumerate(contents):
+        charid = line.replace(" ","").find(param.symbol)+len(param.symbol)
         if((param.symbol in line) and \
+           (line.replace(" ","")[charid] in "(;") and \
            (not isfound) and \
            (('double' in line) or \
             ('char' in line) or \
             ('float' in line) or \
             ('int' in line))):
 
+            
             isfound = True
             datatype = line.split()[0]
             if(datatype.strip()=="float"):
@@ -168,7 +171,9 @@ def CDLParseParam(file_name,param,dim_dic):
     isfound = False
     contents=contents[iline0:]
     for i,line in enumerate(contents):
-        if(param.symbol in line):
+        charid = line.replace(" ","").find(param.symbol)+len(param.symbol)
+        if((param.symbol in line) and (line.replace(" ","")[charid] == "=")):
+            
             search_field=True
             lcount=0
             multi_line=''

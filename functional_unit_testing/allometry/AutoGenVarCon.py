@@ -52,6 +52,8 @@ var_list = GetPFTParmFileSymbols(var_list,'../../parteh/PRTParamsFATESMod.F90')
 
 default_file_relpath = '../../parameter_files/fates_params_default.cdl'
 
+default_file_relpath ='../../parameter_files/fates_params_default_pft12.c220109.cdl'
+
 dims = CDLParseDims(default_file_relpath)
 
 parms = {}

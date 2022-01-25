@@ -236,17 +236,24 @@ def GetPFTParmFileSymbols(var_list,pft_filename):
         found_parm_name = False
         for i,line in enumerate(contents):
             if (var.var_sym in line) and ('prt_params%' in line) and (not found_parm_name):
-                found_retrieve = False
-                for j in range(0,-10,-1):
-                    jj = np.max([0,i+j])
-                    if 'RetreiveParameterAllocate' in contents[jj]:
-                        found_retrieve = True
-                    if ('\'fates_' in contents[jj]) and (found_retrieve) and (not found_parm_name):
-                        linestr = contents[jj]
-                        p0 = linestr.rfind('\'fates_')+1
-                        p1 = linestr[p0:].index('\'')+p0
-                        var.var_name = linestr[p0:p1]
-                        found_parm_name = True
+
+                # Make sure the parameter name is not a false positive
+                # ie seed_alloc is part of seed_alloc_mature, the next character.
+                # should be an ) or an (
+                next_str_id = line.replace(" ","").find(var.var_sym)+len(var.var_sym)
+                if (line.replace(" ","")[next_str_id] in "()"):
+
+                    found_retrieve = False
+                    for j in range(0,-10,-1):
+                        jj = np.max([0,i+j])
+                        if 'RetreiveParameterAllocate' in contents[jj]:
+                            found_retrieve = True
+                        if ('\'fates_' in contents[jj]) and (found_retrieve) and (not found_parm_name):
+                            linestr = contents[jj]
+                            p0 = linestr.rfind('\'fates_')+1
+                            p1 = linestr[p0:].index('\'')+p0
+                            var.var_name = linestr[p0:p1]
+                            found_parm_name = True
 
         if(not found_parm_name):
             print('Could not find the parameter name for symbol: {} in PRTParamsFATESMod.F90'.format(var.var_sym))
