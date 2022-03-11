@@ -89,7 +89,7 @@ module EDPatchDynamicsMod
   use SFParamsMod,            only : SF_VAL_CWD_FRAC
   use EDParamsMod,            only : logging_event_code
   use EDParamsMod,            only : logging_export_frac
-  use FatesRunningMeanMod,    only : ema_24hr, fixed_24hr, ema_lpa
+  use FatesRunningMeanMod,    only : ema_24hr, fixed_24hr, ema_lpa, ema_sla
   
   ! CIME globals
   use shr_infnan_mod       , only : nan => shr_infnan_nan, assignment(=)
@@ -729,7 +729,9 @@ contains
                  ! Allocate running mean functions
                  !allocate(nc%tveg_lpa)
                  !call nc%tveg_lpa%InitRMean(ema_lpa,init_value=new_patch%tveg_lpa%GetMean())
-
+                 allocate(nc%lai_above_ema)
+                 call nc%lai_above_ema%InitRMean(ema_sla)
+                 
                  call zero_cohort(nc)
 
                  ! nc is the new cohort that goes in the disturbed patch (new_patch)... currentCohort

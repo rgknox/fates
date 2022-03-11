@@ -41,7 +41,7 @@ module EDCanopyStructureMod
   use PRTGenericMod,          only : repro_organ
   use PRTGenericMod,          only : struct_organ
   use PRTGenericMod,          only : SetState
-  use FatesRunningMeanMod,    only : ema_lpa
+  use FatesRunningMeanMod,    only : ema_lpa,ema_sla
 
   ! CIME Globals
   use shr_log_mod           , only : errMsg => shr_log_errMsg
@@ -675,6 +675,8 @@ contains
                 !allocate(copyc%tveg_lpa)
                 !call copyc%tveg_lpa%InitRMean(ema_lpa, &
                 !     init_value=currentPatch%tveg_lpa%GetMean())
+                allocate(copyc%lai_above_ema)
+                call copyc%lai_above_ema%InitRMean(ema_sla)
                 
                 call copy_cohort(currentCohort, copyc)
 
@@ -1131,6 +1133,8 @@ contains
                    !allocate(copyc%tveg_lpa)
                    !call copyc%tveg_lpa%InitRMean(ema_lpa,&
                    !     init_value=currentPatch%tveg_lpa%GetMean())
+                   allocate(copyc%lai_above_ema)
+                   call copyc%lai_above_ema%InitRMean(ema_sla)
                    
                    call copy_cohort(currentCohort, copyc) !makes an identical copy...
 

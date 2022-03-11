@@ -276,20 +276,6 @@ contains
     ! Query PARTEH for the leaf carbon [kg]
     leaf_c = new_cohort%prt%GetState(leaf_organ,carbon12_element)
 
-
-    !new_cohort%treelai = tree_lai(leaf_c, new_cohort%pft, new_cohort%c_area,    &
-    !                              new_cohort%n, new_cohort%canopy_layer,               &
-    !                              patchptr%canopy_layer_tlai,new_cohort%vcmax25top )
-
-    !if(hlm_use_sp.eq.ifalse)then
-    !new_cohort%treesai = tree_sai(new_cohort%pft, new_cohort%dbh, new_cohort%canopy_trim,   &
-    !                              new_cohort%c_area, new_cohort%n, new_cohort%canopy_layer, &
-    !                              patchptr%canopy_layer_tlai, new_cohort%treelai,new_cohort%vcmax25top,2 )
-    !end if
-
-    !new_cohort%lai     = new_cohort%treelai * new_cohort%c_area/patchptr%area
-
-
     ! Put cohort at the right place in the linked list
     storebigcohort   => patchptr%tallest
     storesmallcohort => patchptr%shortest
@@ -317,6 +303,7 @@ contains
     !! allocate(new_cohort%tveg_lpa)
     !! call new_cohort%tveg_lpa%InitRMean(ema_lpa,init_value=patchptr%tveg_lpa%GetMean())
 
+    allocate(new_cohort%lai_above_ema)
     call new_cohort%lai_above_ema%InitRMean(ema_sla)  
     
     ! Recuits do not have mortality rates, nor have they moved any

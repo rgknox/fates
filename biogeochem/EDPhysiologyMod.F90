@@ -480,7 +480,7 @@ contains
                   currentCohort%lai_above_ema%GetMean(), currentCohort%treelai, &
                   currentCohort%vcmax25top,0 )
 
-             !currentCohort%nv      = count((currentCohort%treelai+currentCohort%treesai) .gt. dlower_vai(:)) + 1
+             currentCohort%nv      = count((currentCohort%treelai+currentCohort%treesai) .gt. dlower_vai(:)) + 1
 
              if (currentCohort%nv > nlevleaf)then
                 write(fates_log(),*) 'nv > nlevleaf',currentCohort%nv, &

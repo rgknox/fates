@@ -279,7 +279,7 @@ contains
     end if
 
     return
-  end subroutine UpdateRmean
+  end subroutine UpdateRMean
   
   ! =====================================================================================
   

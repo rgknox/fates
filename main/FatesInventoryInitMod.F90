@@ -62,7 +62,7 @@ module FatesInventoryInitMod
    use PRTGenericMod,       only : phosphorus_element
    use PRTGenericMod,       only : SetState
    use FatesConstantsMod,   only : primaryforest
-   use FatesRunningMeanMod, only : ema_lpa
+   use FatesRunningMeanMod, only : ema_lpa,ema_sla
    use PRTGenericMod,       only : StorageNutrientTarget
    use FatesConstantsMod,   only : fates_unset_int
 
@@ -1074,7 +1074,8 @@ contains
          !  (Keeping as an example)
          ! Allocate running mean functions
          !allocate(temp_cohort%tveg_lpa)
-         !call temp_cohort%tveg_lpa%InitRMean(ema_lpa,init_value=cpatch%tveg_lpa%GetMean())
+         allocate(temp_cohort%lai_above_ema)
+         call temp_cohort%lai_above_ema%InitRMean(ema_sla)
          
          do el = 1,num_elements
 
