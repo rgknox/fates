@@ -1937,22 +1937,6 @@ contains
                 total_patch_leaf_stem_area = 0._r8
                 currentCohort => currentPatch%shortest
                 do while(associated(currentCohort))
-
-                   if (hlm_use_sp.eq.ifalse) then
-                   ! make sure that allometries are correct
-                   call carea_allom(currentCohort%dbh,currentCohort%n,sites(s)%spread,&
-                        currentCohort%pft,currentCohort%c_area)
-
-                   currentCohort%treelai = tree_lai(currentCohort%prt%GetState(leaf_organ, all_carbon_elements),  &
-                        currentCohort%pft, currentCohort%c_area, currentCohort%n, &
-                        currentCohort%canopy_layer, currentPatch%canopy_layer_tlai,currentCohort%vcmax25top )
-
-                   currentCohort%treesai = tree_sai(currentCohort%pft, currentCohort%dbh, currentCohort%canopy_trim, &
-                        currentCohort%c_area, currentCohort%n, currentCohort%canopy_layer, &
-                        currentPatch%canopy_layer_tlai, currentCohort%treelai , &
-                        currentCohort%vcmax25top,4)
-                   endif
-
                    total_patch_leaf_stem_area = total_patch_leaf_stem_area + &
                         (currentCohort%treelai + currentCohort%treesai) * currentCohort%c_area
                    currentCohort => currentCohort%taller
@@ -2208,7 +2192,8 @@ contains
    integer  :: cl                                  ! Canopy layer index
    integer  :: ft                                  ! Plant functional type index
    real(r8) :: leaf_c                              ! leaf carbon [kg]
-
+   real(r8) :: lai_above_inst                      ! Instantaneous sum of all LAI above the plant
+   
    ! Calculate LAI of layers above.  Because it is possible for some understory cohorts
    ! to be taller than cohorts in the top canopy layer, we must iterate through the 
    ! patch by canopy layer first.  Given that canopy_layer_tlai is a patch level variable
@@ -2221,19 +2206,26 @@ contains
 
          ! Only update the current cohort tree lai if lai of the above layers have been calculated
          if (currentCohort%canopy_layer .eq. cl) then
-            cl = currentCohort%canopy_layer
+
             ft     = currentCohort%pft
             leaf_c = currentCohort%prt%GetState(leaf_organ,all_carbon_elements)
 
+            if(cl==1)then
+               lai_above_inst = 0._r8
+            else
+               lai_above_inst = sum(currentPatch%canopy_layer_tlai(1:cl-1),dim=1)
+            end if
+
+            call currentCohort%lai_above_ema%UpdateRMean(lai_above_inst)
+            
             ! Note that tree_lai has an internal check on the canopy
             currentCohort%treelai = tree_lai(leaf_c, currentCohort%pft, currentCohort%c_area, &
-                 currentCohort%n, currentCohort%canopy_layer,               &
-                 currentPatch%canopy_layer_tlai,currentCohort%vcmax25top )
+                 currentCohort%n, currentCohort%lai_above_ema%GetMean(),currentCohort%vcmax25top )
 
             if (hlm_use_sp .eq. ifalse) then
                currentCohort%treesai = tree_sai(currentCohort%pft, currentCohort%dbh, currentCohort%canopy_trim, &
-                    currentCohort%c_area, currentCohort%n, currentCohort%canopy_layer, &
-                    currentPatch%canopy_layer_tlai, currentCohort%treelai , &
+                    currentCohort%c_area, currentCohort%n, &
+                    currentCohort%lai_above_ema%GetMean(), currentCohort%treelai , &
                     currentCohort%vcmax25top,4)
             end if
 
@@ -2252,6 +2244,7 @@ contains
             
             ! Calculate the total patch lai
             patch_lai = patch_lai + currentCohort%lai
+
          end if
          currentCohort => currentCohort%shorter
 

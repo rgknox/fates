@@ -79,7 +79,7 @@ module FatesInterfaceMod
    use PRTAllometricCNPMod       , only : InitPRTGlobalAllometricCNP
    use FatesRunningMeanMod       , only : ema_24hr
    use FatesRunningMeanMod       , only : fixed_24hr
-   use FatesRunningMeanMod       , only : ema_lpa
+   use FatesRunningMeanMod       , only : ema_lpa,ema_sla
    use FatesRunningMeanMod       , only : moving_ema_window
    use FatesRunningMeanMod       , only : fixed_window
    use FatesHistoryInterfaceMod  , only : fates_hist
@@ -922,7 +922,10 @@ contains
       allocate(ema_lpa)
       call ema_lpa%define(photo_temp_acclim_timescale*sec_per_day, &
            hlm_stepsize,moving_ema_window)
-
+      allocate(ema_sla)
+      call ema_sla%define(365.0*sec_per_day,sec_per_day,moving_ema_window)
+      
+      
       return
     end subroutine InitTimeAveragingGlobals
 

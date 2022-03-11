@@ -3793,7 +3793,6 @@ subroutine ImTaylorSolve1D(slat, slon,recruitflag,site_hydr,cohort,cohort_hydr,d
         write(fates_log(),*) 'LWP: ',cohort_hydr%psi_ag(1)
         write(fates_log(),*) 'dbh: ',cohort%dbh
         write(fates_log(),*) 'pft: ',cohort%pft
-        write(fates_log(),*) 'tree lai: ',cohort%treelai,' m2/m2 crown'
         write(fates_log(),*) 'recruitflag: ',recruitflag
         write(fates_log(),*) 'lat:', slat, 'lon:', slon
         call endrun(msg=errMsg(sourcefile, __LINE__))
@@ -3974,7 +3973,6 @@ subroutine Report1DError(cohort, site_hydr, ilayer, z_node, v_node, &
    write(fates_log(),*) 'kmax_upper_shell: ',site_hydr%kmax_lower_shell(ilayer,:)*aroot_frac_plant
    write(fates_log(),*) 'kmax_lower_shell: ',site_hydr%kmax_upper_shell(ilayer,:)*aroot_frac_plant
    write(fates_log(),*) ''
-   write(fates_log(),*) 'tree lai: ',cohort%treelai,' m2/m2 crown'
    write(fates_log(),*) 'area and area to volume ratios'
    write(fates_log(),*) ''
    write(fates_log(),*) 'a:',v_node(4)

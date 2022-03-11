@@ -18,7 +18,7 @@ module EDCohortDynamicsMod
   use FatesConstantsMod     , only : fates_unset_r8
   use FatesConstantsMod     , only : nearzero
   use FatesConstantsMod     , only : calloc_abs_error
-  use FatesRunningMeanMod       , only : ema_lpa
+  use FatesRunningMeanMod       , only : ema_lpa, ema_sla
   use FatesInterfaceTypesMod     , only : hlm_days_per_year
   use FatesInterfaceTypesMod     , only : nleafage
   use SFParamsMod           , only : SF_val_CWD_frac
@@ -276,17 +276,17 @@ contains
     leaf_c = new_cohort%prt%GetState(leaf_organ,carbon12_element)
 
 
-    new_cohort%treelai = tree_lai(leaf_c, new_cohort%pft, new_cohort%c_area,    &
-                                  new_cohort%n, new_cohort%canopy_layer,               &
-                                  patchptr%canopy_layer_tlai,new_cohort%vcmax25top )
+    !new_cohort%treelai = tree_lai(leaf_c, new_cohort%pft, new_cohort%c_area,    &
+    !                              new_cohort%n, new_cohort%canopy_layer,               &
+    !                              patchptr%canopy_layer_tlai,new_cohort%vcmax25top )
 
-    if(hlm_use_sp.eq.ifalse)then
-    new_cohort%treesai = tree_sai(new_cohort%pft, new_cohort%dbh, new_cohort%canopy_trim,   &
-                                  new_cohort%c_area, new_cohort%n, new_cohort%canopy_layer, &
-                                  patchptr%canopy_layer_tlai, new_cohort%treelai,new_cohort%vcmax25top,2 )
-    end if
+    !if(hlm_use_sp.eq.ifalse)then
+    !new_cohort%treesai = tree_sai(new_cohort%pft, new_cohort%dbh, new_cohort%canopy_trim,   &
+    !                              new_cohort%c_area, new_cohort%n, new_cohort%canopy_layer, &
+    !                              patchptr%canopy_layer_tlai, new_cohort%treelai,new_cohort%vcmax25top,2 )
+    !end if
 
-    new_cohort%lai     = new_cohort%treelai * new_cohort%c_area/patchptr%area
+    !new_cohort%lai     = new_cohort%treelai * new_cohort%c_area/patchptr%area
 
 
     ! Put cohort at the right place in the linked list
@@ -316,6 +316,7 @@ contains
     !! allocate(new_cohort%tveg_lpa)
     !! call new_cohort%tveg_lpa%InitRMean(ema_lpa,init_value=patchptr%tveg_lpa%GetMean())
 
+    call new_cohort%lai_above_ema%InitRMean(ema_sla)  
     
     ! Recuits do not have mortality rates, nor have they moved any
     ! carbon when they are created.  They will bias our statistics
@@ -608,9 +609,6 @@ contains
     currentCohort%l_degrad           = nan
 
     currentCohort%c_area             = nan ! areal extent of canopy (m2)
-    currentCohort%treelai            = nan ! lai of tree (total leaf area (m2) / canopy area (m2)
-    currentCohort%treesai            = nan ! stem area index of tree (total stem area (m2) / canopy area (m2)
-
 
     ! VARIABLES NEEDED FOR INTEGRATION
     currentCohort%dndt               = nan ! time derivative of cohort size
@@ -1011,6 +1009,8 @@ contains
      ! Remove the running mean structure
      ! deallocate(currentCohort%tveg_lpa)
 
+     deallocate(currentCohort%lai_above_ema)
+     
      ! At this point, nothing should be pointing to current Cohort
      if (hlm_use_planthydro.eq.itrue) call DeallocateHydrCohort(currentCohort)
 
@@ -1178,6 +1178,8 @@ contains
                                    ! Running mean fuses based on number density fraction just
                                    ! like other variables
                                    !!call currentCohort%tveg_lpa%FuseRMean(nextc%tveg_lpa,currentCohort%n/newn)
+
+                                   call currentCohort%lai_above_ema%FuseRMean(nextc%lai_above_ema,currentCohort%n/newn)
                                    
                                    ! new cohort age is weighted mean of two cohorts
                                    currentCohort%coage = &
@@ -1318,15 +1320,6 @@ contains
                                    end select
 
                                    leaf_c = currentCohort%prt%GetState(leaf_organ,all_carbon_elements)
-
-                                   currentCohort%treelai = tree_lai(leaf_c, currentCohort%pft, currentCohort%c_area, newn, &
-                                        currentCohort%canopy_layer, currentPatch%canopy_layer_tlai, &
-                                        currentCohort%vcmax25top)
-
-                                   ! We don't need check on sp mode here since we don't fuse_cohorts with sp mode
-                                   currentCohort%treesai = tree_sai(currentCohort%pft, currentCohort%dbh, currentCohort%canopy_trim, &
-                                        currentCohort%c_area, newn, currentCohort%canopy_layer, &
-                                        currentPatch%canopy_layer_tlai, currentCohort%treelai,currentCohort%vcmax25top,1 )
 
                                    call sizetype_class_index(currentCohort%dbh,currentCohort%pft, &
                                         currentCohort%size_class,currentCohort%size_by_pft_class)
@@ -1497,13 +1490,6 @@ contains
                                    ! update hydraulics quantities that are functions of hite & biomasses
                                    ! deallocate the hydro structure of nextc
                                    if (hlm_use_planthydro.eq.itrue) then
-                                      call carea_allom(currentCohort%dbh,currentCohort%n,currentSite%spread, &
-                                           currentCohort%pft,currentCohort%c_area)
-                                      leaf_c   = currentCohort%prt%GetState(leaf_organ, carbon12_element)
-                                      currentCohort%treelai = tree_lai(leaf_c,             &
-                                           currentCohort%pft, currentCohort%c_area, currentCohort%n, &
-                                           currentCohort%canopy_layer, currentPatch%canopy_layer_tlai, &
-                                           currentCohort%vcmax25top  )
                                       call UpdateSizeDepPlantHydProps(currentSite,currentCohort, bc_in)
                                    endif
 

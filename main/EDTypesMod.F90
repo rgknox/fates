@@ -391,7 +391,9 @@ module EDTypesMod
 
 
      ! Running means
-
+     class(rmean_type), pointer :: lai_above_ema          ! LAI in the canopy layer above this cohort, smoothed
+                                                          ! using a multiday EMA
+     
      ! (keeping this in-code as an example)
      !class(rmean_type), pointer :: tveg_lpa              ! exponential moving average of leaf temperature at the
                                                           ! leaf photosynthetic acclimation time-scale [K]

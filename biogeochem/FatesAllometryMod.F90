@@ -573,7 +573,7 @@ contains
 
   ! =====================================================================================
 
-  real(r8) function tree_lai( leaf_c, pft, c_area, nplant, cl, canopy_lai, vcmax25top)
+  real(r8) function tree_lai( leaf_c, pft, c_area, nplant, lai_above, vcmax25top)
 
     ! -----------------------------------------------------------------------------------
     ! LAI of individual trees is a function of the total leaf area and the total 
@@ -585,16 +585,13 @@ contains
     integer, intent(in)  :: pft                       ! Plant Functional Type index
     real(r8), intent(in) :: c_area                    ! areal extent of canopy (m2)
     real(r8), intent(in) :: nplant                    ! number of individuals in cohort per ha
-    integer, intent(in)  :: cl                        ! canopy layer index
-    real(r8), intent(in) :: canopy_lai(nclmax)        ! total leaf area index of 
-                                                      ! each canopy layer
+    real(r8), intent(in) :: lai_above                 ! Lai above this plant
     real(r8), intent(in) :: vcmax25top                ! maximum carboxylation rate at canopy
                                                       ! top, ref 25C
 
     ! !LOCAL VARIABLES:
     real(r8) :: leafc_per_unitarea ! KgC of leaf per m2 area of ground.
     real(r8) :: slat               ! the sla of the top leaf layer. m2/kgC
-    real(r8) :: canopy_lai_above   ! total LAI of canopy layer overlying this tree
     real(r8) :: vai_per_lai        ! ratio of vegetation area index (ie. sai+lai) 
                                    ! to lai for individual tree
     real(r8) :: kn                 ! coefficient for exponential decay of 1/sla and 
@@ -618,13 +615,6 @@ contains
     
     if(leafc_per_unitarea > 0.0_r8)then
 
-
-       if (cl==1) then ! if in we are in the canopy (top) layer)
-          canopy_lai_above = 0._r8
-       else
-          canopy_lai_above = sum(canopy_lai(1:cl-1))
-       end if
-
        ! Coefficient for exponential decay of 1/sla with canopy depth:
        kn = decay_coeff_kn(pft,vcmax25top)
 
@@ -632,7 +622,7 @@ contains
        ! and put into units of m2/kgC
        sla_max = g_per_kg*prt_params%slamax(pft)
        ! Leafc_per_unitarea at which sla_max is reached due to exponential sla profile in canopy:
-       leafc_slamax = (slat - sla_max * exp(-1.0_r8 * kn * canopy_lai_above)) / &
+       leafc_slamax = (slat - sla_max * exp(-1.0_r8 * kn * lai_above)) / &
             (-1.0_r8 * kn * slat * sla_max)
        if(leafc_slamax < 0.0_r8)then
           leafc_slamax = 0.0_r8
@@ -644,24 +634,24 @@ contains
        ! sla with depth in the canopy will not exceed sla_max.
        ! In this case, we can use an exponential profile for sla throughout the entire canopy.
        ! The exponential profile for sla is given by:
-       ! sla(at a given canopy depth) = slat / exp(-kn (canopy_lai_above + tree_lai)
+       ! sla(at a given canopy depth) = slat / exp(-kn (lai_above + tree_lai)
        ! 
        ! We can solve for tree_lai using the above function for the sla profile and first setting 
-       ! leafc_per_unitarea = integral of e^(-kn(x + canopy_lai_above)) / slatop
+       ! leafc_per_unitarea = integral of e^(-kn(x + lai_above)) / slatop
        ! over x = 0 to tree_lai
        ! Then, rearranging the equation to solve for tree_lai.
 
        if (leafc_per_unitarea <= leafc_slamax)then
-          tree_lai = (log(exp(-1.0_r8 * kn * canopy_lai_above) - &
+          tree_lai = (log(exp(-1.0_r8 * kn * lai_above) - &
                kn * slat * leafc_per_unitarea) + &
-               (kn * canopy_lai_above)) / (-1.0_r8 * kn)
+               (kn * lai_above)) / (-1.0_r8 * kn)
 
           ! If leafc_per_unitarea becomes too large, tree_lai becomes an imaginary number 
           ! (because the tree_lai equation requires us to take the natural log of something >0)
           ! Thus, we include the following error message in case leafc_per_unitarea becomes too large.
-          clim = (exp(-1.0_r8 * kn * canopy_lai_above)) / (kn * slat)
+          clim = (exp(-1.0_r8 * kn * lai_above)) / (kn * slat)
           if (leafc_per_unitarea >= clim) then
-             write(fates_log(),*) 'too much leafc_per_unitarea' , leafc_per_unitarea, clim, pft, canopy_lai_above
+             write(fates_log(),*) 'too much leafc_per_unitarea' , leafc_per_unitarea, clim, pft, lai_above
              write(fates_log(),*) 'Aborting'
              call endrun(msg=errMsg(sourcefile, __LINE__))
           endif
@@ -677,18 +667,18 @@ contains
           ! Add exponential and linear portions of tree_lai
           ! Exponential term for leafc = leafc_slamax; 
           ! Linear term (static sla = sla_max) for portion of leafc > leafc_slamax
-          tree_lai = ((log(exp(-1.0_r8 * kn * canopy_lai_above) - &
+          tree_lai = ((log(exp(-1.0_r8 * kn * lai_above) - &
                kn * slat * leafc_slamax) + &
-               (kn * canopy_lai_above)) / (-1.0_r8 * kn)) + &
+               (kn * lai_above)) / (-1.0_r8 * kn)) + &
                (leafc_per_unitarea - leafc_slamax) * sla_max
 
           ! if leafc_slamax becomes too large, tree_lai_exp becomes an imaginary number 
           ! (because the tree_lai equation requires us to take the natural log of something >0)
           ! Thus, we include the following error message in case leafc_slamax becomes too large.
-          clim = (exp(-1.0_r8 * kn * canopy_lai_above)) / (kn * slat)
+          clim = (exp(-1.0_r8 * kn * lai_above)) / (kn * slat)
           if(leafc_slamax >= clim)then
              write(fates_log(),*) 'too much leafc_slamax' , &
-                  leafc_per_unitarea, leafc_slamax, clim, pft, canopy_lai_above
+                  leafc_per_unitarea, leafc_slamax, clim, pft, lai_above
              write(fates_log(),*) 'Aborting'
              call endrun(msg=errMsg(sourcefile, __LINE__))
           endif
@@ -702,8 +692,8 @@ contains
 
   ! ============================================================================
 
-  real(r8) function tree_sai( pft, dbh, canopy_trim, c_area, nplant, cl, &
-                              canopy_lai, treelai, vcmax25top, call_id )
+  real(r8) function tree_sai( pft, dbh, canopy_trim, c_area, nplant, &
+                              lai_above, treelai, vcmax25top, call_id )
 
     ! ============================================================================
     !  SAI of individual trees is a function of the LAI of individual trees
@@ -714,9 +704,8 @@ contains
     real(r8), intent(in) :: canopy_trim        ! trimming function (0-1)
     real(r8), intent(in) :: c_area             ! crown area (m2)
     real(r8), intent(in) :: nplant             ! number of plants
-    integer, intent(in)  :: cl                 ! canopy layer index
-    real(r8), intent(in) :: canopy_lai(nclmax) ! total leaf area index of 
-                                               ! each canopy layer
+    real(r8), intent(in) :: lai_above          ! LAI above this plant
+    
     real(r8), intent(in) :: treelai            ! tree LAI for checking purposes only
     real(r8), intent(in) :: vcmax25top         ! maximum carboxylation rate at top of crown
     integer,intent(in)   :: call_id            ! flag specifying where this is called
@@ -727,7 +716,7 @@ contains
 
     call bleaf(dbh,pft,canopy_trim,target_bleaf)
 
-    target_lai = tree_lai( target_bleaf, pft, c_area, nplant, cl, canopy_lai, vcmax25top) 
+    target_lai = tree_lai( target_bleaf, pft, c_area, nplant, lai_above, vcmax25top) 
 
     tree_sai   =  prt_params%allom_sai_scaler(pft) * target_lai
 
@@ -750,8 +739,7 @@ contains
        write(fates_log(),*) 'h: ',h
        write(fates_log(),*) 'canopy_trim: ',canopy_trim
        write(fates_log(),*) 'target_bleaf: ',target_bleaf
-       write(fates_log(),*) 'canopy layer: ',cl
-       write(fates_log(),*) 'canopy_tlai: ',canopy_lai(:)
+       write(fates_log(),*) 'lai_above: ',lai_above
        write(fates_log(),*) 'vcmax25top: ',vcmax25top
        call endrun(msg=errMsg(sourcefile, __LINE__))
     end if

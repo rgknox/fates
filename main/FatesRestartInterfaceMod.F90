@@ -40,7 +40,7 @@ module FatesRestartInterfaceMod
   use PRTGenericMod,           only : prt_global
   use PRTGenericMod,           only : num_elements
   use FatesRunningMeanMod,     only : rmean_type
-  use FatesRunningMeanMod,     only : ema_lpa
+  use FatesRunningMeanMod,     only : ema_lpa, ema_sla
 
   ! CIME GLOBALS
   use shr_log_mod       , only : errMsg => shr_log_errMsg
@@ -151,6 +151,7 @@ module FatesRestartInterfaceMod
 
   !  (Keeping as an example)
   !!integer :: ir_tveglpa_co
+  integer :: ir_lai_above_ema_co
   
   integer :: ir_ddbhdt_co
   integer :: ir_resp_tstep_co
@@ -1278,6 +1279,10 @@ contains
    !call this%DefineRMeanRestartVar(vname='fates_tveglpacohort',vtype=cohort_r8, &
    !     long_name='running average (EMA) of cohort veg temp for photo acclim', &
    !     units='K', initialize=initialize_variables,ivar=ivar, index = ir_tveglpa_co)
+
+   call this%DefineRMeanRestartVar(vname='fates_laiaboveema_cohort',vtype=cohort_r8, &
+        long_name='running average (EMA) of the lai above a cohort', &
+        units='m2 m-2', initialize=initialize_variables,ivar=ivar, index = ir_lai_above_ema_co)
    
 
     ! Register all of the PRT states and fluxes
@@ -2061,7 +2066,9 @@ contains
 
                 !  (Keeping as an example)
                 ! call this%SetRMeanRestartVar(ccohort%tveg_lpa, ir_tveglpa_co, io_idx_co)
-
+                
+                call this%SetRMeanRestartVar(ccohort%lai_above_ema, ir_lai_above_ema_co, io_idx_co)
+                
                 io_idx_co = io_idx_co + 1
 
                 ccohort => ccohort%taller
@@ -2448,6 +2455,8 @@ contains
                 !allocate(new_cohort%tveg_lpa)
                 !call new_cohort%tveg_lpa%InitRMean(ema_lpa)
 
+                call new_cohort%lai_above_ema%InitRMean(ema_sla)
+                
                 
                 ! Update the previous
                 prev_cohort => new_cohort
@@ -2867,6 +2876,7 @@ contains
 
                 !  (Keeping as an example)
                 !call this%GetRMeanRestartVar(ccohort%tveg_lpa, ir_tveglpa_co, io_idx_co)
+                call this%GetRMeanRestartVar(ccohort%lai_above_ema, ir_lai_above_ema_co, io_idx_co)
                 
                 if (hlm_use_sp .eq. itrue) then
                     ccohort%c_area = this%rvars(ir_c_area_co)%r81d(io_idx_co)
