@@ -1833,7 +1833,7 @@ contains
 
     !  (Keeping as an example)
     ! Copy over running means
-    ! call n%tveg_lpa%CopyFromDonor(o%tveg_lpa)
+    call n%lai_above_ema%CopyFromDonor(o%lai_above_ema)
     
     ! CARBON FLUXES
     n%gpp_acc_hold    = o%gpp_acc_hold
