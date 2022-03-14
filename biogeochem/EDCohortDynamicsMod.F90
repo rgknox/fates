@@ -557,7 +557,6 @@ contains
     currentCohort%seed_prod          = nan
     currentCohort%vcmax25top = nan
     currentCohort%jmax25top  = nan
-    currentCohort%tpu25top   = nan
     currentCohort%kp25top    = nan
 
     ! CARBON FLUXES
@@ -1854,7 +1853,6 @@ contains
     ! Leaf biophysical rates
     n%vcmax25top = o%vcmax25top
     n%jmax25top  = o%jmax25top
-    n%tpu25top   = o%tpu25top
     n%kp25top    = o%kp25top
 
     !  (Keeping as an example)
@@ -2009,6 +2007,8 @@ contains
        ! of different age classes are unchanged until the next day.
        ! --------------------------------------------------------------------------------
 
+       use FatesConstantsMod, only : mg_per_g, sec_per_min
+    
        type(ed_cohort_type),intent(inout) :: currentCohort
 
 
@@ -2016,6 +2016,23 @@ contains
        integer  :: iage                            ! loop index for leaf ages
        integer  :: ipft                            ! plant functional type index
 
+       ! Parameters for Bonan et al.  ?
+       ! JAH-TD: THIS METHOD NEEDS A REFERENCE AND EXPLANATION OF TERMS)
+       ! --------------------------------------------------------------------------------
+       real(r8), parameter :: fnr = 7.16_r8   !
+
+       ! umol/mgRubisco/min
+       ! Convert rubisco activity units from umol/mgRubisco/min -> umol/gRubisco/s
+       
+       real(r8), parameter :: act25 = 3.6_r8 * mg_per_g / sec_per_min
+       
+       ! ---------------------------------------------------------------------------------
+       ! jmax~np relationship coefficients needed in the calculation of
+       ! variable jmax25top
+       real(r8), parameter :: jmax_np1 = 1.246_r8     
+       real(r8), parameter :: jmax_np2 = 0.886_r8        
+       real(r8), parameter :: jmax_np3 = 0.089_r8 
+       
        ! First, calculate the fraction of leaves in each age class
        ! It is assumed that each class has the same proportion
        ! across leaf layers
@@ -2037,30 +2054,82 @@ contains
           frac_leaf_aclass(1:nleafage) =  frac_leaf_aclass(1:nleafage) / &
                 sum(frac_leaf_aclass(1:nleafage))
 
-          currentCohort%vcmax25top = sum(EDPftvarcon_inst%vcmax25top(ipft,1:nleafage) * &
-                frac_leaf_aclass(1:nleafage))
+          if( vcmax_hyp == vcmax_base ) then
+             
+             currentCohort%vcmax25top = sum(EDPftvarcon_inst%vcmax25top(ipft,1:nleafage) * &
+                  frac_leaf_aclass(1:nleafage))
+             
+             currentCohort%jmax25top  = sum(param_derived%jmax25top(ipft,1:nleafage) * &
+                  frac_leaf_aclass(1:nleafage))
+             
+             currentCohort%kp25top    = sum(param_derived%kp25top(ipft,1:nleafage) * &
+                  frac_leaf_aclass(1:nleafage))
 
-          currentCohort%jmax25top  = sum(param_derived%jmax25top(ipft,1:nleafage) * &
-                frac_leaf_aclass(1:nleafage))
+          elseif( vcmax_hyp == vcmax_bonan) then
+             
+             ! JAH-TD: THIS METHOD NEEDS A REFERENCE AND EXPLANATION OF TERMS)
 
-          currentCohort%tpu25top   = sum(param_derived%tpu25top(ipft,1:nleafage) * &
-                frac_leaf_aclass(1:nleafage))
+             leaf_c = currentCohort%prt%GetState(leaf_organ, carbon12_element)
+             if( (leaf_c > nearzero) .and. (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) ) then
+                leaf_n = currentCohort%prt%GetState(leaf_organ, nitrogen_element)
+                lnc_top = leaf_n / (prt_params%slatop(ipft) * leaf_c )
+             else
+                lnc_top  = prt_params%nitr_stoich_p1(ipft,prt_params%organ_param_id(leaf_organ))/prt_params%slatop(ipft)
+             end if
+             
+             currentCohort%vcmax25top = lnc_top * EDPftvarcon_inst%flnr(ipft) * fnr * act25
 
-          currentCohort%kp25top    = sum(param_derived%kp25top(ipft,1:nleafage) * &
-                frac_leaf_aclass(1:nleafage))
+             ! jmax25top is not used in this version. Instead jmax25 is calculated
+             ! during the photosynthesis code, using updated temp_a10 and daylight factors
+
+             currentCohort%jmax25top  = fates_unset_r8  !currentCohort%vcmax25top * 1.67_r8
+             
+             currentCohort%kp25top    = 20000._r8 * currentCohort%vcmax25top
+
+          elseif( vcmax_hyp == vcmax_walker ) then
+
+             leaf_c = currentCohort%prt%GetState(leaf_organ, carbon12_element)
+
+             if( (leaf_c > nearzero) .and. (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) ) then
+                leaf_n = currentCohort%prt%GetState(leaf_organ, nitrogen_element)
+                leaf_p = currentCohort%prt%GetState(leaf_organ, phosphorus_element)
+                lnc_top = leaf_n / (prt_params%slatop(ipft) * leaf_c )
+                lpc_top = leaf_p / (prt_params%slatop(ipft) * leaf_c )
+             else
+                lnc_top  = prt_params%nitr_stoich_p1(ipft,prt_params%organ_param_id(leaf_organ))/prt_params%slatop(ipft)
+                lpc_top  = prt_params%phos_stoich_p1(ipft,prt_params%organ_param_id(leaf_organ))/prt_params%slatop(ipft)
+             end if
+             
+             currentCohort%vcmax25top = exp( EDPftvarcon_inst%vcmax_np1(ipft) + &
+                                             EDPftvarcon_inst%vcmax_np2(ipft)*log(lnc_top) + &
+                                             EDPftvarcon_inst%vcmax_np3(ipft)*log(lpc_top) + &
+                                             EDPftvarcon_inst%vcmax_np4(ipft)*log(lnc_top)*log(lpc_top) )
+
+             currentCohort%jmax25top  = exp( EDPftvarcon_inst%jmax_np1 + &
+                                             EDPftvarcon_inst%jmax_np2*log(currentCohort%vcmax25top ) + &
+                                             EDPftvarcon_inst%jmax_np3*log(lpc_top) )
+
+             ! Apply some bounding constraints to vcmax jmax
+             ! JAH-TD: THESE NUMBERS NEED A SOURCE UNITS AND DESCRIPTION
+             currentCohort%vcmax25top = min(max(currentCohort%vcmax25top, 10.0_r8), 150.0_r8)
+             currentCohort%jmax25top  = min(max(currentCohort%jmax25top, 10.0_r8), 250.0_r8)
+             
+             currentCohort%kp25top    = 20000._r8 * currentCohort%vcmax25top
+
+             
+          end if
+             
 
        elseif (hlm_use_sp .eq. itrue) then
          
           currentCohort%vcmax25top = EDPftvarcon_inst%vcmax25top(ipft,1)
           currentCohort%jmax25top  = param_derived%jmax25top(ipft,1)
-          currentCohort%tpu25top   = param_derived%tpu25top(ipft,1)
           currentCohort%kp25top    = param_derived%kp25top(ipft,1)
        
        else
 
           currentCohort%vcmax25top = 0._r8
           currentCohort%jmax25top  = 0._r8
-          currentCohort%tpu25top   = 0._r8
           currentCohort%kp25top    = 0._r8
 
        end if

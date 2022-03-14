@@ -1480,6 +1480,7 @@ contains
     use FatesConstantsMod  , only : fates_check_param_set
     use FatesConstantsMod  , only : itrue, ifalse
     use EDParamsMod        , only : logging_mechanical_frac, logging_collateral_frac, logging_direct_frac
+    use EDParamsMod        , only : vcmax_hyp, vcmax_base,  vcmax_bonan, vcmax_walker
     use FatesInterfaceTypesMod         , only : hlm_use_fixed_biogeog,hlm_use_sp
 
      ! Argument
@@ -1502,6 +1503,21 @@ contains
      if(.not.is_master) return
 
 
+
+     ! Check to make sure that the vcmax hypothesis is consistent
+     ! with the allocation hypothesis
+     
+     !if (hlm_parteh_mode .ne. prt_cnp_flex_allom_hyp) then 
+     !   
+     !   if( vcmax_hyp == vcmax_walker ) then
+     !   
+     !      write(fates_log(),*) 'Walker et al. vcmax calculations require'
+     !      
+     !   end if
+     !   
+     !end if
+        
+     
      if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
 
         ! Check to see if either RD/ECA/MIC is turned on

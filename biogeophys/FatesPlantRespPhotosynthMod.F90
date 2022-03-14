@@ -530,6 +530,8 @@ contains
                                     currentCohort%kp25top,              &  ! in
                                     nscaler,                            &  ! in
                                     bc_in(s)%t_veg_pa(ifp),             &  ! in
+                                    bc_in(s)%dayl_factor_pa(ifp),       &  ! in
+                                    bc_in(s)%t_a10_pa(ifp),             &  ! in
                                     btran_eff,                          &  ! in
                                     vcmax_z,                            &  ! out
                                     jmax_z,                             &  ! out
@@ -1963,6 +1965,8 @@ subroutine LeafLayerBiophysicalRates( parsun_lsl, &
    co2_rcurve_islope25top_ft, &
    nscaler,    &
    veg_tempk,      &
+   dayl_factor, & 
+   temp_a10, &
    btran, &
    vcmax, &
    jmax, &
@@ -1997,7 +2001,8 @@ subroutine LeafLayerBiophysicalRates( parsun_lsl, &
    real(r8), intent(in) :: co2_rcurve_islope25top_ft ! initial slope of CO2 response curve
                                              ! (C4 plants) at 25C, canopy top, this pft
    real(r8), intent(in) :: veg_tempk           ! vegetation temperature
-   real(r8), intent(in) :: btran           ! transpiration wetness factor (0 to 1)
+   real(r8), intent(in) :: btran              ! transpiration wetness factor (0 to 1)
+   real(r8), intent(in) :: dayl_factor        ! daylength scaling factor (0-1)
 
    real(r8), intent(out) :: vcmax             ! maximum rate of carboxylation (umol co2/m**2/s)
    real(r8), intent(out) :: jmax              ! maximum electron transport rate
@@ -2043,10 +2048,32 @@ subroutine LeafLayerBiophysicalRates( parsun_lsl, &
       co2_rcurve_islope = 0._r8
    else                                     ! day time
 
-      ! Vcmax25top was already calculated to derive the nscaler function
-      vcmax25 = vcmax25top_ft * nscaler
-      jmax25  = jmax25top_ft * nscaler
-      co2_rcurve_islope25 = co2_rcurve_islope25top_ft * nscaler
+      if( vcmax_hyp == vcmax_base ) then
+
+         ! Vcmax25top was already calculated to derive the nscaler function
+         vcmax25 = vcmax25top_ft * nscaler
+         jmax25  = jmax25top_ft * nscaler
+         
+         
+      elseif( vcmax_hyp == vcmax_bonan) then
+         
+         ! Calculating jmax25top here b/c need temp_a10, but still need
+         ! vcmax25top_prt_ft from above.
+         ! Approach taken from ELM photosynthesis code (Q. Zhu)
+         ! dayl_factor is a photoperiod acclimation correction term from Bauerle et al. 2012
+         jmax25 = (2.59_r8 - 0.035_r8*min(max((temp_a10-tfrz),11._r8),35._r8)) * &
+              (vcmax25top_ft * dayl_factor) * nscaler
+         
+         vcmax25 = vcmax25top_ft * dayl_factor * nscaler
+
+      elseif( vcmax_hyp == vcmax_walker ) then
+
+         ! Using the newly calculated top of the canopy vcmax and jmax, not the parameter file values
+         ! dayl_factor is a photoperiod acclimation correction term from Bauerle et al. 2012
+         vcmax25 = vcmax25top_ft * dayl_factor * nscaler
+         jmax25  = jmax25top_ft * dayl_factor * nscaler
+
+      end if
 
       ! Adjust for temperature
       vcmax = vcmax25 * ft1_f(veg_tempk, vcmaxha) * fth_f(veg_tempk, vcmaxhd, vcmaxse, vcmaxc)
@@ -2057,8 +2084,11 @@ subroutine LeafLayerBiophysicalRates( parsun_lsl, &
          vcmax = vcmax / (1._r8 + exp( 0.2_r8*((tfrz+15._r8)-veg_tempk ) ))
          vcmax = vcmax / (1._r8 + exp( 0.3_r8*(veg_tempk-(tfrz+40._r8)) ))
       end if
+
+      co2_rcurve_islope25 = co2_rcurve_islope25top_ft * nscaler
       !q10 response of product limited psn.
       co2_rcurve_islope = co2_rcurve_islope25 * 2._r8**((veg_tempk-(tfrz+25._r8))/10._r8)
+      
    end if
 
    ! Adjust for water limitations

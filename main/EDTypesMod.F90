@@ -318,8 +318,6 @@ module EDTypesMod
                              ! at reference temperature (25C).
      real(r8) :: jmax25top   ! canopy top: maximum electron transport 
                              ! rate at 25C (umol electrons/m**2/s)
-     real(r8) :: tpu25top    ! canopy top: triose phosphate utilization
-                             ! rate at 25C (umol CO2/m**2/s)
      real(r8) :: kp25top     ! canopy top: initial slope of CO2 response
                              ! curve (C4 plants) at 25C
 

@@ -81,7 +81,6 @@ contains
             ! (2.59_r8 - 0.035_r8*min(max((t10(p)-tfrzc),11._r8),35._r8)) * vcmax25top(ft)
             
             this%jmax25top(ft,iage) = 1.67_r8   * vcmax25top(ft,iage)
-            this%tpu25top(ft,iage)  = 0.167_r8  * vcmax25top(ft,iage)
             this%kp25top(ft,iage)   = 20000._r8 * vcmax25top(ft,iage)
          
          end do

@@ -88,6 +88,16 @@ module EDParamsMod
    real(r8),protected,allocatable,public :: ED_val_history_height_bin_edges(:)
    real(r8),protected,allocatable,public :: ED_val_history_coageclass_bin_edges(:)
 
+
+   ! VCMax hypotheses
+   integer, parameter, public :: vcmax_base   = 0
+   integer, parameter, public :: vcmax_bonan  = 1
+   integer, parameter, public :: vcmax_walker = 2
+   
+   ! Switch that defines the type of vcmax/photosynthesis hypothesis to use
+   integer, parameter, public :: vcmax_hyp = vcmax_base
+
+   
    ! Switch that defines the current pressure-volume and pressure-conductivity model
    ! to be used at each node (compartment/organ)
    ! 1  = Christofferson et al. 2016 (TFS),   2 = Van Genuchten 1980
