@@ -16,6 +16,7 @@ module EDPhysiologyMod
   use FatesInterfaceTypesMod, only    : hlm_use_planthydro
   use FatesInterfaceTypesMod, only    : hlm_parteh_mode
   use FatesInterfaceTypesMod, only    : hlm_use_fixed_biogeog
+  use FatesInterfaceTypesMod, only    : hlm_use_nocomp
   use FatesInterfaceTypesMod, only    : hlm_nitrogen_spec
   use FatesInterfaceTypesMod, only    : hlm_phosphorus_spec
   use FatesConstantsMod, only    : r8 => fates_r8
@@ -36,8 +37,8 @@ module EDPhysiologyMod
   use EDTypesMod          , only : site_massbal_type
   use EDTypesMod          , only : numlevsoil_max
   use EDTypesMod          , only : numWaterMem
-  use EDTypesMod          , only : dl_sf, dinc_ed, area_inv
-  use EDTypesMod                , only : AREA
+  use EDTypesMod          , only : dl_sf, dinc_vai, dlower_vai, area_inv
+  use EDTypesMod          , only : AREA
   use FatesLitterMod      , only : ncwd
   use FatesLitterMod      , only : ndcmpy
   use FatesLitterMod      , only : ilabile
@@ -387,7 +388,7 @@ contains
     real(r8) :: sapw_c                ! sapwood carbon [kg]
     real(r8) :: store_c               ! storage carbon [kg]
     real(r8) :: struct_c              ! structure carbon [kg]
-    real(r8) :: leaf_inc              ! LAI-only portion of the vegetation increment of dinc_ed
+    real(r8) :: leaf_inc              ! LAI-only portion of the vegetation increment of dinc_vai
     real(r8) :: lai_canopy_above      ! the LAI in the canopy layers above the layer of interest
     real(r8) :: lai_layers_above      ! the LAI in the leaf layers, within the current canopy,
     ! above the leaf layer of interest
@@ -424,8 +425,6 @@ contains
 
     real(r8) :: initial_trim              ! Initial trim
     real(r8) :: optimum_trim              ! Optimum trim value
-    real(r8) :: initial_laimem            ! Initial laimemory
-    real(r8) :: optimum_laimem            ! Optimum laimemory
 
     !----------------------------------------------------------------------
 
@@ -445,15 +444,13 @@ contains
        currentCohort => currentPatch%tallest
        do while (associated(currentCohort))
 
-          ! Save off the incoming trim and laimemory
+          ! Save off the incoming trim
           initial_trim = currentCohort%canopy_trim
-          initial_laimem = currentCohort%laimemory
 
           ! Add debug diagnstic output to determine which cohort
           if (debug) then
              write(fates_log(),*) 'Current cohort:', icohort
              write(fates_log(),*) 'Starting canopy trim:', initial_trim
-             write(fates_log(),*) 'Starting laimemory:', currentCohort%laimemory
           endif
 
           trimmed = .false.
@@ -466,12 +463,13 @@ contains
                currentCohort%n, currentCohort%canopy_layer,               &
                currentPatch%canopy_layer_tlai,currentCohort%vcmax25top )
 
+          ! We don't need check on sp mode here since we don't trim_canopy with sp mode
           currentCohort%treesai = tree_sai(currentCohort%pft, currentCohort%dbh, currentCohort%canopy_trim, &
                currentCohort%c_area, currentCohort%n, currentCohort%canopy_layer, &
                currentPatch%canopy_layer_tlai, currentCohort%treelai, &
                currentCohort%vcmax25top,0 )
 
-          currentCohort%nv      = ceiling((currentCohort%treelai+currentCohort%treesai)/dinc_ed)
+          currentCohort%nv      = count((currentCohort%treelai+currentCohort%treesai) .gt. dlower_vai(:)) + 1
 
           if (currentCohort%nv > nlevleaf)then
              write(fates_log(),*) 'nv > nlevleaf',currentCohort%nv, &
@@ -502,12 +500,12 @@ contains
           do z = 1, currentCohort%nv
 
              ! Calculate the cumulative total vegetation area index (no snow occlusion, stems and leaves)
-
-             leaf_inc    = dinc_ed * &
+             leaf_inc    = dinc_vai(z) * &
                   currentCohort%treelai/(currentCohort%treelai+currentCohort%treesai)
-
+             
              ! Now calculate the cumulative top-down lai of the current layer's midpoint within the current cohort
-             lai_layers_above      = leaf_inc * (z-1)
+             lai_layers_above      = (dlower_vai(z) - dinc_vai(z)) * &
+                  currentCohort%treelai/(currentCohort%treelai+currentCohort%treesai)
              lai_current           = min(leaf_inc, currentCohort%treelai - lai_layers_above)
              cumulative_lai_cohort = lai_layers_above + 0.5*lai_current
 
@@ -590,19 +588,10 @@ contains
                    ! Make sure the cohort trim fraction is great than the pft trim limit
                    if (currentCohort%canopy_trim > EDPftvarcon_inst%trim_limit(ipft)) then
 
-                      !  if ( debug ) then
-                      !     write(fates_log(),*) 'trimming leaves', &
-                      !           currentCohort%canopy_trim,currentCohort%leaf_cost
-                      !  endif
-
                       ! keep trimming until none of the canopy is in negative carbon balance.
                       if (currentCohort%hite > EDPftvarcon_inst%hgt_min(ipft)) then
                          currentCohort%canopy_trim = currentCohort%canopy_trim - &
                               EDPftvarcon_inst%trim_inc(ipft)
-                         if (prt_params%evergreen(ipft) /= 1)then
-                            currentCohort%laimemory = currentCohort%laimemory * &
-                                 (1.0_r8 - EDPftvarcon_inst%trim_inc(ipft))
-                         endif
 
                          trimmed = .true.
 
@@ -619,10 +608,6 @@ contains
              lwork = -1 ! Ask sgels to compute optimal number of entries for work
              call dgels(trans, m, n, nrhs, nnu_clai_a, lda, nnu_clai_b, ldb, work, lwork, info)
              lwork = int(work(1)) ! Pick the optimum.  TBD, can work(1) come back with greater than work size?
-
-             ! if (debug) then
-             !    write(fates_log(),*) 'LLSF lwork output (info, lwork):', info, lwork
-             ! endif
 
              ! Compute the minimum of 2-norm of of the least squares fit to solve for X
              ! Note that dgels returns the solution by overwriting the nnu_clai_b array.
@@ -648,16 +633,10 @@ contains
 
                 !
                 optimum_trim = (nnu_clai_b(1,1) / cumulative_lai_cohort) * initial_trim
-                optimum_laimem = (nnu_clai_b(1,1) / cumulative_lai_cohort) * initial_laimem
 
                 ! Determine if the optimum trim value makes sense.  The smallest cohorts tend to have unrealistic fits.
                 if (optimum_trim > 0. .and. optimum_trim < 1.) then
                    currentCohort%canopy_trim = optimum_trim
-
-                   ! If the cohort pft is not evergreen we reduce the laimemory as well
-                   if (prt_params%evergreen(ipft) /= 1) then
-                      currentCohort%laimemory = optimum_laimem
-                   endif
 
                    trimmed = .true.
 
@@ -698,7 +677,6 @@ contains
     use EDParamsMod, only : ED_val_phen_drought_threshold, ED_val_phen_doff_time
     use EDParamsMod, only : ED_val_phen_a, ED_val_phen_b, ED_val_phen_c, ED_val_phen_chiltemp
     use EDParamsMod, only : ED_val_phen_mindayson, ED_val_phen_ncolddayslim, ED_val_phen_coldtemp
-
 
     !
     ! !ARGUMENTS:
@@ -745,8 +723,12 @@ contains
 
     ! This is the integer model day. The first day of the simulation is 1, and it
     ! continues monotonically, indefinitely
-    model_day_int = nint(hlm_model_day)
+    ! Advance it. (this should be a global, no reason
+    ! for site level, but we don't have global scalars in the
+    ! restart file)
 
+    currentSite%phen_model_date = currentSite%phen_model_date + 1
+    model_day_int = currentSite%phen_model_date
 
     ! Use the following layer index to calculate drought conditions
     ilayer_swater = minloc(abs(bc_in%z_sisl(:)-dphen_soil_depth),dim=1)
@@ -760,7 +742,7 @@ contains
     temp_in_C = 0._r8
     cpatch => CurrentSite%oldest_patch
     do while(associated(cpatch))
-       temp_in_C = temp_in_C + bc_in%t_veg24_pa(cpatch%patchno)*cpatch%area
+       temp_in_C = temp_in_C + cpatch%tveg24%GetMean()*cpatch%area
        cpatch => cpatch%younger
     end do
     temp_in_C = temp_in_C * area_inv - tfrz
@@ -850,7 +832,7 @@ contains
     end if
 
     if (model_day_int < currentSite%cleafondate) then
-       dayssincecleafon = model_day_int - (currentSite%cleafondate-365)
+       dayssincecleafon = model_day_int - (currentSite%cleafondate - 365)
     else
        dayssincecleafon = model_day_int - currentSite%cleafondate
     end if
@@ -1062,6 +1044,7 @@ contains
 
     call phenology_leafonoff(currentSite)
 
+    return
   end subroutine phenology
 
 
@@ -1085,7 +1068,11 @@ contains
     real(r8) :: struct_c               ! structural wood carbon [kg]
     real(r8) :: store_c                ! storage carbon [kg]
     real(r8) :: store_c_transfer_frac  ! Fraction of storage carbon used to flush leaves
-    real(r8) :: totalmemory            ! total memory of carbon [kg]
+    real(r8) :: deficit_c              ! Amount of C needed to get flushing pools "on-allometry"
+    real(r8) :: target_leaf_c
+    real(r8) :: target_sapw_c
+    real(r8) :: target_agw_c, target_bgw_c, target_struct_c
+    real(r8) :: sapw_area
     integer  :: ipft
     real(r8), parameter :: leaf_drop_fraction = 1.0_r8
     real(r8), parameter :: carbon_store_buffer = 0.10_r8
@@ -1104,10 +1091,10 @@ contains
 
           if(debug) call currentCohort%prt%CheckMassConservation(ipft,0)
 
-          store_c = currentCohort%prt%GetState(store_organ, all_carbon_elements)
-          leaf_c  = currentCohort%prt%GetState(leaf_organ, all_carbon_elements)
-          sapw_c  = currentCohort%prt%GetState(sapw_organ, all_carbon_elements)
-          struct_c  = currentCohort%prt%GetState(struct_organ, all_carbon_elements)
+          store_c = currentCohort%prt%GetState(store_organ, carbon12_element)
+          leaf_c  = currentCohort%prt%GetState(leaf_organ, carbon12_element)
+          sapw_c  = currentCohort%prt%GetState(sapw_organ, carbon12_element)
+          struct_c  = currentCohort%prt%GetState(struct_organ, carbon12_element)
 
           stem_drop_fraction = EDPftvarcon_inst%phen_stem_drop_fraction(ipft)
 
@@ -1115,24 +1102,35 @@ contains
           ! The site level flags signify that it is no-longer too cold
           ! for leaves. Time to signal flushing
 
-          if (prt_params%season_decid(ipft) == itrue)then
-             if ( currentSite%cstatus == phen_cstat_notcold  )then                ! we have just moved to leaves being on .
-                if (currentCohort%status_coh == leaves_off)then ! Are the leaves currently off?
+          if_colddec: if (prt_params%season_decid(ipft) == itrue)then
+             if_notcold: if ( currentSite%cstatus == phen_cstat_notcold  )then                ! we have just moved to leaves being on .
+                if_leaves_off: if (currentCohort%status_coh == leaves_off)then ! Are the leaves currently off?
                    currentCohort%status_coh = leaves_on         ! Leaves are on, so change status to
                    ! stop flow of carbon out of bstore.
 
+                   call bleaf(currentCohort%dbh,currentCohort%pft,currentCohort%canopy_trim,target_leaf_c)
+                   call bsap_allom(currentCohort%dbh,currentCohort%pft, &
+                        currentCohort%canopy_trim,sapw_area,target_sapw_c)
+                   call bagw_allom(currentCohort%dbh,currentCohort%pft,target_agw_c)
+                   call bbgw_allom(currentCohort%dbh,currentCohort%pft,target_bgw_c)
+                   call bdead_allom( target_agw_c, target_bgw_c, target_sapw_c, &
+                        currentCohort%pft, target_struct_c)
+
+                   if (stem_drop_fraction .gt. 0.0_r8) then
+                      ! Note, this is only true for some grasses, woody plants don't
+                      ! have a stem drop fraction
+                      deficit_c = target_leaf_c + (target_sapw_c-sapw_c) + (target_struct_c-struct_c)
+                   else
+                      deficit_c = target_leaf_c
+                   end if
+                   
                    if(store_c>nearzero) then
-                      ! flush either the amount required from the laimemory, or -most- of the storage pool
+
+                      ! flush either the amount to get to the target, or -most- of the storage pool
                       ! RF: added a criterion to stop the entire store pool emptying and triggering termination mortality
                       ! n.b. this might not be necessary if we adopted a more gradual approach to leaf flushing...
-                      store_c_transfer_frac =  min((EDPftvarcon_inst%phenflush_fraction(ipft)* &
-                           currentCohort%laimemory)/store_c,(1.0_r8-carbon_store_buffer))
-
-                      if(prt_params%woody(ipft).ne.itrue)then
-                         totalmemory=currentCohort%laimemory+currentCohort%sapwmemory+currentCohort%structmemory
-                         store_c_transfer_frac = min((EDPftvarcon_inst%phenflush_fraction(ipft)* &
-                              totalmemory)/store_c, (1.0_r8-carbon_store_buffer))
-                      endif
+                      store_c_transfer_frac = min((EDPftvarcon_inst%phenflush_fraction(ipft)*deficit_c)/store_c, &
+                                                  (1.0_r8-carbon_store_buffer))
 
                    else
                       store_c_transfer_frac = 0.0_r8
@@ -1140,57 +1138,41 @@ contains
 
                    ! This call will request that storage carbon will be transferred to
                    ! leaf tissues. It is specified as a fraction of the available storage
-                   if(prt_params%woody(ipft) == itrue) then
-
-                      call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, store_c_transfer_frac)
-                      currentCohort%laimemory = 0.0_r8
-
+                   ! Check that the stem drop fraction is set to non-zero amount
+                   ! otherwise flush all carbon store to leaves
+                   if (stem_drop_fraction .gt. 0.0_r8) then
+                      
+                      call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, &
+                           store_c_transfer_frac*target_leaf_c/deficit_c)
+                      
+                      call PRTPhenologyFlush(currentCohort%prt, ipft, sapw_organ, &
+                           store_c_transfer_frac*(target_sapw_c-sapw_c)/deficit_c)
+                      
+                      call PRTPhenologyFlush(currentCohort%prt, ipft, struct_organ, &
+                           store_c_transfer_frac*(target_struct_c-struct_c)/deficit_c)
+                      
                    else
+                      
+                      call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, &
+                           store_c_transfer_frac)
+                      
+                   end if
 
-                      ! Check that the stem drop fraction is set to non-zero amount otherwise flush all carbon store to leaves
-                      if (stem_drop_fraction .gt. 0.0_r8) then
-
-                         call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, &
-                              store_c_transfer_frac*currentCohort%laimemory/totalmemory)
-
-                         call PRTPhenologyFlush(currentCohort%prt, ipft, sapw_organ, &
-                              store_c_transfer_frac*currentCohort%sapwmemory/totalmemory)
-
-                         call PRTPhenologyFlush(currentCohort%prt, ipft, struct_organ, &
-                              store_c_transfer_frac*currentCohort%structmemory/totalmemory)
-
-                      else
-
-                         call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, &
-                              store_c_transfer_frac)
-
-                      end if
-
-                      currentCohort%laimemory = 0.0_r8
-                      currentCohort%structmemory = 0.0_r8
-                      currentCohort%sapwmemory = 0.0_r8
-
-                   endif
-                endif !pft phenology
-             endif ! growing season
+                endif if_leaves_off
+             endif if_notcold
 
              !COLD LEAF OFF
-             if (currentSite%cstatus == phen_cstat_nevercold .or. &
+             if_cold:  if (currentSite%cstatus == phen_cstat_nevercold .or. &
                   currentSite%cstatus == phen_cstat_iscold) then ! past leaf drop day? Leaves still on tree?
-
-                if (currentCohort%status_coh == leaves_on) then ! leaves have not dropped
-
+                
+                if_leaves_on: if (currentCohort%status_coh == leaves_on) then ! leaves have not dropped
+                   
                    ! leaf off occur on individuals bigger than specific size for grass
                    if (currentCohort%dbh > EDPftvarcon_inst%phen_cold_size_threshold(ipft) &
                         .or. prt_params%woody(ipft)==itrue) then
 
                       ! This sets the cohort to the "leaves off" flag
                       currentCohort%status_coh  = leaves_off
-
-                      ! Remember what the lai was (leaf mass actually) was for next year
-                      ! the same amount back on in the spring...
-
-                      currentCohort%laimemory   = leaf_c
 
                       ! Drop Leaves (this routine will update the leaf state variables,
                       ! for carbon and any other element that are prognostic. It will
@@ -1201,10 +1183,6 @@ contains
 
                       if(prt_params%woody(ipft).ne.itrue)then
 
-                         currentCohort%sapwmemory   = sapw_c * stem_drop_fraction
-
-                         currentCohort%structmemory   = struct_c * stem_drop_fraction
-
                          call PRTDeciduousTurnover(currentCohort%prt,ipft, &
                               sapw_organ, stem_drop_fraction)
 
@@ -1213,9 +1191,9 @@ contains
 
                       endif	! woody plant check
                    endif ! individual dbh size check
-                endif !leaf status
-             endif !currentSite status
-          endif  !season_decid
+                endif if_leaves_on !leaf status
+             endif if_cold !currentSite status
+          endif if_colddec  !season_decid
 
           ! DROUGHT LEAF ON
           ! Site level flag indicates it is no longer in drought condition
@@ -1234,19 +1212,28 @@ contains
                    currentCohort%status_coh = leaves_on    ! Leaves are on, so change status to
                    ! stop flow of carbon out of bstore.
 
+                   call bleaf(currentCohort%dbh,currentCohort%pft,&
+                        currentCohort%canopy_trim,target_leaf_c)
+                   call bsap_allom(currentCohort%dbh,currentCohort%pft, &
+                        currentCohort%canopy_trim,sapw_area,target_sapw_c)
+                   call bagw_allom(currentCohort%dbh,currentCohort%pft,target_agw_c)
+                   call bbgw_allom(currentCohort%dbh,currentCohort%pft,target_bgw_c)
+                   call bdead_allom( target_agw_c, target_bgw_c, target_sapw_c, &
+                        currentCohort%pft, target_struct_c)
+
+                   if (stem_drop_fraction .gt. 0.0_r8) then
+                      ! Note, this is only true for some grasses, woody plants don't
+                      ! have a stem drop fraction
+                      deficit_c = target_leaf_c + (target_sapw_c-sapw_c) + (target_struct_c-struct_c)
+                   else
+                      deficit_c = target_leaf_c
+                   end if
+                   
                    if(store_c>nearzero) then
-
-                     store_c_transfer_frac = &
-                          min((EDPftvarcon_inst%phenflush_fraction(ipft)*currentCohort%laimemory)/store_c, &
-                          (1.0_r8-carbon_store_buffer))
-
-                     if(prt_params%woody(ipft).ne.itrue)then
-
-                        totalmemory=currentCohort%laimemory+currentCohort%sapwmemory+currentCohort%structmemory
-                        store_c_transfer_frac = min(EDPftvarcon_inst%phenflush_fraction(ipft)*totalmemory/store_c, &
-                             (1.0_r8-carbon_store_buffer))
-
-                      endif
+                      
+                      store_c_transfer_frac = &
+                           min((EDPftvarcon_inst%phenflush_fraction(ipft)*deficit_c)/store_c, &
+                           (1.0_r8-carbon_store_buffer))
 
                    else
                       store_c_transfer_frac = 0.0_r8
@@ -1254,39 +1241,24 @@ contains
 
                    ! This call will request that storage carbon will be transferred to
                    ! leaf tissues. It is specified as a fraction of the available storage
-                   if(prt_params%woody(ipft) == itrue) then
-
-                      call PRTPhenologyFlush(currentCohort%prt, ipft, &
-                           leaf_organ, store_c_transfer_frac)
-
-                      currentCohort%laimemory = 0.0_r8
-
+                   if (stem_drop_fraction .gt. 0.0_r8) then
+                      
+                      call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, &
+                           store_c_transfer_frac*target_leaf_c/deficit_c)
+                      
+                      call PRTPhenologyFlush(currentCohort%prt, ipft, sapw_organ, &
+                           store_c_transfer_frac*(target_sapw_c-sapw_c)/deficit_c)
+                      
+                      call PRTPhenologyFlush(currentCohort%prt, ipft, struct_organ, &
+                           store_c_transfer_frac*(target_struct_c-struct_c)/deficit_c)
+                      
                    else
+                      
+                      call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, &
+                           store_c_transfer_frac)
+                      
+                   end if
 
-                      ! Check that the stem drop fraction is set to non-zero amount otherwise flush all carbon store to leaves
-                      if (stem_drop_fraction .gt. 0.0_r8) then
-
-                         call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, &
-                              store_c_transfer_frac*currentCohort%laimemory/totalmemory)
-
-                         call PRTPhenologyFlush(currentCohort%prt, ipft, sapw_organ, &
-                              store_c_transfer_frac*currentCohort%sapwmemory/totalmemory)
-
-                         call PRTPhenologyFlush(currentCohort%prt, ipft, struct_organ, &
-                              store_c_transfer_frac*currentCohort%structmemory/totalmemory)
-
-                      else
-
-                         call PRTPhenologyFlush(currentCohort%prt, ipft, leaf_organ, &
-                              store_c_transfer_frac)
-
-                      end if
-
-                      currentCohort%laimemory = 0.0_r8
-                      currentCohort%structmemory = 0.0_r8
-                      currentCohort%sapwmemory = 0.0_r8
-
-                   endif ! woody plant check
                 endif !currentCohort status again?
              endif   !currentSite status
 
@@ -1299,16 +1271,10 @@ contains
                    ! This sets the cohort to the "leaves off" flag
                    currentCohort%status_coh      = leaves_off
 
-                   ! Remember what the lai (leaf mass actually) was for next year
-                   currentCohort%laimemory   = leaf_c
-
                    call PRTDeciduousTurnover(currentCohort%prt,ipft, &
                         leaf_organ, leaf_drop_fraction)
 
                    if(prt_params%woody(ipft).ne.itrue)then
-
-                      currentCohort%sapwmemory   = sapw_c * stem_drop_fraction
-                      currentCohort%structmemory   = struct_c * stem_drop_fraction
 
                       call PRTDeciduousTurnover(currentCohort%prt,ipft, &
                            sapw_organ, stem_drop_fraction)
@@ -1519,6 +1485,12 @@ contains
     ! ------------------------------------------
     currentCohort%treelai = tlai
     canopylai(:) = 0._r8
+    if(init.eq.itrue)then
+       ! If we are initializing, the canopy layer has not been set yet, so just set to 1
+       currentCohort%canopy_layer = 1
+       ! We need to get the vcmax25top
+       currentCohort%vcmax25top = EDPftvarcon_inst%vcmax25top(currentCohort%pft,1)
+    endif
     leaf_c = leafc_from_treelai( currentCohort%treelai, currentCohort%pft, currentCohort%c_area,&
          currentCohort%n, currentCohort%canopy_layer, currentCohort%vcmax25top)
 
@@ -1531,6 +1503,8 @@ contains
 
     if( abs(currentCohort%treelai-check_treelai).gt.1.0e-12)then !this is not as precise as nearzero
        write(fates_log(),*) 'error in validate treelai',currentCohort%treelai,check_treelai,currentCohort%treelai-check_treelai
+       write(fates_log(),*) 'tree_lai inputs: ', currentCohort%pft, currentCohort%c_area, currentCohort%n, &
+               currentCohort%canopy_layer, currentCohort%vcmax25top
        call endrun(msg=errMsg(sourcefile, __LINE__))
     end if
 
@@ -1582,7 +1556,7 @@ contains
     ! !USES:
     use EDTypesMod, only : area
     use EDTypesMod, only : homogenize_seed_pfts
-    !use FatesInterfaceTypesMod,  only : hlm_use_fixed_biogeog    ! For future reduced complexity?
+
     !
     ! !ARGUMENTS
     type(ed_site_type), intent(inout), target  :: currentSite
@@ -1853,8 +1827,16 @@ contains
 
 
     do ft = 1,numpft
-       if(currentSite%use_this_pft(ft).eq.itrue)then
-       temp_cohort%canopy_trim = init_recruit_trim
+
+       ! The following if block is for the prescribed biogeography and/or nocomp modes.
+       ! Since currentSite%use_this_pft is a site-level quantity and thus only limits whether a given PFT
+       ! is permitted on a given gridcell or not, it applies to the prescribed biogeography case only.
+       ! If nocomp is enabled, then we must determine whether a given PFT is allowed on a given patch or not.
+
+       if(currentSite%use_this_pft(ft).eq.itrue &
+            .and. ((hlm_use_nocomp .eq. ifalse) .or. (ft .eq. currentPatch%nocomp_pft_label)))then
+
+          temp_cohort%canopy_trim = init_recruit_trim
           temp_cohort%pft         = ft
           temp_cohort%hite        = EDPftvarcon_inst%hgt_min(ft)
           temp_cohort%coage       = 0.0_r8
@@ -1873,22 +1855,15 @@ contains
 
           ! Default assumption is that leaves are on
           cohortstatus = leaves_on
-          temp_cohort%laimemory = 0.0_r8
-          temp_cohort%sapwmemory = 0.0_r8
-          temp_cohort%structmemory = 0.0_r8
-
 
           ! But if the plant is seasonally (cold) deciduous, and the site status is flagged
           ! as "cold", then set the cohort's status to leaves_off, and remember the leaf biomass
           if ((prt_params%season_decid(ft) == itrue) .and. &
                (any(currentSite%cstatus == [phen_cstat_nevercold,phen_cstat_iscold]))) then
-             temp_cohort%laimemory = c_leaf
              c_leaf = 0.0_r8
 
              ! If plant is not woody then set sapwood and structural biomass as well
              if (prt_params%woody(ft).ne.itrue) then
-                temp_cohort%sapwmemory = c_sapw * stem_drop_fraction
-                temp_cohort%structmemory = c_struct * stem_drop_fraction
                 c_sapw = (1.0_r8 - stem_drop_fraction) * c_sapw
                 c_struct = (1.0_r8 - stem_drop_fraction) * c_struct
              endif
@@ -1900,13 +1875,10 @@ contains
           ! biomass
           if ((prt_params%stress_decid(ft) == itrue) .and. &
                (any(currentSite%dstatus == [phen_dstat_timeoff,phen_dstat_moistoff]))) then
-             temp_cohort%laimemory = c_leaf
              c_leaf = 0.0_r8
 
              ! If plant is not woody then set sapwood and structural biomass as well
              if(prt_params%woody(ft).ne.itrue)then
-                temp_cohort%sapwmemory = c_sapw * stem_drop_fraction
-                temp_cohort%structmemory = c_struct * stem_drop_fraction
                 c_sapw = (1.0_r8 - stem_drop_fraction) * c_sapw
                 c_struct = (1.0_r8 - stem_drop_fraction) * c_struct
              endif
@@ -1933,28 +1905,28 @@ contains
                 case(nitrogen_element)
 
                      mass_demand = &
-                          c_struct*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(struct_organ)) + &
-                          c_leaf*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(leaf_organ)) + &
-                          c_fnrt*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(fnrt_organ)) + &
-                          c_sapw*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(sapw_organ)) + &
+                          c_struct*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(struct_organ)) + &
+                          c_leaf*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(leaf_organ)) + &
+                          c_fnrt*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ)) + &
+                          c_sapw*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ)) + &
                           StorageNutrientTarget(ft, element_id, &
-                          c_leaf*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(leaf_organ)), &
-                          c_fnrt*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(fnrt_organ)), &
-                          c_sapw*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(sapw_organ)), &
-                          c_struct*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(struct_organ)))
+                          c_leaf*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(leaf_organ)), &
+                          c_fnrt*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ)), &
+                          c_sapw*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ)), &
+                          c_struct*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(struct_organ)))
 
                 case(phosphorus_element)
 
                   mass_demand = &
-                       c_struct*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(struct_organ)) + &
-                       c_leaf*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(leaf_organ)) + &
-                       c_fnrt*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(fnrt_organ)) + &
-                       c_sapw*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(sapw_organ)) + &
+                       c_struct*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(struct_organ)) + &
+                       c_leaf*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(leaf_organ)) + &
+                       c_fnrt*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ)) + &
+                       c_sapw*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(sapw_organ)) + &
                        StorageNutrientTarget(ft, element_id, &
-                       c_leaf*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(leaf_organ)), &
-                       c_fnrt*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(fnrt_organ)), &
-                       c_sapw*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(sapw_organ)), &
-                       c_struct*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(struct_organ)))
+                       c_leaf*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(leaf_organ)), &
+                       c_fnrt*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ)), &
+                       c_sapw*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(sapw_organ)), &
+                       c_struct*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(struct_organ)))
 
                 case default
                    write(fates_log(),*) 'Undefined element type in recruitment'
@@ -1980,7 +1952,7 @@ contains
           endif
 
           ! Only bother allocating a new cohort if there is a reasonable amount of it
-       any_recruits: if (temp_cohort%n > min_n_safemath )then
+          any_recruits: if (temp_cohort%n > min_n_safemath )then
 
              ! -----------------------------------------------------------------------------
              ! PART II.
@@ -2008,19 +1980,19 @@ contains
 
                 case(nitrogen_element)
 
-                 m_struct = c_struct*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(struct_organ))
-                 m_leaf   = c_leaf*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(leaf_organ))
-                 m_fnrt   = c_fnrt*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(fnrt_organ))
-                 m_sapw   = c_sapw*prt_params%nitr_stoich_p2(ft,prt_params%organ_param_id(sapw_organ))
+                 m_struct = c_struct*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(struct_organ))
+                 m_leaf   = c_leaf*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(leaf_organ))
+                 m_fnrt   = c_fnrt*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ))
+                 m_sapw   = c_sapw*prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ))
                  m_store  = StorageNutrientTarget(ft, element_id, m_leaf, m_fnrt, m_sapw, m_struct )
                    m_repro  = 0._r8
 
                 case(phosphorus_element)
 
-                 m_struct = c_struct*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(struct_organ))
-                 m_leaf   = c_leaf*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(leaf_organ))
-                 m_fnrt   = c_fnrt*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(fnrt_organ))
-                 m_sapw   = c_sapw*prt_params%phos_stoich_p2(ft,prt_params%organ_param_id(sapw_organ))
+                 m_struct = c_struct*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(struct_organ))
+                 m_leaf   = c_leaf*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(leaf_organ))
+                 m_fnrt   = c_fnrt*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ))
+                 m_sapw   = c_sapw*prt_params%phos_stoich_p1(ft,prt_params%organ_param_id(sapw_organ))
                  m_store  = StorageNutrientTarget(ft, element_id, m_leaf, m_fnrt, m_sapw, m_struct )
                    m_repro  = 0._r8
 
@@ -2083,10 +2055,10 @@ contains
              ! -----------------------------------------------------------------------------------
 
              call prt%CheckInitialConditions()
+
              ! This initializes the cohort
              call create_cohort(currentSite,currentPatch, temp_cohort%pft, temp_cohort%n, &
                   temp_cohort%hite, temp_cohort%coage, temp_cohort%dbh, prt, &
-                  temp_cohort%laimemory, temp_cohort%sapwmemory, temp_cohort%structmemory, &
                   cohortstatus, recruitstatus, &
                   temp_cohort%canopy_trim,temp_cohort%c_area, &
                   currentPatch%NCL_p, currentSite%spread, bc_in)
@@ -2460,7 +2432,6 @@ contains
     logical  :: use_century_tfunc = .false.
     logical  :: use_hlm_soil_scalar = .true. ! Use hlm input decomp fraction scalars
     integer  :: j
-    integer  :: ifp                          ! Index of a FATES Patch "ifp"
     real(r8) :: t_scalar                     ! temperature scalar
     real(r8) :: w_scalar                     ! moisture scalar
     real(r8) :: catanf                       ! hyperbolic temperature function from CENTURY
@@ -2471,7 +2442,6 @@ contains
     catanf(t1) = 11.75_r8 +(29.7_r8 / pi) * atan( pi * 0.031_r8  * ( t1 - 15.4_r8 ))
     catanf_30 = catanf(30._r8)
 
-    ifp = currentPatch%patchno
     if(currentPatch%nocomp_pft_label.ne.0)then
 
        ! Use the hlm temp and moisture decomp fractions by default
@@ -2483,19 +2453,19 @@ contains
        else
 
          if ( .not. use_century_tfunc ) then
-         !calculate rate constant scalar for soil temperature,assuming that the base rate constants
-         !are assigned for non-moisture limiting conditions at 25C.
-            if (bc_in%t_veg24_pa(ifp)  >=  tfrz) then
-              t_scalar = q10_mr**((bc_in%t_veg24_pa(ifp)-(tfrz+25._r8))/10._r8)
-                  !  Q10**((t_soisno(c,j)-(tfrz+25._r8))/10._r8)
+            !calculate rate constant scalar for soil temperature,assuming that the base rate constants
+            !are assigned for non-moisture limiting conditions at 25C.
+            if (currentPatch%tveg24%GetMean()  >=  tfrz) then
+               t_scalar = q10_mr**((currentPatch%tveg24%GetMean()-(tfrz+25._r8))/10._r8)
+               !  Q10**((t_soisno(c,j)-(tfrz+25._r8))/10._r8)
             else
-              t_scalar = (q10_mr**(-25._r8/10._r8))*(q10_froz**((bc_in%t_veg24_pa(ifp)-tfrz)/10._r8))
-                     !Q10**(-25._r8/10._r8))*(froz_q10**((t_soisno(c,j)-tfrz)/10._r8)
+               t_scalar = (q10_mr**(-25._r8/10._r8))*(q10_froz**((currentPatch%tveg24%GetMean()-tfrz)/10._r8))
+               !  Q10**(-25._r8/10._r8))*(froz_q10**((t_soisno(c,j)-tfrz)/10._r8)
             endif
          else
             ! original century uses an arctangent function to calculate the
             ! temperature dependence of decomposition
-            t_scalar = max(catanf(bc_in%t_veg24_pa(ifp)-tfrz)/catanf_30,0.01_r8)
+            t_scalar = max(catanf(currentPatch%tveg24%GetMean()-tfrz)/catanf_30,0.01_r8)
          endif
 
          !Moisture Limitations

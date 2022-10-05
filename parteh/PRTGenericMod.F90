@@ -279,7 +279,7 @@ module PRTGenericMod
                                                         ! examples are carbon12_element
                                                         ! nitrogen_element, etc.
 
-  integer, public :: element_pos(num_organ_types)       ! This is the reverse lookup
+  integer, public :: element_pos(num_element_types)     ! This is the reverse lookup
                                                         ! for element types. Pick an element
                                                         ! global index, and it gives you
                                                         ! the position in the element_list
@@ -1396,6 +1396,8 @@ contains
     integer, intent(in),optional  :: stoich_mode
     real(r8)                      :: target_m    ! Target amount of nutrient for this organ [kg]
 
+    target_m = 0._r8
+    
     write(fates_log(),*)'GetNutrientTargetBase must be extended by a child class.'
     call endrun(msg=errMsg(sourcefile, __LINE__))
 
