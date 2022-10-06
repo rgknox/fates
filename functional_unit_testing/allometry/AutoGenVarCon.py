@@ -5,11 +5,14 @@
 # to the list
 # =============================================================================
 
-import imp
+from importlib.machinery import SourceFileLoader
 import code  # For development: code.interact(local=dict(globals(), **locals()))
 
-F90ParamParse = imp.load_source('F90ParamParse','../shared/py_src/F90ParamParse.py')
-CDLParse = imp.load_source('CDLParse','../shared/py_src/CDLParse.py')
+#F90ParamParse = imp.load_source('F90ParamParse','../shared/py_src/F90ParamParse.py')
+#CDLParse = imp.load_source('CDLParse','../shared/py_src/CDLParse.py')
+
+F90ParamParse = SourceFileLoader('F90ParamParse','../shared/py_src/F90ParamParse.py').load_module()
+CDLParse = SourceFileLoader('CDLParse','../shared/py_src/CDLParse.py').load_module()
 
 from F90ParamParse import f90_param_type, GetParamsInFile, GetPFTParmFileSymbols, MakeListUnique
 from CDLParse import CDLParseDims, CDLParseParam, cdl_param_type
@@ -51,8 +54,6 @@ var_list = GetPFTParmFileSymbols(var_list,'../../parteh/PRTParamsFATESMod.F90')
 
 
 default_file_relpath = '../../parameter_files/fates_params_default.cdl'
-
-default_file_relpath ='../../parameter_files/fates_params_default_pft12.c220109.cdl'
 
 dims = CDLParseDims(default_file_relpath)
 

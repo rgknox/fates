@@ -219,7 +219,7 @@ parms['sai_scaler'] = CDLParse(args.fnamein,parameter('fates_allom_sai_scaler'))
 # =======================================================================================
 
 eparms = {}
-eparms['recruit_hgt_min'] = CDLParse(args.fnamein,parameter('fates_recruit_hgt_min'))
+eparms['recruit_hgt_min'] = CDLParse(args.fnamein,parameter('fates_recruit_height_min'))
 eparms['name'] = CDLParse(args.fnamein,parameter('fates_pftname'))
 eparms['vcmax25top'] = CDLParse(args.fnamein,parameter('fates_leaf_vcmax25top'))
 
@@ -239,7 +239,7 @@ iret=f90_pftalloc(ci(dims['fates_NCWD']), \
                   ci(dims['fates_leafage_class']), \
                   ci(dims['fates_litterclass']), \
                   ci(dims['fates_pft']), \
-                  ci(dims['fates_prt_organs']), \
+                  ci(dims['fates_plant_organs']), \
                   ci(dims['fates_string_length']), \
                   ci(dims['fates_hlm_pftno']))
 

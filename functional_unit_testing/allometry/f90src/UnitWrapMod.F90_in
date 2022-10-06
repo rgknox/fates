@@ -37,6 +37,50 @@ module FatesGlobals
       fates_log = 11
    end function fates_log
 
+   subroutine FatesWarn(msg,index)
+
+    character(len=*), intent(in) :: msg      ! string to be printed
+    integer,optional,intent(in)  :: index    ! warning index
+
+   end subroutine FatesWarn
+   
+   function N2S(real_in) result(str)
+    use iso_c_binding, only : r8 => c_double
+    real(r8) :: real_in
+    character(len=16) :: str
+
+    !write(str,*) real_in
+    write(str,'(E12.6)') real_in
+    
+  end function N2S
+
+  ! =====================================================================================
+  
+  function I2S(int_in) result(str)
+
+    integer :: int_in
+    character(len=16) :: str
+
+    !write(str,*) real_in
+    write(str,'(I15)') int_in
+    
+  end function I2S
+  
+  ! =====================================================================================
+  
+  function A2S(reals_in) result(str)
+    use iso_c_binding, only : r8 => c_double
+    real(r8) :: reals_in(:)
+    character(len=1024) :: str
+    integer :: i, nreal
+    
+    str = ', '
+    do i = 1,ubound(reals_in,1)
+       str = trim(str)//', '//N2S(reals_in(i))
+    end do
+    
+  end function A2S
+
    subroutine fates_endrun(msg)
 
       implicit none
