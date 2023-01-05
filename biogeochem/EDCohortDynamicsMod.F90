@@ -1136,6 +1136,7 @@ contains
      real(r8) :: leaf_c_target
      real(r8) :: dynamic_size_fusion_tolerance
      real(r8) :: dynamic_age_fusion_tolerance
+     integer  :: nlayer_diff        !
      real(r8) :: dbh
      real(r8) :: leaf_c             ! leaf carbon [kg]
      real(r8) :: target_storec      ! Target storage C
@@ -1156,6 +1157,8 @@ contains
      ! set the cohort age fusion tolerance (in fraction of years)
      dynamic_age_fusion_tolerance = ED_val_cohort_age_fusion_tol
 
+
+     nlayer_diff = 1
 
      !This needs to be a function of the canopy layer, because otherwise, at canopy closure
      !the number of cohorts doubles and very dissimilar cohorts are fused together
@@ -1216,7 +1219,8 @@ contains
 
                              ! check cohorts in same c. layer. before fusing
 
-                             if (currentCohort%canopy_layer == nextc%canopy_layer) then
+                             if (currentCohort%canopy_layer == nextc%canopy_layer .and. &
+                                 (abs(currentCohort%nveg_act-nextc%nveg_act)<=nlayer_diff) ) then
 
                                 ! Note: because newly recruited cohorts that have not experienced
                                 ! a day yet will have un-known flux quantities or change rates
@@ -1613,7 +1617,7 @@ contains
                  !---------------------------------------------------------------------!
                  dynamic_size_fusion_tolerance = dynamic_size_fusion_tolerance * 1.1_r8
                  dynamic_age_fusion_tolerance = dynamic_age_fusion_tolerance * 1.1_r8
-
+                 nlayer_diff = nlayer_diff+1
               else
 
                  iterate = 0
@@ -1627,7 +1631,7 @@ contains
                  ! Making profile tolerance larger means that more fusion will happen  !
                  !---------------------------------------------------------------------!
                  dynamic_size_fusion_tolerance = dynamic_size_fusion_tolerance * 1.1_r8
-
+                 nlayer_diff = nlayer_diff+1
               else
 
                  iterate = 0
@@ -2614,12 +2618,12 @@ contains
           if (match_old_trim_method) then
              if(di>0) then
                 ! We need a new layer
-                cohort%year_net_uptake(1:di)                         = 0._r8
                 cohort%year_net_uptake(1+di:nlevleafmem)             = cohort%year_net_uptake(1:nlevleafmem-di)
+                cohort%year_net_uptake(1:di)                         = 0._r8
              else
                 ! We need to remove a layer
-                cohort%year_net_uptake(nlevleafmem+di+1:nlevleafmem) = year_net_uptake_high
                 cohort%year_net_uptake(1:nlevleafmem+di)             = cohort%year_net_uptake(1-di:nlevleafmem)
+                cohort%year_net_uptake(nlevleafmem+di+1:nlevleafmem) = year_net_uptake_high
              end if
           else
              if(di>0) then
