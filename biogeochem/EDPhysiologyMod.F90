@@ -54,7 +54,7 @@ module EDPhysiologyMod
   use EDTypesMod          , only : nclmax
   use EDTypesMod          , only : AREA,AREA_INV
   use EDTypesMod          , only : nlevleaf
-  use EDTypesMod          , only : nlevleafmem
+  use EDTypesMod          , only : leafmem_min,leafmem_max
   use EDTypesMod          , only : num_vegtemp_mem
   use EDTypesMod          , only : maxpft
   use EDTypesMod          , only : ed_site_type, ed_patch_type, ed_cohort_type
@@ -713,11 +713,11 @@ contains
                 z0 = 1
                 z1 = currentCohort%nveg_act
              else
-                z0 = GetLeafFromMemLayer(currentCohort,min(nlevleafmem,currentCohort%nveg_max))
+                z0 = GetLeafFromMemLayer(currentCohort,min(leafmem_max,currentCohort%nveg_max))
                 z1 = GetLeafFromMemLayer(currentCohort,1)
              end if
 
-             leafmem_loop: do z = z0,z1
+             leaf_layer_loop: do z = z0,z1
              
                 ! Get the memory layer index
                 zm = GetMemFromLeafLayer(currentCohort,z)
@@ -838,7 +838,7 @@ contains
                    endif ! trim limit check
                 endif ! net uptake check
 
-             enddo leafmem_loop
+             enddo leaf_layer_loop
           end if if_trimmable
 
 

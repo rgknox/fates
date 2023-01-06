@@ -13,7 +13,7 @@ module EDAccumulateFluxesMod
   use FatesGlobals, only      : fates_log
   use shr_log_mod , only      : errMsg => shr_log_errMsg
   use FatesConstantsMod , only : r8 => fates_r8
-  use EDTypesMod, only         : nlevleafmem
+  use EDTypesMod, only         : leafmem_min,leafmem_max
   use EDTypesMod, only         : match_old_trim_method
 
   implicit none
@@ -105,14 +105,12 @@ contains
                    if(match_old_trim_method) then
                       if( .not.ccohort%is_trimmable ) then
                          ccohort%is_trimmable = .true.
-                         do iv=1,nlevleafmem
-                            ccohort%year_net_uptake(iv) = 0._r8
-                         end do
+                         ccohort%year_net_uptake(:) = 0._r8
                       end if
                    end if
                    
                    if( ccohort%is_trimmable ) then
-                      do iv=1,nlevleafmem
+                      do iv=1,leafmem_max
                          ccohort%year_net_uptake(iv) = ccohort%year_net_uptake(iv) + ccohort%ts_net_uptake(iv)
                       end do
                    end if

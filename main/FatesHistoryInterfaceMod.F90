@@ -4151,7 +4151,7 @@ end subroutine flush_hvars
     ! after rapid timescale productivity calculations (gpp and respiration).
     ! ---------------------------------------------------------------------------------
 
-    use EDTypesMod          , only : nclmax, nlevleaf, nlevleafmem
+    use EDTypesMod          , only : nclmax, nlevleaf, leafmem_max
     !
     ! Arguments
     class(fates_history_interface_type)                 :: this
@@ -4445,7 +4445,7 @@ end subroutine flush_hvars
                endif
                
                ! canopy leaf carbon balance
-               if(nlevleafmem == nlevleaf) then
+               if(leafmem_max == nlevleaf) then
                   ican = ccohort%canopy_layer
                   do z = 1,ccohort%nveg_act
                      ! The actual leaf layer index (going from top to bottom)

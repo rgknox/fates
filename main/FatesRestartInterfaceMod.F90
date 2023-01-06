@@ -42,7 +42,8 @@ module FatesRestartInterfaceMod
   use FatesLitterMod,          only : litter_type
   use FatesLitterMod,          only : ncwd
   use FatesLitterMod,          only : ndcmpy
-  use EDTypesMod,              only : nfsc, nlevleaf, area, nlevleafmem
+  use EDTypesMod,              only : nfsc, nlevleaf, area
+  use EDTypesMod,              only : leafmem_min,leafmem_max
   use PRTGenericMod,           only : prt_global
   use PRTGenericMod,           only : num_elements
   use FatesRunningMeanMod,     only : rmean_type
@@ -1115,7 +1116,7 @@ contains
 
     call this%RegisterCohortVector(symbol_base='fates_year_net_up', vtype=cohort_r8, &
          long_name_base='yearly net uptake at leaf layers',  &
-         units='kg/m2/year', veclength=nlevleafmem, flushval = flushzero, &
+         units='kg/m2/year', veclength=(leafmem_max-leafmem_min+1), flushval = flushzero, &
          hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_year_net_up_co )
     
     ! Only register hydraulics restart variables if it is turned on!
@@ -1691,15 +1692,15 @@ contains
   
   ! =====================================================================================
 
-  subroutine GetCohortRealVector(this, state_vector, len_state_vector, &
+  subroutine GetCohortRealVector(this, state_vector, minpos, maxpos, &
                                  variable_index_base, co_global_index)
 
     ! This subroutine walks through global cohort vector indices
     ! and pulls from the different associated restart variables
 
     class(fates_restart_interface_type) , intent(inout) :: this
-    integer,intent(in)     :: len_state_vector
-    real(r8),intent(inout) :: state_vector(len_state_vector)
+    real(r8),intent(inout) :: state_vector(minpos:maxpos)
+    integer,intent(in)     :: minpos,maxpos
     integer,intent(in)     :: variable_index_base
     integer,intent(in)     :: co_global_index
 
@@ -1707,7 +1708,7 @@ contains
     integer :: ir_pos_var         ! global variable index
 
     ir_pos_var = variable_index_base
-    do i_pos = 1, len_state_vector
+    do i_pos = minpos,maxpos
        state_vector(i_pos) = this%rvars(ir_pos_var)%r81d(co_global_index)
        ir_pos_var = ir_pos_var + 1
     end do
@@ -1716,15 +1717,15 @@ contains
 
   ! =====================================================================================
 
-  subroutine SetCohortRealVector(this, state_vector, len_state_vector, &
+  subroutine SetCohortRealVector(this, state_vector, minpos, maxpos, &
                                   variable_index_base, co_global_index)
 
     ! This subroutine walks through global cohort vector indices
     ! and pushes into the restart arrays the different associated restart variables
 
     class(fates_restart_interface_type) , intent(inout) :: this
-    integer,intent(in)   :: len_state_vector
-    real(r8),intent(in)  :: state_vector(len_state_vector)
+    real(r8),intent(in)  :: state_vector(minpos:maxpos)
+    integer,intent(in)   :: minpos,maxpos
     integer,intent(in)   :: variable_index_base
     integer,intent(in)   :: co_global_index
 
@@ -1732,7 +1733,7 @@ contains
     integer :: ir_pos_var         ! global variable index
 
     ir_pos_var = variable_index_base
-    do i_pos = 1, len_state_vector
+    do i_pos = minpos,maxpos
        this%rvars(ir_pos_var)%r81d(co_global_index) = state_vector(i_pos)
        ir_pos_var = ir_pos_var + 1
     end do
@@ -1870,11 +1871,13 @@ contains
     integer  :: i_cdam           ! loop counter for damage
     integer  :: icdi             ! loop counter for damage
     integer  :: icdj             ! loop counter for damage
-    
+
+    real(r8) :: temp_net_uptake(1:leafmem_max-leafmem_min+1)
     type(fates_restart_variable_type) :: rvar
     type(ed_patch_type),pointer  :: cpatch
     type(ed_cohort_type),pointer :: ccohort
 
+    
 
     associate( rio_npatch_si           => this%rvars(ir_npatch_si)%int1d, &
            rio_cd_status_si            => this%rvars(ir_cd_status_si)%int1d, &
@@ -2110,8 +2113,10 @@ contains
                    end do
                 end do
 
-                call this%SetCohortRealVector(ccohort%year_net_uptake,nlevleafmem,ir_year_net_up_co,io_idx_co)
-
+                
+                call this%SetCohortRealVector(ccohort%year_net_uptake,leafmem_min, &
+                     leafmem_max,ir_year_net_up_co,io_idx_co)
+                
                 rio_l2fr_co(io_idx_co)         = ccohort%l2fr
                 
                 if(hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
@@ -2130,9 +2135,9 @@ contains
                 if(hlm_use_planthydro==itrue)then
 
                    ! Load the water contents
-                   call this%SetCohortRealVector(ccohort%co_hydr%th_ag,n_hypool_ag, &
+                   call this%SetCohortRealVector(ccohort%co_hydr%th_ag,1,n_hypool_ag, &
                                                  ir_hydro_th_ag_covec,io_idx_co)
-                   call this%SetCohortRealVector(ccohort%co_hydr%th_aroot,sites(s)%si_hydr%nlevrhiz, &
+                   call this%SetCohortRealVector(ccohort%co_hydr%th_aroot,1,sites(s)%si_hydr%nlevrhiz, &
                                                  ir_hydro_th_aroot_covec,io_idx_co)
 
                    this%rvars(ir_hydro_th_troot)%r81d(io_idx_co) = ccohort%co_hydr%th_troot
@@ -3062,9 +3067,9 @@ contains
                 if(hlm_use_planthydro==itrue)then
 
                    ! Load the water contents
-                   call this%GetCohortRealVector(ccohort%co_hydr%th_ag,n_hypool_ag, &
+                   call this%GetCohortRealVector(ccohort%co_hydr%th_ag,1,n_hypool_ag, &
                                                  ir_hydro_th_ag_covec,io_idx_co)
-                   call this%GetCohortRealVector(ccohort%co_hydr%th_aroot,sites(s)%si_hydr%nlevrhiz, &
+                   call this%GetCohortRealVector(ccohort%co_hydr%th_aroot,1,sites(s)%si_hydr%nlevrhiz, &
                                                  ir_hydro_th_aroot_covec,io_idx_co)
 
                    ccohort%co_hydr%th_troot = this%rvars(ir_hydro_th_troot)%r81d(io_idx_co)
@@ -3083,7 +3088,8 @@ contains
                     ccohort%treesai = this%rvars(ir_treesai_co)%r81d(io_idx_co)
                 end if
                 
-                call this%GetCohortRealVector(ccohort%year_net_uptake,nlevleafmem,ir_year_net_up_co,io_idx_co)
+                call this%GetCohortRealVector(ccohort%year_net_uptake, &
+                     leafmem_min,leafmem_max,ir_year_net_up_co,io_idx_co)
                 
                 io_idx_co = io_idx_co + 1
 

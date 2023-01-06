@@ -39,7 +39,7 @@ Module EDCohortDynamicsMod
   use EDTypesMod            , only : min_npm2, min_nppatch
   use EDTypesMod            , only : min_n_safemath
   use EDTypesMod            , only : nlevleaf
-  use EDTypesMod            , only : nlevleafmem
+  use EDTypesMod            , only : leafmem_min,leafmem_max
   use EDTypesMod            , only : GetLeafFromMemLayer
   use PRTGenericMod         , only : max_nleafage
   use EDTypesMod            , only : ican_upper
@@ -1249,7 +1249,7 @@ contains
                                       write(fates_log(),*) 'canopy_layer_yesterday:', &
                                            currentCohort%canopy_layer_yesterday,nextc%canopy_layer_yesterday
                                       write(fates_log(),*) 'is_trimmable:',currentCohort%is_trimmable,nextc%is_trimmable
-                                      do i=1, nlevleafmem
+                                      do i=leafmem_min,leafmem_max
                                          write(fates_log(),*) 'leaf level: ',i,'year_net_uptake', &
                                               currentCohort%year_net_uptake(i),nextc%year_net_uptake(i)
                                       end do
@@ -2047,19 +2047,23 @@ contains
                + ncohort%n*ncohort%canopy_trim)/(ccohort%n+ncohort%n)
        end if
           
-       do ivm = 1, min(nlevleafmem,ccohort%nveg_max)
-          iv = GetLeafFromMemLayer(ccohort,ivm)
-          joint_net_uptake(iv) = ccohort%n*ccohort%year_net_uptake(ivm)
-          joint_wgt(iv)        = ccohort%n
+       do ivm = leafmem_min, min(leafmem_max,ccohort%nveg_max)
+          if(iv<=nlevleaf .and. iv>0 .and. abs(ccohort%year_net_uptake(ivm))>nearzero)then
+             iv = GetLeafFromMemLayer(ccohort,ivm)
+             joint_net_uptake(iv) = ccohort%n*ccohort%year_net_uptake(ivm)
+             joint_wgt(iv)        = ccohort%n
+          end if
        end do
-       do ivm = 1, min(nlevleafmem,ncohort%nveg_max)
+       do ivm = leafmem_min, min(leafmem_max,ncohort%nveg_max)
           iv = GetLeafFromMemLayer(ncohort,ivm)
-          joint_net_uptake(iv) = joint_net_uptake(iv)+ncohort%n*ncohort%year_net_uptake(ivm)
-          joint_wgt(iv)        = joint_wgt(iv)+ncohort%n
+          if(iv<=nlevleaf .and. iv>0 .and. abs(ccohort%year_net_uptake(ivm))>nearzero)then
+             joint_net_uptake(iv) = joint_net_uptake(iv)+ncohort%n*ncohort%year_net_uptake(ivm)
+             joint_wgt(iv)        = joint_wgt(iv)+ncohort%n
+          end if
        end do
 
-       iv0 = max(1,min(ccohort%nveg_max,ncohort%nveg_max)-nlevleafmem+1)
-       iv1 = max(ccohort%nveg_max,ncohort%nveg_max)
+       !iv0 = max(1,min(ccohort%nveg_max,ncohort%nveg_max)-nlevleafmem+1)
+       !iv1 = max(ccohort%nveg_max,ncohort%nveg_max)
 
        if(debug)then
           if(joint_wgt(iv0)<nearzero .or. joint_wgt(iv1)<nearzero) then
@@ -2069,8 +2073,9 @@ contains
              call endrun(msg=errMsg(sourcefile, __LINE__))
           end if
        end if
-       
-       do iv = iv0 ,iv1
+
+       ! This loop can be shortened (RGK-01-2023)
+       do iv = 1,nlevleaf
           ! It really is possible to have a zero weight if
           ! the two cohorts have very different maximum layer depths
           if(joint_wgt(iv)>nearzero) then
@@ -2079,9 +2084,13 @@ contains
        end do
        
        ccohort%nveg_max = max(ccohort%nveg_max,ncohort%nveg_max)
-       do ivm = 1, min(nlevleafmem,ccohort%nveg_max)
+       do ivm = leafmem_min, min(leafmem_max,ccohort%nveg_max)
           iv = GetLeafFromMemLayer(ccohort,ivm)
-          ccohort%year_net_uptake(ivm) = joint_net_uptake(iv)
+          if(iv<=nlevleaf .and. iv>0)  then
+             ccohort%year_net_uptake(ivm) = joint_net_uptake(iv)
+          else
+             ccohort%year_net_uptake(ivm) = 0._r8
+          end if
        end do
 
     else
@@ -2612,27 +2621,28 @@ contains
        if (nveg_max .ne. cohort%nveg_max) then
           di = nveg_max - cohort%nveg_max
 
-          year_net_uptake_low = cohort%year_net_uptake(1)
-          year_net_uptake_high  = cohort%year_net_uptake(nlevleafmem)
+          year_net_uptake_high  = cohort%year_net_uptake(leafmem_max)
           
           if (match_old_trim_method) then
              if(di>0) then
+                ! We shift layers up by di,
                 ! We need a new layer
-                cohort%year_net_uptake(1+di:nlevleafmem)             = cohort%year_net_uptake(1:nlevleafmem-di)
-                cohort%year_net_uptake(1:di)                         = 0._r8
+                cohort%year_net_uptake(leafmem_min+di:leafmem_max)     = cohort%year_net_uptake(leafmem_min:leafmem_max-di)
+                cohort%year_net_uptake(leafmem_min:leafmem_min+di-1)   = 0._r8
              else
                 ! We need to remove a layer
-                cohort%year_net_uptake(1:nlevleafmem+di)             = cohort%year_net_uptake(1-di:nlevleafmem)
-                cohort%year_net_uptake(nlevleafmem+di+1:nlevleafmem) = year_net_uptake_high
+                cohort%year_net_uptake(leafmem_min:leafmem_max+di)   = cohort%year_net_uptake(leafmem_min-di:leafmem_max)
+                cohort%year_net_uptake(leafmem_max+di+1:leafmem_max) = year_net_uptake_high
              end if
           else
              if(di>0) then
                 ! We need a new layer
-                cohort%year_net_uptake(1+di:nlevleafmem)             = cohort%year_net_uptake(1:nlevleafmem-di)
-                cohort%year_net_uptake(1:di)                         = year_net_uptake_low
+                year_net_uptake_low = cohort%year_net_uptake(leafmem_min+di)
+                cohort%year_net_uptake(leafmem_min+di:leafmem_max)   = cohort%year_net_uptake(leafmem_min:leafmem_max-di)
+                cohort%year_net_uptake(leafmem_min:leafmem_min+di-1) = year_net_uptake_low
              else
-                cohort%year_net_uptake(1:nlevleafmem+di)             = cohort%year_net_uptake(1-di:nlevleafmem)
-                cohort%year_net_uptake(nlevleafmem+di+1:nlevleafmem) = year_net_uptake_high
+                cohort%year_net_uptake(leafmem_min:leafmem_max+di)   = cohort%year_net_uptake(leafmem_min-di:leafmem_max)
+                cohort%year_net_uptake(leafmem_max+di+1:leafmem_max) = year_net_uptake_high
              end if
           end if
        end if

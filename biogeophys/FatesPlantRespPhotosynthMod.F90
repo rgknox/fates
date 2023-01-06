@@ -37,7 +37,7 @@ module FATESPlantRespPhotosynthMod
   use FatesInterfaceTypesMod, only : nleafage
   use EDTypesMod,        only : maxpft
   use EDTypesMod,        only : nlevleaf
-  use EDTypesMod,        only : nlevleafmem
+  use EDTypesMod,        only : leafmem_min,leafmem_max
   use EDTypesMod,        only : nclmax
   use EDTypesMod,        only : GetLeafFromMemLayer
   use EDTypesMod,        only : GetMemFromLeafLayer
@@ -667,7 +667,7 @@ contains
                                ! If the leaves are fully flushed, it should end on
                                ! the leaf memory index of 1.
 
-                               do ivm = 1,nlevleafmem
+                               do ivm = 1,leafmem_max
                                   iv = GetLeafFromMemLayer(currentCohort,ivm)
                                   if(iv>0 .and. iv<=nva) then
                                      currentCohort%ts_net_uptake(ivm) = anet_av_z(iv,ft,cl) * umolC_to_kgC
@@ -676,7 +676,7 @@ contains
                                
                             else
                                
-                               do ivm = 1,min(nlevleafmem,nva)
+                               do ivm = 1,min(leafmem_max,nva)
                                   
                                   ! This is the fraction of actual leaf bins versus the 
                                   ! current allometric maximum

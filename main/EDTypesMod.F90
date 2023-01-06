@@ -69,7 +69,10 @@ module EDTypesMod
   integer, parameter, public :: idiffuse  = 2             ! This is the array index for diffuse radiation
 
   ! parameters that govern the VAI (LAI+SAI) bins used in radiative transfer code
-  integer, parameter, public :: nlevleafmem = 10            ! number of layers for veg memory used for trimming
+  !integer, parameter, public :: nlevleafmem = 10            ! number of layers for veg memory used for trimming
+  integer, parameter, public :: leafmem_min = -1            ! memory index for lowest leaf layer position
+                                                            ! to track memory (where layer 1 = %nveg_max)
+  integer, parameter, public :: leafmem_max = 7             ! memory index for highest leaf layer position
   integer, parameter, public :: nlevleaf   = 30             ! number of leaf+stem layers in canopy layer
   real(r8), public :: dinc_vai(nlevleaf)   = fates_unset_r8 ! VAI bin widths array
   real(r8), public :: dlower_vai(nlevleaf) = fates_unset_r8 ! lower edges of VAI bins
@@ -348,8 +351,8 @@ module EDTypesMod
 
 
 
-     real(r8) ::  ts_net_uptake(nlevleafmem)              ! Net uptake of leaf layers: kgC/m2/timestep
-     real(r8) ::  year_net_uptake(nlevleafmem)            ! Net uptake of leaf layers: kgC/m2/year
+     real(r8) ::  ts_net_uptake(1:leafmem_max)              ! Net uptake of leaf layers: kgC/m2/timestep
+     real(r8) ::  year_net_uptake(leafmem_min:leafmem_max)  ! Net uptake of leaf layers: kgC/m2/year
 
 
      ! RESPIRATION COMPONENTS
