@@ -348,7 +348,7 @@ contains
                 ! Output:
                 ! currentPatch%ncan(:,:)
                 ! currentPatch%canopy_mask(:,:)
-                call UpdateCanopyNCanNRadPresent(currentPatch)
+                !!call UpdateCanopyNCanNRadPresent(currentPatch)
 
 
                 ! Part IV.  Identify some environmentally derived parameters:
@@ -1859,79 +1859,6 @@ subroutine quadratic_fast (a, b, c, r1, r2)
    !  end if
 
 end subroutine quadratic_fast
-
-
-! ====================================================================================
-
-subroutine UpdateCanopyNCanNRadPresent(currentPatch)
-
-  ! ---------------------------------------------------------------------------------
-  ! This subroutine calculates two patch level quanities:
-  ! currentPatch%ncan   and
-  ! currentPatch%canopy_mask
-  !
-  ! currentPatch%ncan(:,:) is a two dimensional array that indicates
-  ! the total number of leaf layers (including those that are not exposed to light)
-  ! in each canopy layer and for each functional type.
-  !
-  ! currentPatch%nrad(:,:) is a two dimensional array that indicates
-  ! the total number of EXPOSED leaf layers, but for all intents and purposes
-  ! in the photosynthesis routine, this appears to be the same as %ncan...
-  !
-  ! currentPatch%canopy_mask(:,:) has the same dimensions, is binary, and
-  ! indicates whether or not leaf layers are present (by evaluating the canopy area
-  ! profile).
-  ! ---------------------------------------------------------------------------------
-
-
-   use EDTypesMod , only : ed_patch_type
-   use EDTypesMod , only : ed_cohort_type
-
-   ! Arguments
-   type(ed_patch_type), target :: currentPatch
-   type(ed_cohort_type), pointer :: currentCohort
-
-   ! Locals
-   integer :: cl  ! Canopy Layer Index
-   integer :: ft  ! Function Type Index
-   integer :: iv  ! index of the exposed leaf layer for each canopy layer and pft
-
-   ! Loop through the cohorts in this patch, associate each cohort with a layer and PFT
-   ! and use the cohort's memory of how many layer's it takes up to assign the maximum
-   ! of the layer/pft index it is in
-   ! ---------------------------------------------------------------------------------
-
-   currentPatch%ncan(:,:) = 0
-   ! redo the canopy structure algorithm to get round a
-   ! bug that is happening for site 125, FT13.
-   currentCohort => currentPatch%tallest
-   do while(associated(currentCohort))
-
-      currentPatch%ncan(currentCohort%canopy_layer,currentCohort%pft) = &
-         max(currentPatch%ncan(currentCohort%canopy_layer,currentCohort%pft), &
-         currentCohort%NV)
-
-      currentCohort => currentCohort%shorter
-
-   enddo !cohort
-
-   ! NRAD = NCAN ...
-   currentPatch%nrad = currentPatch%ncan
-
-   ! Now loop through and identify which layer and pft combo has scattering elements
-   do cl = 1,nclmax
-      do ft = 1,numpft
-         currentPatch%canopy_mask(cl,ft) = 0
-         do iv = 1, currentPatch%nrad(cl,ft);
-            if(currentPatch%canopy_area_profile(cl,ft,iv) > 0._r8)then
-               currentPatch%canopy_mask(cl,ft) = 1
-            end if
-         end do !iv
-      enddo !ft
-   enddo !cl
-
-   return
-end subroutine UpdateCanopyNCanNRadPresent
 
 ! ====================================================================================
 

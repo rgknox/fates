@@ -1588,18 +1588,8 @@ contains
              else
                 fleaf = 0._r8
              endif
-
-             currentPatch%nrad(cl,ft) = currentPatch%ncan(cl,ft)
-
-             if (currentPatch%nrad(cl,ft) > nlevleaf ) then
-                write(fates_log(), *) 'Number of radiative leaf layers is larger'
-                write(fates_log(), *) ' than the maximum allowed.'
-                write(fates_log(), *) ' cl: ',cl
-                write(fates_log(), *) ' ft: ',ft
-                write(fates_log(), *) ' nlevleaf: ',nlevleaf
-                write(fates_log(), *) ' currentPatch%nrad(cl,ft): ', currentPatch%nrad(cl,ft)
-                call endrun(msg=errMsg(sourcefile, __LINE__))
-             end if
+             
+             
 
 
              ! --------------------------------------------------------------------------
@@ -1770,19 +1760,36 @@ contains
 
           ! --------------------------------------------------------------------------
           ! Set the mask that identifies which PFT x can-layer combinations have
-          ! scattering elements in them.
+          ! scattering elements in them for radiation.
+          ! RGK: I'm not sure we need nrad ... I can't see a scenario where
+          !      canopy_area_profile for these layers is not >0 for layers in ncan ...
+          !      Leaving this for the time being.
           ! --------------------------------------------------------------------------
 
           do cl = 1,currentPatch%NCL_p
              do ft = 1,numpft
-                do  iv = 1, currentPatch%nrad(cl,ft)
+                currentPatch%nrad(cl,ft) = 0
+                do_leaflayer: do  iv = 1, currentPatch%ncan(cl,ft)
                    if(currentPatch%canopy_area_profile(cl,ft,iv) > 0._r8)then
-                      currentPatch%canopy_mask(cl,ft) = 1
+                      currentPatch%nrad(cl,ft) = iv
+                   else
+                      exit do_leaflayer
                    endif
-                end do !iv
+                end do do_leaflayer !iv
              enddo !ft
           enddo ! loop over cl
 
+          !currentPatch%nrad(cl,ft) = currentPatch%ncan(cl,ft)
+          !if (currentPatch%nrad(cl,ft) > nlevleaf ) then
+          !   write(fates_log(), *) 'Number of radiative leaf layers is larger'
+          !   write(fates_log(), *) ' than the maximum allowed.'
+          !   write(fates_log(), *) ' cl: ',cl
+          !   write(fates_log(), *) ' ft: ',ft
+          !   write(fates_log(), *) ' nlevleaf: ',nlevleaf
+          !   write(fates_log(), *) ' currentPatch%nrad(cl,ft): ', currentPatch%nrad(cl,ft)
+          !   call endrun(msg=errMsg(sourcefile, __LINE__))
+          !end if
+          
        end if
 
        currentPatch => currentPatch%younger

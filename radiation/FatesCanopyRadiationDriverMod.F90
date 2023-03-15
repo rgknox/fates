@@ -55,12 +55,7 @@ module EDSurfaceRadiationMod
   ! and so they are stored here for now in common with the ice parameters above.
   ! in principle these could be moved to the parameter file.
 
-  real(r8), public  :: albice(maxSWb) = &       ! albedo land ice by waveband (1=vis, 2=nir)
-       (/ 0.80_r8, 0.55_r8 /)
-  real(r8), public  :: rho_snow(maxSWb) = &       ! albedo land ice by waveband (1=vis, 2=nir)
-       (/ 0.80_r8, 0.55_r8 /)
-  real(r8), public  :: tau_snow(maxSWb) = &       ! albedo land ice by waveband (1=vis, 2=nir)
-       (/ 0.01_r8, 0.01_r8 /)
+
 contains
 
   subroutine ED_Norman_Radiation (nsites, sites, bc_in, bc_out )
