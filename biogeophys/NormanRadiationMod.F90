@@ -934,7 +934,8 @@ Module NormanRadiationMod
     end if
 
     
-    if(dir_int==dir_int_simp) then
+    select case(dir_int)
+    case(dir_int_simp) then
 
        do ic = 1,numcl !start at the top canopy layer (1 is the top layer.)
           
@@ -999,78 +1000,36 @@ Module NormanRadiationMod
                         (carea_profile(ic,ft,iv)/carea_profile(ic,ft,1))
                 endif
                 
+             end do sum_tr_dir
+          end do
+       end do
+    case(dir_int_base) then
 
-             
-             
-             !total direct beam getting to the bottom of the top canopy.
-             sum_tr_dir: do iv = 1,nrad(ic,ft)
-                
-             if(beers_method == base_method) then
-                ! leaf+stem area per m2 of the PFT's ground area
-                laisum = laisum + elai_profile(ic,ft,iv)+esai_profile(ic,ft,iv)
-                if (ic==1)then
-                   tr_dir(ic,ft,iv+1) = exp(-k_dir(ft) * laisum) * &
-                        (carea_profile(ic,ft,iv)/carea_profile(ic,ft,1))
-                else
-                   tr_dir(ic,ft,iv+1) = weighted_dir_tr(ic-1)*exp(-k_dir(ft) * laisum)* &
-                        (carea_profile(ic,ft,iv)/carea_profile(ic,ft,1))
-                endif
-             else
-                laisum = laisum + &
-                     (elai_profile(ic,ft,iv)+esai_profile(ic,ft,iv)) * &
-                     carea_profile(ic,ft,iv)/carea_profile(ic,ft,1)
-                
-                tr_dir(ic,ft,iv+1) = exp(-k_dir(ft) * laisum)
-             end if
-
-
-             
-    else
-
-       
        do ic = 1,numcl !start at the top canopy layer (1 is the top layer.)
           
           weighted_dir_tr(ic)              = 0._r8
           weighted_fsun(ic)                = 0._r8
           
-          ! etai_above:  mean total (stem+leaf) area index in the
-          ! canopy layer above current (per m2 of total canopy area)
-       if(ic==1)then
-          etai_above = 0._r8
-       else
+          ! Each canopy layer (canopy, understorey) has multiple 'parallel' pft's
+          
           do ft = 1,numpft
-             do iv = 1,nrad(ic,ft)
-                etai_above=etai_above + &
-                     (elai_profile(ic,ft,iv)+esai_profile(ic,ft,iv))*carea_profile(ic,ft,iv)
-          end do
-       end if
-       
-       ! Each canopy layer (canopy, understorey) has multiple 'parallel' pft's
-       
-       do ft = 1,numpft
-               
-          !------------------------------------------------------------------------------!
-          ! Direct beam transmittance, tr_dir, uses cumulative LAI above layer iv
-          ! (ie iv+1) to give unscattered direct beam onto layer iv. do each PFT section.
-          ! This is just an  decay curve based on k_dir. (leaf & sun angle)
-          !------------------------------------------------------------------------------!
-          if (ic==1)then
-             tr_dir(ic,ft,1) = 1._r8
-          else
-             tr_dir(ic,ft,1) = weighted_dir_tr(ic-1)
-          endif
-
-          if(beers_method==base_method) then
-             laisum = 0._r8
-          else
-             laisum = etai_above
-          end if
              
-          !total direct beam getting to the bottom of the top canopy.
-          sum_tr_dir: do iv = 1,nrad(ic,ft)
+             !------------------------------------------------------------------------------!
+             ! Direct beam transmittance, tr_dir, uses cumulative LAI above layer iv
+             ! (ie iv+1) to give unscattered direct beam onto layer iv. do each PFT section.
+             ! This is just an  decay curve based on k_dir. (leaf & sun angle)
+             !------------------------------------------------------------------------------!
+             if (ic==1)then
+                tr_dir(ic,ft,1) = 1._r8
+             else
+                tr_dir(ic,ft,1) = weighted_dir_tr(ic-1)
+             endif
+                   
+             laisum = 0._r8
+             !total direct beam getting to the bottom of the top canopy.
+             sum_tr_dir: do iv = 1,nrad(ic,ft)
 
-             ! This is light coming straight through the canopy.
-             if(beers_method == base_method) then
+                ! This is light coming straight through the canopy.
                 ! leaf+stem area per m2 of the PFT's ground area
                 laisum = laisum + elai_profile(ic,ft,iv)+esai_profile(ic,ft,iv)
                 if (ic==1)then
@@ -1080,13 +1039,7 @@ Module NormanRadiationMod
                    tr_dir(ic,ft,iv+1) = weighted_dir_tr(ic-1)*exp(-k_dir(ft) * laisum)* &
                         (carea_profile(ic,ft,iv)/carea_profile(ic,ft,1))
                 endif
-             else
-                laisum = laisum + &
-                     (elai_profile(ic,ft,iv)+esai_profile(ic,ft,iv)) * &
-                     carea_profile(ic,ft,iv)/carea_profile(ic,ft,1)
-                
-                tr_dir(ic,ft,iv+1) = exp(-k_dir(ft) * laisum)
-             end if
+
              
              
              if (iv == 1)then
