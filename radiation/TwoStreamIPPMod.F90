@@ -10,17 +10,42 @@ Module TwoStreamIPAMod
   ! columns, there are further sub-layer discretizations,
   ! which are organized by top-down integrated vegetation
   ! area index.
-
+  !
+  ! Assumptions: band index 1 = visible (vis)
+  !                         2 = near infrared (nir)
+  !                         3 = thermal
+  !
+  
   type rad_params_type
-     real(r8), allocatable :: rhol(:,:)     ! leaf reflectance: 1=vis, 2=nir    x pft
-     real(r8), allocatable :: rhos(:,:)     ! stem reflectance: 1=vis, 2=nir    x pft
-     real(r8), allocatable :: taul(:,:)     ! leaf transmittance: 1=vis, 2=nir  x pft
-     real(r8), allocatable :: taus(:,:)     ! stem transmittance: 1=vis, 2=nir  x pft
-     real(r8), allocatable :: xl(:)         ! leaf/stem orientation index, by pft
-     real(r8), allocatable :: clumping_index(:) ! clumping index 0-1, when leaves stick together, by pft
+
+     ! From the parameter file
+     real(r8), allocatable :: rhol(:,:)         ! leaf reflectance:   (band x pft)
+     real(r8), allocatable :: rhos(:,:)         ! stem reflectance:   (band x pft)
+     real(r8), allocatable :: taul(:,:)         ! leaf transmittance: (band x pft)
+     real(r8), allocatable :: taus(:,:)         ! stem transmittance: (band x pft)
+     real(r8), allocatable :: xl(:)             ! leaf/stem orientation (pft)
+     real(r8), allocatable :: clumping_index(:) ! clumping index 0-1, when
+                                                ! leaves stick together (pft)
+
+     ! Derived
+     real(r8), allocatable :: phi1(:)        ! intermediate term for kd and kb
+     real(r8), allocatable :: phi2(:)        ! intermediate term for kd and kb
+     real(r8), allocatable :: kd_leaf(:)     ! Mean optical depth per unit area leaves in diffuse
+     real(r8), allocatable :: kd_stem(:)     ! Mean optical depth per unit area stems in diffuse
+     real(r8), allocatable :: betad_leaf(:)  ! Diffuse backscatter fraction for leaves
+     real(r8), allocatable :: betad_stem(:)  ! Diffuse backscatter fraction for stems
+     real(r8), allocatable :: om_snow(:)     ! Snow scattering albedo for snow (band)
+     real(r8), allocatable :: om_leaf(:,:)   ! Leaf scattering albedo (band x pft)
+     real(r8), allocatable :: om_stem(:,:)   ! Stem scattering albedo (band x pft)
+
+     
+     !real(r8), allocatable :: betab(:,:)
+     
+
+     
   end type rad_params_type
 
-  type(rad_params_type), allocatable :: rad_params(:)
+  type(rad_params_type) :: rad_params
 
   
   type scel_type
@@ -35,12 +60,15 @@ Module TwoStreamIPAMod
   type twostream_type
   
      type(scel_type), allocatable :: scel(:)  ! scattering elements for each layer
+     integer                      :: n_scel
      real(r8)                     :: grnd_albedo 
 
-     real(r8), allocatable        :: etad(:)  ! effective scattering area density
-     real(r8), allocatable        :: Kd(:)    ! diffuse scattering area density
+     real(r8), allocatable        :: eta_e(:)   ! effective scattering area density
+     real(r8), allocatable        :: kd_e(:)    ! mean optical depth per unit scattering
+                                                ! area of media in the element
+                                                ! weighted combination of kd_leaf and kd_stem
      real(r8), allocatable        :: bd(:)    
-     real(r8), allocatable        :: om(:)    ! single scattering albedo
+     real(r8), allocatable        :: om_e(:)    ! single scattering albedo
      
      
      
@@ -52,23 +80,166 @@ Module TwoStreamIPAMod
      
   end type twostream_type
 
+
+  ! Assumptions 1=visible (vis)
+  !             2=near infrared (nir)
+  !             3=thermal 
+  
+
+  ! Constants or reasonable approximations thereof
+  real(r8), parameter :: snow_scatter_vis = 0.8_r8
+  real(r8), parameter :: snow_scatter_nir = 0.4_r8
+  real(r8), parameter :: snow_scatter_thm = 0.4_r8
+  real(r8), parameter :: kd_snow          = 1.0_r8  
+
   
 contains
 
-  subroutine ParmPrep()
+
+  subroutine ParamPrep(numpft)
+
+    real(r8) :: mu
+
+    do ft = 1,numpft
+
+       ! There must be protections on xl to prevent div0 and other weirdness
+       rad_params%phi1(ft) = 0.5_r8 - 0.633_r8*rad_params%xl(ft) - 0.330_r8*rad_params%xl(ft)*rad_params%xl(ft)
+       rad_params%phi2(ft) = 0.877_r8 * (1._r8 - 2._r8*rad_params%phi1b(ft)) !0 = horiz leaves, 1 - vert leaves.
+
+       mu = (1._r8/rad_params%phi2(ft))* &
+            (1._r8-(rad_params%phi1(ft)/rad_params%phi2(ft))* &
+            log((rad_params%phi2(ft)+rad_params%phi1(ft))/rad_params%phi1(ft)))
+       
+       rad_params%kd_leaf(ft) = 1/mu
+       rad_params%kd_stem(ft) = 1._r8  ! Isotropic assumtion
+
+       rad_params%om_leaf(ib,ft) = rad_params%rhol(ib,ft) + taul(ib,ft)
+       rad_params%om_stem(ib,ft) = rad_params%rhos(ib,ft) + taus(ib,ft)
+       
+       rad_params%om_leaf(ib,ft) = rad_params%rhol(ib,ft) + taul(ib,ft)
+       rad_params%om_stem(ib,ft) = rad_params%rhos(ib,ft) + taus(ib,ft)
+
+       !rad_params%betad_leaf(ib,ft) = rad_params%rhol(ib,ft)/rad_params%om_leaf(ib,ft)
+       !rad_params%betad_stem(ib,ft) = rad_params%rhos(ib,ft)/rad_params%om_stem(ib,ft)
+
+      
 
 
+       
+    end do
     
-    
-    etad = zeros(nlayer,1);  % Effective Scattering Area Density
-    Kd   = zeros(nlayer,1);
-    bd   = zeros(nlayer,3);
-    om   = zeros(nlayer,3);
 
+  end subroutine ParamPrep
+
+  
+  subroutine CanopyPrep(this,ib)
+
+    ! Pre-process things that change with canopy-geometry
+    
+    class(twostream_type) :: this
+
+    integer :: ie  ! scattering element index
+    integer :: ic  ! canopy layer index (top down)
+    
+    ie = 0
+    do ican = 1,ubound(this%scel,1)
+
+       do icol = 1,this%scel(ican)%n_col
+
+          ie = ie + 1
+          ft = this%scel(ican)%col_pft(icol)
+          
+          this%eta_e(ie) = this%scel(ican)%col_lai(icol) + this%scel(ican)%col_sai(icol)
+
+          ! Mean element transmission coefficients w/o snow effects
+          this%kd_e(ie) =  (this%scel(ican)%col_lai(icol) * rad_params%kd_leaf(ft) + &
+                            this%scel(ican)%col_sai(icol) * rad_params%kd_stem(ft))/this%eta_e(ie)
+          
+          this%om_e(ie) =  (this%scel(ican)%col_lai(icol)*rad_params%om_leaf(ib,ft) + &
+                            this%scel(ican)%col_sai(icol)*rad_params%om_stem(ib,ft))/this%eta_e(ie)
+
+          !betad_e(ie) = (this%scel(ican)%col_lai(icol)*rad_params%betad_leaf(ib,ft) + &
+          !               this%scel(ican)%col_sai(icol)*rad_params%betad_stem(ib,ft))/this%eta_e(ie)
+
+          ! Mean element transmission coefficients with snow effects
+          this%kd_e(ie) = fsnow*kd_snow + (1._r8-fsnow)*this%kd_e(ie)
+
+          this%om_e(ie) = fsnow*rad_params%om_snow(ib) + (1._r8-fsnow)*this%om_e(ie)
+          
+          ! Diffuse backscatter, taken from G. Bonan's code
+
+          rho = (this%scel(ican)%col_lai(icol) * rad_params%rho_leaf(ft) + &
+                 this%scel(ican)%col_sai(icol) * rad_params%rho_stem(ft))/this%eta_e(ie)
+          tau = (this%scel(ican)%col_lai(icol) * rad_params%tau_leaf(ft) + &
+                 this%scel(ican)%col_sai(icol) * rad_params%tau_stem(ft))/this%eta_e(ie)
+          
+          this%betad_e(ie)  = 0.5_r8 / this%om_e(ie) * &
+               ( this%om_e(ie) + (rho-tau) * ((1._r8+rad_params%xl(ft))/2._r8)**2._r8 )
+
+          this%betad_e(ie) = fsnow*rad_params%betad_snow(ib) + (1._r8-fsnow)*this%betad_e(ie)
+          
+          
+          
+       end do
+    end do
     
     return
-  end subroutine ParmPrep
+  end subroutine CanopyPrep
 
+  ! =============================================================================
+  
+  subroutine ZenithPrep(cosz,ib)
+
+    ! Pre-process things that change with the zenith angle
+    ! i.e. the beam optical properties
+        
+    ie = 0
+    do ican = 1,ubound(this%scel,1)
+
+       do icol = 1,this%scel(ican)%n_col
+
+          ie = ie + 1
+          ft = this%scel(ican)%col_pft(icol)
+
+          gdir = rad_params%phi1(ft) + rad_params%phi2(ft) * cosz
+          
+          !how much direct light penetrates a singleunit of lai?
+          this%kb_e(ie) = gdir / cosz
+
+          ! betab - upscatter parameter for direct beam radiation, from G. Bonan
+
+          avmu = (1._r8 - rad_params%phi1(ft)/rad_params%phi2(ft) * &
+               log((rad_params%phi1(ft)+rad_params%phi2(ft))/rad_params%phi1(ft))) / rad_params%phi2(ft)
+
+          tmp0 = gdir + phi2 * cosz
+          tmp1 = phi1 * cosz
+          tmp2 = 1._r8 - tmp1/tmp0 * log((tmp1+tmp0)/tmp1)
+          asu = 0.5_r8 * this%om_e(ie) * gdir / tmp0 * tmp2
+          this%betab_e(ie) = (1._r8 + avmu*this%kb_e(ie)) / (this%om_e(ie)*avmu*this%kb_e(ie)) * asu
+       
+    end do !FT
+
+
+  
+end subroutine ZenithPrep
+
+
+  function GetNSCel(this) result(n_scel)
+
+    ! Simply return the total number
+    ! of scattering elements from the
+    ! multi-layer scattering element array
+    
+    class(twostream_type) :: this
+    integer :: n_scel
+    
+    n_scel = 0
+    do ic = 1,ubound(this%scel,1)
+       n_scel = n_scel + this%scel(ic)%n_col
+    end do
+    
+  end function GetNSCel
+  
   
   subroutine Solve(this,ib,Rbeam0)
 
@@ -96,18 +267,12 @@ contains
 
     integer :: ic  ! Loop index for canopy layers
     integer :: ie  ! Loop index for scattering elements
+
+    associate(n_scel => this%n_scel)
     
-    n_cl = ubound(scel,1)
-
-    n_scel = 0
-    do ic = 1,ncl
-       n_scel = n_scel + scel(ic)%n_col
-    end do
-
-
-    allocate(omega(2*n_scel,2*n_scel))
-    allocate(tau(2*n_scel,1))
-    allocate(lambda(2*n_scel,1))
+    allocate(omega(2*this%n_scel,2*this%n_scel))
+    allocate(tau(2*this%n_scel,1))
+    allocate(lambda(2*this%n_scel,1))
 
     baf
     om
@@ -233,7 +398,7 @@ contains
      end do
 
     
-    
+
 
     return
   end subroutine TwoStreamDrive
