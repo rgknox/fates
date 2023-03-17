@@ -1003,6 +1003,7 @@ Module NormanRadiationMod
              end do sum_tr_dir
           end do
        end do
+       
     case(dir_int_base) then
 
        do ic = 1,numcl !start at the top canopy layer (1 is the top layer.)
