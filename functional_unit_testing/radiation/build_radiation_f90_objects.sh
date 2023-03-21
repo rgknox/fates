@@ -4,7 +4,7 @@
 
 FC='gfortran'
 
-F_OPTS="-shared -fPIC -g -ffpe-trap=zero,overflow,underflow -fbacktrace -fbounds-check"
+F_OPTS="-shared -fPIC -g -ffpe-trap=zero,overflow,underflow -fbacktrace -fbounds-check -Wall"
 #F_OPTS="-shared -fPIC -O"
 
 
