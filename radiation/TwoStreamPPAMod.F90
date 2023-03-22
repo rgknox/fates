@@ -328,38 +328,42 @@ end subroutine ZenithPrep
     end do
     
   end function GetNSCel
+
+  ! ===============================================================
   
-  
-  subroutine Solve(this,ib,Rbeam0,Rdiff0)
+  subroutine Solve(this,ib,Rbeam0,Rdiff0,omega_g)
 
     class(twostream_type) :: this
     integer,intent(in)    :: ib       ! band index
-    real(r8)              :: Rbeam0
-    
-    real(r8)              :: Rdiff0
+    real(r8)              :: Rbeam0   ! Intensity of beam radiation at top of canopy [W/m2]
+    real(r8)              :: Rdiff0   ! Intensity of diffuse radiation at top of canopy [W/m2]
+    real(r8)              :: omega_g  ! Albedo of the ground (ie fraction of radiation reflected
+                                      ! in this band
 
     ! Two stream solution arrays
     ! Each of these are given generic names, because
     ! they are assemblages of many terms. But generally
     ! they fit the linear algebra formulation:
     !
-    ! tau(:) = omega(:,:) * lambda(:)
+    ! TAU(:) = OMEGA(:,:) * LAMBDA(:)
     !
-    ! Where, we invert to solve for the coefficients lambda
-
+    ! Where, we invert to solve for the coefficients LAMBDA
     
-    real(r8),allocatable :: omega(:,:)
-    real(r8),allocatable :: tau(:)
-    real(r8),allocatable :: lambda(:)
+    real(r8),allocatable :: OMEGA(:,:)
+    real(r8),allocatable :: TAU(:)
+    real(r8),allocatable :: LAMBDA(:)
 
+    integer :: n_can ! number of canopy layers
     integer :: ican  ! Loop index for canopy layers
     integer :: icol  ! Loop index for canopy columns
-    integer :: ilem  ! Loop index for scattering elements
+    integer :: jcol  ! Another loop index for canopy columns
+    integer :: ilem  ! Index for scattering elements
 
     real(r8) :: Rbeam_coltop  ! Mean beam radiation at top of columns in layer      [W/m2]
     real(r8) :: Rbeam_colbot  ! Mean beam radiation at bottom of columns in layer   [W/m2]
     real(r8) :: open_area     ! Fraction of ground that is not occupied by columns [m2/m2]
-    
+
+    ! ------------------------------------------------------------------------------------
     ! Example system of equations for 2 parallel columns in each of two canopy
     ! layers.  Each line is one of the balanc equations. And the x's are
     ! the unknown coefficients used in those equations.  2 coefficients
@@ -374,14 +378,20 @@ end subroutine ZenithPrep
     ! EQ: Idn balance with upper BC can1, col 2:       x x
     ! EQ: Idn balance between upper & lower        x x x x x x
     ! EQ: Idn balance between upper & lower        x x x x     x x
-    ! EQ: Iup balance between lower & upper        x x     x x x x
-    ! EQ: Iup balance between lower & upper            x x x x x x
+    ! EQ: Iup balance between lower & upper        x x x x x x x x
+    ! EQ: Iup balance between lower & upper        x x x x x x x x
     ! EQ: Iup/Idn balance with ground, 1st col:            x x
     ! EQ: Iup/Idn Balance with ground, 2nd lower col:          x x  
-  
+    !
+    !     Note: The Iup balance between layers requires ALL
+    !     terms, because light comes out of both
+    !     upper canopy elements and reflects off soil
+    !     AND, light upwells from both lower elements.
+    !
+    ! --------------------------------------------------------------------------
     
+    ! --------------------------------------------------------------------------
     ! Beam Scattering
-    ! =====================================================================
     ! First do the direct beam stuff.  It is a trivial solution
     ! and is required as a boundary condition to the diffuse solver
     ! All parallel layers recieve downwelling form the
@@ -391,7 +401,7 @@ end subroutine ZenithPrep
     ! Rbeam() is the incident beam radiation at the top of each layer
     ! RbeamV is the area weighted mean radiation that passes through the
     ! upper canopy.
-    ! =====================================================================
+    ! --------------------------------------------------------------------------
     
     Rbeam_coltop = Rbeam0
     ilem = 0
@@ -444,10 +454,19 @@ end subroutine ZenithPrep
           print('nu_sqrd is less than zero')
           stop
        end if
-       nu_hplus(ilem)  = 0.5_r8*(1._r8+sqrt(nu_sqrd)) ! aka half (1 plus nu)
-       nu_hminus(ilem) = 0.5_r8*(1._r8-sqrt(nu_sqrd)) ! aka half (1 minus nu)
-       hb2mb1(ilem)    = 0.5_r8*(b2-b1)/eta       ! aka half b2 minus b1
-       hb2pb1(ilem)    = 0.5_r8*(b2+b1)/eta       ! aka half b1 plus b2
+
+       
+       ! B_1 term from documentation:
+       B1(ilem)  = 0.5_r8*(1._r8+sqrt(nu_sqrd)) ! aka half (1 plus nu)
+
+       ! B_2 term from documentation
+       B2(ilem) = 0.5_r8*(1._r8-sqrt(nu_sqrd)) ! aka half (1 minus nu)
+
+       ! A_2 term from documentation
+       A2(ilem)    = -0.5_r8*(b2-b1)/eta       ! aka half b2 minus b1
+
+       ! A_1 term from documentation
+       A1(ilem)    = -0.5_r8*(b2+b1)/eta       ! aka half b1 plus b2
 
     end do
 
@@ -469,52 +488,122 @@ end subroutine ZenithPrep
     ! =====================================================================
 
     
-    allocate(omega(2*this%n_scel,2*this%n_scel))
-    allocate(tau(2*this%n_scel))
-    allocate(lambda(2*this%n_scel))
+    allocate(OMEGA(2*this%n_scel,2*this%n_scel))
+    allocate(TAU(2*this%n_scel))
+    allocate(LAMBDA(2*this%n_scel))
 
+
+    n_can = ubound(this%scel,1)
+    
+    ! --------------------------------------------------------------------
+    ! I. Flux equations with the atmospheric boundary
+    ! These balance with all elements in the upper
+    ! canopy, only.  The upper canopy is layer 1.
+    ! --------------------------------------------------------------------
+    
     ilem = 0
     qp   = 0
-
-    do icol = 1,this%scel(ican)%n_col
+    
+    do icol = 1,this%scel(1)%n_col
        ilem = ilem + 1
        qp   = qp   + 1
+
        k1 = 2*(ilem-1)+1
        k2 = k1+1
        
-       TAU(qp)      =  -hb2mb1(ilem) - Rdiff0
-       OMEGA(qp,k1) =  nu_hminus(ilem)
-       OMEGA(qp,k2) =  nu_hplus(ilem)
+       TAU(qp)      =  Rdiff0 - A2(ilem)
+       OMEGA(qp,k1) =  -B2(ilem)
+       OMEGA(qp,k2) =  -B1(ilem)
        
     end do
 
-    if(ican>1) then
-       do ican = 2,ubound(this%scel,1)
-
-          epos_above = this%scel(ican1-)%n_col
-          ! Equations on the boundaries between canopy layers
-
-          ! Downwelling, includes all members from top and 1 below
-          qp = qp + 1
-          do icol = 1,this%scel(ican-1)%n_col
-
-
-          end do
-          
-          
-
-          
-       end do
-    end if
+    ! -------------------------------------------------------------------
+    ! II. Flux equations between canopy layers.
+    ! We only perform flux balancing between layers
+    ! if we have any understory, this is true if ican>1
+    ! -------------------------------------------------------------------
+    
+    if_understory: if(n_can>1) then
        
-    ! Equations between lowest canopy and the ground
+       ! Perform downwelling flux balances
+       ! Refer to Equation X in technical document
+       ! ------------------------------------------------------------
+       
+       ! This is the index offset for the layer above the
+       ! current layer of interest. We start by evaluating
+       ! Layer 2, so the offset refers to layer 1, and a
+       ! value of 0
+       ilem_off = 0
+       
+       do_dn_ican: do ican = 2,n_can
+
+          itop = ican-1  ! Top layer of the balance
+          ibot = ican    ! Bottom layer of the balance
+          
+          ! Downwelling, includes all members from top for
+          ! each independant member below
+          
+          do jcol = 1,this%scel(ibot)%n_col
+             qp = qp + 1
+             jlem = ilem_off + this%scel(itop)%n_col + jcol
+             
+             ! Include the self terms for the current element
+             ! This term is at v=0
+
+             TAU(qp) = TAU(qp) + A2(jlem)
+             k1 = 2*(jlem-1)+1
+             k2 = k1 + 1
+             OMEGA(qp,k1) = OMEGA(qp,k1) + B2(jlem)
+             OMEGA(qp,k2) = OMEGA(qp,k2) + B1(jlem)
+             
+             ! We need to include the terms from
+             ! all elements above the current element of interest
+             do icol = 1,this%scel(itop)%n_col
+                ilem = ilem_off + icol
+                TAU(qp) = TAU(qp) - &
+                     this%scel(itop)%col_area(icol) * &
+                     A2(ilem)*exp(-Kb(ilem)*etad(ilem))
+
+                k1 = 2*(ilem-1)+1
+                k2 = k1 + 1
+                
+                OMEGA(qp,k1) = OMEGA(qp,k1) - this%scel(itop)%col_area(icol) * B2(ilem)*exp(a*etad(ilem))
+                OMEGA(qp,k2) = OMEGA(qp,k2) - this%scel(itop)%col_area(icol) * B1(ilem)*exp(-a*etad(ilem))
+
+             end do
+          
+          end do
+
+          ilem_off = ilem_off + this%scel(ican-1)%n_col
+          
+       end do do_dn_ican
+
+       ! Perform flux balancing for upwelling radiation
+       ! between layers. Refer to equation X in the
+       ! technical documentation.
+
+       
+       ilem_off = 0
+       do_up_ican: do ican = 2,ubound(this%scel,1)
+
+          
+
+          
+
+          
+          ilem_off = ilem_off + this%scel(ican-1)%n_co
+       end do do_up_ican
+
+       
+    end if if_understory
+
 
     
 
     
-    deallocate(omega)
-    deallocate(tau)
-    deallocate(lambda)
+    deallocate(OMEGA)
+    deallocate(TAU)
+    deallocate(LAMBDA)
     
     return
   end subroutine Solve
