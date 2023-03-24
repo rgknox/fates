@@ -71,6 +71,16 @@ Module TwoStreamPPAMod
      real(r8), allocatable :: col_area(:)  ! m2 col/m2 ground
      real(r8), allocatable :: col_lai(:)   ! m2 of leaf area / m2 col
      real(r8), allocatable :: col_sai(:)   ! m2 of stem area / m2 col
+
+
+     ! Needed for getting an analytical solution
+     real(r8), allocatable :: a_up(:)
+     real(r8), allocatable :: b1_up(:)
+     real(r8), allocatable :: b2_up(:)
+     real(r8), allocatable :: a_dn(:)
+     real(r8), allocatable :: b1_dn(:)
+     real(r8), allocatable :: b2_dn(:)
+     
   end type scel_type
 
 
@@ -81,13 +91,17 @@ Module TwoStreamPPAMod
   
      type(scel_type), allocatable :: scel(:)     ! scattering elements for each layer
      integer                      :: n_scel      ! Number of scattering elements
-     real(r8)                     :: grnd_albedo ! Albedo of the ground
-
+     real(r8)                     :: frac_snow       ! Current mean snow-fraction of the canopy
+     real(r8)                     :: frac_snow_old   ! Previous mean snow-fraction of the canopy
+     real(r8)                     :: albedo_grnd_diff ! Ground albedo diffuse
+     real(r8)                     :: albedo_grnd_beam ! Ground albedo direct 
+     
      ! Element specific coefficients
      ! These contain weighted averages of element composition, stem, leaf and snow
      ! Ideally, we would like to spend time updating these
 
-     real(r8), allocatable        :: eta_e(:)   ! mean element effective scattering area density
+     real(r8), allocatable        :: esa_e(:)   ! mean element "E"ffective "S"cattering "A"rea
+                                                ! This is capital "V" in the tech documentation
      real(r8), allocatable        :: kd_e(:)    ! mean element optical depth per unit scattering
                                                 ! area of media
      real(r8), allocatable        :: om_e(:)    ! material scattering albedo (fraction)
@@ -95,11 +109,17 @@ Module TwoStreamPPAMod
      real(r8), allocatable        :: betad_e(:) ! Mean element backscatter fraction
                                                 ! from diffuse radiation
 
-     real(r8), allocatable        :: kb_e(:)    !
-     real(r8), allocatable        :: betab_e(:) !
+     real(r8), allocatable        :: kb_e(:)    ! mean unit optical depth of beam
+     real(r8), allocatable        :: betab_e(:) ! mean backscatter of beam
 
-     real(r8)                     :: frac_snow     ! Current mean snow-fraction of the canopy
-     real(r8)                     :: frac_snow_old ! Previous mean snow-fraction of the canopy
+     ! These are complex (or rather compound) terms
+     ! You really need to follow the documentation to see how
+     ! and why these are assembled
+     real(r8), allocatable        :: A1_e(:)    ! Complex term
+     real(r8), allocatable        :: A2_e(:)    ! Complex term
+     real(r8), allocatable        :: B1_e(:)    ! Complex term
+     real(r8), allocatable        :: B2_e(:)    ! Complex term
+     real(r8), allocatable        :: a_e(:)     ! Complex term
      
    contains
 
@@ -222,14 +242,14 @@ contains
           ilem = ilem + 1
           ft = this%scel(ican)%col_pft(icol)
           
-          this%eta_e(ilem) = this%scel(ican)%col_lai(icol) + this%scel(ican)%col_sai(icol)
+          this%tai_e(ilem) = this%scel(ican)%col_lai(icol) + this%scel(ican)%col_sai(icol)
 
           ! Mean element transmission coefficients w/o snow effects
           this%kd_e(ilem) =  (this%scel(ican)%col_lai(icol) * rad_params%kd_leaf(ft) + &
-                            this%scel(ican)%col_sai(icol) * rad_params%kd_stem(ft))/this%eta_e(ilem)
+                            this%scel(ican)%col_sai(icol) * rad_params%kd_stem(ft))/this%esa_e(ilem)
           
           this%om_e(ilem) =  (this%scel(ican)%col_lai(icol)*rad_params%om_leaf(ib,ft) + &
-                            this%scel(ican)%col_sai(icol)*rad_params%om_stem(ib,ft))/this%eta_e(ilem)
+                            this%scel(ican)%col_sai(icol)*rad_params%om_stem(ib,ft))/this%esa_e(ilem)
 
           ! Mean element transmission coefficients adding snow optical depth
           !!this%kd_e(ilem) = this%frac_snow*k_snow + this%kd_e(ilem)
@@ -239,14 +259,16 @@ contains
           ! Diffuse backscatter, taken from G. Bonan's code
 
           rho = (this%scel(ican)%col_lai(icol) * rad_params%rhol(ib,ft) + &
-                 this%scel(ican)%col_sai(icol) * rad_params%rhos(ib,ft))/this%eta_e(ilem)
+                 this%scel(ican)%col_sai(icol) * rad_params%rhos(ib,ft))/this%esa_e(ilem)
           tau = (this%scel(ican)%col_lai(icol) * rad_params%taul(ib,ft) + &
-                 this%scel(ican)%col_sai(icol) * rad_params%taus(ib,ft))/this%eta_e(ilem)
+                 this%scel(ican)%col_sai(icol) * rad_params%taus(ib,ft))/this%esa_e(ilem)
           
           this%betad_e(ilem)  = 0.5_r8 / this%om_e(ilem) * &
                ( this%om_e(ilem) + (rho-tau) * ((1._r8+rad_params%xl(ft))/2._r8)**2._r8 )
 
           !!this%betad_e(ilem) = this%frac_snow*rad_params%betad_snow(ib) + (1._r8-this%frac_snow)*this%betad_e(ilem)
+          
+          this%tai_e(ilem) = 
           
        end do
     end do
@@ -304,6 +326,7 @@ contains
           
           !!this%betab_e(ilem) = this%frac_snow*beta_snow + this%betab_e(ilem)
           
+          this%albedo_grnd_beam = 1.e-36  ! Must fill this in
           
     end do
  end do
@@ -361,8 +384,20 @@ end subroutine ZenithPrep
 
     real(r8) :: Rbeam_coltop  ! Mean beam radiation at top of columns in layer      [W/m2]
     real(r8) :: Rbeam_colbot  ! Mean beam radiation at bottom of columns in layer   [W/m2]
+    real(r8) :: Rbeam_exp_ground ! Mean beam radiation incident on exposed ground   [W/m2]
     real(r8) :: open_area     ! Fraction of ground that is not occupied by columns [m2/m2]
 
+    real(r8) :: omega_grnd(50)  ! Scratch space holding omega terms related to
+                                ! exposed ground reflectance
+    real(r8) :: tau_grnd        ! Tau term for exposed ground relfectance
+
+    ! Parameters for solving via LAPACK DGELS()
+    character(1),parameter :: trans = 'N'           ! Input matrix is not transposed
+    integer, parameter :: workmax = 100             ! Maximum iterations to minimize work
+    real(r8) :: work(workmax)                       ! Work array
+    integer  :: lwork                               ! Dimension of work array
+    integer :: info                                 ! Procedure diagnostic ouput
+    
     ! ------------------------------------------------------------------------------------
     ! Example system of equations for 2 parallel columns in each of two canopy
     ! layers.  Each line is one of the balanc equations. And the x's are
@@ -402,22 +437,29 @@ end subroutine ZenithPrep
     ! RbeamV is the area weighted mean radiation that passes through the
     ! upper canopy.
     ! --------------------------------------------------------------------------
+
+    n_can = ubound(this%scel,1)
     
     Rbeam_coltop = Rbeam0
     ilem = 0
-    do ican = 1,ubound(this%scel,1)
+    do ican = 1,n_can
        Rbeam_colbot = 0._r8
        do icol = 1,this%scel(ican)%n_col
           ilem=ilem+1
           Rbeam(ilem) = Rbeam_coltop
           Rbeam_colbot = Rbeam_colbot + &
-               Rbeam_coltop*this%scel(ican)%col_area(icol)*exp(-this%kb_e(ilem)*this%eta_e(ilem))
+               Rbeam_coltop*this%scel(ican)%col_area(icol)*exp(-this%kb_e(ilem)*this%esa_e(ilem))
        end do
        open_area = 1._r8-sum(this%scel(ican)%col_area(1:this%scel(ican)%n_col),1)
        if(open_area>nearzero)then
           RbeamV = RbeamV + RbeamTop*open_area
        end if
-       Rbeamtop = Rbeam_colbot
+
+       ! Save the beam intensity that would be imposed on any exposed earth
+       if(ican==n_can) then
+          Rbeam_exp_ground = Rbeam_coltop
+       end if
+       Rbeam_coltop = Rbeam_colbot
     end do
 
     ! Beam radiation at the surface
@@ -430,7 +472,7 @@ end subroutine ZenithPrep
     
     do ilem = 1, this%n_scel
 
-       baf(ilem) = exp(-Kb(ilem)*this%etad_e(ilem))
+       baf(ilem) = exp(-Kb_e(ilem)*this%esa_e(ilem))
 
        a2 = Kd_e(ilem)*Kd_e(ilem)*(om_e(ilem)-1._r8)*(om_e(ilem)-1._r8-2._r8*om_e(ilem)*bd_e(ilem))
        if(a2<0._r8) then
@@ -439,38 +481,39 @@ end subroutine ZenithPrep
        end if
 
        a(ilem)  = sqrt(a2)
-       b1 = (Kd_e(ilem)*(1._r8-om_e(ilem))* &
-            (1._r8-2._r8*bb(ilem))+Kb_e(ilem))*om(k,ib)*Kb(ilem)*Rbeam(ilem)
-       b2 = (Kd_e(ilem)*(om_e(ilem)-1._r8-2._r8*om_e(ilem)*betad_e(ilem))- &
-            (1._r8-2._r8*betab_e(ilem))*Kb_e(ilem))*om_e(ilem)*Kb_e(ilem)*Rbeam(ilem)
-       eta = a(ilem)*a(ilem) - Kb_e(ilem)*Kb_e(ilem)
+       
+       b1 = (Kd_e(ilem)*(1._r8-om_e(ilem))*(1._r8-2._r8*betab_e(ilem))+Kb_e(ilem)) * &
+            om_e(ilem)*Kb_e(ilem)*Rbeam(ilem)
+       b2 = (Kd_e(ilem)*(om_e(ilem)-1._r8-2._r8*om_e(ilem)*betad_e(ilem)) - &
+            (1._r8-2._r8*betab_e(ilem))*Kb_e(ilem)) * &
+            om_e(ilem)*Kb_e(ilem)*Rbeam(ilem)
+       
+       ! could use these maybe
+       ! dafp(ilem) = exp(a(ilem)*esa_e(ilem))
+       ! dafm(ilem) = exp(-a(ilem)*esa_e(ilem))
 
-       dafp(ilem) = exp(a(ilem)*etad_e(ilem))
-       dafm(ilem) = exp(-a(ilem)*etad_e(ilem))
-
-       nu_sqrd = (1._r8-om_e(ilem)+2._r8*om_e(ilem)*bd_e(ilem))/(1._r8-om_e(ilem))
+       nu_sqrd = (1._r8-om_e(ilem)+2._r8*om_e(ilem)*betad_e(ilem))/(1._r8-om_e(ilem))
 
        if(nu_sqrd<0._r8)then
           print('nu_sqrd is less than zero')
           stop
        end if
 
-       
        ! B_1 term from documentation:
        B1(ilem)  = 0.5_r8*(1._r8+sqrt(nu_sqrd)) ! aka half (1 plus nu)
 
        ! B_2 term from documentation
        B2(ilem) = 0.5_r8*(1._r8-sqrt(nu_sqrd)) ! aka half (1 minus nu)
 
+       eta = a(ilem)*a(ilem) - Kb_e(ilem)*Kb_e(ilem)
+       
        ! A_2 term from documentation
        A2(ilem)    = -0.5_r8*(b2-b1)/eta       ! aka half b2 minus b1
 
        ! A_1 term from documentation
-       A1(ilem)    = -0.5_r8*(b2+b1)/eta       ! aka half b1 plus b2
+       A1_e(ilem)    = -0.5_r8*(b2+b1)/eta       ! aka half b1 plus b2
 
     end do
-
-
 
     ! =====================================================================
     ! Set up the linear systems solver
@@ -517,15 +560,16 @@ end subroutine ZenithPrep
        
     end do
 
-    ! -------------------------------------------------------------------
-    ! II. Flux equations between canopy layers.
-    ! We only perform flux balancing between layers
-    ! if we have any understory, this is true if ican>1
-    ! -------------------------------------------------------------------
+    
     
     if_understory: if(n_can>1) then
-       
-       ! Perform downwelling flux balances
+
+
+       ! -------------------------------------------------------------------
+       ! II. Flux equations between canopy layers, DOWNWELLING
+       ! We only perform flux balancing between layers
+       ! if we have any understory, this is true if ican>1
+       ! -------------------------------------------------------------------
        ! Refer to Equation X in technical document
        ! ------------------------------------------------------------
        
@@ -558,17 +602,17 @@ end subroutine ZenithPrep
              
              ! We need to include the terms from
              ! all elements above the current element of interest
+             ! (this can be moved out of jcol loop for efficiency)
              do icol = 1,this%scel(itop)%n_col
                 ilem = ilem_off + icol
                 TAU(qp) = TAU(qp) - &
-                     this%scel(itop)%col_area(icol) * &
-                     A2(ilem)*exp(-Kb(ilem)*etad(ilem))
+                     this%scel(itop)%col_area(icol) * A2(ilem)*exp(-Kb(ilem)*esa_e(ilem))
 
                 k1 = 2*(ilem-1)+1
                 k2 = k1 + 1
                 
-                OMEGA(qp,k1) = OMEGA(qp,k1) - this%scel(itop)%col_area(icol) * B2(ilem)*exp(a*etad(ilem))
-                OMEGA(qp,k2) = OMEGA(qp,k2) - this%scel(itop)%col_area(icol) * B1(ilem)*exp(-a*etad(ilem))
+                OMEGA(qp,k1) = OMEGA(qp,k1) - this%scel(itop)%col_area(icol) * B2(ilem)*exp(a(ilem)*esa_e(ilem))
+                OMEGA(qp,k2) = OMEGA(qp,k2) - this%scel(itop)%col_area(icol) * B1(ilem)*exp(-a(ilem)*esa_e(ilem))
 
              end do
           
@@ -578,28 +622,135 @@ end subroutine ZenithPrep
           
        end do do_dn_ican
 
-       ! Perform flux balancing for upwelling radiation
-       ! between layers. Refer to equation X in the
-       ! technical documentation.
 
+       ! -------------------------------------------------------------------
+       ! III. Flux equations between canopy layers, UPWELLING
+       ! -------------------------------------------------------------------
+       ! Refer to equation X in the technical documentation.
+       ! Note the upwelling balance is performed on the upper layer,
+       ! one equation for each element in the upper layer. The
+       ! flux relies on any reflected downwelling from the layer above
+       ! (both direct and diffuse) that impacts exposed ground, as well
+       ! as any diffuse radiation upwelling through the lower layer elements
+       ! themselves. THerefore, for each equation, all elements in the
+       ! two layers being balanced are part of the equation, if this
+       ! balance involves the lowest layer.
+       ! -------------------------------------------------------------------
        
        ilem_off = 0
        do_up_ican: do ican = 2,ubound(this%scel,1)
 
-          
+          itop = ican-1
+          ibot = ican
 
-          
+          frac_exp_ground = 1._r8 - sum(this%scel(ibot)%col_area(1:this%scel(ibot)%n_col))
+          if_any_exposed_ground: if(ican .ne. n_can) then
 
-          
-          ilem_off = ilem_off + this%scel(ican-1)%n_co
+             if(frac_exp_ground>nearzero) then
+                print*,"The non-vegetated area fraction is not 1, and its not the bottom layer"
+                print*,"layer: ",ibot
+                print*,"veg areas: ",this%scel(ibot)%col_area(1:this%scel(ibot)%n_col)
+                print*,"sum veg area: ",sum(this%scel(ibot)%col_area(1:this%scel(ibot)%n_col))
+                stop
+             end if
+
+             tau_grnd = 0._r8
+             omega_grnd(1:this%scel(itop)%n_col) = 0._r8
+             
+          else
+
+             ! Prep terms related to exposed ground reflectance only, they are re-used in a few equations
+             tau_grnd = 0._r8
+             do icol = 1,this%scel(itop)%n_col
+                ilem = ilem_off + icol
+                k1 = 2*(ilem-1)+1
+                k2 = k1 + 1
+                tau_grnd       = tau_grnd - frac_exp_ground*this%albedo_grnd_diff*this%scel(itop)%col_area(icol)*A2(ilem)*exp(-Kb_e(ilem)*esa_e(ilem))
+                omega_grnd(k1) = -frac_exp_ground*this%albedo_grnd_diff*this%scel(itop)%col_area(icol)*B2(ilem)*exp(a(ilem)*esa_e(ilem))
+                omega_grnd(k2) = -frac_exp_ground*this%albedo_grnd_diff*this%scel(itop)%col_area(icol)*B1(ilem)*exp(-a(ilem)*esa_e(ilem))
+             end do
+             
+          end if if_any_exposed_ground
+             
+          do icol = 1,this%scel(itop)%n_col
+             
+             qp = qp + 1
+             
+             ! Exposed ground reflectance terms
+             TAU(qp) = TAU(qp) - frac_exp_ground*this%albedo_grnd_beam*Rbeam_exp_ground ! Reflected beam term
+             TAU(qp) = TAU(qp) + tau_grnd             ! Diffuse reflected ground
+             do icol2 = 1,this%scel(itop)%n_col
+                ilem = ilem_off + icol2
+                k1 = 2*(ilem-1)+1
+                k2 = k1 + 1
+                OMEGA(qp,k1) = OMEGA(qp,k1) + omega_grnd(k1)  ! Diffuse reflected ground
+                OMEGA(qp,k2) = OMEGA(qp,k2) + omega_grnd(k2)  ! Diffuse reflected ground
+             end do
+
+             ! Self terms (ie the upwelling evaluated at the bottom edge of each top element)
+             ilem = ilem_off + icol
+             k1   = 2*(ilem-1)+1
+             k2   = k1 + 1
+             TAU(qp) = TAU(qp) + A1(ilem)*exp(-Kb_e(ilem)*esa_e(ilem))  ! Self term
+             OMEGA(qp,k1) = OMEGA(qp,k1) - B1(ilem)*exp(a(ilem)*esa_e(ilem))
+             OMEGA(qp,k2) = OMEGA(qp,k2) - B2(ilem)*exp(-a(ilem)*esa_e(ilem))
+
+             ! Terms for mean diffuse exiting lower elements (move out of this loop for efficiency)
+             do jcol = 1,this%scel(ibot)%n_col
+                ilem = ilem_off + this%scel(itop)%n_col + jcol
+                k1 = 2*(ilem-1)+1
+                k2 = k1 + 1
+                TAU(qp) = TAU(qp) - this%scel(ibot)%col_area(jcol)*A1(ilem)        
+                OMEGA(qp,k1) = OMEGA(qp,k1) + this%scel(ibot)%col_area(jcol)*B1(ilem)
+                OMEGA(qp,k2) = OMEGA(qp,k2) + this%scel(ibot)%col_area(jcol)*B2(ilem)
+             end do
+                
+          end do
+
+          ilem_off = ilem_off + this%scel(itop)%n_col
        end do do_up_ican
 
        
     end if if_understory
 
 
+    ! Flux balance equations between the understory elements, and
+    ! the ground below them
+    ilem_off = 0
+    do ican=1,n_can-1
+       ilem_off = ilem_off + this%scel(ican)%n_col
+    end do
     
+    do jcol = 1,this%scel(n_can)%n_col
+       ilem = ilem_off + jcol
+       k1 = 2*(ilem-1)+1
+       k2 = k1 + 1
+       TAU(qp) = TAU(qp) + A1(ilem)*exp(-Kb_e(ilem)*esa_e(ilem)) &
+                         - albedo_grnd_diff*A2(ilem)*exp(-Kb_e(ilem)*esa_e(ilem)) &
+                         - albedo_grnd_beam*Rbeam(ilem)*exp(-Kb_e(ilem)*esa_e(ilem))
 
+       OMEGA(qp,k1) = OMEGA(qp,k1) - B1(ilem)*exp(a(ilem)*esa_e(ilem)) 
+       OMEGA(qp,k2) = OMEGA(qp,k2) - B2(ilem)*exp(-a(ilem)*esa_e(ilem))
+
+       OMEGA(qp,k1) = OMEGA(qp,k1) - albedo_grnd_diff*B2(ilem)*exp(a(ilem)*esa_e(ilem))
+       OMEGA(qp,k2) = OMEGA(qp,k2) - albedo_grnd_diff*B1(ilem)*exp(-a(ilem)*esa_e(ilem))
+       
+    end do
+    
+    LAMBDA = TAU
+    ! Solution borrowed from G Lemieux's usage during FATES canopy trimming:
+    ! Compute the optimum size of the work array
+    
+    lwork = -1 ! Ask dgels to compute optimal number of entries for work
+    call dgels(trans, n_scel*2, n_scel*2, 1, OMEGA, n_scel*2, LAMBDA, n_scel*2, work, lwork, info)
+    lwork = int(work(1)) ! Pick the optimum.  TBD, can work(1) come back with greater than work size?
+    
+    ! Compute the minimum of 2-norm of of the least squares fit to solve for X
+    ! Note that dgels returns the solution by overwriting the LAMBDA array.
+    ! The result has the form: X = [b; m]
+    call dgels(trans, n_scel*2, n_scel*2, 1, OMEGA, n_scel*2, LAMBDA, n_scel*2, work, lwork, info)
+
+    
     
     deallocate(OMEGA)
     deallocate(TAU)
