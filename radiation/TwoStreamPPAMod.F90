@@ -80,6 +80,9 @@ Module TwoStreamPPAMod
      real(r8), allocatable :: a_dn(:)
      real(r8), allocatable :: b1_dn(:)
      real(r8), allocatable :: b2_dn(:)
+
+   contains
+     procedure :: GetAbsRad
      
   end type scel_type
 
@@ -152,6 +155,17 @@ Module TwoStreamPPAMod
   
 contains
 
+
+  subroutine GetAbsRad(this,ican,icol,vai_min,vai_max,r_labs_sun,r_labs_sha,r_sabs)
+
+    ! This routine is used to help decompose radiation scattering
+    ! and return the amount of absorbed radiation 
+
+
+    
+    return
+  end subroutine GetAbsRad
+  
 
   subroutine ParamPrep(numpft,ib)
 
