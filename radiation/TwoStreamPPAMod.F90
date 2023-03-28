@@ -73,7 +73,7 @@ Module TwoStreamPPAMod
      real(r8), allocatable :: col_sai(:)   ! m2 of stem area / m2 col
 
 
-     ! Needed for getting an analytical solution
+     ! Terms for getting the diffuse radiation at any position in element
      real(r8), allocatable :: a_up(:)
      real(r8), allocatable :: b1_up(:)
      real(r8), allocatable :: b2_up(:)
@@ -81,8 +81,9 @@ Module TwoStreamPPAMod
      real(r8), allocatable :: b1_dn(:)
      real(r8), allocatable :: b2_dn(:)
 
-   contains
-     procedure :: GetAbsRad
+     real(r8), allocatable :: R_beam0(:) ! Downwelling beam radiation at
+                                         ! top of the element [w/m2]
+     real(r8), allocatable :: Kb(:)      ! Optical depth for beam 
      
   end type scel_type
 
@@ -126,6 +127,7 @@ Module TwoStreamPPAMod
      
    contains
 
+     procedure :: GetAbsRad
      procedure :: ZenithPrep     ! Update coefficients as zenith changes
      procedure :: CanopyPrep     ! Update coefficients as canopy changes
      procedure :: Solve          ! Perform the scattering solution
@@ -155,13 +157,94 @@ Module TwoStreamPPAMod
   
 contains
 
-
-  subroutine GetAbsRad(this,ican,icol,vai_min,vai_max,r_labs_sun,r_labs_sha,r_sabs)
-
+  
+  subroutine GetAbsRad(this,ican,icol,vai_top,vai_bot,r_labs_sun,r_labs_sha,r_sabs)
+    
     ! This routine is used to help decompose radiation scattering
-    ! and return the amount of absorbed radiation 
+    ! and return the amount of absorbed radiation.  The canopy layer and column
+    ! index identify the element of interest. The other arguments are the upper and
+    ! lower bounds within the element over which to evaluate absorbed radiation.
+    ! The assumption is that the vegetation area index is zero at the top of the
+    ! element, and increases going downwards.  As with all assumptions in this
+    ! module, the scattering parameters are uniform within the element itself,
+    ! which includes an assumption of the leaf/stem proportionality.
+
+    ! Arguments
+    class(twostream_type) :: this
+    integer,intent(in)    :: ican   ! Canopy layer index
+    integer,intent(in)    :: icol   ! Column index
+    real(r8),intent(in)   :: vai_top  ! veg area index (from the top of element) to start
+    real(r8),intent(in)   :: vai_bot  ! veg area index (from the top of element) to finish
+
+    real(r8),intent(out)  :: r_labs_sun
+
+    real(r8) :: vai_max   ! total integrated (leaf+stem) area index of the current element
+    real(r8) :: f_leaf    ! the fraction of area index of the current element that is leaf
+
+    associate( Rbeam0  => this%scel(ican)%Rbeam0(icol), &
+               Kb      => this%scel(ican)%Kb(icol), &
+               A1      => this%scel(ican)%A1(icol), &
+               A2      => this%scel(ican)%A2(icol), &
+               B1      => this%scel(ican)%B1(icol), &
+               B2      => this%scel(ican)%B2(icol), &
+               lambda1 => this%scel(ican)%lambda1(icol), &
+               lambda2 => this%scel(ican)%lambda2(icol), &
+               a       => this%scel(ican)%a(icol), &
+               om_d    => this%scel(ican)%om(icol))
+
+      
+    ! Rup = A1 e−(Kbv) + Re + λ1 B1 e^(av) + λ2 B2 e^(−av)
+    ! Rdn = A2 e−(Kbv) + Re − λ1 B2 e^(av) − λ2 B1 e^(−av)
+    
+      
+    ! The total vegetation area index of the element
+    vai_max = this%scel(ican)%col_lai(icol)+this%scel(ican)%col_sai(icol)
+
+    ! We have to disentangle the absorption between leaves and stems, we give them both
+    ! a weighting fraction of total absorption of  area*K*(1-om)
+    
+    diff_wt_leaf = this%scel(ican)%col_lai(icol)*(1._r8-rad_param%om_leaf(ft,ib))*kd_leaf(ft)
+    diff_wt_stem = this%scel(ican)%col_sai(icol)*(1._r8-rad_param%om_stem(ft,ib))*kd_stem(ft)
+
+    beam_wt_leaf = this%scel(ican)%col_lai(icol)*(1._r8-rad_param%om_leaf(ft,ib))*Kb_leaf
+    beam_wt_stem = this%scel(ican)%col_lai(icol)*(1._r8-rad_param%om_stem(ft,ib))*1._r8
+    
+    if(vai_bot> vai_max)then
+       print*,"During decomposition of the 2-stream radiation solution"
+       print*,"A vegetation area index (VAI) was requested in GetAbsRad()"
+       print*,"that is larger than the total integrated VAI of the "
+       print*,"computation element of interest."
+       print*,"ican: ",ican
+       print*,"icol: ",icol
+       print*,"vai_max: ",vai_max
+       print*,"vai_bot: ",vai_bot
+       stop
+    end if
 
 
+    ! Fraction of leaves exposed to direct sunlight
+
+    f_dir = exp(-Kb*vai_top) - exp(-Kb*vai_bot)
+
+    
+    Rb_abs = Rbeam0*(exp(-Kb*vai_top) - exp(-Kb*vai_bot))*(1._r8-om)
+    
+    
+    Rd_dn_abs = A2*(exp(-Kb*vai_top) - exp(-Kb*vai_bot)) &
+         - B2*lambda1*(exp(-a*vai_top) - exp(-a*vai_bot)) & 
+         - B1*lambda2*(exp(a*vai_top) - exp(a*vai_bot))
+
+    
+    Rd_up_abs = A1*(exp(-Kb*vai_bot) - exp(-Kb*vai_top)) &
+         + B1*lambda1*(exp(a*vai_bot) - exp(a*vai_top)) &
+         + B2*lambda2*(exp(-a*vai_bot) - exp(-a*vai_top))
+
+
+    Rd_abs = Rd_dn_abs + Rd_up_abs
+
+    Rd_abs_leaf = Rd_abs * diff_wt_leaf / (diff_wt_leaf+diff_wt_stem)
+    
+    
     
     return
   end subroutine GetAbsRad
@@ -321,7 +404,7 @@ contains
           gdir = rad_params%phi1(ft) + rad_params%phi2(ft) * cosz
           
           !how much direct light penetrates a singleunit of lai?
-          this%kb_e(ilem) = gdir / cosz
+          this%Kb_e(ilem) = gdir / cosz
 
           ! RGK: The snow is adding area, so I don't see this as a weighted
           !      average, but purely adding optical depth
