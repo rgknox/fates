@@ -95,7 +95,9 @@ Module TwoStreamPPAMod
 
    contains 
        procedure :: GetAbsRad
-     
+       procedure :: GetRdUp
+       procedure :: GetRdDn
+       procedure :: GetRb
   end type scel_type
 
 
@@ -119,8 +121,8 @@ Module TwoStreamPPAMod
      type(scel_type), pointer :: scel(:,:)        ! array of scattering elements (layer, column)
                                                       ! can be sparse, will only solve indices up to
                                                       ! n_lyr,n_col(n_lyr)
-     integer                      :: n_lyr            ! number of scattering element layers
-     integer, allocatable         :: n_col(:)         ! number of scattering element columns (layer)
+     integer                      :: n_lyr            ! number of (vertical) scattering element layers
+     integer, allocatable         :: n_col(:)         ! number of (horizontal) scattering element columns per layer
      integer                      :: n_scel           ! total number of scattering elements
      logical                      :: force_prep       ! Some coefficients are only updated
                                                       ! when the canopy composition changes, ie
@@ -135,7 +137,6 @@ Module TwoStreamPPAMod
      real(r8)                     :: albedo_grnd_beam ! Ground albedo direct 
 
    contains
-
      
      procedure :: ZenithPrep     ! Update coefficients as zenith changes
      procedure :: CanopyPrep     ! Update coefficients as canopy changes
@@ -144,7 +145,7 @@ Module TwoStreamPPAMod
 
   end type twostream_type
 
-  
+
 
   ! Assumptions 1=visible (vis)
   !             2=near infrared (nir)
@@ -158,10 +159,63 @@ Module TwoStreamPPAMod
   real(r8), parameter :: k_snow           = 1.0_r8  
   
   public :: ParamPrep
+  public :: AllocateRadParams
   
 contains
 
+  subroutine AllocateRadParams(n_pft,n_bands)
+
+    integer,intent(in) :: n_pft
+    integer,intent(in) :: n_bands
+    
+    allocate(rad_params%rhol(n_bands,n_pft))
+    allocate(rad_params%rhos(n_bands,n_pft))
+    allocate(rad_params%taul(n_bands,n_pft))
+    allocate(rad_params%taus(n_bands,n_pft))
+    allocate(rad_params%xl(n_pft))
+    allocate(rad_params%clumping_index(n_pft))
+
+    allocate(rad_params%phi1(n_pft))
+    allocate(rad_params%phi2(n_pft))
+    allocate(rad_params%kd_leaf(n_pft))
+    allocate(rad_params%kd_stem(n_pft))
+    allocate(rad_params%om_leaf(n_bands,n_pft))
+    allocate(rad_params%om_stem(n_bands,n_pft))
+    allocate(rad_params%om_snow(n_bands))
+    allocate(rad_params%betad_snow(n_bands))
+    
+  end subroutine AllocateRadParams
+  
   ! ================================================================================================
+
+  function GetRdDn(this,vai) result(r_diff_dn)
+    class(scel_type)    :: this
+    real(r8),intent(in) :: vai
+    real(r8)            :: r_diff_dn
+    
+    ! Rdn = A2 e−(Kbv) + Re − λ1 B2 e^(av) − λ2 B1 e^(−av)
+    r_diff_dn = this%A2*exp(-this%Kb*vai) - this%B2*this%lambda1*exp(this%a*vai) - this%B1*this%lambda2*exp(-this%a*vai)
+    
+  end function GetRdDn
+
+  function GetRdUp(this,vai) result(r_diff_up)
+    class(scel_type)    :: this
+    real(r8),intent(in) :: vai
+    real(r8)            :: r_diff_up
+    
+    ! Rup = A1 e−(Kbv) + Re + λ1 B1 e^(av) + λ2 B2 e^(−av)
+    r_diff_up = this%A1*exp(-this%Kb*vai) + this%B1*this%lambda1*exp(this%a*vai) + this%B2*this%lambda2*exp(-this%a*vai)
+  end function GetRdUp
+  
+  function GetRb(this,vai) result(r_beam_dn)
+    class(scel_type) :: this
+    real(r8),intent(in)   :: vai
+    real(r8)              :: r_beam_dn
+
+    r_beam_dn = this%Rbeam0*exp(-this%Kb*vai)
+    
+  end function GetRb
+  
   
   subroutine GetAbsRad(this,ib,vai_top,vai_bot,Rd_abs_leaf,Rd_abs_stem,Rb_abs_leaf,Rb_abs_stem)
 
@@ -447,7 +501,7 @@ contains
 
             !!scelp%betab = this%frac_snow*beta_snow + scelp%betab
 
-            this%albedo_grnd_beam = 1.e-36  ! Must fill this in
+            !this%albedo_grnd_beam = 1.e-36  ! Must fill this in
           end associate
        end do
     end do
@@ -562,7 +616,6 @@ contains
     ! upper canopy.
     ! --------------------------------------------------------------------------
 
-        
     Rbeam_top = Rbeam_atm
 
     do ican = 1,this%n_lyr
@@ -631,7 +684,7 @@ contains
           
           ! A_1 term from documentation
           scelp%A1    = -0.5_r8*(b2+b1)/(scelp%a*scelp%a-scelp%Kb*scelp%Kb)   ! aka half b1 plus b2
-          
+
        end do
     end do
     
@@ -679,7 +732,7 @@ contains
        TAU(qp)      =  Rdiff_atm - scelp%A2
        OMEGA(qp,k1) =  -scelp%B2
        OMEGA(qp,k2) =  -scelp%B1
-       
+
     end do
     
     
@@ -841,17 +894,21 @@ contains
     do ican=1,this%n_lyr-1
        ilem_off = ilem_off + this%n_col(ican)
     end do
-    
+
     do jcol = 1,this%n_col(this%n_lyr)
+       
        ilem = ilem_off + jcol
+       qp = qp + 1
        k1 = 2*(ilem-1)+1
        k2 = k1 + 1
+
        scelp => this%scel(this%n_lyr,jcol)
        vai = scelp%lai + scelp%sai
+
        TAU(qp) = TAU(qp) + scelp%A1*exp(-scelp%Kb*vai)  &
                          - this%albedo_grnd_diff*scelp%A2*exp(-scelp%Kb*vai) &
                          - this%albedo_grnd_beam*scelp%Rbeam0*exp(-scelp%Kb*vai)
-
+       
        OMEGA(qp,k1) = OMEGA(qp,k1) - scelp%B1*exp(scelp%a*vai)
        OMEGA(qp,k2) = OMEGA(qp,k2) - scelp%B2*exp(-scelp%a*vai)
 
@@ -883,7 +940,7 @@ contains
           k2 = k1 + 1
           scelp => this%scel(ican,icol)
           scelp%lambda1 = LAMBDA(k1)
-          scelp%lambda2 = LAMBdA(k2)
+          scelp%lambda2 = LAMBDA(k2)
        end do
        ilem_off = ilem_off + this%n_col(ican)
     end do
