@@ -22,6 +22,7 @@ module EDTypesMod
   use FatesRunningMeanMod,   only : rmean_type
   use FatesInterfaceTypesMod,only : bc_in_type
   use FatesInterfaceTypesMod,only : bc_out_type
+  use TwoStreamMLPEMod,      only : twostream_type
   
   implicit none
   private               ! By default everything is private
@@ -253,6 +254,11 @@ module EDTypesMod
      integer  ::  coage_by_pft_class                     ! An index that indicates the cohorts position of the join cohort age class x PFT 
      integer ::  size_class_lasttimestep                 ! size class of the cohort at the last time step
 
+
+     ! Two-stream radiation
+
+     integer :: twostream_col  ! The column index in the two-stream solution that this cohort is part of
+     
      ! CARBON FLUXES 
      
      ! ----------------------------------------------------------------------------------
@@ -452,6 +458,8 @@ module EDTypesMod
                                                                  ! to that procedure.
 
 
+     type(twostream_type) :: twostream                           ! This holds all two-stream data for the patch
+     
      ! LEAF ORGANIZATION
      real(r8) ::  pft_agb_profile(maxpft,n_dbh_bins)            ! binned above ground biomass, for patch fusion: KgC/m2
      real(r8) ::  canopy_layer_tlai(nclmax)                     ! total leaf area index of each canopy layer

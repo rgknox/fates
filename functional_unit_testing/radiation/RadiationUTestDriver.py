@@ -37,37 +37,38 @@ matplotlib.rc('font', **font)
 
 
 # Instantiate the F90 modules
-f90_twostr_obj = ctypes.CDLL('bld/TwoStreamPPAMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_twostr_obj = ctypes.CDLL('bld/TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
 f90_wrap_obj = ctypes.CDLL('bld/RadiationWrapMod.o',mode=ctypes.RTLD_GLOBAL)
 
 # Create aliases for the calls and define arguments if it helps with clarity
 alloc_twostream_call =  f90_wrap_obj.__radiationwrapmod_MOD_initallocate
 dealloc_twostream_call = f90_wrap_obj.__radiationwrapmod_MOD_dealloc
-alloc_radparams_call = f90_twostr_obj.__twostreamppamod_MOD_allocateradparams
+alloc_radparams_call = f90_twostr_obj.__twostreammlpemod_MOD_allocateradparams
 set_radparams_call   = f90_wrap_obj.__radiationwrapmod_MOD_setradparam
 set_radparams_call.argtypes = [POINTER(c_double),POINTER(c_int),POINTER(c_int),c_char_p,c_long]
-param_prep_call = f90_twostr_obj.__twostreamppamod_MOD_paramprep
+param_prep_call = f90_twostr_obj.__twostreammlpemod_MOD_paramprep
 
 setup_canopy_call = f90_wrap_obj.__radiationwrapmod_MOD_setupcanopy
 setup_canopy_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int),POINTER(c_double),POINTER(c_double),POINTER(c_double)]
 
 grndsnow_albedo_call = f90_wrap_obj.__radiationwrapmod_MOD_setgroundsnow
-grndsnow_albedo_call.argtypes = [POINTER(c_double),c_char_p,c_long]
+grndsnow_albedo_call.argtypes = [POINTER(c_int),POINTER(c_double),c_char_p,c_long]
 
 canopy_prep_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapcanopyprep
 zenith_prep_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapzenithprep
 solver_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapsolve
 
 getintens_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetintensity
+getabsrad_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetabsrad
 getparams_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetparams
 forceparam_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapforceparams
-forceparam_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_double),c_char_p,c_long]
+forceparam_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int),POINTER(c_double),c_char_p,c_long]
 
 leaf_rhonir = [0.46, 0.41, 0.39, 0.46, 0.41, 0.41, 0.46, 0.41, 0.41, 0.28, 0.28, 0.28 ]
 leaf_rhovis = [0.11, 0.09, 0.08, 0.11, 0.08, 0.08, 0.11, 0.08, 0.08, 0.05, 0.05, 0.05 ]
 leaf_taunir = [0.33, 0.32, 0.42, 0.33, 0.43, 0.43, 0.33, 0.43, 0.43, 0.4,  0.4,  0.4 ]
 leaf_tauvis = [0.06, 0.04, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.05, 0.05, 0.05]
-leaf_xl = [0.32, 0.01, 0.01, 0.32, 0.2, 0.59, 0.32, 0.59, 0.59, -0.23, -0.23, -0.23]
+leaf_xl     = [0.32, 0.01, 0.01, 0.32, 0.2, 0.59, 0.32, 0.59, 0.59, -0.23, -0.23, -0.23]
 leaf_clumping_index = [0.85, 0.85, 0.8, 0.85, 0.85, 0.9, 0.85, 0.9, 0.9, 0.75, 0.75, 0.75]
 stem_rhonir = [0.49, 0.36, 0.36, 0.49, 0.49, 0.49, 0.49, 0.49, 0.49, 0.53, 0.53, 0.53]
 stem_rhovis = [0.21, 0.12, 0.12, 0.21, 0.21, 0.21, 0.21, 0.21, 0.21, 0.31, 0.31, 0.31]
@@ -78,21 +79,32 @@ visb = 1
 nirb = 2
 
 
-
-
 class elem_type:
-    def __init__(self,n_ll):
+    def __init__(self,n_vai):
 
         self.area = -9.0
         self.lai  = -9.0
         self.sai  = -9.0
-        
-        self.avai = np.zeros([n_ll])
-        self.r_dn = np.zeros([n_ll])
-        self.r_up = np.zeros([n_ll])
-        self.r_b  = np.zeros([n_ll])
-        self.r_abs = np.zeros([n_ll-1])
 
+        self.n_vai = n_vai
+        self.avai = np.zeros([n_vai])
+        self.r_dn = np.zeros([n_vai])
+        self.r_up = np.zeros([n_vai])
+        self.r_b  = np.zeros([n_vai])
+        self.r_abs = np.zeros([n_vai])
+
+
+class cohort_type:
+    def __init__(self,n_vai,lai,sai):
+
+        self.n_vai = n_vai
+        #self.avai = np.zeros([n_vai])
+        dvai = (lai+sai)/n_vai
+        self.avai = np.linspace(dvai,lai+sai,num=n_vai)
+        self.rd_abs_leaf = np.zeros([n_vai])
+        self.rb_abs_leaf = np.zeros([n_vai])
+        self.r_abs_stem = np.zeros([n_vai])
+        
         
 def main(argv):
 
@@ -121,9 +133,9 @@ def main(argv):
         iret = set_radparams_call(c_double(leaf_xl[ft]),c_int(pft),c_int(0),*ccharnb("xl"))
         iret = set_radparams_call(c_double(leaf_clumping_index[ft]),c_int(pft),c_int(0),*ccharnb("clumping_index"))
         
-        # Process the core 2Stream parameters from parameters in file
-        iret = param_prep_call(ci(n_pft),ci(visb))
-        iret = param_prep_call(ci(n_pft),ci(nirb))
+    # Process the core 2Stream parameters from parameters in file
+    iret = param_prep_call(ci(n_pft),ci(visb))
+    iret = param_prep_call(ci(n_pft),ci(nirb))
 
     
     # Test 1, a single element, visible
@@ -134,7 +146,7 @@ def main(argv):
     if(True):
         SerialParallelCanopyTest()
 
-
+    plt.show()
     
 def SerialParallelCanopyTest():
 
@@ -143,8 +155,9 @@ def SerialParallelCanopyTest():
     # equal area, but folding by 2 in LAI
 
     cohort_lai  = np.array([0.25,0.5,1.0,2.0,4.0])
-    
     cohort_area = np.array([0.2,0.2,0.2,0.2,0.2])
+    n_cohorts = len(cohort_lai)
+    
     sai_frac = 0.1
     
     pft = 1
@@ -154,18 +167,36 @@ def SerialParallelCanopyTest():
     n_layer = 5
     iret = alloc_twostream_call(ci(n_layer),ci(n_col))
 
+    #class cohort_type:
+    #def __init__(self,n_vai):
+        #self.n_vai = n_vai
+        #self.avai = np.zeros([n_vai])
+
+    
+    serialc = []
+    serialc.append(cohort_type(100,cohort_lai[0],cohort_lai[0]*sai_frac))
+    serialc.append(cohort_type(100,cohort_lai[1],cohort_lai[1]*sai_frac))
+    serialc.append(cohort_type(100,cohort_lai[2],cohort_lai[2]*sai_frac))
+    serialc.append(cohort_type(100,cohort_lai[3],cohort_lai[3]*sai_frac))
+    serialc.append(cohort_type(100,cohort_lai[4],cohort_lai[4]*sai_frac))
+
+    parallelc = []
+    parallelc.append(cohort_type(100,cohort_lai[0],cohort_lai[0]*sai_frac))
+    parallelc.append(cohort_type(100,cohort_lai[1],cohort_lai[1]*sai_frac))
+    parallelc.append(cohort_type(100,cohort_lai[2],cohort_lai[2]*sai_frac))
+    parallelc.append(cohort_type(100,cohort_lai[3],cohort_lai[3]*sai_frac))
+    parallelc.append(cohort_type(100,cohort_lai[4],cohort_lai[4]*sai_frac))
+    
     elems = []
     elems.append([])
     elems.append([])
     n_vai = 100
-    
+
+    dvai = 0.05
     
     for i in range(n_layer):
         ican = i+1
 
-        elems[0].append(elem_type(n_vai))
-        elems[1].append(elem_type(n_vai))
-        
         icol = 1
         area = np.sum(cohort_area[i:])
         if(i==0):
@@ -174,6 +205,11 @@ def SerialParallelCanopyTest():
             lai = cohort_lai[i]-cohort_lai[i-1]
         
         sai  = lai*sai_frac
+
+        n_vai = int((lai+sai)/dvai)
+        elems[0].append(elem_type(n_vai))
+        
+        
         elems[0][-1].lai  = lai
         elems[0][-1].sai  = sai
         elems[0][-1].area = area
@@ -181,10 +217,11 @@ def SerialParallelCanopyTest():
         iret = setup_canopy_call(c_int(ican),c_int(icol),c_int(pft),c_double(area),c_double(lai),c_double(sai))
 
         icol = 2
-        area = np.sum(cohort_area[i:])
-        elems[0][-1].lai  = 0.0
-        elems[0][-1].sai  = 0.0
-        elems[0][-1].area = area
+        area = 1-np.sum(cohort_area[i:])
+        elems[1].append(elem_type(1))
+        elems[1][-1].lai  = 0.0
+        elems[1][-1].sai  = 0.0
+        elems[1][-1].area = area
         lai  = 0.0
         sai  = 0.0
         air_pft = 0
@@ -201,7 +238,10 @@ def SerialParallelCanopyTest():
     cd_om = c_double(-9.0)
     cd_betad = c_double(-9.0)
     cd_betab = c_double(-9.0)
-
+    cd_rd_abs_leaf = c_double(-9.0)
+    cd_rb_abs_leaf = c_double(-9.0)
+    cd_r_abs_stem  = c_double(-9.0)
+    
     R_beam = 100.
     R_diff = 100.
     cosz   = np.cos(0.0)
@@ -209,62 +249,129 @@ def SerialParallelCanopyTest():
     ground_albedo_diff = 0.3
     ground_albedo_beam = 0.3
     
-    iret = grndsnow_albedo_call(c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
-    iret = grndsnow_albedo_call(c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
+    iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
+    iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
     iret = canopy_prep_call(ci(ib))
-    iret = zenith_prep_call(c8(cosz))
-    iret = solver_call(c8(R_beam),c8(R_diff))
+    iret = zenith_prep_call(ci(ib),c8(cosz))
+    iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
 
     for i in range(n_layer):
         
         ican = i+1
         icol = 1
-        for iv in range(n_vai):
-            iret = getintens_call(ci(ican),ci(icol),c8(elems[0][i].avai[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
+        for iv in range(elems[0][i].n_vai):
+            iret = getintens_call(ci(ican),ci(icol),ci(ib),c8(elems[0][i].avai[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
             elems[0][i].r_dn[iv] = cd_r_diff_dn.value
             elems[0][i].r_up[iv] = cd_r_diff_up.value
             elems[0][i].r_b[iv] = cd_r_beam.value
-            print(elems[0][i].r_up[iv])
             if(iv>0):
                 elems[0][i].r_abs[iv-1] = (elems[0][i].r_dn[iv]-elems[0][i].r_dn[iv-1]) + \
-                    (elems[0][i].r_up[iv-1]-elems[0][i].r_up[iv]) \
+                    (elems[0][i].r_up[iv-1]-elems[0][i].r_up[iv]) + \
                     (elems[0][i].r_b[iv]-elems[0][i].r_b[iv-1])
 
+        for iv in range(elems[1][i].n_vai):
+            iret = getintens_call(ci(ican),ci(icol+1),ci(ib),c8(elems[1][i].avai[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
+            elems[1][i].r_dn[iv] = cd_r_diff_dn.value
+            elems[1][i].r_up[iv] = cd_r_diff_up.value
+            elems[1][i].r_b[iv] = cd_r_beam.value
+            if(iv>0):
+                elems[1][i].r_abs[iv-1] = (elems[1][i].r_dn[iv]-elems[1][i].r_dn[iv-1]) + \
+                    (elems[1][i].r_up[iv-1]-elems[1][i].r_up[iv]) + \
+                    (elems[1][i].r_b[iv]-elems[1][i].r_b[iv-1])
 
-    #
+    # Lets get the absorbed radiation from the cohorts
+    
+    #class cohort_type:
+    #def __init__(self,n_vai,lai,sai):
+        #self.n_vai = n_vai
+        ##self.avai = np.zeros([n_vai])
+        #dvai = (lai+sai/n_vai)
+        #self.avai = np.linspace(dvai,lai+sai,num=n_vai)
+        #self.rabs_leaf = np.zeros([n_vai])
+        #self.rabs_stem = np.zeros([n_vai])
 
-    fig, axs = plt.subplots(ncols=2,nrows=n_layer,figsize=(8,8))
+    for i in range(len(serialc)):
+        for iv in range(serialc[i].n_vai):
+
+            vai_bot = serialc[i].avai[iv]
+
+            ican = np.sum(serialc[i].avai[iv]>(cohort_lai*(1+sai_frac)))
+            if(ican>0):
+                vai_above = cohort_lai[ican-1]*(1+sai_frac)
+            else:
+                vai_above = 0.
+                
+            vai_bot = serialc[i].avai[iv]-vai_above
+            if(iv==0):
+                vai_top = 0
+            else:
+                vai_top = np.max([0,serialc[i].avai[iv-1]-vai_above])
+
+            #print(i,iv,serialc[i].avai[iv],vai_above,vai_bot,vai_top,ican,cohort_lai*(1+sai_frac))
+            icol = 1  # b/c 2 is air
+            iret = getabsrad_call(ci(ican+1),ci(icol),ci(ib),c8(vai_top),c8(vai_bot), \
+                                  byref(cd_rd_abs_leaf),byref(cd_rb_abs_leaf),byref(cd_r_abs_stem))
+            serialc[i].rd_abs_leaf[iv] = cd_rd_abs_leaf.value
+            serialc[i].rb_abs_leaf[iv] = cd_rb_abs_leaf.value
+            serialc[i].r_abs_stem[iv] = cd_r_abs_stem.value
+
+
+    # Plot out absorbances in cohorts only
+    
+        
+    fig, axs = plt.subplots(ncols=n_cohorts,nrows=1,figsize=(9,5))
     ax1s = axs.reshape(-1)
     
-    for i in range(n_layer):
-
-        #ax = plt.subplot2grid( shape, loc,rowspan,colspan)
-        #ax = plt.subplot2grid((
-        #ax = plt.subplot2grid((2, 2), (0, 0))
-
-
-        #elems[0][i].r_dn[iv]
-        ax = ax1s[ic]
-        ap = ax.plot(elems[0][i].r_dn,elems[0][i].avai)
-        ax.invert_yaxis()
-        ax.set_xlabel('')
-        ax.set_ylabel('Integrated VAI [m2/m2]')
-        ax.set_title('Beam Intensity [W/m2]')
-        ax.grid(True)
-
-        ic=ic+1
-        ax = ax1s[ic]
-        ap = ax.plot(elems[1][i].r_dn,elems[1][i].avai)
-        ax.invert_yaxis()
-        ax.set_xlabel('')
-        ax.set_ylabel('Integrated VAI [m2/m2]')
-        ax.set_title('Beam Intensity [W/m2]')
-        ax.grid(True)
-
-        ic=ic+1
-   
-    plt.show()
+    y0   = 0.1
+    xpad = 0.1
+    dx   = (1.0-2*xpad)/float(n_cohorts)
+    dy   = 0.8
     
+    max_rd_abs_leaf = 0
+    max_rb_abs_leaf = 0
+    max_r_abs_stem  = 0
+    max_r_abs       = 0
+    maxlai          = 0
+    for i in range(n_cohorts):
+        max_rd_abs_leaf = np.max([max_rd_abs_leaf,np.max(serialc[i].rd_abs_leaf) ])
+        max_rb_abs_leaf = np.max([max_rb_abs_leaf,np.max(serialc[i].rb_abs_leaf) ])
+        max_r_abs_stem  = np.max([max_r_abs_stem,np.max(serialc[i].r_abs_stem) ])
+        max_r_abs       = np.max([max_r_abs,np.max(serialc[i].r_abs_stem+serialc[i].rd_abs_leaf+serialc[i].rb_abs_leaf) ])
+        maxlai          = np.max([maxlai,np.max(serialc[i].avai) ])
+
+    ic=0
+    x0 = xpad
+    for i in range(n_cohorts):
+
+        ax = ax1s[ic]
+        ap = ax.plot(serialc[i].rd_abs_leaf+serialc[i].rb_abs_leaf+serialc[i].r_abs_stem ,serialc[i].avai)
+        ax.set_ylim([0,maxlai])
+        ax.invert_yaxis()
+        ax.set_xlabel('[W/m2]')
+        ax.set_xlim([0,max_r_abs])
+
+        ax.set_title('Cohort {}'.format(i+1))
+        if(i==0):
+            
+            ax.set_ylabel('Absorbed Radiation\nVAI [m2/m2]')
+        else:
+            ax.set_yticklabels([])
+            
+        ax.grid(True)
+        ax.set_position([x0,y0,dx,dy])
+        x0 = x0+dx
+        ic=ic+1
+
+
+    if(True):
+        PlotRadMaps(elems,0,'Beam Radiation [W/m2]')
+        PlotRadMaps(elems,1,'Downwelling Diffuse Radiation [W/m2]')
+        PlotRadMaps(elems,2,'Upwelling Diffuse Radiation [W/m2]')
+
+    
+
+    
+   
 
                 
 def SingleElementPerturbTest():
@@ -335,15 +442,15 @@ def SingleElementPerturbTest():
     ground_albedo_diff = 0.3
     ground_albedo_beam = 0.3
     
-    iret = grndsnow_albedo_call(c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
-    iret = grndsnow_albedo_call(c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
+    iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
+    iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
     iret = canopy_prep_call(ci(ib))
     iret = zenith_prep_call(c8(cosz))
-    iret = solver_call(c8(R_beam),c8(R_diff))
-    iret = getparams_call(ci(ican),ci(icol),byref(cd_kb),byref(cd_kd),byref(cd_om),byref(cd_betad),byref(cd_betab))
+    iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
+    iret = getparams_call(ci(ican),ci(icol),ci(ib),byref(cd_kb),byref(cd_kd),byref(cd_om),byref(cd_betad),byref(cd_betab))
 
     for iv in range(n_vai):
-        iret = getintens_call(ci(ican),ci(icol),c8(vai_a[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
+        iret = getintens_call(ci(ican),ci(icol),ci(ib),c8(vai_a[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
         r_beam[iv] = cd_r_beam.value
         r_diff_up[iv] = cd_r_diff_up.value
         r_diff_dn[iv] = cd_r_diff_dn.value
@@ -359,12 +466,12 @@ def SingleElementPerturbTest():
     for key,val in pp_dict.items():
         i=i+1
         iret = canopy_prep_call(ci(ib))
-        iret = zenith_prep_call(c8(cosz))
-        iret = forceparam_call(c_int(ican),c_int(icol),c_double(val),*ccharnb(key))
-        iret = solver_call(c8(R_beam),c8(R_diff))
+        iret = zenith_prep_call(ci(ib),c8(cosz))
+        iret = forceparam_call(c_int(ican),c_int(icol),ci(ib),c_double(val),*ccharnb(key))
+        iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
         
         for iv in range(n_vai):
-            iret = getintens_call(ci(ican),ci(icol),c8(vai_a[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
+            iret = getintens_call(ci(ican),ci(icol),ci(ib),c8(vai_a[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
             #print(iv,i,cd_r_beam.value)
             p_r_beam[iv,i] = cd_r_beam.value
             p_r_diff_up[iv,i] = cd_r_diff_up.value
@@ -472,6 +579,132 @@ $\alpha_{{gb}} = ${9:.2f}""".format(band_name,R_beam,R_diff,cosz,cd_kb.value,cd_
 
     dealloc_twostream_call()
     
+
+# Plotting Functions
+
+    
+def PlotRadMaps(elems,rtype,plt_title):    
+        
+    fig, ax = plt.subplots(ncols=1,nrows=1,figsize=(8,8))
+
+    cmap = mpl.cm.Reds
+
+    #code.interact(local=dict(globals(), **locals()))
+    n_layer = len(elems[0])
+
+    total_vai = 0
+    for i in range(n_layer):
+        total_vai = total_vai + \
+            np.max([elems[0][i].lai+elems[0][i].sai,elems[1][i].lai+elems[1][i].sai])
+    
+    ax.set_ylim([0,total_vai])
+    
+    total_vai = 0
+    rect = []
+    rcolor = []
+    for i in range(n_layer):  
+
+        # Vegetated
+        
+        for iv in range(elems[0][i].n_vai-1):
+            #rel_intense = np.max([0,np.min([1.,elems[0][i].r_dn[iv]/R_diff])])
+            #rel_intense = np.max([0,np.min([R_diff,elems[0][i].r_dn[iv]])])
+            if(rtype==0):
+                rel_intense = np.max([0,elems[0][i].r_b[iv]])
+            elif(rtype==1):
+                rel_intense = np.max([0,elems[0][i].r_dn[iv]])
+            elif(rtype==2):
+                rel_intense = np.max([0,elems[0][i].r_up[iv]])
+                
+            dvai = elems[0][i].avai[iv+1]-elems[0][i].avai[iv]
+            rect.append(mpl.patches.Rectangle((0,(elems[0][i].avai[iv]+total_vai)),elems[0][i].area,dvai)) #,color = [rel_intense,0.5,0.5]))
+            rcolor.append(rel_intense)
+        
+        # Air
+        #rel_intense = np.max([0,np.min([1.,elems[1][i].r_dn[0]/R_diff])])
+        #rel_intense = np.max([0,elems[1][i].r_dn[0]])
+        if(rtype==0):
+            rel_intense = np.max([1,elems[1][i].r_b[0]])
+        elif(rtype==1):
+            rel_intense = np.max([1,elems[1][i].r_dn[0]])
+        elif(rtype==2):
+            rel_intense = np.max([1,elems[1][i].r_up[0]])
+
+        
+        rect.append(mpl.patches.Rectangle((elems[0][i].area,total_vai),(1.-elems[0][i].area),(elems[0][i].lai+elems[0][i].sai))) #,color = [rel_intense,0.5,0.5]))
+        rcolor.append(rel_intense)
+        
+        total_vai = total_vai + \
+            np.max([elems[0][i].lai+elems[0][i].sai,elems[1][i].lai+elems[1][i].sai])
+
+        
+        p = mpl.collections.PatchCollection(rect,cmap = cmap,alpha = 1.0)
+        p.set_array(rcolor)
+        im = ax.add_collection(p)
+
+        
+        #code.interact(local=dict(globals(), **locals()))
+        
+    ax.invert_yaxis()
+    ax.set_ylabel('Integrated Vegetated Area Index')
+    ax.set_xlabel('Ground Area Fraction')
+    ax.set_title(plt_title)  #)
+    plt.colorbar(im)
+
+    
+def PlotRadLines():
+    
+    fig, axs = plt.subplots(ncols=2,nrows=n_layer,figsize=(8,8))
+    ax1s = axs.reshape(-1)
+    ic=0
+    y0   = 0.9
+    ypad = 0.1
+    dy = (y0-ypad)/n_layer
+    xpad = 0.1
+    xwid = 1-2*xpad
+    
+    for i in range(n_layer):
+
+        ax = ax1s[ic]
+        ap = ax.plot(elems[0][i].r_dn,elems[0][i].avai)
+        ax.set_ylim([np.min(elems[0][i].avai),np.max(elems[0][i].avai)])
+        ax.invert_yaxis()
+        ax.set_xlabel('')
+        ax.set_xlim([0,R_diff])
+        ax.set_ylabel('VAI [m2/m2]')
+        if(i==0):
+            ax.set_title('Diffuse Down Intensity [W/m2]')
+        if(i!=n_layer-1):
+            ax.set_xticklabels([])
+        ax.grid(True)
+        y0 = y0-dy
+        x0 = xpad
+        dx = 0.4
+        #dx = elems[0][i].area*(1-2*xpad)
+        ax.set_position([x0,y0,dx,dy])
+        ic=ic+1
+        
+        ax = ax1s[ic]
+        ap = ax.plot([elems[1][i].r_dn[0],elems[1][i].r_dn[-1]],[0,1])
+        ax.invert_yaxis()
+        ax.set_xlabel('')
+        ax.set_xlim([0,R_diff])
+        if(i==0):
+            ax.set_title('Diffuse Down Intensity [W/m2]')
+        if(i!=n_layer-1):
+            ax.set_xticklabels([])
+        ax.set_ylabel('')
+        ax.set_yticklabels([])
+        ax.set_yticks([])
+        ax.set_ylim([0,1])
+        x0 = xpad+dx
+        dx=0.4
+        #dx = elems[1][i].area*(1-2*xpad)
+        ax.set_position([x0,y0,dx,dy])
+        ax.grid(True)
+        ic=ic+1
+
+
     
 # =======================================================================================
 # This is the actual call to main
