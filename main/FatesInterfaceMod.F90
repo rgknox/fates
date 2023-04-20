@@ -19,9 +19,7 @@ module FatesInterfaceMod
    use EDParamsMod               , only : maxpatch_primary
    use EDParamsMod               , only : maxpatch_secondary
    use EDParamsMod               , only : max_cohort_per_patch
-   use EDTypesMod                , only : maxSWb
-   use EDTypesMod                , only : ivis
-   use EDTypesMod                , only : inir
+   use FatesRadiationMemMod      , only : num_swb,ivis,inir
    use EDTypesMod                , only : nclmax
    use EDTypesMod                , only : nlevleaf
    use EDTypesMod                , only : maxpft
@@ -1420,7 +1418,7 @@ contains
             call endrun(msg=errMsg(sourcefile, __LINE__))
          end if
 
-         if(hlm_numSWb > maxSWb) then
+         if(hlm_numSWb > num_swb) then
             write(fates_log(), *) 'FATES sets a maximum number of shortwave bands'
             write(fates_log(), *) 'for some scratch-space, maxSWb'
             write(fates_log(), *) 'it defaults to 2, but can be increased as needed'

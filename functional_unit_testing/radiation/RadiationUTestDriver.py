@@ -37,8 +37,10 @@ matplotlib.rc('font', **font)
 
 
 # Instantiate the F90 modules
+f90_mem_obj = ctypes.CDLL('bld/FatesRadiationMemMod.o',mode=ctypes.RTLD_GLOBAL)
 f90_twostr_obj = ctypes.CDLL('bld/TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
 f90_wrap_obj = ctypes.CDLL('bld/RadiationWrapMod.o',mode=ctypes.RTLD_GLOBAL)
+
 
 # Create aliases for the calls and define arguments if it helps with clarity
 alloc_twostream_call =  f90_wrap_obj.__radiationwrapmod_MOD_initallocate

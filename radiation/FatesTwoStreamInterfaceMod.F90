@@ -5,15 +5,24 @@ Module FatesTwoStreamInterfaceMod
   ! describe the scattering elements from cohort and patch data, and are
   ! used to decompose the scattering elements to return values
   ! at the cohort, or patch-pft scale.
-
+  use FatesConstantsMod     , only : r8 => fates_r8
+  use FatesConstantsMod     , only : ifalse
+  use FatesConstantsMod     , only : itrue
+  use FatesConstantsMod     , only : nearzero
   use shr_log_mod           , only : errMsg => shr_log_errMsg
   use FatesGlobals          , only : fates_log
   use FatesGlobals          , only : endrun => fates_endrun
   use shr_infnan_mod        , only : nan => shr_infnan_nan, assignment(=)
   use FatesInterfaceTypesMod, only : numpft,hlm_numSWb
-  use FatesTwoStreamMemMod  , only : ivis,inir
-  use TwoStreamMLPEMod      , only : air_ft, AllocateRadParams,rad_params
+  use FatesRadiationMemMod  , only : ivis, inir
+  use TwoStreamMLPEMod      , only : air_ft, AllocateRadParams, rad_params
+  use EDTypesMod            , only : ed_patch_type, ed_cohort_type
+  use EDTypesMod            , only : nclmax
+  use TwoStreamMLPEMod      , only : twostream_type
+  use EDPftvarcon           , only : EDPftvarcon_inst
 
+  implicit none
+  
   logical, parameter :: debug  = .false. ! local debug flag
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -27,18 +36,23 @@ Module FatesTwoStreamInterfaceMod
 
       type(ed_patch_type) :: patch
 
-      real(r8) :: max_vai_diff_per_elem ! The maximum vai difference in any element
-                                        ! between the least and most vai of constituting
-                                        ! cohorts.  THe objective is to reduce this.
-
-      
-      !type(ed_cohort_type), pointer :: elem_co_ptrs(ncl*max_el_per_layer,100)
-
-      
+      type(ed_cohort_type), pointer :: cohort
       integer :: n_col(nclmax) ! Number of parallel column elements per layer
       integer :: ican,ft,icol
-      
+      type(twostream_type), pointer :: twostr
       real(r8), parameter :: canopy_open_frac = 0.0_r8
+
+      integer :: maxcol
+      real(r8) :: canopy_frac
+      
+      ! These parameters are not used yet
+      !real(r8) :: max_vai_diff_per_elem ! The maximum vai difference in any element
+      !                                  ! between the least and most vai of constituting
+      !                                  ! cohorts.  THe objective is to reduce this.
+      !integer, parameter  :: max_el_per_layer = 10
+      !real(r8), parameter :: init_max_vai_diff_per_elem = 0.2_r8
+      !type(ed_cohort_type), pointer :: elem_co_ptrs(ncl*max_el_per_layer,100)
+      
 
       associate(twostr => patch%twostr)
       
@@ -47,8 +61,8 @@ Module FatesTwoStreamInterfaceMod
       ! cohorts into elements where they are very similar (LAI and PFT)
       ! -------------------------------------------------------------------------------------------
       
-      max_vai_diff_per_elem = init_max_vai_diff_per_elem
-      iterate_count_do: do while(iterate_element_count)then
+      !max_vai_diff_per_elem = init_max_vai_diff_per_elem
+      !iterate_count_do: do while(iterate_element_count)then
          
          ! Identify how many elements we need
          n_col(1:nclmax) = 0
@@ -63,8 +77,8 @@ Module FatesTwoStreamInterfaceMod
             cohort => cohort%shorter
          enddo
 
-         iterate_element_count = .false.
-      end do iterate_count_do
+      !   iterate_element_count = .false.
+      !end do iterate_count_do
 
       ! Determine if we need an air element in each layer
       ! -------------------------------------------------------------------------------------------
@@ -75,28 +89,33 @@ Module FatesTwoStreamInterfaceMod
          end if
       end do
       n_col(patch%ncl_p) = n_col(patch%ncl_p) + 1
-      
 
+      maxcol = -9
+      do ican = 1,patch%ncl_p
+         if (n_col(ican)>maxcol) maxcol=n_col(ican)
+      end do
+
+         
       ! Handle memory
       ! If the two-stream object is not large enough
       ! or if it is way larger than what is needed
       ! re-allocate the object
       ! -------------------------------------------------------------------------------------------
       
-      if(.not.allocated(twostr%scel)) then
+      if(.not.associated(twostr%scel)) then
 
-         call twostr%AllocInitTwoStream((/ivis,inir/),patch%ncl_p,max(n_col)+2)
-
+         call twostr%AllocInitTwoStream((/ivis,inir/),patch%ncl_p,maxcol+2)
+         
       else
-         if(ubound(twostr%scel,2) <  max(n_col) .or. &
-            ubound(twostr%scel,2) > (max(n_col)+4) .or. &
+         if(ubound(twostr%scel,2) <  maxcol .or. &
+            ubound(twostr%scel,2) > (maxcol+4) .or. &
             ubound(twostr%scel,1) < patch%ncl_p ) then
 
             call twostr%DeallocTwoStream()
             
             ! Add a little more space than necessary so
             ! we don't have to keep allocating/deallocating
-            call twostr%AllocInitTwoStream((/ivis,inir/),patch%ncl_p,max(n_col)+2)
+            call twostr%AllocInitTwoStream((/ivis,inir/),patch%ncl_p,maxcol+2)
             
          end if
       end if
@@ -124,8 +143,8 @@ Module FatesTwoStreamInterfaceMod
          
          twostr%scel(ican,n_col(ican))%pft = ft
          twostr%scel(ican,n_col(ican))%area = canopy_frac*cohort%c_area/patch%total_canopy_area
-         twostr%scel(ican,n_col(ican))%lai  = currentCohort%treelai
-         twostr%scel(ican,n_col(ican))%sai  = currentCohort%treesai
+         twostr%scel(ican,n_col(ican))%lai  = cohort%treelai
+         twostr%scel(ican,n_col(ican))%sai  = cohort%treesai
 
          ! Cohort needs to know which column its in
          cohort%twostr_col = n_col(ican)
@@ -214,20 +233,20 @@ Module FatesTwoStreamInterfaceMod
     real(r8) :: rb_abs_leaf_el
     real(r8) :: r_abs_stem_el
 
-    associate(scelp => patch%twostr%scel(cohort%canopy_layer,cohort%twostr_col, &
-         sccop => patch%twostr%band(ib)%scco(cohort%canopy_layer,cohort%twostr_col) )
+    associate(scelp => patch%twostr%scel(cohort%canopy_layer,cohort%twostr_col), &
+              sccop => patch%twostr%band(ib)%scco(cohort%canopy_layer,cohort%twostr_col) )
 
       ! Convert the vai coordinate from the cohort to the element
-      vai_top_el = vaitop * (scelp%lai+scelp%sai)/(cohort%tree_lai+cohort%tree_sai)
-      vai_bot_el = vaibot * (scelp%lai+scelp%sai)/(cohort%tree_lai+cohort%tree_sai)
+      vai_top_el = vaitop * (scelp%lai+scelp%sai)/(cohort%treelai+cohort%treesai)
+      vai_bot_el = vaibot * (scelp%lai+scelp%sai)/(cohort%treelai+cohort%treesai)
 
       ! Return the absorbed radiation for the element over that band
       call GetAbsRad(scelp,sccop,ib,vai_top_el,vai_bot_el,rd_abs_leaf_el,rb_abs_leaf_el,r_abs_stem_el)
 
       ! Scale the absorbed rad back to the cohort        
-      rd_abs_leaf = rd_abs_leaf_el * cohort%tree_lai/scelp%lai
-      rb_abs_leaf = rb_abs_leaf_el * cohort%tree_lai/scelp%lai
-      r_abs_stem  = r_abs_stem_el * cohort%tree_sai/scelp%sai
+      rd_abs_leaf = rd_abs_leaf_el * cohort%treelai/scelp%lai
+      rb_abs_leaf = rb_abs_leaf_el * cohort%treelai/scelp%lai
+      r_abs_stem  = r_abs_stem_el * cohort%treesai/scelp%sai
 
     end associate
   end subroutine FatesGetCohortAbsRad

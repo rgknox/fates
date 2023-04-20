@@ -193,7 +193,7 @@ Module TwoStreamMLPEMod
   real(r8), parameter :: om_air  = 0.5_r8
   real(r8), parameter :: beta_air = 0.5_r8
 
-  integer, parameter :: air_ft = 0  ! 
+  integer, public, parameter :: air_ft = 0  ! 
 
   
   public :: ParamPrep

@@ -47,7 +47,8 @@ module FatesRestartInterfaceMod
   use PRTGenericMod,           only : num_elements
   use FatesRunningMeanMod,     only : rmean_type
   use FatesRunningMeanMod,     only : ema_lpa
-
+  use FatesRadiationMemMod,    only : num_swb
+  
   ! CIME GLOBALS
   use shr_log_mod       , only : errMsg => shr_log_errMsg
 
@@ -1814,7 +1815,7 @@ contains
    use EDTypesMod, only : ed_site_type
    use EDTypesMod, only : ed_cohort_type
    use EDTypesMod, only : ed_patch_type
-   use EDTypesMod, only : maxSWb
+   
    use EDTypesMod, only : nclmax
    use EDTypesMod, only : numWaterMem
    use EDTypesMod, only : num_vegtemp_mem
@@ -2314,7 +2315,7 @@ contains
              end do
 
 
-             do i = 1,maxSWb
+             do i = 1,num_swb
                 rio_gnd_alb_dif_pasb(io_idx_pa_ib) = cpatch%gnd_alb_dif(i)
                 rio_gnd_alb_dir_pasb(io_idx_pa_ib) = cpatch%gnd_alb_dir(i)
                 io_idx_pa_ib = io_idx_pa_ib + 1
@@ -2510,7 +2511,6 @@ contains
      use EDTypesMod,           only : ed_site_type
      use EDTypesMod,           only : ed_cohort_type
      use EDTypesMod,           only : ed_patch_type
-     use EDTypesMod,           only : maxSWb
      use FatesInterfaceTypesMod,    only : fates_maxElementsPerPatch
 
      use EDTypesMod,           only : maxpft
@@ -2710,7 +2710,6 @@ contains
      use EDTypesMod, only : ed_site_type
      use EDTypesMod, only : ed_cohort_type
      use EDTypesMod, only : ed_patch_type
-     use EDTypesMod, only : maxSWb
      use EDTypesMod, only : nclmax
      use FatesInterfaceTypesMod, only : numpft
      use FatesInterfaceTypesMod, only : fates_maxElementsPerPatch
@@ -3198,7 +3197,7 @@ contains
 
              end do
 
-             do i = 1,maxSWb
+             do i = 1,num_swb
                 cpatch%gnd_alb_dif(i) = rio_gnd_alb_dif_pasb(io_idx_pa_ib)
                 cpatch%gnd_alb_dir(i) = rio_gnd_alb_dir_pasb(io_idx_pa_ib)
                 io_idx_pa_ib = io_idx_pa_ib + 1

@@ -23,6 +23,8 @@ module EDTypesMod
   use FatesInterfaceTypesMod,only : bc_in_type
   use FatesInterfaceTypesMod,only : bc_out_type
   use TwoStreamMLPEMod,      only : twostream_type
+  use FatesRadiationMemMod,  only : num_swb
+  use FatesRadiationMemMod,  only : num_rad_stream_types
   
   implicit none
   private               ! By default everything is private
@@ -230,7 +232,7 @@ module EDTypesMod
 
      ! Two-stream radiation
 
-     integer :: twostream_col  ! The column index in the two-stream solution that this cohort is part of
+     integer :: twostr_col  ! The column index in the two-stream solution that this cohort is part of
      
      ! CARBON FLUXES 
      
@@ -431,7 +433,7 @@ module EDTypesMod
                                                                  ! to that procedure.
 
 
-     type(twostream_type) :: twostream                           ! This holds all two-stream data for the patch
+     type(twostream_type) :: twostr                             ! This holds all two-stream data for the patch
      
      ! LEAF ORGANIZATION
      real(r8) ::  pft_agb_profile(maxpft,n_dbh_bins)            ! binned above ground biomass, for patch fusion: KgC/m2
@@ -470,8 +472,8 @@ module EDTypesMod
      logical  ::  solar_zenith_flag                             ! integer flag specifying daylight (based on zenith angle)
      real(r8) ::  solar_zenith_angle                            ! solar zenith angle (radians)
 
-     real(r8) ::  gnd_alb_dif(maxSWb)                           ! ground albedo for diffuse rad, both bands (fraction)
-     real(r8) ::  gnd_alb_dir(maxSWb)                           ! ground albedo for direct rad, both bands (fraction)
+     real(r8) ::  gnd_alb_dif(num_swb)                           ! ground albedo for diffuse rad, both bands (fraction)
+     real(r8) ::  gnd_alb_dir(num_swb)                           ! ground albedo for direct rad, both bands (fraction)
      
      real(r8) ::  fabd_sun_z(nclmax,maxpft,nlevleaf)            ! sun fraction of direct light absorbed by each canopy 
      ! layer, pft, and leaf layer:-
@@ -493,19 +495,19 @@ module EDTypesMod
 
      ! normalized direct photosynthetically active radiation profiles by 
      ! incident type (direct/diffuse at top of canopy),leaf,pft,leaf (unitless)
-     real(r8) ::  nrmlzd_parprof_pft_dir_z(n_rad_stream_types,nclmax,maxpft,nlevleaf)  
+     real(r8) ::  nrmlzd_parprof_pft_dir_z(num_rad_stream_types,nclmax,maxpft,nlevleaf)  
 
      ! normalized diffuse photosynthetically active radiation profiles by 
      ! incident type (direct/diffuse at top of canopy),leaf,pft,leaf (unitless)
-     real(r8) ::  nrmlzd_parprof_pft_dif_z(n_rad_stream_types,nclmax,maxpft,nlevleaf)  
+     real(r8) ::  nrmlzd_parprof_pft_dif_z(num_rad_stream_types,nclmax,maxpft,nlevleaf)  
 
      ! normalized direct photosynthetically active radiation profiles by 
      ! incident type (direct/diffuse at top of canopy),leaf,leaf (unitless) 
-     real(r8) ::  nrmlzd_parprof_dir_z(n_rad_stream_types,nclmax,nlevleaf)         
+     real(r8) ::  nrmlzd_parprof_dir_z(num_rad_stream_types,nclmax,nlevleaf)         
 
      ! normalized diffuse photosynthetically active radiation profiles by 
      ! incident type (direct/diffuse at top of canopy),leaf,leaf (unitless) 
-     real(r8) ::  nrmlzd_parprof_dif_z(n_rad_stream_types,nclmax,nlevleaf)
+     real(r8) ::  nrmlzd_parprof_dif_z(num_rad_stream_types,nclmax,nlevleaf)
          
      real(r8) ::  parprof_pft_dir_z(nclmax,maxpft,nlevleaf)   ! direct-beam PAR profile through canopy, by canopy,PFT,leaf level (w/m2)
      real(r8) ::  parprof_pft_dif_z(nclmax,maxpft,nlevleaf)   ! diffuse     PAR profile through canopy, by canopy,PFT,leaf level (w/m2)

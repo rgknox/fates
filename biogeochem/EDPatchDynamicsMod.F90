@@ -2134,6 +2134,10 @@ contains
     new_patch%older    => null() ! pointer to next older patch   
     new_patch%younger  => null() ! pointer to next shorter patch      
 
+    new_patch%twostr%scel => null()  ! The radiation module will check if this
+                                     ! is associated, since it is not, then it will
+                                     ! initialize and allocate
+    
     ! assign known patch attributes 
 
     new_patch%age                = age   
