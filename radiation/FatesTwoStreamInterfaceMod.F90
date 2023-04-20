@@ -10,17 +10,14 @@ Module FatesTwoStreamInterfaceMod
   use FatesGlobals          , only : fates_log
   use FatesGlobals          , only : endrun => fates_endrun
   use shr_infnan_mod        , only : nan => shr_infnan_nan, assignment(=)
-  use EDTypesMod            , only : ivis,inir
   use FatesInterfaceTypesMod, only : numpft,hlm_numSWb
+  use FatesTwoStreamMemMod  , only : ivis,inir
   use TwoStreamMLPEMod      , only : air_ft, AllocateRadParams,rad_params
-  
-  
-  integer, parameter  :: max_el_per_layer = 10
-  real(r8), parameter :: init_max_vai_diff_per_elem = 0.2_r8
 
   logical, parameter :: debug  = .false. ! local debug flag
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
+
   
   contains
 
@@ -41,7 +38,7 @@ Module FatesTwoStreamInterfaceMod
       integer :: n_col(nclmax) ! Number of parallel column elements per layer
       integer :: ican,ft,icol
       
-      real(r8), parameter :: canopy_open_frac = 0.02_r8
+      real(r8), parameter :: canopy_open_frac = 0.0_r8
 
       associate(twostr => patch%twostr)
       

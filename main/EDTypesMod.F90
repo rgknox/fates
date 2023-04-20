@@ -49,39 +49,12 @@ module EDTypesMod
   ! -------------------------------------------------------------------------------------
 
 
-  integer, parameter, public :: n_rad_stream_types = 2    ! The number of radiation streams used (direct/diffuse)
- 
-  integer, parameter, public :: idirect   = 1             ! This is the array index for direct radiation
-  integer, parameter, public :: idiffuse  = 2             ! This is the array index for diffuse radiation
-
   ! parameters that govern the VAI (LAI+SAI) bins used in radiative transfer code
   integer, parameter, public :: nlevleaf = 30             ! number of leaf+stem layers in canopy layer
   real(r8), public :: dinc_vai(nlevleaf)   = fates_unset_r8 ! VAI bin widths array
   real(r8), public :: dlower_vai(nlevleaf) = fates_unset_r8 ! lower edges of VAI bins
 
-  ! TODO: we use this cp_maxSWb only because we have a static array q(size=2) of
-  ! land-ice abledo for vis and nir.  This should be a parameter, which would
-  ! get us on track to start using multi-spectral or hyper-spectral (RGK 02-2017)
 
-  integer, parameter, public :: maxSWb = 2      ! maximum number of broad-bands in the
-                                                ! shortwave spectrum cp_numSWb <= cp_maxSWb
-                                                ! this is just for scratch-array purposes
-                                                ! if cp_numSWb is larger than this value
-                                                ! simply bump this number up as needed
-
-  integer, parameter, public :: ivis = 1        ! This is the array index for short-wave
-                                                ! radiation in the visible spectrum, as expected
-                                                ! in boundary condition files and parameter
-                                                ! files.  This will be compared with 
-                                                ! the HLM's expectation in FatesInterfaceMod
-  integer, parameter, public :: inir = 2        ! This is the array index for short-wave
-                                                ! radiation in the near-infrared spectrum, as expected
-                                                ! in boundary condition files and parameter
-                                                ! files.  This will be compared with 
-                                                ! the HLM's expectation in FatesInterfaceMod
-
-  integer, parameter, public :: ipar = ivis     ! The photosynthetically active band
-                                                ! can be approximated to be equal to the visible band
 
 
   integer, parameter, public :: leaves_on  = 2  ! Flag specifying that a deciduous plant has leaves
