@@ -51,7 +51,8 @@ set_radparams_call.argtypes = [POINTER(c_double),POINTER(c_int),POINTER(c_int),c
 param_prep_call = f90_twostr_obj.__twostreammlpemod_MOD_paramprep
 
 setup_canopy_call = f90_wrap_obj.__radiationwrapmod_MOD_setupcanopy
-setup_canopy_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int),POINTER(c_double),POINTER(c_double),POINTER(c_double)]
+setup_canopy_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int), \
+                              POINTER(c_double),POINTER(c_double),POINTER(c_double)]
 
 grndsnow_albedo_call = f90_wrap_obj.__radiationwrapmod_MOD_setgroundsnow
 grndsnow_albedo_call.argtypes = [POINTER(c_int),POINTER(c_double),c_char_p,c_long]
@@ -76,6 +77,9 @@ stem_rhonir = [0.49, 0.36, 0.36, 0.49, 0.49, 0.49, 0.49, 0.49, 0.49, 0.53, 0.53,
 stem_rhovis = [0.21, 0.12, 0.12, 0.21, 0.21, 0.21, 0.21, 0.21, 0.21, 0.31, 0.31, 0.31]
 stem_taunir = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.25, 0.25, 0.25]
 stem_tauvis = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.12, 0.12, 0.12]
+
+rho_snow = [0.80, 0.55] 
+tau_snow = [0.01, 0.01]
 
 visb = 1
 nirb = 2
@@ -136,8 +140,8 @@ def main(argv):
         iret = set_radparams_call(c_double(leaf_clumping_index[ft]),c_int(pft),c_int(0),*ccharnb("clumping_index"))
         
     # Process the core 2Stream parameters from parameters in file
-    iret = param_prep_call(ci(n_pft),ci(visb))
-    iret = param_prep_call(ci(n_pft),ci(nirb))
+    iret = param_prep_call(ci(n_pft),ci(visb),c8(rho_snow[visb]),c8(tau_snow[visb]))
+    iret = param_prep_call(ci(n_pft),ci(nirb),c8(rho_snow[nirb]),c8(tau_snow[nirb]))
 
     
     # Test 1, a single element, visible
@@ -243,6 +247,8 @@ def SerialParallelCanopyTest():
     cd_rd_abs_leaf = c_double(-9.0)
     cd_rb_abs_leaf = c_double(-9.0)
     cd_r_abs_stem  = c_double(-9.0)
+    cd_r_abs_snow  = c_double(-9.0)
+    cd_leaf_sun_frac = c_double(-9.0)
     
     R_beam = 100.
     R_diff = 100.
@@ -250,7 +256,7 @@ def SerialParallelCanopyTest():
 
     ground_albedo_diff = 0.3
     ground_albedo_beam = 0.3
-    
+
     iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
     iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
     iret = canopy_prep_call(ci(ib))
@@ -312,7 +318,8 @@ def SerialParallelCanopyTest():
             #print(i,iv,serialc[i].avai[iv],vai_above,vai_bot,vai_top,ican,cohort_lai*(1+sai_frac))
             icol = 1  # b/c 2 is air
             iret = getabsrad_call(ci(ican+1),ci(icol),ci(ib),c8(vai_top),c8(vai_bot), \
-                                  byref(cd_rd_abs_leaf),byref(cd_rb_abs_leaf),byref(cd_r_abs_stem))
+                                  byref(cd_rd_abs_leaf),byref(cd_rb_abs_leaf),byref(cd_r_abs_stem), \
+                                  byref(cd_r_abs_snow),byref(cd_leaf_sun_frac))
             serialc[i].rd_abs_leaf[iv] = cd_rd_abs_leaf.value
             serialc[i].rb_abs_leaf[iv] = cd_rb_abs_leaf.value
             serialc[i].r_abs_stem[iv] = cd_r_abs_stem.value
@@ -449,10 +456,13 @@ def SingleElementPerturbTest():
     iret = canopy_prep_call(ci(ib))
     iret = zenith_prep_call(c8(cosz))
     iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
-    iret = getparams_call(ci(ican),ci(icol),ci(ib),byref(cd_kb),byref(cd_kd),byref(cd_om),byref(cd_betad),byref(cd_betab))
+    iret = getparams_call(ci(ican),ci(icol),ci(ib),byref(cd_kb), \
+                          byref(cd_kd),byref(cd_om),byref(cd_betad),byref(cd_betab))
 
     for iv in range(n_vai):
-        iret = getintens_call(ci(ican),ci(icol),ci(ib),c8(vai_a[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
+        iret = getintens_call(ci(ican),ci(icol),ci(ib),c8(vai_a[iv]),byref(cd_r_diff_dn), \
+                              byref(cd_r_diff_up),byref(cd_r_beam))
+        
         r_beam[iv] = cd_r_beam.value
         r_diff_up[iv] = cd_r_diff_up.value
         r_diff_dn[iv] = cd_r_diff_dn.value

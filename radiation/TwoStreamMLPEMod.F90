@@ -21,7 +21,7 @@ Module TwoStreamMLPEMod
   !
   ! Assumptions: band index 1 = visible (vis)
   !                         2 = near infrared (nir)
-  !                         3 = thermal
+  !                         3 = thermal (not used at the moment)
   !
 
   implicit none
@@ -43,7 +43,7 @@ Module TwoStreamMLPEMod
   ! direct light. So there are various ways to get to these parameters, depending
   ! on the host model's available parameters.  The rho,tau,xl and clumping parameters
   ! are standard elm/clm parameters, and provided as a convenience.
-  
+
   type, public :: rad_params_type
 
      ! From the parameter file
@@ -62,9 +62,8 @@ Module TwoStreamMLPEMod
      real(r8), allocatable :: kd_stem(:)     ! Mean optical depth per unit area stems in diffuse
      real(r8), allocatable :: om_leaf(:,:)   ! Leaf material scattering albedo (band x pft)
      real(r8), allocatable :: om_stem(:,:)   ! Stem material scattering albedo (band x pft)
-
      real(r8), allocatable :: om_snow(:)     ! Snow material scattering albedo for snow (band)
-     real(r8), allocatable :: betad_snow(:)  ! Diffuse backscatter fraction for snow (band)
+     !real(r8), allocatable :: betad_snow(:)  ! Diffuse backscatter fraction for snow (band)
      
   end type rad_params_type
   
@@ -275,7 +274,7 @@ contains
     allocate(rad_params%om_leaf(n_bands,n_pft))
     allocate(rad_params%om_stem(n_bands,n_pft))
     allocate(rad_params%om_snow(n_bands))
-    allocate(rad_params%betad_snow(n_bands))
+    !allocate(rad_params%betad_snow(n_bands))
     
   end subroutine AllocateRadParams
   
@@ -325,23 +324,28 @@ contains
     ! ---------------------------------------------------------------------------
     
     ! Arguments
-    type(scel_type)      :: scel
-    type(scco_type)      :: scco    
-    integer,intent(in)    :: ib          ! broad band index
-    real(r8),intent(in)   :: vai_top     ! veg area index (from the top of element) to start
-    real(r8),intent(in)   :: vai_bot     ! veg area index (from the top of element) to finish
-    real(r8), intent(out) :: Rb_abs_leaf ! Absorbed beam radiation from leaves [W/m2 ground]
-    real(r8), intent(out) :: Rd_abs_leaf ! Absorbed diff radiation from leaves [W/m2 ground]
-    real(r8), intent(out) :: R_abs_stem  ! Absorbed beam+diff radiation stems  [W/m2 ground]
-    real(r8), intent(out) :: R_abs_snow  ! Absorbed beam+diff radiation snow   [W/m2 ground]
+    type(scel_type)       :: scel
+    type(scco_type)       :: scco    
+    integer,  intent(in)  :: ib            ! broad band index
+    real(r8), intent(in)  :: vai_top       ! veg area index (from the top of element) to start
+    real(r8), intent(in)  :: vai_bot       ! veg area index (from the top of element) to finish
+    real(r8), intent(out) :: Rb_abs_leaf   ! Absorbed beam radiation from leaves [W/m2 ground]
+    real(r8), intent(out) :: Rd_abs_leaf   ! Absorbed diff radiation from leaves [W/m2 ground]
+    real(r8), intent(out) :: R_abs_stem    ! Absorbed beam+diff radiation stems  [W/m2 ground]
+    real(r8), intent(out) :: R_abs_snow    ! Absorbed beam+diff radiation snow   [W/m2 ground]
+    real(r8), intent(out) :: leaf_sun_frac ! Fraction of leaves in the interval exposed
+                                           ! to sunlight
 
-    real(r8) :: Rd_abs                   ! Absorbed diffuse radiation [W/m2 ground]
-    real(r8) :: Rb_abs                   ! Absorbed beam radiation 
-    real(r8) :: vai_max                  ! total integrated (leaf+stem) area index of the current element
-    real(r8) :: diff_wt_leaf             ! diffuse absorption weighting for leaves
-    real(r8) :: diff_wt_stem             ! diffuse absorption weighting for stems
-    real(r8) :: beam_wt_leaf             ! beam absorption weighting for leaves
-    real(r8) :: beam_wt_stem             ! beam absorption weighting for stems
+    real(r8)              :: dvai,dlai     ! Amount of VAI and LAI in this interval [m2/m2]
+    real(r8)              :: sls_frac      ! Fraction of beam radiation attenuated
+                                           ! over the interval from all media (leaf,stem,snow) [m2/m2]
+    real(r8)              :: Rd_abs        ! Absorbed diffuse radiation [W/m2 ground]
+    real(r8)              :: Rb_abs        ! Absorbed beam radiation 
+    real(r8)              :: vai_max       ! total integrated (leaf+stem) area index of the current element
+    real(r8)              :: diff_wt_leaf  ! diffuse absorption weighting for leaves
+    real(r8)              :: diff_wt_stem  ! diffuse absorption weighting for stems
+    real(r8)              :: beam_wt_leaf  ! beam absorption weighting for leaves
+    real(r8)              :: beam_wt_stem  ! beam absorption weighting for stems
     
     associate( Rbeam0  => scco%Rbeam0, &
                a       => scco%a, &
@@ -353,26 +357,19 @@ contains
       ! The total vegetation area index of the element
       vai_max = lai + sai
 
-      ! Fraction of sunlit leaves
-      ! Rbeam_bot = Rbeam_top*exp(-sccop%Kb*(scelp%dlai+scelp%dsai))
-      !
-      ! Fraction of beam lost, or rather area of beam lost:
-      ! 1.-Rbeam_bot/Rbeam_top = 1.-exp(-sccop%Kb*(scelp%dlai+scelp%dsai))
-      !
-      ! Stem+leaf+Snow sunlit fraction =
-      ! sls_frac = 1.-exp(-sccop%Kb*(scelp%dlai+scelp%dsai)) / (scelp%dlai+scelp%dsai)
-      !
-      !  1.-exp(-sccop%Kb*scelp%dlai-sccop%Kb*scelp%dsai) = 1 - exp(-sccop%Kb*scelp%dlai)*exp(-sccop%Kb*scelp%dsai)
-      !
-      ! l_frac = sl_frac * (1-this%frac_snow) * sccop%Kb_leaf*scelp%dlai / (sccop%Kb_leaf*scelp%dlai+sccop%Kb_stem*scelp%dsai)
+      dvai = vai_bot - vai_top
+      dlai = dvai * lai/(lai+sai)
 
-      ! Get the fraction of beam attenuation from stems, leaves and snow [m2/m2]
+      ! Fraction of the beam that is lost to all media in this portion of the element,
+      ! equivalent to 1-Rbeam_bot/Rbeam_top and [m2/m2]
+      sls_frac = (1._r8-exp(-sccop%Kb*dvai))
 
-      dvai = vai_top - vai_bot
+      ! We need to reduce this fraction to the portion lost to just leaf,
+      ! and not snow or stem.  We also need to divide this fraction
+      ! by the amount of leaf
+      leaf_sun_frac =  sls_frac * (1._r8-this%frac_snow) * &
+           (sccop%Kb_leaf*scelp%lai / (sccop%Kb_leaf*scelp%lai+scelp%sai)) / dlai
       
-      sls_frac = (1._r8-exp(-sccop%Kb*dvai)) / dvai
-      
-      leaf_sun_frac =  sls_frac * (1-this%frac_snow) * sccop%Kb_leaf*lai / (sccop%Kb_leaf*scelp%dlai+sccop%Kb_stem*scelp%dsai)
       
       ! We have to disentangle the absorption between leaves and stems, we give them both
       ! a weighting fraction of total absorption of  area*K*(1-om)
@@ -408,7 +405,6 @@ contains
             stop
          end if
       end if
-
       
       ! Amount of absorbed radiation is retrieved by doing an energy
       ! balance on this boundaries over the depth of interest
@@ -436,7 +432,7 @@ contains
 
   ! ================================================================================================
   
-  subroutine ParamPrep(numpft,ib)
+  subroutine ParamPrep(numpft,ib,rho_snow,tau_snow)
 
     integer,intent(in) :: numpft   ! Number of pfts
     integer,intent(in) :: ib       ! Band index
@@ -444,16 +440,7 @@ contains
     real(r8) :: mu
     integer  :: ft
 
-    if(ib==1) then
-       rad_params%om_snow(ib)    = snow_scatter_vis
-       rad_params%betad_snow(ib) = 0.75_r8
-    elseif(ib==2) then
-       rad_params%om_snow(ib)    = snow_scatter_nir
-       rad_params%betad_snow(ib) = 0.75_r8
-    else
-       rad_params%om_snow(ib) = snow_scatter_thm
-       rad_params%betad_snow(ib) = 0.75_r8
-    end if
+    rad_params%om_snow(ib) = rho_snow + tau_snow
     
     do ft = 1,numpft
 

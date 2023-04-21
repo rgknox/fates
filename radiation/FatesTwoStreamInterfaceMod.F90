@@ -15,6 +15,7 @@ Module FatesTwoStreamInterfaceMod
   use shr_infnan_mod        , only : nan => shr_infnan_nan, assignment(=)
   use FatesInterfaceTypesMod, only : numpft,hlm_numSWb
   use FatesRadiationMemMod  , only : ivis, inir
+  use FatesRadiationMemMod  , only : rho_snow,tau_snow
   use TwoStreamMLPEMod      , only : air_ft, AllocateRadParams, rad_params
   use EDTypesMod            , only : ed_patch_type, ed_cohort_type
   use EDTypesMod            , only : nclmax
@@ -279,6 +280,12 @@ Module FatesTwoStreamInterfaceMod
        rad_params%clumping_index(ft) = EDPftvarcon_inst%clumping_index(ft)
     end do
 
+    do ib = 1,hlm_numSwb
+
+       call ParamPrep(numpft,ib,rho_snow(ib),tau_snow(ib))
+       
+    end do
+    
   end subroutine TransferRadParams
 
 
