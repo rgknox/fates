@@ -7,6 +7,7 @@ Module TwoStreamMLPEMod
   ! In summary,
   ! there may various canopy layers, in each canopy layer,
   ! plant media for different functional types are grouped
+
   ! so that they inhabit their own exclusive footprint
   ! within the layer. Within these exclusive functional
   ! columns, there are further sub-layer discretizations,
@@ -32,6 +33,7 @@ Module TwoStreamMLPEMod
   logical, parameter :: debug=.true.
   logical, parameter :: use_derivation1 = .true.
   real(r8), parameter :: unset_r8 = 1.e-36_r8
+  real(r8), parameter :: unset_int = -999
 
   
   integer, parameter :: twostr_vis = 1         ! Named index of visible shortwave radiation
@@ -63,26 +65,30 @@ Module TwoStreamMLPEMod
      real(r8), allocatable :: om_leaf(:,:)   ! Leaf material scattering albedo (band x pft)
      real(r8), allocatable :: om_stem(:,:)   ! Stem material scattering albedo (band x pft)
      real(r8), allocatable :: om_snow(:)     ! Snow material scattering albedo for snow (band)
-     !real(r8), allocatable :: betad_snow(:)  ! Diffuse backscatter fraction for snow (band)
      
   end type rad_params_type
   
   type(rad_params_type),public :: rad_params
 
   
-  ! Information describing the scattering elements from a host model
+  ! Information describing the scattering elements
+  ! that is based on "g"eometry, and independent of wavelength
 
-  type scel_type
+  type scelg_type
      integer  :: pft      ! pft index
      real(r8) :: area     ! m2 col/m2 ground
      real(r8) :: lai      ! m2 of leaf area / m2 col
      real(r8) :: sai      ! m2 of stem area / m2 col
-  end type scel_type
+     real(r8) :: Kb       ! Optical depth of beam radiation
+     real(r8) :: Kb_leaf  ! Optical depth of just leaves in beam radiation
+     real(r8) :: Kd       ! Optical depth of diffuse radiation
+  end type scelg_type
 
 
-  ! Information describing the scattering coefficients
-  ! (this is allocated for each broad band)
-  type scco_type
+  ! Information describing the scattering elemnets that
+  ! is dependent on wavelengths, ie "b"ands (this is allocated for each broad band)
+
+  type scelb_type
   
      ! Terms used in the final solution, also used for decomposing solution
      real(r8) :: Au       ! Compound intercept term
@@ -94,28 +100,20 @@ Module TwoStreamMLPEMod
      real(r8) :: lambda1  ! Compount term w/ B1d and B1u
      real(r8) :: lambda2  ! Compound term w/ B2d and B2u
      real(r8) :: a        ! Complex term operating on veg area index
-     real(r8) :: Kb       ! Optical depth of beam radiation
-     real(r8) :: Kb_leaf  ! Optical depth of just leaves in beam radiation
-     real(r8) :: Kd       ! Optical depth of diffuse radiation
      real(r8) :: om       ! material reflectance. ie portion that
                           ! is reflected from material assuming impact (fraction)
      real(r8) :: betad    ! backscatter fraction of diffuse radiation
      real(r8) :: betab    ! backscatter fraction of beam radiation
-     real(r8) :: frac_abs_leaf
      real(r8) :: Rbeam0   ! Downwelling beam radiation at
                           ! top of the element [w/m2]
 
-   contains 
-       
-     procedure :: GetRdUp
-     procedure :: GetRdDn
-     procedure :: GetRb
-  end type scco_type
+ 
+  end type scelb_type
 
 
   type band_type
 
-     type(scco_type), pointer :: scco(:,:)            ! array of scattering coefficients (layer, column)
+     type(scelb_type), pointer :: scelb(:,:)            ! array of scattering coefficients (layer, column)
                                                       ! can be sparse, will only solve indices up to
 
      integer                  :: ib                   ! band index, should be consistent with rad_params
@@ -128,7 +126,7 @@ Module TwoStreamMLPEMod
   ! This type contains the pre-processed scattering coefficients
   ! and routines.  This is the parent type that holds almost everything
   ! in the two-stream solver.
-  ! The scel structure describes the scattering elements, these are values
+  ! The scelg structure describes the scattering elements, these are values
   ! that need to be defined by the ecosystem model, somewhat of
   ! an input to the solver. Since this is a Perfect Plasticity Approximation
   ! enabled system, we partition the scattering media into "columns" and "layers"
@@ -142,13 +140,14 @@ Module TwoStreamMLPEMod
   
   type, public :: twostream_type
   
-     type(scel_type), pointer :: scel(:,:)            ! array of scattering elements (layer, column)
+     type(scelg_type), pointer :: scelg(:,:)            ! array of scattering elements (layer, column)
                                                       ! can be sparse, will only solve indices up to
                                                       ! n_lyr,n_col(n_lyr)
 
      type(band_type), pointer :: band(:)              ! Holds scattering coefficients for each band
                                                       ! vis,nir,etc (nothing that emits though, no thermal)
 
+     integer                      :: n_bands          ! number of bands (allocation size of band(:))
      integer                      :: n_lyr            ! number of (vertical) scattering element layers
      integer, allocatable         :: n_col(:)         ! number of (horizontal) scattering element columns per layer
      integer                      :: n_scel           ! total number of scattering elements
@@ -170,7 +169,12 @@ Module TwoStreamMLPEMod
      procedure :: GetNSCel
      procedure :: AllocInitTwoStream
      procedure :: DeallocTwoStream
-
+       
+     procedure :: GetRdUp
+     procedure :: GetRdDn
+     procedure :: GetRb
+     procedure :: GetAbsRad
+     
   end type twostream_type
 
 
@@ -197,7 +201,7 @@ Module TwoStreamMLPEMod
   
   public :: ParamPrep
   public :: AllocateRadParams
-  public :: GetAbsRad
+ 
   
 contains
 
@@ -213,21 +217,26 @@ contains
 
     nbands = ubound(band_indices,1)
 
-    allocate(this%n_col(ncan)) 
-    allocate(this%scel(ncan,ncol))
+    allocate(this%n_col(ncan))
+    allocate(this%scelg(ncan,ncol))
     allocate(this%band(nbands))
-    
+
+    this%n_col(1:ncan)    = unset_int
+    this%n_bands          = nbands
+    this%n_lyr            = ncan
     this%frac_snow        = unset_r8
     this%frac_snow_old    = unset_r8
-
+    
     do ib = 1,nbands
        
-       allocate(this%band(ib)%scco(ncan,ncol))
+       allocate(this%band(ib)%scelb(ncan,ncol))
        this%band(ib)%albedo_grnd_diff = unset_r8
        this%band(ib)%albedo_grnd_beam = unset_r8
        this%band(ib)%ib = band_indices(ib)
 
     end do
+
+    
        
     return
   end subroutine AllocInitTwoStream
@@ -243,10 +252,10 @@ contains
     
     nbands = ubound(this%band,1)
     
-    deallocate(this%scel)
+    deallocate(this%scelg)
     deallocate(this%n_col)
     do ib = 1,nbands
-       deallocate(this%band(ib)%scco)
+       deallocate(this%band(ib)%scelb)
     end do
     deallocate(this%band)
       
@@ -280,34 +289,63 @@ contains
   
   ! ================================================================================================
 
-  function GetRdDn(this,vai) result(r_diff_dn)
-    class(scco_type)    :: this
-    real(r8),intent(in) :: vai
-    real(r8)            :: r_diff_dn
+  function GetRdDn(this,ican,icol,ib,vai) result(r_diff_dn)
+
+    class(twostream_type) :: this
+    real(r8),intent(in)   :: vai
+    integer,intent(in)    :: ican
+    integer,intent(in)    :: icol
+    integer,intent(in)    :: ib
+    real(r8)              :: r_diff_dn
     
     ! Rdn = Ad e−(Kbv) + Re + λ1 B1d e^(av) + λ2 B2d e^(−av)
-    r_diff_dn = this%Ad*exp(-this%Kb*vai) + this%B1d*this%lambda1*exp(this%a*vai) + this%B2d*this%lambda2*exp(-this%a*vai)
+    
+    associate(scelb => this%band(ib)%scelb(ican,icol), &
+              scelg => this%scelg(ican,icol) )
+    
+      r_diff_dn = scelb%Ad*exp(-scelg%Kb*vai) + &
+                  scelb%B1d*scelb%lambda1*exp(scelb%a*vai) + &
+                  scelb%B2d*scelb%lambda2*exp(-scelb%a*vai)
+      
+    end associate
   end function GetRdDn
 
-  function GetRdUp(this,vai) result(r_diff_up)
-    class(scco_type)    :: this
-    real(r8),intent(in) :: vai
-    real(r8)            :: r_diff_up
+  function GetRdUp(this,ican,icol,ib,vai) result(r_diff_up)
+
+    class(twostream_type) :: this
+    real(r8),intent(in)   :: vai
+    integer,intent(in)    :: ican
+    integer,intent(in)    :: icol
+    integer,intent(in)    :: ib
+    real(r8)              :: r_diff_up
     
     ! Rup = Au e−(Kbv) + Re + λ1 B1u e^(av) + λ2 B2u e^(−av)
-    r_diff_up = this%Au*exp(-this%Kb*vai) + this%B1u*this%lambda1*exp(this%a*vai) + this%B2u*this%lambda2*exp(-this%a*vai)
+
+    associate(scelb => this%band(ib)%scelb(ican,icol), &
+              scelg => this%scelg(ican,icol) )
+    
+      r_diff_up = scelb%Au*exp(-scelg%Kb*vai) + &
+                  scelb%B1u*scelb%lambda1*exp(scelb%a*vai) + &
+                  scelb%B2u*scelb%lambda2*exp(-scelb%a*vai)
+
+    end associate
   end function GetRdUp
   
-  function GetRb(this,vai) result(r_beam_dn)
-    class(scco_type) :: this
+  function GetRb(this,ican,icol,ib,vai) result(r_beam_dn)
+
+    class(twostream_type) :: this
     real(r8),intent(in)   :: vai
+    integer,intent(in)    :: ican
+    integer,intent(in)    :: icol
+    integer,intent(in)    :: ib
     real(r8)              :: r_beam_dn
 
-    r_beam_dn = this%Rbeam0*exp(-this%Kb*vai)
+    r_beam_dn = this%band(ib)%scelb(ican,icol)%Rbeam0*exp(-this%scelg(ican,icol)%Kb*vai)
+    
   end function GetRb
   
   
-  subroutine GetAbsRad(scel,scco,ib,vai_top,vai_bot,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow)
+  subroutine GetAbsRad(this,ican,icol,ib,vai_top,vai_bot,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
 
     ! This routine is used to help decompose radiation scattering
     ! and return the amount of absorbed radiation.  The canopy layer and column
@@ -324,8 +362,9 @@ contains
     ! ---------------------------------------------------------------------------
     
     ! Arguments
-    type(scel_type)       :: scel
-    type(scco_type)       :: scco    
+    class(twostream_type) :: this
+    integer,intent(in)    :: ican
+    integer,intent(in)    :: icol
     integer,  intent(in)  :: ib            ! broad band index
     real(r8), intent(in)  :: vai_top       ! veg area index (from the top of element) to start
     real(r8), intent(in)  :: vai_bot       ! veg area index (from the top of element) to finish
@@ -342,49 +381,51 @@ contains
     real(r8)              :: Rd_abs        ! Absorbed diffuse radiation [W/m2 ground]
     real(r8)              :: Rb_abs        ! Absorbed beam radiation 
     real(r8)              :: vai_max       ! total integrated (leaf+stem) area index of the current element
+    real(r8)              :: frac_abs_snow ! fraction of radiation absorbed by snow
     real(r8)              :: diff_wt_leaf  ! diffuse absorption weighting for leaves
     real(r8)              :: diff_wt_stem  ! diffuse absorption weighting for stems
     real(r8)              :: beam_wt_leaf  ! beam absorption weighting for leaves
     real(r8)              :: beam_wt_stem  ! beam absorption weighting for stems
-    
-    associate( Rbeam0  => scco%Rbeam0, &
-               a       => scco%a, &
-               om      => scco%om, &
-               lai     => scel%lai, &
-               sai     => scel%sai, &
-               ft      => scel%pft)
+    real(r8)              :: leaf_Kb_frac  ! The fraction of optical depth attributed to leaves
 
+    
+    associate(scelb => this%band(ib)%scelb(ican,icol), &
+         scelg => this%scelg(ican,icol), &
+         ft => this%scelg(ican,icol)%pft )
+      
       ! The total vegetation area index of the element
-      vai_max = lai + sai
+      vai_max = scelg%lai +  scelg%sai
 
       dvai = vai_bot - vai_top
-      dlai = dvai * lai/(lai+sai)
+      dlai = dvai *  scelg%lai/( scelg%lai+ scelg%sai)
 
       ! Fraction of the beam that is lost to all media in this portion of the element,
       ! equivalent to 1-Rbeam_bot/Rbeam_top and [m2/m2]
-      sls_frac = (1._r8-exp(-sccop%Kb*dvai))
+      sls_frac = (1._r8-exp(-scelg%Kb*dvai))
 
       ! We need to reduce this fraction to the portion lost to just leaf,
       ! and not snow or stem.  We also need to divide this fraction
       ! by the amount of leaf
-      leaf_sun_frac =  sls_frac * (1._r8-this%frac_snow) * &
-           (sccop%Kb_leaf*scelp%lai / (sccop%Kb_leaf*scelp%lai+scelp%sai)) / dlai
+
+      ! The fraction of the optical depth that is attributed to leaves
+      leaf_Kb_frac =  (1._r8-this%frac_snow) * &
+                      (scelg%Kb_leaf*scelg%lai / (scelg%Kb_leaf*scelg%lai+scelg%sai))
+      
+      leaf_sun_frac =  sls_frac * leaf_Kb_frac / dlai
       
       
       ! We have to disentangle the absorption between leaves and stems, we give them both
       ! a weighting fraction of total absorption of  area*K*(1-om)
 
-      frac_abs_snow = this%frac_snow*(1._r8-rad_params%om_snow(ib)) / (1._r8-scco%om)
+      frac_abs_snow = this%frac_snow*(1._r8-rad_params%om_snow(ib)) / (1._r8-scelb%om)
       
-      diff_wt_leaf = lai*(1._r8-rad_params%om_leaf(ft,ib))*rad_params%kd_leaf(ft)
-      diff_wt_stem = sai*(1._r8-rad_params%om_stem(ft,ib))*rad_params%kd_stem(ft)
+      diff_wt_leaf =  scelg%lai*(1._r8-rad_params%om_leaf(ft,ib))*rad_params%Kd_leaf(ft)
+      diff_wt_stem =  scelg%sai*(1._r8-rad_params%om_stem(ft,ib))*rad_params%Kd_stem(ft)
 
-      beam_wt_leaf = lai*(1._r8-rad_params%om_leaf(ft,ib))*scco%Kb_leaf
-      beam_wt_stem = sai*(1._r8-rad_params%om_stem(ft,ib))*1._r8
+      beam_wt_leaf =  scelg%lai*(1._r8-rad_params%om_leaf(ft,ib))*scelg%Kb_leaf
+      beam_wt_stem =  scelg%sai*(1._r8-rad_params%om_stem(ft,ib))*1._r8
 
       ! Mean element transmission coefficients adding snow scattering
-      
-      !sccop%frac_abs_leaf = (1._r8-this%frac_snow) * lai*(1.-rad_params%om_leaf(ib,ft)) / (vai*(1._r8-sccop%om))
       
       if(debug) then
          if(vai_bot> vai_max)then
@@ -411,9 +452,10 @@ contains
       ! Result is Watts / m2 of the element's area footprint NOT
       ! per m2 of tissue (at least not in this step)
       
-      Rb_abs = scco%GetRb(vai_top)-scco%GetRb(vai_bot)*(1._r8-om)  
-      Rd_abs = (scco%GetRdDn(vai_top) - scco%GetRdDn(vai_bot)) + &
-               (scco%GetRdUp(vai_bot) - scco%GetRdUp(vai_top))
+      Rb_abs = this%GetRb(ican,icol,ib,vai_top)-this%GetRb(ican,icol,ib,vai_bot)*(1._r8-this%band(ib)%scelb(ican,icol)%om)
+      
+      Rd_abs = (this%GetRdDn(ican,icol,ib,vai_top) - this%GetRdDn(ican,icol,ib,vai_bot)) + &
+               (this%GetRdUp(ican,icol,ib,vai_bot) - this%GetRdUp(ican,icol,ib,vai_top))
       
       ! Fraction of leaves exposed to direct sunlight
       Rb_abs_leaf = (1._r8-frac_abs_snow)*Rb_abs * beam_wt_leaf / (beam_wt_leaf+beam_wt_stem)
@@ -436,6 +478,8 @@ contains
 
     integer,intent(in) :: numpft   ! Number of pfts
     integer,intent(in) :: ib       ! Band index
+    real(r8)           :: rho_snow
+    real(r8)           :: tau_snow
     
     real(r8) :: mu
     integer  :: ft
@@ -457,8 +501,8 @@ contains
             (1._r8-(rad_params%phi1(ft)/rad_params%phi2(ft))* &
             log((rad_params%phi2(ft)+rad_params%phi1(ft))/rad_params%phi1(ft)))
        
-       rad_params%kd_leaf(ft) = 1/mu
-       rad_params%kd_stem(ft) = 1._r8  ! Isotropic assumption
+       rad_params%Kd_leaf(ft) = 1/mu
+       rad_params%Kd_stem(ft) = 1._r8  ! Isotropic assumption
 
        rad_params%om_leaf(ib,ft) = rad_params%rhol(ib,ft) + rad_params%taul(ib,ft)
        rad_params%om_stem(ib,ft) = rad_params%rhos(ib,ft) + rad_params%taus(ib,ft)
@@ -469,8 +513,11 @@ contains
   end subroutine ParamPrep
 
   ! ================================================================================================
+
+
+  ! ================================================================================================
   
-  subroutine CanopyPrep(this,ib)
+  subroutine CanopyPrep(this,frac_snow)
 
     ! Pre-process things that change with canopy-geometry or snow cover
     ! We try to only run this when necessary. For instance we only
@@ -478,19 +525,21 @@ contains
     ! when the amount of snow-cover changes.  
     
     class(twostream_type) :: this
-    integer               :: ib     ! The band of interest
+    
+    real(r8)              :: frac_snow   ! The fraction (in terms of vegetation area index)
+                                         ! of vegetation covered with snow
 
     ! But we check if the snow conditions
     ! change during the high frequency calls
     ! as well.
-    
+    integer :: ib     ! The band of interest
     integer :: ican  ! scattering element canopy layer index (top down)
     integer :: icol  ! scattering element column
     real(r8) :: rho  ! element mean material reflectance
     real(r8) :: tau  ! element mean material transmittance
     real(r8) :: vai  ! vegetation area index lai+sai
-    !type(scel_type),pointer :: scelp   ! Pointer to the scel data structure
-    !type(scco_type),pointer :: sccop   ! Pointer to the scco data structure
+
+    this%frac_snow = frac_snow
     
     if(.not.this%force_prep) then
        if(abs(this%frac_snow-this%frac_snow_old)<nearzero) then
@@ -500,63 +549,66 @@ contains
     end if
     
     this%frac_snow_old = this%frac_snow
-    
-    do ican = 1,this%n_lyr
-       do icol = 1,this%n_col(ican)
 
-          associate(lai => this%scel(ican,icol)%lai, &
-                    sai => this%scel(ican,icol)%sai, &
-                    ft  => this%scel(ican,icol)%pft, &
-                    sclep => this%scel(ican,icol),   &
-                    sccop => this%band(ib)%scco(ican,icol))
+    do_can: do ican = 1,this%n_lyr
+       do_col: do icol = 1,this%n_col(ican)
+             
+          associate(lai => this%scelg(ican,icol)%lai, &
+               sai => this%scelg(ican,icol)%sai, &
+               ft  => this%scelg(ican,icol)%pft, &
+               scelg => this%scelg(ican,icol))
+
+            vai = lai + sai
             
-            if(ft==0)then
-               
-               ! Simple provisions for a ghost element (air)
-               sccop%kd = k_air
-               sccop%om = om_air
-               sccop%betad = beta_air
-               sccop%frac_abs_leaf = unset_r8
-               
-            else
+            ! Mean element transmission coefficients w/o snow effects
+            scelg%Kd =  (lai * rad_params%Kd_leaf(ft) + &
+                 sai * rad_params%Kd_stem(ft))/vai
 
-               vai = lai + sai
+            if(ft==0) scelg%Kd = k_air
+            
+            do_bands: do ib = 1, this%n_bands
 
-               ! Mean element transmission coefficients w/o snow effects
-               sccop%kd =  (lai * rad_params%kd_leaf(ft) + &
-                    sai * rad_params%kd_stem(ft))/vai
+               associate(scelb => this%band(ib)%scelb(ican,icol))
 
-               sccop%om =  (lai*rad_params%om_leaf(ib,ft) + &
-                            sai*rad_params%om_stem(ib,ft))/vai
+                 if (ft==0) then
 
-               
-               
-               sccop%om = this%frac_snow*rad_params%om_snow(ib) + (1._r8-this%frac_snow)*sccop%om
+                    scelb%om = om_air
+                    scelb%betad = beta_air
+                    
+                 else
 
-               
-               
-               ! Diffuse backscatter, taken from G. Bonan's code
+                    ! Material reflectance (weighted average of leaf stem and snow)
+                    
+                    scelb%om =  (lai*rad_params%om_leaf(ib,ft) + &
+                                 sai*rad_params%om_stem(ib,ft))/vai
+                    
+                    scelb%om = this%frac_snow*rad_params%om_snow(ib) + (1._r8-this%frac_snow)*scelb%om
 
-               rho = (lai * rad_params%rhol(ib,ft) + &
-                    sai * rad_params%rhos(ib,ft))/vai
-               tau = (lai * rad_params%taul(ib,ft) + &
-                    sai * rad_params%taus(ib,ft))/vai
+                    ! Diffuse backscatter, taken from G. Bonan's code
+                    
+                    rho = (lai * rad_params%rhol(ib,ft) + &
+                         sai * rad_params%rhos(ib,ft))/vai
+                    tau = (lai * rad_params%taul(ib,ft) + &
+                         sai * rad_params%taus(ib,ft))/vai
 
-               sccop%betad  = 0.5_r8 / sccop%om * &
-                    ( sccop%om + (rho-tau) * ((1._r8+rad_params%xl(ft))/2._r8)**2._r8 )
+                    scelb%betad  = 0.5_r8 / scelb%om * &
+                         ( scelb%om + (rho-tau) * ((1._r8+rad_params%xl(ft))/2._r8)**2._r8 )
+                    
+                    
+                 end if
+               end associate
+            end do do_bands
 
-               !!sccop%betad  = this%frac_snow*rad_params%betad_snow(ib) + (1._r8-this%frac_snow)*sccop%betad 
-            end if
           end associate
-       end do
-    end do
+       end do do_col
+    end do do_can
     
     return
   end subroutine CanopyPrep
 
   ! ================================================================================================
   
-  subroutine ZenithPrep(this,ib,cosz)
+  subroutine ZenithPrep(this,cosz)
 
     ! Pre-process things that change with the zenith angle
     ! i.e. the beam optical properties
@@ -571,56 +623,64 @@ contains
     real(r8) :: avmu ! Average inverse diffuse optical depth per unit leaf area
     real(r8) :: gdir
     real(r8) :: tmp0,tmp1,tmp2
-    type(scco_type), pointer :: sccop
     
-    do ican = 1,this%n_lyr
-       do icol = 1,this%n_col(ican)
+    do_ican: do ican = 1,this%n_lyr
+       do_ical: do icol = 1,this%n_col(ican)
 
-          sccop =>  this%band(ib)%scco(ican,icol)
-          
-          associate(ft => this%scel(ican,icol)%pft, &
-               scelp => this%scel(ican,icol))
+          associate(ft => this%scelg(ican,icol)%pft, &
+                    scelg => this%scelg(ican,icol))
 
             if(ft==0)then
-
                ! Simple provisions for a ghost element (air)
-               sccop%Kb_leaf = k_air
-               sccop%Kb = k_air
-               sccop%betab = beta_air
-
+               scelg%Kb_leaf = k_air
+               scelg%Kb = k_air
             else
                gdir = rad_params%phi1(ft) + rad_params%phi2(ft) * cosz
 
                !how much direct light penetrates a singleunit of lai?
-               sccop%Kb_leaf = gdir / cosz
+               scelg%Kb_leaf = gdir / cosz
 
-               sccop%Kb = (scelp%lai*sccop%Kb_leaf + scelp%sai*1.0)/(scelp%lai+scelp%sai)
-
-               ! RGK: The snow is adding area, so I don't see this as a weighted
-               !      average, but purely adding optical depth
-               !!sccop%kb = this%frac_snow*k_snow + sccop%kb
-
-               ! betab - upscatter parameter for direct beam radiation, from G. Bonan
-
+               ! RGK: My sense is that snow should be adding optical depth
+               !      but we don't have any precedent for that in the FATES
+               !      code or old CLM. Re-view this.
+               !!scelbp%Kb = this%frac_snow*k_snow + scelbp%Kb
+               
+               scelg%Kb = (scelg%lai*scelg%Kb_leaf + scelg%sai*1.0)/(scelg%lai+scelg%sai)
+               
                avmu = (1._r8 - rad_params%phi1(ft)/rad_params%phi2(ft) * &
                     log((rad_params%phi1(ft)+rad_params%phi2(ft))/rad_params%phi1(ft))) / rad_params%phi2(ft)
-
+               
                tmp0 = gdir +  rad_params%phi2(ft) * cosz
                tmp1 =  rad_params%phi1(ft) * cosz
                tmp2 = 1._r8 - tmp1/tmp0 * log((tmp1+tmp0)/tmp1)
-               asu = 0.5_r8 * sccop%om * gdir / tmp0 * tmp2
-               sccop%betab = (1._r8 + avmu*sccop%kb) / (sccop%om*avmu*sccop%kb) * asu
-
+               
             end if
 
-            !!sccop%betab = this%frac_snow*beta_snow + sccop%betab
+            do_ib: do ib = 1,this%n_bands
+               
+               associate( scelb => this%band(ib)%scelb(ican,icol) )
+                 
+                 if(ft==0)then
 
-            !this%albedo_grnd_beam = 1.e-36  ! Must fill this in
-            
+                    ! Simple provisions for a ghost element (air)
+                    scelb%betab = beta_air
+                    
+                 else
+                    
+                    ! betab - upscatter parameter for direct beam radiation, from G. Bonan
+                    asu = 0.5_r8 * scelb%om * gdir / tmp0 * tmp2
+                    scelb%betab = (1._r8 + avmu*scelg%Kb) / (scelb%om*avmu*scelg%Kb) * asu
+                    
+                 end if
+
+               end associate
+            end do do_ib
           end associate
-       end do
-    end do
-
+       end do do_ical
+    end do do_ican
+    
+    !this%band(ib)%albedo_grnd_beam = 1.e-36  ! Must fill this in
+    
     return
   end subroutine ZenithPrep
   
@@ -681,8 +741,8 @@ contains
     real(r8) :: frac_exp_ground     ! Fraction of ground that is not occupied by columns [m2/m2]
     real(r8) :: vai                 ! Vegetation area index [m2 vegetation / m2 ground]
 
-    type(scel_type),pointer :: scelp   ! Pointer to the scel data structure
-    type(scco_type),pointer :: sccop   ! Pointer to the scco data structure
+    type(scelg_type),pointer :: scelgp   ! Pointer to the scelg data structure
+    type(scelb_type),pointer :: scelbp   ! Pointer to the scelb data structure
     
     ! Parameters for solving via LAPACK DGELS()
     character(1),parameter :: trans = 'N'           ! Input matrix is not transposed
@@ -742,18 +802,18 @@ contains
 
        Rbeam_bot = 0._r8
        do icol = 1,this%n_col(ican)
-          scelp => this%scel(ican,icol)
-          sccop => this%band(ib)%scco(ican,icol)
-          sccop%Rbeam0 = Rbeam_top
+          scelgp => this%scelg(ican,icol)
+          scelbp => this%band(ib)%scelb(ican,icol)
+          scelbp%Rbeam0 = Rbeam_top
           Rbeam_bot = Rbeam_bot + &
-               Rbeam_top*scelp%area*exp(-sccop%Kb*(scelp%lai+scelp%sai))
+               Rbeam_top*scelgp%area*exp(-scelgp%Kb*(scelgp%lai+scelgp%sai))
        end do
 
        ! Save the beam intensity that would be imposed on any exposed earth
        if(ican==this%n_lyr) then
           frac_exp_ground=1._r8
           do icol = 1,this%n_col(ican)
-             frac_exp_ground = frac_exp_ground - this%scel(ican,icol)%area
+             frac_exp_ground = frac_exp_ground - this%scelg(ican,icol)%area
           end do
           
           Rbeam_exp_ground = Rbeam_top
@@ -770,27 +830,27 @@ contains
     do ican = 1,this%n_lyr
        do icol = 1,this%n_col(ican)
 
-          scelp => this%scel(ican,icol)
-          sccop => this%band(ib)%scco(ican,icol)
+          scelgp => this%scelg(ican,icol)
+          scelbp => this%band(ib)%scelb(ican,icol)
           
-          a2 = sccop%Kd*sccop%Kd*(sccop%om-1._r8)*(sccop%om-1._r8-2._r8*sccop%om*sccop%betad)
+          a2 = scelgp%Kd*scelgp%Kd*(scelbp%om-1._r8)*(scelbp%om-1._r8-2._r8*scelbp%om*scelbp%betad)
           
           if(a2<0._r8) then
              print*,'a^2 is less than zero'
              stop
           end if
           
-          sccop%a  = sqrt(a2)
+          scelbp%a  = sqrt(a2)
        
-          b1 = (sccop%Kd*(1._r8-sccop%om)*(1._r8-2._r8*sccop%betab)+sccop%Kb) * &
-               sccop%om*sccop%Kb*sccop%Rbeam0
-          b2 = (sccop%Kd*(sccop%om-1._r8-2._r8*sccop%om*sccop%betad) - &
-               (1._r8-2._r8*sccop%betab)*sccop%Kb) * &
-               sccop%om*sccop%Kb*sccop%Rbeam0
+          b1 = (scelgp%Kd*(1._r8-scelbp%om)*(1._r8-2._r8*scelbp%betab)+scelgp%Kb) * &
+               scelbp%om*scelgp%Kb*scelbp%Rbeam0
+          b2 = (scelgp%Kd*(scelbp%om-1._r8-2._r8*scelbp%om*scelbp%betad) - &
+               (1._r8-2._r8*scelbp%betab)*scelgp%Kb) * &
+               scelbp%om*scelgp%Kb*scelbp%Rbeam0
 
           if(use_derivation1) then
              
-             nu_sqrd = (1._r8-sccop%om+2._r8*sccop%om*sccop%betad)/(1._r8-sccop%om)
+             nu_sqrd = (1._r8-scelbp%om+2._r8*scelbp%om*scelbp%betad)/(1._r8-scelbp%om)
              
              if(nu_sqrd<0._r8)then
                 print*,'nu_sqrd is less than zero'
@@ -798,52 +858,52 @@ contains
              end if
              
              ! B_1 up term from documentation:
-             sccop%B1u  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
+             scelbp%B1u  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
              
              ! B_2 up term from documentation
-             sccop%B2u = 0.5_r8*(1._r8-sqrt(nu_sqrd))
+             scelbp%B2u = 0.5_r8*(1._r8-sqrt(nu_sqrd))
 
              ! B_1 down term from documentation:
-             sccop%B1d  = -0.5_r8*(1._r8-sqrt(nu_sqrd))
+             scelbp%B1d  = -0.5_r8*(1._r8-sqrt(nu_sqrd))
              
              ! B_2 down term from documentation
-             sccop%B2d = -0.5_r8*(1._r8+sqrt(nu_sqrd))
+             scelbp%B2d = -0.5_r8*(1._r8+sqrt(nu_sqrd))
              
              ! A_2 term from documentation
-             sccop%Ad    = -0.5_r8*(b2-b1)/(sccop%a*sccop%a-sccop%Kb*sccop%Kb)   ! aka half b2 minus b1
+             scelbp%Ad    = -0.5_r8*(b2-b1)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b2 minus b1
              
              ! A_1 term from documentation
-             sccop%Au    = -0.5_r8*(b2+b1)/(sccop%a*sccop%a-sccop%Kb*sccop%Kb)   ! aka half b1 plus b2
+             scelbp%Au    = -0.5_r8*(b2+b1)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b1 plus b2
 
           else
 
-             nu_sqrd = (sccop%om-1._r8)/(sccop%om - 1._r8-2._r8*sccop%om*sccop%betad)
+             nu_sqrd = (scelbp%om-1._r8)/(scelbp%om - 1._r8-2._r8*scelbp%om*scelbp%betad)
 
-             nu = (sccop%Kd*(sccop%om-1._r8))/sccop%a
+             nu = (scelgp%Kd*(scelbp%om-1._r8))/scelbp%a
              
              b1 = -b1
              
              ! B 1 up term from documentation
-             !sccop%B1u  = 0.5_r8*(1._r8-nu)
-             sccop%B1u  = 0.5_r8*(1._r8-sqrt(nu_sqrd))
+             !scelbp%B1u  = 0.5_r8*(1._r8-nu)
+             scelbp%B1u  = 0.5_r8*(1._r8-sqrt(nu_sqrd))
              
              ! B_2 term from documentation
-             !sccop%B2u = 0.5_r8*(1._r8+nu)
-             sccop%B2u  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
+             !scelbp%B2u = 0.5_r8*(1._r8+nu)
+             scelbp%B2u  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
              
              ! B 1 up term from documentation
-             !sccop%B1d  = 0.5_r8*(1._r8+nu)
-             sccop%B1d  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
+             !scelbp%B1d  = 0.5_r8*(1._r8+nu)
+             scelbp%B1d  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
              
              ! B_2 term from documentation
-             !sccop%B2d = 0.5_r8*(1._r8-nu)
-             sccop%B2d  = 0.5_r8*(1._r8-sqrt(nu_sqrd))
+             !scelbp%B2d = 0.5_r8*(1._r8-nu)
+             scelbp%B2d  = 0.5_r8*(1._r8-sqrt(nu_sqrd))
              
              ! A_2 term from documentation
-             sccop%Ad    = -0.5_r8*(b2+b1)/(sccop%a*sccop%a-sccop%Kb*sccop%Kb)   ! aka half b2 minus b1
+             scelbp%Ad    = -0.5_r8*(b2+b1)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b2 minus b1
              
              ! A_1 term from documentation
-             sccop%Au    = -0.5_r8*(b2-b1)/(sccop%a*sccop%a-sccop%Kb*sccop%Kb)   ! aka half b1 plus b2
+             scelbp%Au    = -0.5_r8*(b2-b1)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b1 plus b2
              
           end if
           
@@ -885,17 +945,17 @@ contains
 
     do icol = 1,this%n_col(1)
 
-       scelp => this%scel(1,icol)
-       sccop => this%band(ib)%scco(1,icol)
+       scelgp => this%scelg(1,icol)
+       scelbp => this%band(ib)%scelb(1,icol)
        ilem = icol
        qp   = qp   + 1
        
        k1 = 2*(ilem-1)+1
        k2 = k1+1
        
-       TAU(qp)      =  Rdiff_atm - sccop%Ad
-       OMEGA(qp,k1) =  sccop%B1d
-       OMEGA(qp,k2) =  sccop%B2d
+       TAU(qp)      =  Rdiff_atm - scelbp%Ad
+       OMEGA(qp,k1) =  scelbp%B1d
+       OMEGA(qp,k2) =  scelbp%B2d
 
     end do
     
@@ -935,9 +995,9 @@ contains
              ! Include the self terms for the current element
              ! This term is at v=0
 
-             TAU(qp) = this%band(ib)%scco(ibot,jcol)%Ad
-             OMEGA(qp,k1) = OMEGA(qp,k1) - this%band(ib)%scco(ibot,jcol)%B1d
-             OMEGA(qp,k2) = OMEGA(qp,k2) - this%band(ib)%scco(ibot,jcol)%B2d
+             TAU(qp) = this%band(ib)%scelb(ibot,jcol)%Ad
+             OMEGA(qp,k1) = OMEGA(qp,k1) - this%band(ib)%scelb(ibot,jcol)%B1d
+             OMEGA(qp,k2) = OMEGA(qp,k2) - this%band(ib)%scelb(ibot,jcol)%B2d
 
              ! We need to include the terms from
              ! all elements above the current element of interest
@@ -948,14 +1008,14 @@ contains
                 k1 = 2*(ilem-1)+1
                 k2 = k1 + 1
                 
-                scelp => this%scel(itop,icol)
-                sccop => this%band(ib)%scco(itop,icol)
+                scelgp => this%scelg(itop,icol)
+                scelbp => this%band(ib)%scelb(itop,icol)
                 
-                vai = scelp%lai + scelp%sai
+                vai = scelgp%lai + scelgp%sai
 
-                TAU(qp) = TAU(qp) - scelp%area * sccop%Ad *exp(-sccop%Kb*vai)
-                OMEGA(qp,k1) = OMEGA(qp,k1) + scelp%area * sccop%B1d*exp(sccop%a*vai)
-                OMEGA(qp,k2) = OMEGA(qp,k2) + scelp%area * sccop%B2d*exp(-sccop%a*vai)
+                TAU(qp) = TAU(qp) - scelgp%area * scelbp%Ad *exp(-scelgp%Kb*vai)
+                OMEGA(qp,k1) = OMEGA(qp,k1) + scelgp%area * scelbp%B1d*exp(scelbp%a*vai)
+                OMEGA(qp,k2) = OMEGA(qp,k2) + scelgp%area * scelbp%B2d*exp(-scelbp%a*vai)
 
              end do
           
@@ -992,25 +1052,25 @@ contains
              ilem = ilem_off + icol
              k1   = 2*(ilem-1)+1
              k2   = k1 + 1
-             scelp => this%scel(itop,icol)
-             sccop => this%band(ib)%scco(itop,icol)
+             scelgp => this%scelg(itop,icol)
+             scelbp => this%band(ib)%scelb(itop,icol)
              
-             vai = scelp%lai + scelp%sai
-             TAU(qp) = sccop%Au*exp(-sccop%Kb*vai)
-             OMEGA(qp,k1) = OMEGA(qp,k1) - sccop%B1u*exp(sccop%a*vai)
-             OMEGA(qp,k2) = OMEGA(qp,k2) - sccop%B2u*exp(-sccop%a*vai)
+             vai = scelgp%lai + scelgp%sai
+             TAU(qp) = scelbp%Au*exp(-scelgp%Kb*vai)
+             OMEGA(qp,k1) = OMEGA(qp,k1) - scelbp%B1u*exp(scelbp%a*vai)
+             OMEGA(qp,k2) = OMEGA(qp,k2) - scelbp%B2u*exp(-scelbp%a*vai)
 
              ! Terms for mean diffuse exiting lower elements (move out of this loop for efficiency)
              do jcol = 1,this%n_col(ibot)
                 ilem = ilem_off + this%n_col(itop) + jcol
                 k1 = 2*(ilem-1)+1
                 k2 = k1 + 1
-                scelp => this%scel(ibot,jcol)
-                sccop => this%band(ib)%scco(ibot,jcol)
+                scelgp => this%scelg(ibot,jcol)
+                scelbp => this%band(ib)%scelb(ibot,jcol)
                 
-                TAU(qp) = TAU(qp) - scelp%area*sccop%Au
-                OMEGA(qp,k1) = OMEGA(qp,k1) + scelp%area*sccop%B1u
-                OMEGA(qp,k2) = OMEGA(qp,k2) + scelp%area*sccop%B2u
+                TAU(qp) = TAU(qp) - scelgp%area*scelbp%Au
+                OMEGA(qp,k1) = OMEGA(qp,k1) + scelgp%area*scelbp%B1u
+                OMEGA(qp,k2) = OMEGA(qp,k2) + scelgp%area*scelbp%B2u
              end do
                 
           end do
@@ -1036,20 +1096,20 @@ contains
        k1 = 2*(ilem-1)+1
        k2 = k1 + 1
 
-       scelp => this%scel(this%n_lyr,jcol)
-       sccop => this%band(ib)%scco(this%n_lyr,jcol)
+       scelgp => this%scelg(this%n_lyr,jcol)
+       scelbp => this%band(ib)%scelb(this%n_lyr,jcol)
        
-       vai = scelp%lai + scelp%sai
+       vai = scelgp%lai + scelgp%sai
 
-       TAU(qp) = sccop%Au*exp(-sccop%Kb*vai)  &
-            - this%band(ib)%albedo_grnd_diff*sccop%Ad*exp(-sccop%Kb*vai) &
-            - this%band(ib)%albedo_grnd_beam*sccop%Rbeam0*exp(-sccop%Kb*vai)
+       TAU(qp) = scelbp%Au*exp(-scelgp%Kb*vai)  &
+            - this%band(ib)%albedo_grnd_diff*scelbp%Ad*exp(-scelgp%Kb*vai) &
+            - this%band(ib)%albedo_grnd_beam*scelbp%Rbeam0*exp(-scelgp%Kb*vai)
        
-       OMEGA(qp,k1) = OMEGA(qp,k1) - sccop%B1u*exp(sccop%a*vai)
-       OMEGA(qp,k2) = OMEGA(qp,k2) - sccop%B2u*exp(-sccop%a*vai)
+       OMEGA(qp,k1) = OMEGA(qp,k1) - scelbp%B1u*exp(scelbp%a*vai)
+       OMEGA(qp,k2) = OMEGA(qp,k2) - scelbp%B2u*exp(-scelbp%a*vai)
 
-       OMEGA(qp,k1) = OMEGA(qp,k1) + this%band(ib)%albedo_grnd_diff*sccop%B1d*exp(sccop%a*vai)
-       OMEGA(qp,k2) = OMEGA(qp,k2) + this%band(ib)%albedo_grnd_diff*sccop%B2d*exp(-sccop%a*vai)
+       OMEGA(qp,k1) = OMEGA(qp,k1) + this%band(ib)%albedo_grnd_diff*scelbp%B1d*exp(scelbp%a*vai)
+       OMEGA(qp,k2) = OMEGA(qp,k2) + this%band(ib)%albedo_grnd_diff*scelbp%B2d*exp(-scelbp%a*vai)
        
     end do
     
@@ -1073,10 +1133,10 @@ contains
           ilem = ilem_off + icol
           k1 = 2*(ilem-1)+1
           k2 = k1 + 1
-          scelp => this%scel(ican,icol)
-          sccop => this%band(ib)%scco(ican,icol)
-          sccop%lambda1 = LAMBDA(k1)
-          sccop%lambda2 = LAMBDA(k2)
+          scelgp => this%scelg(ican,icol)
+          scelbp => this%band(ib)%scelb(ican,icol)
+          scelbp%lambda1 = LAMBDA(k1)
+          scelbp%lambda2 = LAMBDA(k2)
        end do
        ilem_off = ilem_off + this%n_col(ican)
     end do
