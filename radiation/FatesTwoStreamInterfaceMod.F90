@@ -203,6 +203,11 @@ Module FatesTwoStreamInterfaceMod
       
       twostr%force_prep = .true.   ! This signals that two-stream scattering coefficients
                                    ! that are dependent on geometry need to be updated
+      
+      do ib = 1,num_swb
+         twostr%band(ib)%albedo_grnd_diff = bc_in(s)%albgr_dif_rb(ib)
+         twostr%band(ib)%albedo_grnd_beam = bc_in(s)%albgr_dir_rb(ib)
+      end do
 
       
     end associate
@@ -226,7 +231,9 @@ Module FatesTwoStreamInterfaceMod
     real(r8),intent(out) :: rb_abs_leaf
     real(r8),intent(out) :: rd_abs_leaf
     real(r8),intent(out) :: r_abs_stem
-
+    real(r8),intent(out) :: R_abs_snow
+    real(r8),intent(out) :: leaf_sun_frac
+    
     real(r8) :: vai_top_el
     real(r8) :: vai_bot_el
     real(r8) :: rd_abs_leaf_el
@@ -241,7 +248,7 @@ Module FatesTwoStreamInterfaceMod
       vai_bot_el = vaibot * (scelp%lai+scelp%sai)/(cohort%treelai+cohort%treesai)
 
       ! Return the absorbed radiation for the element over that band
-      call GetAbsRad(scelp,sccop,ib,vai_top_el,vai_bot_el,rd_abs_leaf_el,rb_abs_leaf_el,r_abs_stem_el)
+      call GetAbsRad(scelp,sccop,ib,vai_top_el,vai_bot_el,rd_abs_leaf_el,rb_abs_leaf_el,r_abs_stem_el,R_abs_snow,leaf_sun_frac)
 
       ! Scale the absorbed rad back to the cohort        
       rd_abs_leaf = rd_abs_leaf_el * cohort%treelai/scelp%lai

@@ -102,7 +102,7 @@ Module TwoStreamMLPEMod
                           ! is reflected from material assuming impact (fraction)
      real(r8) :: betad    ! backscatter fraction of diffuse radiation
      real(r8) :: betab    ! backscatter fraction of beam radiation
-     
+     real(r8) :: frac_abs_leaf
      real(r8) :: Rbeam0   ! Downwelling beam radiation at
                           ! top of the element [w/m2]
 
@@ -308,7 +308,7 @@ contains
   end function GetRb
   
   
-  subroutine GetAbsRad(scel,scco,ib,vai_top,vai_bot,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem)
+  subroutine GetAbsRad(scel,scco,ib,vai_top,vai_bot,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow)
 
     ! This routine is used to help decompose radiation scattering
     ! and return the amount of absorbed radiation.  The canopy layer and column
@@ -333,6 +333,7 @@ contains
     real(r8), intent(out) :: Rb_abs_leaf ! Absorbed beam radiation from leaves [W/m2 ground]
     real(r8), intent(out) :: Rd_abs_leaf ! Absorbed diff radiation from leaves [W/m2 ground]
     real(r8), intent(out) :: R_abs_stem  ! Absorbed beam+diff radiation stems  [W/m2 ground]
+    real(r8), intent(out) :: R_abs_snow  ! Absorbed beam+diff radiation snow   [W/m2 ground]
 
     real(r8) :: Rd_abs                   ! Absorbed diffuse radiation [W/m2 ground]
     real(r8) :: Rb_abs                   ! Absorbed beam radiation 
@@ -352,15 +353,42 @@ contains
       ! The total vegetation area index of the element
       vai_max = lai + sai
 
+      ! Fraction of sunlit leaves
+      ! Rbeam_bot = Rbeam_top*exp(-sccop%Kb*(scelp%dlai+scelp%dsai))
+      !
+      ! Fraction of beam lost, or rather area of beam lost:
+      ! 1.-Rbeam_bot/Rbeam_top = 1.-exp(-sccop%Kb*(scelp%dlai+scelp%dsai))
+      !
+      ! Stem+leaf+Snow sunlit fraction =
+      ! sls_frac = 1.-exp(-sccop%Kb*(scelp%dlai+scelp%dsai)) / (scelp%dlai+scelp%dsai)
+      !
+      !  1.-exp(-sccop%Kb*scelp%dlai-sccop%Kb*scelp%dsai) = 1 - exp(-sccop%Kb*scelp%dlai)*exp(-sccop%Kb*scelp%dsai)
+      !
+      ! l_frac = sl_frac * (1-this%frac_snow) * sccop%Kb_leaf*scelp%dlai / (sccop%Kb_leaf*scelp%dlai+sccop%Kb_stem*scelp%dsai)
+
+      ! Get the fraction of beam attenuation from stems, leaves and snow [m2/m2]
+
+      dvai = vai_top - vai_bot
+      
+      sls_frac = (1._r8-exp(-sccop%Kb*dvai)) / dvai
+      
+      leaf_sun_frac =  sls_frac * (1-this%frac_snow) * sccop%Kb_leaf*lai / (sccop%Kb_leaf*scelp%dlai+sccop%Kb_stem*scelp%dsai)
+      
       ! We have to disentangle the absorption between leaves and stems, we give them both
       ! a weighting fraction of total absorption of  area*K*(1-om)
 
+      frac_abs_snow = this%frac_snow*(1._r8-rad_params%om_snow(ib)) / (1._r8-scco%om)
+      
       diff_wt_leaf = lai*(1._r8-rad_params%om_leaf(ft,ib))*rad_params%kd_leaf(ft)
       diff_wt_stem = sai*(1._r8-rad_params%om_stem(ft,ib))*rad_params%kd_stem(ft)
 
       beam_wt_leaf = lai*(1._r8-rad_params%om_leaf(ft,ib))*scco%Kb_leaf
       beam_wt_stem = sai*(1._r8-rad_params%om_stem(ft,ib))*1._r8
 
+      ! Mean element transmission coefficients adding snow scattering
+      
+      !sccop%frac_abs_leaf = (1._r8-this%frac_snow) * lai*(1.-rad_params%om_leaf(ib,ft)) / (vai*(1._r8-sccop%om))
+      
       if(debug) then
          if(vai_bot> vai_max)then
             print*,"During decomposition of the 2-stream radiation solution"
@@ -392,11 +420,14 @@ contains
                (scco%GetRdUp(vai_bot) - scco%GetRdUp(vai_top))
       
       ! Fraction of leaves exposed to direct sunlight
-      Rb_abs_leaf = Rb_abs * beam_wt_leaf / (beam_wt_leaf+beam_wt_stem)
-      Rd_abs_leaf = Rd_abs * diff_wt_leaf / (diff_wt_leaf+diff_wt_stem)
+      Rb_abs_leaf = (1._r8-frac_abs_snow)*Rb_abs * beam_wt_leaf / (beam_wt_leaf+beam_wt_stem)
+      Rd_abs_leaf = (1._r8-frac_abs_snow)*Rd_abs * diff_wt_leaf / (diff_wt_leaf+diff_wt_stem)
+
+      R_abs_snow = (Rb_abs+Rd_abs)*frac_abs_snow
       
-      R_abs_stem = Rb_abs*beam_wt_stem / (beam_wt_leaf+beam_wt_stem) + &
-                   Rd_abs*diff_wt_stem / (diff_wt_leaf+diff_wt_stem)
+      R_abs_stem = (1._r8-frac_abs_snow)* &
+                   (Rb_abs*beam_wt_stem / (beam_wt_leaf+beam_wt_stem) + &
+                    Rd_abs*diff_wt_stem / (diff_wt_leaf+diff_wt_stem))
 
       
     end associate
@@ -417,7 +448,7 @@ contains
        rad_params%om_snow(ib)    = snow_scatter_vis
        rad_params%betad_snow(ib) = 0.75_r8
     elseif(ib==2) then
-       rad_params%om_snow(ib) = snow_scatter_nir
+       rad_params%om_snow(ib)    = snow_scatter_nir
        rad_params%betad_snow(ib) = 0.75_r8
     else
        rad_params%om_snow(ib) = snow_scatter_thm
@@ -440,7 +471,7 @@ contains
             log((rad_params%phi2(ft)+rad_params%phi1(ft))/rad_params%phi1(ft)))
        
        rad_params%kd_leaf(ft) = 1/mu
-       rad_params%kd_stem(ft) = 1._r8  ! Isotropic assumtion
+       rad_params%kd_stem(ft) = 1._r8  ! Isotropic assumption
 
        rad_params%om_leaf(ib,ft) = rad_params%rhol(ib,ft) + rad_params%taul(ib,ft)
        rad_params%om_stem(ib,ft) = rad_params%rhos(ib,ft) + rad_params%taus(ib,ft)
@@ -493,10 +524,13 @@ contains
                     sccop => this%band(ib)%scco(ican,icol))
             
             if(ft==0)then
+               
                ! Simple provisions for a ghost element (air)
                sccop%kd = k_air
                sccop%om = om_air
                sccop%betad = beta_air
+               sccop%frac_abs_leaf = unset_r8
+               
             else
 
                vai = lai + sai
@@ -506,13 +540,14 @@ contains
                     sai * rad_params%kd_stem(ft))/vai
 
                sccop%om =  (lai*rad_params%om_leaf(ib,ft) + &
-                    sai*rad_params%om_stem(ib,ft))/vai
+                            sai*rad_params%om_stem(ib,ft))/vai
 
-               ! Mean element transmission coefficients adding snow optical depth
-               !!sccop%Kd = this%frac_snow*k_snow + sccop%Kd
+               
+               
+               sccop%om = this%frac_snow*rad_params%om_snow(ib) + (1._r8-this%frac_snow)*sccop%om
 
-               !!sccop%om = this%frac_snow*rad_params%om_snow(ib) + (1._r8-this%frac_snow)*sccop%om
-
+               
+               
                ! Diffuse backscatter, taken from G. Bonan's code
 
                rho = (lai * rad_params%rhol(ib,ft) + &
