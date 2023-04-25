@@ -217,7 +217,7 @@ Module FatesTwoStreamInterfaceMod
   
   ! =============================================================================================
   
-  subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,rd_abs_leaf,rb_abs_leaf,r_abs_stem)
+  subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,rd_abs_leaf,rb_abs_leaf,r_abs_stem,r_abs_snow,leaf_sun_frac )
 
     ! This subroutine retrieves the absorbed radiation on
     ! leaves and stems, as well as the leaf sunlit fraction

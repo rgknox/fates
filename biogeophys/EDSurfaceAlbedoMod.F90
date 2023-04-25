@@ -30,6 +30,10 @@ module EDSurfaceRadiationMod
   use FatesRadiationMemMod, only : idirect, idiffuse
   use FatesRadiationMemMod, only : num_swb, ivis, inir, ipar
   use FatesRadiationMemMod, only : alb_ice, rho_snow, tau_snow
+  use FatesRadiationMemMod, only : norman_solver
+  use FatesRadiationMemMod, only : twostr_solver
+  use FatesRadiationMemMod, only : rad_solver
+
   
   ! CIME globals
   use shr_log_mod       , only : errMsg => shr_log_errMsg
@@ -50,6 +54,11 @@ module EDSurfaceRadiationMod
 
 contains
 
+  
+  ! THIS ROUTINE AND MODULE SHOULD BE NAMESPACE
+  ! OVERHAULED. IT IS NOT JUST NORMAN, AND ITS FATES NOT ED (RGK-04-23)
+
+  ! subroutine FatesCanopyRadiation (nsites, sites, bc_in, bc_out )
   subroutine ED_Norman_Radiation (nsites, sites, bc_in, bc_out )
     !
 
@@ -74,6 +83,8 @@ contains
     integer :: ib                                  ! radiation broad band counter
     type(ed_patch_type), pointer :: currentPatch   ! patch pointer
 
+    dir_frac
+    
     !-----------------------------------------------------------------------
     ! -------------------------------------------------------------------------------
     ! TODO (mv, 2014-10-29) the filter here is different than below
@@ -81,7 +92,6 @@ contains
     ! re-examined int he future
     ! RGK,2016-08-06: FATES is still incompatible with VOC emission module
     ! -------------------------------------------------------------------------------
-
 
     do s = 1, nsites
 
@@ -142,16 +152,75 @@ contains
 
                 else
 
-                   call PatchNormanRadiation (currentPatch, &
-                        bc_out(s)%albd_parb(ifp,:), &
-                        bc_out(s)%albi_parb(ifp,:), &
-                        bc_out(s)%fabd_parb(ifp,:), &
-                        bc_out(s)%fabi_parb(ifp,:), &
-                        bc_out(s)%ftdd_parb(ifp,:), &
-                        bc_out(s)%ftid_parb(ifp,:), &
-                        bc_out(s)%ftii_parb(ifp,:))
+                   if(rad_solver.eq.norman_solver) then
 
+                      call PatchNormanRadiation (currentPatch, &
+                           bc_out(s)%albd_parb(ifp,:), &   ! Surface Albedo direct
+                           bc_out(s)%albi_parb(ifp,:), &   ! Surface Albedo (indirect) diffuse
+                           bc_out(s)%fabd_parb(ifp,:), &   ! Fraction direct absorbed by canopy per unit incident
+                           bc_out(s)%fabi_parb(ifp,:), &   ! Fraction diffuse absorbed by canopy per unit incident
+                           bc_out(s)%ftdd_parb(ifp,:), &   ! Down direct flux below canopy per unit direct at top
+                           bc_out(s)%ftid_parb(ifp,:), &   ! Down diffuse flux below canopy per unit direct at top
+                           bc_out(s)%ftii_parb(ifp,:))     ! Down diffuse flux below canopy per unit diffuse at top
 
+                   else
+
+                      associate( twostr => currentPatch%twostr)
+
+                        call twostr%CanopyPrep(bc_in(s)%fcansno_pa(ifp))
+                        call twostr%ZenithPrep(bc_in(s)%coszen_pa(ifp))
+
+                        do ib = 1,hlm_numSWb
+
+                           twostr%band(ib)%albedo_grnd_diff = bc_in(s)%albgr_dif_rb(ib)
+                           twostr%band(ib)%albedo_grnd_beam = bc_in(s)%albgr_dir_rb(ib)
+
+                           call twostr%Solve(ib,             &  ! in
+                                bc_in(s)%solad_parb(ifp,ib), &  ! in
+                                bc_in(s)%solai_parb(ifp,ib), &  ! in
+                                rd_can_abs,                  &  ! out
+                                ri_can_abs,                  &  ! out
+                                rd_grnd_flux,                &  ! out
+                                ri_grnd_flux)                   ! out
+
+                           bc_out(s)%fabd_parb(ifp,ib) = rd_can_abs / bc_in(s)%solad_parb(ifp,ib)
+                           bc_out(s)%fabi_parb(ifp,ib) = ri_can_abs / bc_in(s)%solai_parb(ifp,ib)
+                           
+                           ! The HLMs want transmitted solar fluxes incident on the ground:
+                           ! tri(p,ib) = forc_solad(t,ib)*ftid(p,ib) + forc_solai(t,ib)*ftii(p,ib)
+                           ! Note: Only the combination of ftid and ftii are meaningful
+                           ! in two-stream. The resulting flux at the ground
+                           ! can not be attributed to the two forcings at the
+                           ! top of the canopy independently, they are simply intertwined
+                           ! at that point.  Therefore, we split the diffuse down flux
+                           ! into two components, weighted by the fraction of down flux
+                           ! at the top of the canopy. Then 
+                           
+                           bc_out(s)%ftdd_parb(ifp,ib) = rd_grnd_flux / bc_in(s)%solad_parb(ifp,ib)
+
+                           dir_frac = (bc_in(s)%solad_parb(ifp,ib)/( bc_in(s)%solad_parb(ifp,ib)+bc_in(s)%solai_parb(ifp,ib))
+
+                           bc_out(s)%ftid_parb(ifp,ib) = dir_frac * rd_grnd_flux / bc_in(s)%solad_parb(ifp,ib)
+
+                           bc_out(s)%ftii_parb(ifp,ib) = (1._r8 - dir_frac) * rd_grnd_flux / bc_in(s)%solai_parb(ifp,ib)
+
+                           if(bc_out(s)%ftid_parb(ifp,ib)>1._r8) then
+                              write(fates_log(),*) 'ftid_parb must be < 1: ',bc_out(s)%ftid_parb(ifp,ib)
+                              call endrun(msg=errMsg(sourcefile, __LINE__)) 
+                           end if
+
+                           if(bc_out(s)%ftii_parb(ifp,ib)>1._r8) then
+                              write(fates_log(),*) 'ftii_parb must be < 1: ',bc_out(s)%ftii_parb(ifp,ib)
+                              call endrun(msg=errMsg(sourcefile, __LINE__)) 
+                           end if
+                           
+                        end do
+                        
+                      end associate
+                   end if
+                   
+
+                   
                 endif ! is there vegetation?
 
              end if    ! if the vegetation and zenith filter is active

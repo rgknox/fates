@@ -98,7 +98,7 @@ class elem_type:
         self.r_up = np.zeros([n_vai])
         self.r_b  = np.zeros([n_vai])
         self.r_abs = np.zeros([n_vai])
-
+        #self.sunfrac = np.zeros([n_vai])
 
 class cohort_type:
     def __init__(self,n_vai,lai,sai):
@@ -110,7 +110,7 @@ class cohort_type:
         self.rd_abs_leaf = np.zeros([n_vai])
         self.rb_abs_leaf = np.zeros([n_vai])
         self.r_abs_stem = np.zeros([n_vai])
-        
+        self.sunfrac = np.zeros([n_vai])
         
 def main(argv):
 
@@ -140,8 +140,8 @@ def main(argv):
         iret = set_radparams_call(c_double(leaf_clumping_index[ft]),c_int(pft),c_int(0),*ccharnb("clumping_index"))
         
     # Process the core 2Stream parameters from parameters in file
-    iret = param_prep_call(ci(n_pft),ci(visb),c8(rho_snow[visb]),c8(tau_snow[visb]))
-    iret = param_prep_call(ci(n_pft),ci(nirb),c8(rho_snow[nirb]),c8(tau_snow[nirb]))
+    iret = param_prep_call(ci(n_pft),ci(visb),c8(rho_snow[visb-1]),c8(tau_snow[visb-1]))
+    iret = param_prep_call(ci(n_pft),ci(nirb),c8(rho_snow[nirb-1]),c8(tau_snow[nirb-1]))
 
     
     # Test 1, a single element, visible
@@ -256,11 +256,16 @@ def SerialParallelCanopyTest():
 
     ground_albedo_diff = 0.3
     ground_albedo_beam = 0.3
-
-    iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
-    iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
-    iret = canopy_prep_call(ci(ib))
-    iret = zenith_prep_call(ci(ib),c8(cosz))
+    frac_snow = 0.0
+    
+    iret = grndsnow_albedo_call(c_int(visb),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
+    iret = grndsnow_albedo_call(c_int(visb),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
+    iret = grndsnow_albedo_call(c_int(nirb),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
+    iret = grndsnow_albedo_call(c_int(nirb),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
+    
+    iret = canopy_prep_call(c8(frac_snow))
+    iret = zenith_prep_call(c8(cosz))
+    
     iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
 
     for i in range(n_layer):
@@ -323,11 +328,29 @@ def SerialParallelCanopyTest():
             serialc[i].rd_abs_leaf[iv] = cd_rd_abs_leaf.value
             serialc[i].rb_abs_leaf[iv] = cd_rb_abs_leaf.value
             serialc[i].r_abs_stem[iv] = cd_r_abs_stem.value
+            serialc[i].sunfrac[iv] = cd_leaf_sun_frac.value
 
 
-    # Plot out absorbances in cohorts only
-    
+
+    # Plot out absorbances and sun fractions in cohorts only
+    # ---------------------------------------------
         
+    
+    
+    max_rd_abs_leaf = 0
+    max_rb_abs_leaf = 0
+    max_r_abs_stem  = 0
+    max_r_abs       = 0
+    maxlai          = 0
+    max_sunfrac     = 0
+    for i in range(n_cohorts):
+        max_rd_abs_leaf = np.max([max_rd_abs_leaf,np.max(serialc[i].rd_abs_leaf) ])
+        max_rb_abs_leaf = np.max([max_rb_abs_leaf,np.max(serialc[i].rb_abs_leaf) ])
+        max_r_abs_stem  = np.max([max_r_abs_stem,np.max(serialc[i].r_abs_stem) ])
+        max_r_abs       = np.max([max_r_abs,np.max(serialc[i].r_abs_stem+serialc[i].rd_abs_leaf+serialc[i].rb_abs_leaf) ])
+        maxlai          = np.max([maxlai,np.max(serialc[i].avai) ])
+        max_sunfrac     = np.max([max_sunfrac,np.max(serialc[i].sunfrac)])
+
     fig, axs = plt.subplots(ncols=n_cohorts,nrows=1,figsize=(9,5))
     ax1s = axs.reshape(-1)
     
@@ -335,19 +358,7 @@ def SerialParallelCanopyTest():
     xpad = 0.1
     dx   = (1.0-2*xpad)/float(n_cohorts)
     dy   = 0.8
-    
-    max_rd_abs_leaf = 0
-    max_rb_abs_leaf = 0
-    max_r_abs_stem  = 0
-    max_r_abs       = 0
-    maxlai          = 0
-    for i in range(n_cohorts):
-        max_rd_abs_leaf = np.max([max_rd_abs_leaf,np.max(serialc[i].rd_abs_leaf) ])
-        max_rb_abs_leaf = np.max([max_rb_abs_leaf,np.max(serialc[i].rb_abs_leaf) ])
-        max_r_abs_stem  = np.max([max_r_abs_stem,np.max(serialc[i].r_abs_stem) ])
-        max_r_abs       = np.max([max_r_abs,np.max(serialc[i].r_abs_stem+serialc[i].rd_abs_leaf+serialc[i].rb_abs_leaf) ])
-        maxlai          = np.max([maxlai,np.max(serialc[i].avai) ])
-
+        
     ic=0
     x0 = xpad
     for i in range(n_cohorts):
@@ -371,12 +382,47 @@ def SerialParallelCanopyTest():
         x0 = x0+dx
         ic=ic+1
 
+    fig, axs = plt.subplots(ncols=n_cohorts,nrows=1,figsize=(9,5))
+    ax1s = axs.reshape(-1)
+    
+    y0   = 0.1
+    xpad = 0.1
+    dx   = (1.0-2*xpad)/float(n_cohorts)
+    dy   = 0.8
 
+    # Sun fractions
+    ic=0
+    x0 = xpad
+    for i in range(n_cohorts):
+
+        ax = ax1s[ic]
+        ap = ax.plot(serialc[i].sunfrac ,serialc[i].avai)
+        ax.set_ylim([0,maxlai])
+        ax.invert_yaxis()
+        ax.set_xlabel('[m2/m2]')
+        ax.set_xlim([0,max_sunfrac])
+
+        ax.set_title('Cohort {}'.format(i+1))
+        if(i==0):
+            
+            ax.set_ylabel('Sunlit fraction of leaves [m2/m2]')
+        else:
+            ax.set_yticklabels([])
+            
+        ax.grid(True)
+        ax.set_position([x0,y0,dx,dy])
+        x0 = x0+dx
+        ic=ic+1
+
+
+
+
+        
     if(True):
         PlotRadMaps(elems,0,'Beam Radiation [W/m2]')
         PlotRadMaps(elems,1,'Downwelling Diffuse Radiation [W/m2]')
         PlotRadMaps(elems,2,'Upwelling Diffuse Radiation [W/m2]')
-
+        
     
 
     
@@ -450,10 +496,11 @@ def SingleElementPerturbTest():
 
     ground_albedo_diff = 0.3
     ground_albedo_beam = 0.3
+    frac_snow = 0.0
     
     iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
     iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
-    iret = canopy_prep_call(ci(ib))
+    iret = canopy_prep_call(ci(ib),c8(frac_snow))
     iret = zenith_prep_call(c8(cosz))
     iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
     iret = getparams_call(ci(ican),ci(icol),ci(ib),byref(cd_kb), \
@@ -477,7 +524,7 @@ def SingleElementPerturbTest():
     i = -1
     for key,val in pp_dict.items():
         i=i+1
-        iret = canopy_prep_call(ci(ib))
+        iret = canopy_prep_call(ci(ib),c8(frac_snow))
         iret = zenith_prep_call(ci(ib),c8(cosz))
         iret = forceparam_call(c_int(ican),c_int(icol),ci(ib),c_double(val),*ccharnb(key))
         iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
@@ -627,6 +674,7 @@ def PlotRadMaps(elems,rtype,plt_title):
                 rel_intense = np.max([0,elems[0][i].r_dn[iv]])
             elif(rtype==2):
                 rel_intense = np.max([0,elems[0][i].r_up[iv]])
+                
                 
             dvai = elems[0][i].avai[iv+1]-elems[0][i].avai[iv]
             rect.append(mpl.patches.Rectangle((0,(elems[0][i].avai[iv]+total_vai)),elems[0][i].area,dvai)) #,color = [rel_intense,0.5,0.5]))

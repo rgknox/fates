@@ -63,8 +63,10 @@ module FATESPlantRespPhotosynthMod
   use EDParamsMod,       only : photo_tempsens_model
   use PRTParametersMod,  only : prt_params
   use EDPftvarcon      , only : EDPftvarcon_inst
-  use TemperatureType,   only : temperature_type
-   
+  use FatesRadiationMemMod, only : norman_solver,twostr_solver
+  use FatesRadiationMemMod, only : rad_solver
+  use FatesRadiationMemMod, only : ipar
+  
   ! CIME Globals
   use shr_log_mod , only      : errMsg => shr_log_errMsg
 
@@ -78,6 +80,9 @@ module FATESPlantRespPhotosynthMod
 
   
   character(len=1024) :: warn_msg   ! for defining a warning message
+
+
+  logical, parameter :: use_norman = .true.
   
   !-------------------------------------------------------------------------------------
 
@@ -269,6 +274,23 @@ contains
     real(r8) :: sapw_n_agw            ! nitrogen in aboveground portion of sapwood
     real(r8) :: sapw_n_undamaged      ! nitrogen in sapwood of undamaged tree
 
+    
+    real(r8) :: vaitop, vaibot        ! vegetation area index
+    real(r8) :: rd_abs_leaf, rb_abs_leaf, r_abs_stem, r_abs_snow
+    real(r8) :: fsun
+
+                                  laibin = (vaibot-vaitop)*currentCohort%treelai/(currentCohort%treelai + currentCohort%treesai)
+
+                                  if(fsun>nearzero) then
+                                     par_per_sunla = (rd_abs_leaf + rb_abs_leaf/fsun) / (fsun*laibin)
+                                  else
+                                     par_per_sunla = rd_abs_leaf
+                                  end if
+                                  
+                                  par_per_shala
+
+
+    
     ! -----------------------------------------------------------------------------------
     ! Keeping these two definitions in case they need to be added later
     !
@@ -446,6 +468,7 @@ contains
                             rate_mask_if: if ( .not.rate_mask_z(iv,ft,cl) .or. &
                                  (hlm_use_planthydro.eq.itrue) .or. &
                                  (nleafage > 1) .or. &
+                                 (rad_solver .eq. twostr_solver ) .or. &
                                  (hlm_parteh_mode .ne. prt_carbon_allom_hyp )   ) then
 
                                if (hlm_use_planthydro.eq.itrue ) then
@@ -557,6 +580,60 @@ contains
 
                                end select
 
+                               
+                               ! Pre-process PAR absorbed per unit leaf area for different schemes
+                               ! par_per_sunla = [W absorbed beam+diffuse radiation / m2 of sunlit leaves]
+                               ! par_per_shala = [W absorbed diffuse radiation / m2 of shaded leaves]
+                               ! fsun          = [m2 of sunlit leaves / m2 of total leaves]
+                               ! ------------------------------------------------------------------
+                               
+                               if(rad_solver.eq.norman_solver) then
+                                  
+                                  if(currentPatch%ed_laisun_z(cl,ft,iv)>nearzero)then
+                                     par_per_sunla = currentPatch%ed_parsun_z(cl,ft,iv) / &
+                                          (currentPatch%ed_laisun_z(cl,ft,iv)*currentPatch%canopy_area_profile(cl,ft,iv))
+                                  else
+                                     par_per_sunla = 0._r8
+                                  end if
+                                  
+                                  if(currentPatch%ed_laisha_z(cl,ft,iv)>nearzero)then
+                                     par_per_shala = currentPatch%ed_parsha_z(cl,ft,iv) / &
+                                          (currentPatch%ed_laisha_z(cl,ft,iv)*currentPatch%canopy_area_profile(cl,ft,iv))
+                                  else
+                                     par_per_shala = 0._r8
+                                  end if
+                                  
+                                  fsun = currentPatch%f_sun(cl,ft,iv)
+
+                               else
+
+                                  if(iv>1)then
+                                     vaitop = dlower_vai(iv) - dinc_vai(iv)
+                                  else
+                                     vaitop = 0._r8
+                                  end if
+
+                                  if(iv<currentCohort%nv) then
+                                     vaibot = dlower_vai(iv)
+                                  else
+                                     vaibot = currentCohort%treelai + currentCohort%treesai
+                                  end if
+                                  
+                                  call FatesGetCohortAbsRad(currentPatch, currentCohort, ipar, &
+                                       vaitop, vaibot, rd_abs_leaf, rb_abs_leaf, r_abs_stem, r_abs_snow, fsun)
+
+                                  laibin = (vaibot-vaitop)*currentCohort%treelai/(currentCohort%treelai + currentCohort%treesai)
+
+                                  if(fsun>nearzero) then
+                                     par_per_sunla = (rd_abs_leaf + rb_abs_leaf/fsun) / (fsun*laibin)
+                                  else
+                                     par_per_sunla = rd_abs_leaf
+                                  end if
+                                  
+                                  par_per_shala = rd_abs_leaf / ((1._r8 - fsun)*laibin)
+                                  
+                               end if
+                               
                                ! Part VII: Calculate (1) maximum rate of carboxylation (vcmax),
                                ! (2) maximum electron transport rate, (3) triose phosphate
                                ! utilization rate and (4) the initial slope of CO2 response curve
@@ -566,32 +643,27 @@ contains
                                ! These rates are the specific rates used in the actual photosynthesis
                                ! calculations that take localized environmental effects (temperature)
                                ! into consideration.
-
-
-
-                               call LeafLayerBiophysicalRates(currentPatch%ed_parsun_z(cl,ft,iv), &  ! in
-                                    ft,                                 &  ! in
-                                    currentCohort%vcmax25top,           &  ! in
-                                    currentCohort%jmax25top,            &  ! in
-                                    currentCohort%kp25top,              &  ! in
-                                    nscaler,                            &  ! in
-                                    bc_in(s)%t_veg_pa(ifp),             &  ! in
-                                    currentPatch%tveg_lpa%GetMean(),    &  ! in
+                               
+                               call LeafLayerBiophysicalRates(par_per_sunla, ! in
+                                    ft,                                  &  ! in
+                                    currentCohort%vcmax25top,            &  ! in
+                                    currentCohort%jmax25top,             &  ! in
+                                    currentCohort%kp25top,               &  ! in
+                                    nscaler,                             &  ! in
+                                    bc_in(s)%t_veg_pa(ifp),              &  ! in
+                                    currentPatch%tveg_lpa%GetMean(),     &  ! in
                                     currentPatch%tveg_longterm%GetMean(),&  ! in
-                                    btran_eff,                          &  ! in
-                                    vcmax_z,                            &  ! out
-                                    jmax_z,                             &  ! out
+                                    btran_eff,                           &  ! in
+                                    vcmax_z,                             &  ! out
+                                    jmax_z,                              &  ! out
                                     kp_z )                                 ! out
 
                                ! Part IX: This call calculates the actual photosynthesis for the
                                ! leaf layer, as well as the stomatal resistance and the net assimilated carbon.
 
-                               call LeafLayerPhotosynthesis(currentPatch%f_sun(cl,ft,iv),    &  ! in
-                                    currentPatch%ed_parsun_z(cl,ft,iv), &  ! in
-                                    currentPatch%ed_parsha_z(cl,ft,iv), &  ! in
-                                    currentPatch%ed_laisun_z(cl,ft,iv), &  ! in
-                                    currentPatch%ed_laisha_z(cl,ft,iv), &  ! in
-                                    currentPatch%canopy_area_profile(cl,ft,iv), &  ! in
+                               call LeafLayerPhotosynthesis(fsun,       &  ! in
+                                    parsun_per_la,                      &  ! in
+                                    parsha_per_la,                      &  ! in
                                     ft,                                 &  ! in
                                     vcmax_z,                            &  ! in
                                     jmax_z,                             &  ! in
@@ -2114,7 +2186,7 @@ end subroutine LeafLayerMaintenanceRespiration_Atkin_etal_2017
 
 ! ====================================================================================
 
-subroutine LeafLayerBiophysicalRates( parsun_lsl, &
+subroutine LeafLayerBiophysicalRates( parsun_per_la, &
    ft,            &
    vcmax25top_ft, &
    jmax25top_ft, &
@@ -2146,7 +2218,7 @@ subroutine LeafLayerBiophysicalRates( parsun_lsl, &
    ! Arguments
    ! ------------------------------------------------------------------------------
 
-   real(r8), intent(in) :: parsun_lsl      ! PAR absorbed in sunlit leaves for this layer
+   real(r8), intent(in) :: parsun_per_la   ! PAR absorbed per sunlit leaf area [W/m2 leaf]
    integer,  intent(in) :: ft              ! (plant) Functional Type Index
    real(r8), intent(in) :: nscaler         ! Scale for leaf nitrogen profile
    real(r8), intent(in) :: vcmax25top_ft   ! canopy top maximum rate of carboxylation at 25C
@@ -2215,7 +2287,7 @@ subroutine LeafLayerBiophysicalRates( parsun_lsl, &
    vcmaxc = fth25_f(vcmaxhd, vcmaxse)
    jmaxc  = fth25_f(jmaxhd, jmaxse)
 
-   if ( parsun_lsl <= 0._r8) then           ! night time
+   if ( parsun_per_la <= nearzero) then           ! night time
       vcmax             = 0._r8
       jmax              = 0._r8
       co2_rcurve_islope = 0._r8

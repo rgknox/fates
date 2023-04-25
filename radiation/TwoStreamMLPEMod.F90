@@ -1,8 +1,8 @@
 Module TwoStreamMLPEMod
   
   ! This module holds the routines to calculate two-tream
-  ! radiation scattering of vegetation in "M"ultiple "L"ayers
-  ! with "P"arellel "E"lements "MLPE"
+  ! radiation scattering of vegetation in
+  ! "M"ultiple "L"ayers with "P"arellel "E"lements "MLPE"
   !
   ! In summary,
   ! there may various canopy layers, in each canopy layer,
@@ -34,18 +34,31 @@ Module TwoStreamMLPEMod
   logical, parameter :: use_derivation1 = .true.
   real(r8), parameter :: unset_r8 = 1.e-36_r8
   real(r8), parameter :: unset_int = -999
+  
+  ! Allowable error, as a fraction of total incident for total canopy
+  ! radiation balance checks
 
+  real(r8), parameter :: rel_err_thresh = 1.e-6_r8
   
   integer, parameter :: twostr_vis = 1         ! Named index of visible shortwave radiation
   integer, parameter :: twostr_nir = 2         ! Named index for near infrared shortwave radiation
   
   ! These are parameter constants, ie things that are specific to the plant material
   ! and radiation band.  Not all of these need to be used. 2-stream ultimately wants
-  ! optical depth, material reflectance and backscatter fractions for diffuse and
+  ! optical depth, scattering coefficient and backscatter fractions for diffuse and
   ! direct light. So there are various ways to get to these parameters, depending
   ! on the host model's available parameters.  The rho,tau,xl and clumping parameters
   ! are standard elm/clm parameters, and provided as a convenience.
 
+
+  ! Snow optical parameter constants for visible (index=1) and NIR (index=2)
+  
+  real(r8), parameter :: betad_snow(1:2) = (/0.5, 0.5/)   ! Diffuse backscatter fraction
+  real(r8), parameter :: betab_snow(1:2) = (/0.5, 0.5/)   ! Beam backscatter fraction
+  real(r8), parameter :: om_snow(1:2)    = (/0.8, 0.4/)   ! Scattering coefficient for snow
+
+
+  
   type, public :: rad_params_type
 
      ! From the parameter file
@@ -58,14 +71,13 @@ Module TwoStreamMLPEMod
                                                 ! leaves stick together (pft)
 
      ! Derived parameters
-     real(r8), allocatable :: phi1(:)        ! intermediate term for kd and kb
-     real(r8), allocatable :: phi2(:)        ! intermediate term for kd and kb
-     real(r8), allocatable :: kd_leaf(:)     ! Mean optical depth per unit area leaves in diffuse
-     real(r8), allocatable :: kd_stem(:)     ! Mean optical depth per unit area stems in diffuse
-     real(r8), allocatable :: om_leaf(:,:)   ! Leaf material scattering albedo (band x pft)
-     real(r8), allocatable :: om_stem(:,:)   ! Stem material scattering albedo (band x pft)
-     real(r8), allocatable :: om_snow(:)     ! Snow material scattering albedo for snow (band)
-     
+     real(r8), allocatable :: phi1(:)       ! intermediate term for kd and kb
+     real(r8), allocatable :: phi2(:)       ! intermediate term for kd and kb
+     real(r8), allocatable :: kd_leaf(:)    ! Mean optical depth per unit area leaves in diffuse
+     real(r8), allocatable :: kd_stem(:)    ! Mean optical depth per unit area stems in diffuse
+     real(r8), allocatable :: om_leaf(:,:)  ! Leaf scattering coefficient (band x pft)
+     real(r8), allocatable :: om_stem(:,:)  ! Stem scattering coefficient (band x pft)
+
   end type rad_params_type
   
   type(rad_params_type),public :: rad_params
@@ -91,21 +103,20 @@ Module TwoStreamMLPEMod
   type scelb_type
   
      ! Terms used in the final solution, also used for decomposing solution
-     real(r8) :: Au       ! Compound intercept term
-     real(r8) :: Ad       ! Compound intercept term
-     real(r8) :: B1u       ! Compound term w/ lambdas
-     real(r8) :: B2u       ! Compound term w/ lambdas
-     real(r8) :: B1d       ! Compound term w/ lambdas
-     real(r8) :: B2d       ! Compound term w/ lambdas
-     real(r8) :: lambda1  ! Compount term w/ B1d and B1u
-     real(r8) :: lambda2  ! Compound term w/ B2d and B2u
-     real(r8) :: a        ! Complex term operating on veg area index
-     real(r8) :: om       ! material reflectance. ie portion that
-                          ! is reflected from material assuming impact (fraction)
-     real(r8) :: betad    ! backscatter fraction of diffuse radiation
-     real(r8) :: betab    ! backscatter fraction of beam radiation
-     real(r8) :: Rbeam0   ! Downwelling beam radiation at
-                          ! top of the element [w/m2]
+     real(r8) :: Au      ! Compound intercept term
+     real(r8) :: Ad      ! Compound intercept term
+     real(r8) :: B1u     ! Compound term w/ lambdas
+     real(r8) :: B2u     ! Compound term w/ lambdas
+     real(r8) :: B1d     ! Compound term w/ lambdas
+     real(r8) :: B2d     ! Compound term w/ lambdas
+     real(r8) :: lambda1 ! Compount term w/ B1d and B1u
+     real(r8) :: lambda2 ! Compound term w/ B2d and B2u
+     real(r8) :: a       ! Complex term operating on veg area index
+     real(r8) :: om      ! scattering coefficient for media as a whole
+     real(r8) :: betad   ! backscatter fraction of diffuse radiation for media as a whole
+     real(r8) :: betab   ! backscatter fraction of beam radiation for media as a whole
+     real(r8) :: Rbeam0  ! Downwelling beam radiation at
+                         ! top of the element [w/m2]
 
  
   end type scelb_type
@@ -282,8 +293,6 @@ contains
     allocate(rad_params%kd_stem(n_pft))
     allocate(rad_params%om_leaf(n_bands,n_pft))
     allocate(rad_params%om_stem(n_bands,n_pft))
-    allocate(rad_params%om_snow(n_bands))
-    !allocate(rad_params%betad_snow(n_bands))
     
   end subroutine AllocateRadParams
   
@@ -344,8 +353,8 @@ contains
     
   end function GetRb
   
-  
-  subroutine GetAbsRad(this,ican,icol,ib,vai_top,vai_bot,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+  subroutine GetAbsRad(this,ican,icol,ib,vai_top,vai_bot, &
+       Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
 
     ! This routine is used to help decompose radiation scattering
     ! and return the amount of absorbed radiation.  The canopy layer and column
@@ -368,6 +377,8 @@ contains
     integer,  intent(in)  :: ib            ! broad band index
     real(r8), intent(in)  :: vai_top       ! veg area index (from the top of element) to start
     real(r8), intent(in)  :: vai_bot       ! veg area index (from the top of element) to finish
+    real(r8), intent(out) :: Rb_abs        ! total absorbed beam radiation [W/m2 ground]
+    real(r8), intent(out) :: Rd_abs        ! total absorbed diffuse radiation [W/m2 ground]
     real(r8), intent(out) :: Rb_abs_leaf   ! Absorbed beam radiation from leaves [W/m2 ground]
     real(r8), intent(out) :: Rd_abs_leaf   ! Absorbed diff radiation from leaves [W/m2 ground]
     real(r8), intent(out) :: R_abs_stem    ! Absorbed beam+diff radiation stems  [W/m2 ground]
@@ -378,8 +389,8 @@ contains
     real(r8)              :: dvai,dlai     ! Amount of VAI and LAI in this interval [m2/m2]
     real(r8)              :: sls_frac      ! Fraction of beam radiation attenuated
                                            ! over the interval from all media (leaf,stem,snow) [m2/m2]
-    real(r8)              :: Rd_abs        ! Absorbed diffuse radiation [W/m2 ground]
-    real(r8)              :: Rb_abs        ! Absorbed beam radiation 
+    real(r8)              :: Rd_net        ! Difference in diffuse radiation at upper and lower boundaries [W/m2]
+    real(r8)              :: Rb_net        ! Difference in beam radiation at upper and lower boundaries [W/m2]
     real(r8)              :: vai_max       ! total integrated (leaf+stem) area index of the current element
     real(r8)              :: frac_abs_snow ! fraction of radiation absorbed by snow
     real(r8)              :: diff_wt_leaf  ! diffuse absorption weighting for leaves
@@ -401,7 +412,7 @@ contains
 
       ! Fraction of the beam that is lost to all media in this portion of the element,
       ! equivalent to 1-Rbeam_bot/Rbeam_top and [m2/m2]
-      sls_frac = (1._r8-exp(-scelg%Kb*dvai))
+      sls_frac = 1._r8-exp(-scelg%Kb*dvai)
 
       ! We need to reduce this fraction to the portion lost to just leaf,
       ! and not snow or stem.  We also need to divide this fraction
@@ -417,7 +428,7 @@ contains
       ! We have to disentangle the absorption between leaves and stems, we give them both
       ! a weighting fraction of total absorption of  area*K*(1-om)
 
-      frac_abs_snow = this%frac_snow*(1._r8-rad_params%om_snow(ib)) / (1._r8-scelb%om)
+      frac_abs_snow = this%frac_snow*(1._r8-om_snow(ib)) / (1._r8-scelb%om)
       
       diff_wt_leaf =  scelg%lai*(1._r8-rad_params%om_leaf(ft,ib))*rad_params%Kd_leaf(ft)
       diff_wt_stem =  scelg%sai*(1._r8-rad_params%om_stem(ft,ib))*rad_params%Kd_stem(ft)
@@ -448,14 +459,22 @@ contains
       end if
       
       ! Amount of absorbed radiation is retrieved by doing an energy
-      ! balance on this boundaries over the depth of interest
+      ! balance on this boundaries over the depth of interest (ie net)
       ! Result is Watts / m2 of the element's area footprint NOT
       ! per m2 of tissue (at least not in this step)
       
-      Rb_abs = this%GetRb(ican,icol,ib,vai_top)-this%GetRb(ican,icol,ib,vai_bot)*(1._r8-this%band(ib)%scelb(ican,icol)%om)
-      
-      Rd_abs = (this%GetRdDn(ican,icol,ib,vai_top) - this%GetRdDn(ican,icol,ib,vai_bot)) + &
+      Rb_net = this%GetRb(ican,icol,ib,vai_top)-this%GetRb(ican,icol,ib,vai_bot)
+
+      Rd_net = (this%GetRdDn(ican,icol,ib,vai_top) - this%GetRdDn(ican,icol,ib,vai_bot)) + &
                (this%GetRdUp(ican,icol,ib,vai_bot) - this%GetRdUp(ican,icol,ib,vai_top))
+
+      ! The net beam radiation includes that which is absorbed, but also,
+      ! that which is re-scattered, the re-scattered acts as a source
+      ! to the net diffuse balance and adds to the absorbed, and a sink
+      ! on the beam absorbed term.
+      
+      Rb_abs = Rb_net * (1._r8-this%band(ib)%scelb(ican,icol)%om)
+      Rd_abs = Rd_net +  Rb_net * this%band(ib)%scelb(ican,icol)%om
       
       ! Fraction of leaves exposed to direct sunlight
       Rb_abs_leaf = (1._r8-frac_abs_snow)*Rb_abs * beam_wt_leaf / (beam_wt_leaf+beam_wt_stem)
@@ -468,24 +487,22 @@ contains
                     Rd_abs*diff_wt_stem / (diff_wt_leaf+diff_wt_stem))
 
       
+
+      
     end associate
     return
   end subroutine GetAbsRad
 
   ! ================================================================================================
   
-  subroutine ParamPrep(numpft,ib,rho_snow,tau_snow)
+  subroutine ParamPrep(numpft,ib)
 
     integer,intent(in) :: numpft   ! Number of pfts
     integer,intent(in) :: ib       ! Band index
-    real(r8)           :: rho_snow
-    real(r8)           :: tau_snow
     
     real(r8) :: mu
     integer  :: ft
 
-    rad_params%om_snow(ib) = rho_snow + tau_snow
-    
     do ft = 1,numpft
 
        ! The non-band specific parameters here will be re-derived for each
@@ -538,7 +555,11 @@ contains
     real(r8) :: rho  ! element mean material reflectance
     real(r8) :: tau  ! element mean material transmittance
     real(r8) :: vai  ! vegetation area index lai+sai
+    real(r8) :: om_veg     ! scattering coefficient for vegetation (no snow)
+    real(r8) :: betad_veg  ! diffuse backscatter for vegetation (no snow)
+    real(r8) :: betad_om   ! multiplication of diffuse backscatter and reflectance
 
+    
     this%frac_snow = frac_snow
     
     if(.not.this%force_prep) then
@@ -561,10 +582,14 @@ contains
             vai = lai + sai
             
             ! Mean element transmission coefficients w/o snow effects
-            scelg%Kd =  (lai * rad_params%Kd_leaf(ft) + &
-                 sai * rad_params%Kd_stem(ft))/vai
 
-            if(ft==0) scelg%Kd = k_air
+            if(ft==0) then
+               scelg%Kd = k_air
+            else
+               scelg%Kd =  (lai * rad_params%Kd_leaf(ft) + &
+                    sai * rad_params%Kd_stem(ft))/vai
+            end if
+            
             
             do_bands: do ib = 1, this%n_bands
 
@@ -578,11 +603,13 @@ contains
                  else
 
                     ! Material reflectance (weighted average of leaf stem and snow)
-                    
-                    scelb%om =  (lai*rad_params%om_leaf(ib,ft) + &
-                                 sai*rad_params%om_stem(ib,ft))/vai
-                    
-                    scelb%om = this%frac_snow*rad_params%om_snow(ib) + (1._r8-this%frac_snow)*scelb%om
+
+                    ! Eq. 3.11 and 3.12 ClM5.0 Tech Man
+                    om_veg  =  (lai*rad_params%om_leaf(ib,ft) + &
+                                sai*rad_params%om_stem(ib,ft))/vai
+
+                    ! Eq. 3.5 ClM5.0 Tech Man
+                    scelb%om = this%frac_snow*om_snow(ib) + (1._r8-this%frac_snow)*om_veg
 
                     ! Diffuse backscatter, taken from G. Bonan's code
                     
@@ -591,8 +618,16 @@ contains
                     tau = (lai * rad_params%taul(ib,ft) + &
                          sai * rad_params%taus(ib,ft))/vai
 
-                    scelb%betad  = 0.5_r8 / scelb%om * &
+                    ! Eq 3.13 from CLM5.0 Tech Man
+                    betad_veg  = 0.5_r8 / scelb%om * &
                          ( scelb%om + (rho-tau) * ((1._r8+rad_params%xl(ft))/2._r8)**2._r8 )
+
+                    ! Eq. 3.6 from CLM5.0 Tech Man
+                    betad_om = betad_veg*om_veg*(1._r8-this%frac_snow) + &
+                         om_snow(ib)*betad_snow(ib)*this%frac_snow
+                    
+                    scelb%betad = betad_om / scelb%om
+                    
                     
                     
                  end if
@@ -623,6 +658,9 @@ contains
     real(r8) :: avmu ! Average inverse diffuse optical depth per unit leaf area
     real(r8) :: gdir
     real(r8) :: tmp0,tmp1,tmp2
+    real(r8) :: betab_veg  ! beam backscatter for vegetation (no snow)
+    real(r8) :: betab_om   ! multiplication of beam backscatter and reflectance
+    real(r8) :: om_veg     ! scattering coefficient for vegetation (no snow)
     
     do_ican: do ican = 1,this%n_lyr
        do_ical: do icol = 1,this%n_col(ican)
@@ -646,10 +684,14 @@ contains
                !!scelbp%Kb = this%frac_snow*k_snow + scelbp%Kb
                
                scelg%Kb = (scelg%lai*scelg%Kb_leaf + scelg%sai*1.0)/(scelg%lai+scelg%sai)
+
+               ! Eq. 3.4 CLM50 Tech Man
+               ! avmu is the average "av" inverse optical depth "mu" per unit leaf and stem area
                
                avmu = (1._r8 - rad_params%phi1(ft)/rad_params%phi2(ft) * &
                     log((rad_params%phi1(ft)+rad_params%phi2(ft))/rad_params%phi1(ft))) / rad_params%phi2(ft)
-               
+
+               ! Component terms for asu (single scatering albedo)
                tmp0 = gdir +  rad_params%phi2(ft) * cosz
                tmp1 =  rad_params%phi1(ft) * cosz
                tmp2 = 1._r8 - tmp1/tmp0 * log((tmp1+tmp0)/tmp1)
@@ -668,8 +710,22 @@ contains
                  else
                     
                     ! betab - upscatter parameter for direct beam radiation, from G. Bonan
-                    asu = 0.5_r8 * scelb%om * gdir / tmp0 * tmp2
-                    scelb%betab = (1._r8 + avmu*scelg%Kb) / (scelb%om*avmu*scelg%Kb) * asu
+                    ! Eq. 3.16 CLM50 Tech Man
+                    ! asu is the single scattering albedo per om_veg (material reflectance)
+
+                    asu = 0.5_r8 * gdir / tmp0 * tmp2
+                    
+                    betab_veg = (1._r8 + avmu*scelg%Kb) / (avmu*scelg%Kb) * asu
+
+                    om_veg  =  (scelg%lai*rad_params%om_leaf(ib,ft) + &
+                                scelg%sai*rad_params%om_stem(ib,ft))/(scelg%lai+scelg%sai)
+
+                    ! Eq. 3.7 CLM50 Tech Man
+                    betab_om = betab_veg*om_veg*(1._r8-this%frac_snow) + &
+                               om_snow(ib)*betab_snow(ib)*this%frac_snow
+                    
+                    scelb%betab = betab_om / scelb%om
+
                     
                  end if
 
@@ -683,7 +739,7 @@ contains
     
     return
   end subroutine ZenithPrep
-  
+
   ! ================================================================================================
 
   subroutine GetNSCel(this)
@@ -704,13 +760,18 @@ contains
 
   ! ===============================================================
   
-  subroutine Solve(this,ib,Rbeam_atm,Rdiff_atm)
+  subroutine Solve(this,ib,Rbeam_atm,Rdiff_atm,Rbeam_can_abs,Rdiff_can_abs,Rbeam_grnd_flux, Rdiff_grnd_flux)
 
     class(twostream_type) :: this
-    integer               :: ib         ! Band of interest, matches indexing of rad_params
-    real(r8)              :: Rbeam_atm  ! Intensity of beam radiation at top of canopy [W/m2]
-    real(r8)              :: Rdiff_atm  ! Intensity of diffuse radiation at top of canopy [W/m2]
+    integer,intent(in)   :: ib         ! Band of interest, matches indexing of rad_params
+    real(r8),intent(in)  :: Rbeam_atm  ! Intensity of beam radiation at top of canopy [W/m2 ground]
+    real(r8),intent(in)  :: Rdiff_atm  ! Intensity of diffuse radiation at top of canopy [W/m2 ground]
+    real(r8),intent(out) :: Rbeam_can_abs    ! Total beam radiation absorbed by the canopy [W/m2 ground]
+    real(r8),intent(out) :: Rdiff_can_abs    ! Total diffuse radiation absorbed by the canopy [W/m2 ground]
+    real(r8),intent(out) :: Rbeam_grnd_flux  ! Average beam radiation incident at the ground [W/m2 ground]
+    real(r8),intent(out) :: Rdiff_grnd_flux  ! Average diffuse radiation incident at the ground [W/m2 ground]
 
+    
     ! Two stream solution arrays
     ! Each of these are given generic names, because
     ! they are assemblages of many terms. But generally
@@ -741,6 +802,19 @@ contains
     real(r8) :: frac_exp_ground     ! Fraction of ground that is not occupied by columns [m2/m2]
     real(r8) :: vai                 ! Vegetation area index [m2 vegetation / m2 ground]
 
+    real(r8) :: rb_abs              ! beam absorbed over an element    [W/m2 ground]
+    real(r8) :: rd_abs              ! diffuse absorbed over an element [W/m2 ground]
+    real(r8) :: rd_abs_leaf         ! diffuse absorbed over leaves (dummy)
+    real(r8) :: rb_abs_leaf         ! beam absorbed by leaves (dummy)
+    real(r8) :: r_abs_stem          ! total absorbed by stems (dummy)
+    real(r8) :: r_abs_snow          ! total absorbed by snow (dummy)
+    real(r8) :: leaf_sun_frac       ! sunlit fraction of leaves (dummy)
+
+    real(r8) :: rel_err_Rb          ! beam radiation canopy balance conservation
+                                    ! error, fraction of incident
+    real(r8) :: rel_err_Rd          ! diffuse radiation canopy balance conservation
+                                    ! error, fraction of incident
+    
     type(scelg_type),pointer :: scelgp   ! Pointer to the scelg data structure
     type(scelb_type),pointer :: scelbp   ! Pointer to the scelb data structure
     
@@ -1144,9 +1218,68 @@ contains
     deallocate(OMEGA)
     deallocate(TAU)
     deallocate(LAMBDA)
+
+
+    ! Process the total canopy absorbed radiation in the
+    ! two types of radiation, as well as the downwelling
+    ! flux at the ground interface
+    ! -----------------------------------------------------------------------------------
+
+    Rbeam_can_abs = 0._r8
+    Rdiff_can_abs = 0._r8
+
+    do ican = 1,this%n_lyr
+       do icol = 1,this%n_col(ican)
+          scelgp => this%scelg(ican,icol)
+          scelbp => this%band(ib)%scelb(ican,icol)
+          
+          call this%GetAbsRad(ican,icol,ib,0._r8,scelgp%lai+scelgp%sai, &
+               rb_abs,rd_abs,rd_abs_leaf,rb_abs_leaf,r_abs_stem,r_abs_snow,leaf_sun_frac)
+
+          Rbeam_can_abs = Rbeam_can_abs + scelgp%area*rb_abs
+          Rdiff_can_abs = Rdiff_can_abs + scelgp%area*rd_abs
+          
+       end do
+    end do
+    
+    Rbeam_grnd_flux = 0._r8
+    Rdiff_grnd_flux = 0._r8
+    
+    do icol = 1,this%n_col(this%n_lyr)
+
+       scelgp => this%scelg(this%n_lyr,icol)
+       scelbp => this%band(ib)%scelb(this%n_lyr,icol)
+       
+       Rbeam_grnd_flux = Rbeam_grnd_flux + &
+              scelgp%area*scelbp%Rbeam0*exp(-scelgp%Kb*(scelgp%lai+scelgp%sai))
+
+       Rdiff_grnd_flux = Rdiff_grnd_flux + &
+            scelgp%area*this%GetRdDn(this%n_lyr,icol,ib,scelgp%lai+scelgp%sai)
+
+    end do
+
+    ! Check the error balance
+    ! ---------------------------------------------------------------------------------------------
+
+    rel_err_Rb = (Rbeam_atm - (Rbeam_grnd_flux + Rbeam_can_abs))/Rbeam_atm
+    if( abs(rel_err_Rb) > rel_err_thresh ) then
+       print*,"Total canopy beam flux balance not closing in TwoStrteamMLPEMod:Solve"
+       print*,"Error: ",rel_err_Rb
+       print*,"Max Error: ",rel_err_thresh
+       print*,"ib: ",ib
+       stop
+    end if
+    
+    rel_err_Rd = (Rdiff_atm - (Rdiff_grnd_flux + Rdiff_can_abs))/Rdiff_atm
+    if( abs(rel_err_Rd) > rel_err_thresh ) then
+       print*,"Total canopy diffuse flux balance not closing in TwoStrteamMLPEMod:Solve"
+       print*,"Error: ",rel_err_Rd
+       print*,"Max Error: ",rel_err_thresh
+       stop
+    end if
     
     return
   end subroutine Solve
-
+  
 
 end Module TwoStreamMLPEMod

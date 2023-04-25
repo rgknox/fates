@@ -12,6 +12,11 @@ Module FatesRadiationMemMod
   ! ---------------------------------------------------------------------------
 
   integer, parameter :: r8 = selected_real_kind(12)
+
+
+  integer, parameter, public :: norman_solver = 1
+  integer, parameter, public :: twostr_solver = 2
+  integer, parameter, public :: rad_solver = twostr_solver
   
 
   integer, parameter, public :: num_rad_stream_types = 2    ! The number of radiation streams used (direct/diffuse)
@@ -51,6 +56,9 @@ Module FatesRadiationMemMod
 
   ! albedo land ice by waveband (1=vis, 2=nir)
   real(r8), public  :: tau_snow(num_swb) = (/ 0.01_r8, 0.01_r8 /)
+
+
+  
 
   
 end Module FatesRadiationMemMod

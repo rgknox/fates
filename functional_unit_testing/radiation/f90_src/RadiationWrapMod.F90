@@ -141,13 +141,17 @@ contains
     return
   end subroutine WrapZenithPrep
 
-  subroutine WrapSolve(ib,Rbeam_atm,Rdiff_atm)
+  subroutine WrapSolve(ib,Rbeam_atm,Rdiff_atm,Rbeam_can_abs,Rdiff_can_abs,Rbeam_grnd_flux, Rdiff_grnd_flux)
 
     integer(c_int),intent(in) :: ib
     real(kind=r8),intent(in)  :: Rbeam_atm
     real(kind=r8),intent(in)  :: Rdiff_atm
-
-    call twostream%Solve(ib,Rbeam_atm,Rdiff_atm)
+    real(kind=r8),intent(out) :: Rbeam_can_abs    ! Total beam radiation absorbed by the canopy [W/m2 ground]
+    real(kind=r8),intent(out) :: Rdiff_can_abs    ! Total diffuse radiation absorbed by the canopy [W/m2 ground]
+    real(kind=r8),intent(out) :: Rbeam_grnd_flux  ! Average beam radiation incident at the ground [W/m2 ground]
+    real(kind=r8),intent(out) :: Rdiff_grnd_flux  ! Average diffuse radiation incident at the ground [W/m2 ground]
+    
+    call twostream%Solve(ib,Rbeam_atm,Rdiff_atm,Rbeam_can_abs,Rdiff_can_abs,Rbeam_grnd_flux, Rdiff_grnd_flux)
 
     return
   end subroutine WrapSolve
@@ -173,10 +177,10 @@ contains
     integer(c_int) :: ican, icol
     integer(c_int) :: ib
     real(r8)    :: vai_top,vai_bot
-    real(r8)    :: Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac
+    real(r8)    :: Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,Rb_abs,Rd_abs
 
-      call twostream%GetAbsRad(ican,icol,ib,vai_top,vai_bot,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
-      
+    call twostream%GetAbsRad(ican,icol,ib,vai_top,vai_bot,Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+    
     return
   end subroutine WrapGetAbsRad
   

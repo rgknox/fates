@@ -37,7 +37,7 @@ module FatesInterfaceTypesMod
    integer, public :: hlm_is_restart   ! Is the HLM signalling that this is a restart
                                                   ! type simulation?
                                                   ! 1=TRUE, 0=FALSE
-   
+
    character(len=16), public :: hlm_name ! This character string passed by the HLM
                                                     ! is used during the processing of IO data, 
                                                     ! so that FATES knows which IO variables it 
