@@ -42,7 +42,8 @@ module EDCanopyStructureMod
   use PRTGenericMod,          only : struct_organ
   use PRTGenericMod,          only : SetState
   use PRTGenericMod,          only : carbon12_element
-
+  use FatesTwoStreamInterfaceMod, only : FatesConstructRadElements
+  
   ! CIME Globals
   use shr_log_mod           , only : errMsg => shr_log_errMsg
 
@@ -1432,10 +1433,10 @@ contains
           currentPatch => currentPatch%younger
        end do !patch loop
 
-
-    
        call leaf_area_profile(sites(s))
 
+       call FatesConstructRadElements(sites(s))
+       
     end do ! site loop
 
     return

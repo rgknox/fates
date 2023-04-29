@@ -105,7 +105,8 @@ module EDMainMod
   use PRTLossFluxesMod,       only : PRTReproRelease
   use EDPftvarcon,            only : EDPftvarcon_inst
   use FatesHistoryInterfaceMod, only : fates_hist
-
+ 
+  
   ! CIME Globals
   use shr_log_mod         , only : errMsg => shr_log_errMsg
   use shr_infnan_mod      , only : nan => shr_infnan_nan, assignment(=)
@@ -833,14 +834,13 @@ contains
     ! rooting mass, distributions, respiration rates and NPP
     call PrepCH4BCs(currentSite,bc_in,bc_out)
 
-
     ! FIX(RF,032414). This needs to be monthly, not annual
     ! If this is the second to last day of the year, then perform trimming
     if( hlm_day_of_year == hlm_days_per_year-1) then
-
-     if(hlm_use_sp.eq.ifalse)then
-       call trim_canopy(currentSite)
-     endif
+       
+       if(hlm_use_sp.eq.ifalse)then
+          call trim_canopy(currentSite)
+       endif
     endif
 
   end subroutine ed_update_site

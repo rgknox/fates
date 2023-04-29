@@ -2134,9 +2134,9 @@ contains
     new_patch%older    => null() ! pointer to next older patch   
     new_patch%younger  => null() ! pointer to next shorter patch      
 
-    new_patch%twostr%scel => null()  ! The radiation module will check if this
-                                     ! is associated, since it is not, then it will
-                                     ! initialize and allocate
+    new_patch%twostr%scelg => null()  ! The radiation module will check if this
+                                      ! is associated, since it is not, then it will
+                                      ! initialize and allocate
     
     ! assign known patch attributes 
 
@@ -3043,6 +3043,12 @@ contains
 
     end do
 
+    ! Deallocate Radiation scattering elements
+    if(associated(cpatch%twostr%scelg)) then
+       call cpatch%twostr%DeallocTwoStream()
+    end if
+    
+    
     ! Deallocate all litter objects
     do el=1,num_elements
        call cpatch%litter(el)%DeallocateLitt()

@@ -23,6 +23,7 @@ import getopt
 import code  # For development: code.interact(local=locals())  code.interact(local=dict(globals(), **locals()))
 import time
 import importlib
+import csv
 import ctypes
 from ctypes import *
 from operator import add
@@ -78,8 +79,6 @@ stem_rhovis = [0.21, 0.12, 0.12, 0.21, 0.21, 0.21, 0.21, 0.21, 0.21, 0.31, 0.31,
 stem_taunir = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.25, 0.25, 0.25]
 stem_tauvis = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.12, 0.12, 0.12]
 
-rho_snow = [0.80, 0.55] 
-tau_snow = [0.01, 0.01]
 
 visb = 1
 nirb = 2
@@ -140,13 +139,15 @@ def main(argv):
         iret = set_radparams_call(c_double(leaf_clumping_index[ft]),c_int(pft),c_int(0),*ccharnb("clumping_index"))
         
     # Process the core 2Stream parameters from parameters in file
-    iret = param_prep_call(ci(n_pft),ci(visb),c8(rho_snow[visb-1]),c8(tau_snow[visb-1]))
-    iret = param_prep_call(ci(n_pft),ci(nirb),c8(rho_snow[nirb-1]),c8(tau_snow[nirb-1]))
+    iret = param_prep_call(ci(n_pft))
+
+    if(True):
+        ParallelElementPerturbDist()
 
     
     # Test 1, a single element, visible
 
-    if(False):
+    if(True):
         SingleElementPerturbTest()
 
     if(True):
@@ -266,7 +267,7 @@ def SerialParallelCanopyTest():
     iret = canopy_prep_call(c8(frac_snow))
     iret = zenith_prep_call(c8(cosz))
     
-    iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
+    iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))   #,c8(),c8(),c8(),c8(),c8(),c8(),c8()  )
 
     for i in range(n_layer):
         
@@ -423,17 +424,85 @@ def SerialParallelCanopyTest():
         PlotRadMaps(elems,1,'Downwelling Diffuse Radiation [W/m2]')
         PlotRadMaps(elems,2,'Upwelling Diffuse Radiation [W/m2]')
         
-    
 
-    
-   
 
+def ParallelElementPerturbDist():
+
+
+    # Lets first construct a bunch of cohorts, 5 cohorts
+    # equal area, but folding by 2 in LAI
+
+    cohort_lai  = np.array([0.25,0.5,1.0,2.0,4.0])
+    cohort_area = np.array([0.9,0.19,0.19,0.19,0.19])
+    n_cohorts = len(cohort_lai)
+    
+    sai_frac = 0.1
+    
+    pft = 1
+    
+    # Serial approach: 5 layers with veg and ghost
+    n_col = n_cohorts+1
+    n_layer = 1
+    iret = alloc_twostream_call(ci(n_layer),ci(n_col))
+
+    for icol in range(n_col-1):
+        iret = setup_canopy_call(c_int(1),c_int(icol+1),c_int(pft), \
+                                 c_double(cohort_area[icol]),c_double(cohort_lai[icol]),c_double(cohort_lai[icol]*sai_frac))
+        
+    # Add the air element
+    iret = setup_canopy_call(c_int(1),c_int(n_col),c_int(0),c_double(1.0-np.sum(cohort_area)),c_double(0.0),c_double(0.0))
+
+    num_params = 9
+    paramsets = []
+    
+    labels = ["clumping_index","leaf_rhonir","leaf_rhovis","leaf_taunir","leaf_tauvis", \
+              "stem_rhonir","stem_rhovis","stem_taunir","stem_tauvis"]
+    
+    ic = 0
+    with open('albedo_callib_param_vals.csv', newline='') as csvfile:
+        
+        reader = csv.reader(csvfile, delimiter=',')
+        next(reader, None)
+        nsets=0
+        for irow, rowtext in enumerate(reader):
+            ic=ic+1
+            if(ic==num_params):
+                ic=0
+                nsets=nsets+1
+                
+    with open('albedo_callib_param_vals.csv', newline='') as csvfile:       
+        paramset = np.zeros([num_params,nsets])
+        reader = csv.reader(csvfile, delimiter=',')
+        next(reader, None)
+        ic=0
+        iset=0
+        for irow, rowtext in enumerate(reader):
+            paramset[ic,iset] = float(rowtext[3])
+            ic=ic+1
+            if(ic==num_params):
+                ic=0
+                iset=iset+1
+
+
+    fig1, axs = plt.subplots(3,3,figsize=(9,7))
+    ax1s = axs.reshape(-1)
+
+    for ip,ax in enumerate(ax1s):
+    
+        ap = ax.hist(paramset[ip,:])
+        #ax1.set_ylabel('Integrated VAI [m2/m2]')
+        ax.set_title(labels[ip])
+        ax.grid(True)
+        
+    plt.tight_layout()
+    plt.show()
+    code.interact(local=dict(globals(), **locals()))
                 
 def SingleElementPerturbTest():
 
     
     # ===================================================================================
-    n_col    = 1
+    n_col    = 2
     n_layer  = 1
     iret = alloc_twostream_call(ci(n_layer),ci(n_col))
 
@@ -444,8 +513,8 @@ def SingleElementPerturbTest():
     lai  = 2.0  # LAI
     sai  = 0.5  # SAI
     vai = lai+sai
-    iret = setup_canopy_call(c_int(ican),c_int(icol),c_int(pft),c_double(area),c_double(lai),c_double(sai))
-
+    iret = setup_canopy_call(c_int(1),c_int(1),c_int(pft),c_double(area),c_double(lai),c_double(sai))
+    iret = setup_canopy_call(c_int(1),c_int(2),c_int(0),c_double(1.0-area),c_double(0.0),c_double(0.0))
 
     # Decide on a band:
 
@@ -463,13 +532,13 @@ def SingleElementPerturbTest():
 
     # Make parameter pertubations, bump up 50%
     pp_dict = {}
-    pp_dict['Kb'] = 0.74*1.5
+    pp_dict['Kb'] = 0.9  #0.74*1.5
     pp_dict['Kd'] = 1.03*1.5
     pp_dict['om'] = 0.18*1.5
     pp_dict['betab'] = 0.45*1.5
     pp_dict['betad'] = 0.6*1.5
 
-    R_beam = 100.
+    R_beam = 120.
     R_diff = 0.
     cosz   = np.cos(0.0)
     n_vai  = 100
@@ -500,7 +569,7 @@ def SingleElementPerturbTest():
     
     iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
     iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
-    iret = canopy_prep_call(ci(ib),c8(frac_snow))
+    iret = canopy_prep_call(c8(frac_snow))
     iret = zenith_prep_call(c8(cosz))
     iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
     iret = getparams_call(ci(ican),ci(icol),ci(ib),byref(cd_kb), \
@@ -524,9 +593,10 @@ def SingleElementPerturbTest():
     i = -1
     for key,val in pp_dict.items():
         i=i+1
-        iret = canopy_prep_call(ci(ib),c8(frac_snow))
-        iret = zenith_prep_call(ci(ib),c8(cosz))
+        iret = canopy_prep_call(c8(frac_snow))
+        iret = zenith_prep_call(c8(cosz))
         iret = forceparam_call(c_int(ican),c_int(icol),ci(ib),c_double(val),*ccharnb(key))
+        print(key)
         iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
         
         for iv in range(n_vai):

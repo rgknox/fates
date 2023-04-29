@@ -16,6 +16,7 @@ module EDSurfaceRadiationMod
   use FatesConstantsMod , only : itrue
   use FatesConstantsMod , only : pi_const
   use FatesConstantsMod , only : nocomp_bareground
+  use FatesConstantsMod , only : nearzero
   use FatesInterfaceTypesMod , only : bc_in_type
   use FatesInterfaceTypesMod , only : bc_out_type
   use FatesInterfaceTypesMod , only : hlm_numSWb
@@ -82,8 +83,13 @@ contains
     integer :: ifp                                 ! patch loop counter
     integer :: ib                                  ! radiation broad band counter
     type(ed_patch_type), pointer :: currentPatch   ! patch pointer
-
-    dir_frac
+    real(r8) :: Rdiff_up_atm_beam  ! Upwelling diffuse radiation at top from beam scattering [W/m2 ground]
+    real(r8) :: Rdiff_up_atm_diff  ! Upwelling diffuse radiation at top from diffuse scattering [W/m2 ground]
+    real(r8) :: Rbeam_can_abs      ! Total beam radiation absorbed by the canopy [W/m2 ground]
+    real(r8) :: Rdiff_can_abs      ! Total diffuse radiation absorbed by the canopy [W/m2 ground]
+    real(r8) :: Rbeam_dn_grnd_beam ! Average beam radiation at ground [W/m2 ground]
+    real(r8) :: Rdiff_dn_grnd_beam ! Average downward diffuse radiation at ground due to beam sourcing [W/m2 ground]
+    real(r8) :: Rdiff_dn_grnd_diff ! Average downward diffuse radiation at ground from diffuse sourcing [W/m2 ground]
     
     !-----------------------------------------------------------------------
     ! -------------------------------------------------------------------------------
@@ -145,7 +151,6 @@ contains
                       bc_out(s)%albd_parb(ifp,ib) = bc_in(s)%albgr_dir_rb(ib)
                       bc_out(s)%albi_parb(ifp,ib) = bc_in(s)%albgr_dif_rb(ib)
                       bc_out(s)%ftdd_parb(ifp,ib)= 1.0_r8
-                      !bc_out(s)%ftid_parb(ifp,ib)= 1.0_r8
                       bc_out(s)%ftid_parb(ifp,ib)= 0.0_r8
                       bc_out(s)%ftii_parb(ifp,ib)= 1.0_r8
                    enddo
@@ -166,60 +171,35 @@ contains
                    else
 
                       associate( twostr => currentPatch%twostr)
-
+                        
                         call twostr%CanopyPrep(bc_in(s)%fcansno_pa(ifp))
                         call twostr%ZenithPrep(bc_in(s)%coszen_pa(ifp))
 
                         do ib = 1,hlm_numSWb
 
+                           print*,"cosz:",bc_in(s)%coszen_pa(ifp),bc_in(s)%solad_parb(ifp,ib),bc_in(s)%solai_parb(ifp,ib)
+                           
                            twostr%band(ib)%albedo_grnd_diff = bc_in(s)%albgr_dif_rb(ib)
                            twostr%band(ib)%albedo_grnd_beam = bc_in(s)%albgr_dir_rb(ib)
 
-                           call twostr%Solve(ib,             &  ! in
-                                bc_in(s)%solad_parb(ifp,ib), &  ! in
-                                bc_in(s)%solai_parb(ifp,ib), &  ! in
-                                rd_can_abs,                  &  ! out
-                                ri_can_abs,                  &  ! out
-                                rd_grnd_flux,                &  ! out
-                                ri_grnd_flux)                   ! out
+                           if((bc_in(s)%solad_parb(ifp,ib)+bc_in(s)%solai_parb(ifp,ib))>nearzero) then
+                              call twostr%Solve(ib,             &  ! in
+                                   bc_in(s)%solad_parb(ifp,ib), &  ! in
+                                   bc_in(s)%solai_parb(ifp,ib), &  ! in
+                                   bc_out(s)%albd_parb(ifp,ib), &  ! out
+                                   bc_out(s)%albi_parb(ifp,ib), &  ! out
+                                   bc_out(s)%fabd_parb(ifp,ib), &  ! out
+                                   bc_out(s)%fabi_parb(ifp,ib), &  ! out
+                                   bc_out(s)%ftdd_parb(ifp,ib), &  ! out
+                                   bc_out(s)%ftid_parb(ifp,ib), &  ! out
+                                   bc_out(s)%ftii_parb(ifp,ib))
 
-                           bc_out(s)%fabd_parb(ifp,ib) = rd_can_abs / bc_in(s)%solad_parb(ifp,ib)
-                           bc_out(s)%fabi_parb(ifp,ib) = ri_can_abs / bc_in(s)%solai_parb(ifp,ib)
-                           
-                           ! The HLMs want transmitted solar fluxes incident on the ground:
-                           ! tri(p,ib) = forc_solad(t,ib)*ftid(p,ib) + forc_solai(t,ib)*ftii(p,ib)
-                           ! Note: Only the combination of ftid and ftii are meaningful
-                           ! in two-stream. The resulting flux at the ground
-                           ! can not be attributed to the two forcings at the
-                           ! top of the canopy independently, they are simply intertwined
-                           ! at that point.  Therefore, we split the diffuse down flux
-                           ! into two components, weighted by the fraction of down flux
-                           ! at the top of the canopy. Then 
-                           
-                           bc_out(s)%ftdd_parb(ifp,ib) = rd_grnd_flux / bc_in(s)%solad_parb(ifp,ib)
-
-                           dir_frac = (bc_in(s)%solad_parb(ifp,ib)/( bc_in(s)%solad_parb(ifp,ib)+bc_in(s)%solai_parb(ifp,ib))
-
-                           bc_out(s)%ftid_parb(ifp,ib) = dir_frac * rd_grnd_flux / bc_in(s)%solad_parb(ifp,ib)
-
-                           bc_out(s)%ftii_parb(ifp,ib) = (1._r8 - dir_frac) * rd_grnd_flux / bc_in(s)%solai_parb(ifp,ib)
-
-                           if(bc_out(s)%ftid_parb(ifp,ib)>1._r8) then
-                              write(fates_log(),*) 'ftid_parb must be < 1: ',bc_out(s)%ftid_parb(ifp,ib)
-                              call endrun(msg=errMsg(sourcefile, __LINE__)) 
                            end if
 
-                           if(bc_out(s)%ftii_parb(ifp,ib)>1._r8) then
-                              write(fates_log(),*) 'ftii_parb must be < 1: ',bc_out(s)%ftii_parb(ifp,ib)
-                              call endrun(msg=errMsg(sourcefile, __LINE__)) 
-                           end if
-                           
                         end do
                         
                       end associate
                    end if
-                   
-
                    
                 endif ! is there vegetation?
 
