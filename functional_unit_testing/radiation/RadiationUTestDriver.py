@@ -61,6 +61,7 @@ grndsnow_albedo_call.argtypes = [POINTER(c_int),POINTER(c_double),c_char_p,c_lon
 canopy_prep_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapcanopyprep
 zenith_prep_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapzenithprep
 solver_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapsolve
+setdown_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapsetdownwelling
 
 getintens_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetintensity
 getabsrad_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetabsrad
@@ -83,6 +84,8 @@ stem_tauvis = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.
 visb = 1
 nirb = 2
 
+normalized_boundary = 1
+absolute_boundary = 2
 
 class elem_type:
     def __init__(self,n_vai):
@@ -250,6 +253,15 @@ def SerialParallelCanopyTest():
     cd_r_abs_stem  = c_double(-9.0)
     cd_r_abs_snow  = c_double(-9.0)
     cd_leaf_sun_frac = c_double(-9.0)
+
+    cd_albedo_beam = c_double(-9.0)
+    cd_albedo_diff = c_double(-9.0)
+    cd_canabs_beam = c_double(-9.0)
+    cd_canabs_diff = c_double(-9.0)
+    cd_ffbeam_beam = c_double(-9.0)
+    cd_ffdiff_beam = c_double(-9.0)
+    cd_ffdiff_diff = c_double(-9.0)
+    
     
     R_beam = 100.
     R_diff = 100.
@@ -266,9 +278,17 @@ def SerialParallelCanopyTest():
     
     iret = canopy_prep_call(c8(frac_snow))
     iret = zenith_prep_call(c8(cosz))
-    
-    iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))   #,c8(),c8(),c8(),c8(),c8(),c8(),c8()  )
 
+
+    
+    iret = solver_call(ci(ib),ci(normalized_boundary),c8(1.0),c8(1.0), \
+                       byref(cd_albedo_beam),byref(cd_albedo_diff), \
+                       byref(cd_canabs_beam),byref(cd_canabs_diff), \
+                       byref(cd_ffbeam_beam),byref(cd_ffdiff_beam),byref(cd_ffdiff_diff))
+
+    iret = setdown_call(ci(ib),c8(R_beam),c8(R_diff))
+
+    
     for i in range(n_layer):
         
         ican = i+1
@@ -539,8 +559,8 @@ def SingleElementPerturbTest():
     pp_dict['betab'] = 0.48253004714288084  #*1.5
     pp_dict['betad'] = 0.5999777777777778  #*1.5
 
-    R_beam = 0.
-    R_diff = 70.
+    R_beam = 100.
+    R_diff = 100.
     cosz   = np.cos(0.0)
     n_vai  = 100
     vai_a  = np.linspace(0,vai,num=n_vai)
@@ -564,6 +584,14 @@ def SingleElementPerturbTest():
     p_drdv_ubeam    = np.zeros([n_vai-1,len(pp_dict)])
     p_drdv_dbeam    = np.zeros([n_vai-1,len(pp_dict)])
 
+    cd_albedo_beam = c_double(-9.0)
+    cd_albedo_diff = c_double(-9.0)
+    cd_canabs_beam = c_double(-9.0)
+    cd_canabs_diff = c_double(-9.0)
+    cd_ffbeam_beam = c_double(-9.0)
+    cd_ffdiff_beam = c_double(-9.0)
+    cd_ffdiff_diff = c_double(-9.0)
+    
     ground_albedo_diff = 0.1
     ground_albedo_beam = 0.1
     frac_snow = 0.0
@@ -572,7 +600,14 @@ def SingleElementPerturbTest():
     iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
     iret = canopy_prep_call(c8(frac_snow))
     iret = zenith_prep_call(c8(cosz))
-    iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
+
+    iret = solver_call(ci(ib),ci(normalized_boundary),c8(1.0),c8(1.0), \
+                       byref(cd_albedo_beam),byref(cd_albedo_diff), \
+                       byref(cd_canabs_beam),byref(cd_canabs_diff), \
+                       byref(cd_ffbeam_beam),byref(cd_ffdiff_beam),byref(cd_ffdiff_diff))
+
+    iret = setdown_call(ci(ib),c8(R_beam),c8(R_diff))
+    
     iret = getparams_call(ci(ican),ci(icol),ci(ib),byref(cd_kb), \
                           byref(cd_kd),byref(cd_om),byref(cd_betad),byref(cd_betab))
 
@@ -601,17 +636,21 @@ def SingleElementPerturbTest():
         iret = canopy_prep_call(c8(frac_snow))
         iret = zenith_prep_call(c8(cosz))
         iret = forceparam_call(c_int(ican),c_int(icol),ci(ib),c_double(val),*ccharnb(key))
-        print(key)
-        iret = solver_call(2,ci(ib),c8(R_beam),c8(1.0))
-        
-        #iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
+
+        iret = solver_call(ci(ib),ci(normalized_boundary),c8(1.0),c8(1.0), \
+                       byref(cd_albedo_beam),byref(cd_albedo_diff), \
+                       byref(cd_canabs_beam),byref(cd_canabs_diff), \
+                       byref(cd_ffbeam_beam),byref(cd_ffdiff_beam),byref(cd_ffdiff_diff))
+
+        iret = setdown_call(ci(ib),c8(R_beam),c8(R_diff))
         
         for iv in range(n_vai):
             iret = getintens_call(ci(ican),ci(icol),ci(ib),c8(vai_a[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
+
             #print(iv,i,cd_r_beam.value)
-            p_r_beam[iv,i] = 70.*cd_r_beam.value
-            p_r_diff_up[iv,i] = 70.*cd_r_diff_up.value
-            p_r_diff_dn[iv,i] = 70.*cd_r_diff_dn.value
+            p_r_beam[iv,i] = cd_r_beam.value
+            p_r_diff_up[iv,i] = cd_r_diff_up.value
+            p_r_diff_dn[iv,i] = cd_r_diff_dn.value
 
             if(iv>0):
                 p_drdv_ubeam[iv-1] = -cd_om.value*cd_betab.value*(p_r_beam[iv]-p_r_beam[iv-1])/dv

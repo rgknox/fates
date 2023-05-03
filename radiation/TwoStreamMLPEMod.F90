@@ -30,7 +30,7 @@ Module TwoStreamMLPEMod
   integer, parameter :: r8 = selected_real_kind(12)
   real(r8),parameter :: nearzero = 1.e-20_r8
   logical, parameter :: debug=.true.
-  logical, parameter :: use_derivation1 = .false.
+  logical, parameter :: use_derivation1 = .true.
   real(r8), parameter :: unset_r8 = 1.e-36_r8
   real(r8), parameter :: unset_int = -999
   integer, parameter :: twostr_vis = 1         ! Named index of visible shortwave radiation

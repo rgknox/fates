@@ -141,29 +141,50 @@ contains
     return
   end subroutine WrapZenithPrep
 
-  subroutine WrapSolve(ib,boundary_type,Rbeam_atm,Rdiff_atm)
+  subroutine WrapSetDownwelling(ib,Rbeam_atm,Rdiff_atm)
+    
+    integer(c_int) :: ib
+    real(r8)  :: Rbeam_atm          ! Intensity of beam radiation at top of canopy [W/m2 ground]
+    real(r8)  :: Rdiff_atm          ! Intensity of diffuse radiation at top of canopy [W/m2 ground]    
+
+    twostream%band(ib)%Rbeam_atm = Rbeam_atm
+    twostream%band(ib)%Rdiff_atm = Rdiff_atm
+    
+    return
+  end subroutine WrapSetDownwelling
+    
+  
+  subroutine WrapSolve(ib,boundary_type,Rbeam_atm,Rdiff_atm, &
+       albedo_beam, & 
+       albedo_diff, & 
+       frac_abs_can_beam, &
+       frac_abs_can_diff, &
+       frac_beam_grnd_beam, &
+       frac_diff_grnd_beam, &
+       frac_diff_grnd_diff)
 
     integer(c_int) :: ib
     integer(c_int) :: boundary_type
+
+    real(r8)  :: albedo_beam
+    real(r8)  :: albedo_diff
+    real(r8)  :: frac_abs_can_beam
+    real(r8)  :: frac_abs_can_diff
+    real(r8)  :: frac_beam_grnd_beam
+    real(r8)  :: frac_diff_grnd_beam
+    real(r8)  :: frac_diff_grnd_diff
     real(r8)  :: Rbeam_atm          ! Intensity of beam radiation at top of canopy [W/m2 ground]
     real(r8)  :: Rdiff_atm          ! Intensity of diffuse radiation at top of canopy [W/m2 ground]
-    real(r8)  :: Rdiff_up_atm_beam  ! Upwelling diffuse radiation at top from beam scattering [W/m2 ground]
-    real(r8)  :: Rdiff_up_atm_diff  ! Upwelling diffuse radiation at top from diffuse scattering [W/m2 ground]
-    real(r8)  :: Rbeam_can_abs      ! Total beam radiation absorbed by the canopy [W/m2 ground]
-    real(r8)  :: Rdiff_can_abs      ! Total diffuse radiation absorbed by the canopy [W/m2 ground]
-    real(r8)  :: Rbeam_dn_grnd_beam ! Average beam radiation at ground [W/m2 ground]
-    real(r8)  :: Rdiff_dn_grnd_beam ! Average downward diffuse radiation at ground due to beam sourcing [W/m2 ground]
-    real(r8)  :: Rdiff_dn_grnd_diff ! Average downward diffuse radiation at ground from diffuse sourcing [W/m2 ground]
     
     call twostream%Solve(ib,boundary_type, & 
          Rbeam_atm,Rdiff_atm, &
-         Rdiff_up_atm_beam,           &
-         Rdiff_up_atm_diff,           &
-         Rbeam_can_abs,               &
-         Rdiff_can_abs,               &
-         Rbeam_dn_grnd_beam,          &
-         Rdiff_dn_grnd_beam,          &
-         Rdiff_dn_grnd_diff)
+         albedo_beam, & 
+         albedo_diff, & 
+         frac_abs_can_beam, &
+         frac_abs_can_diff, &
+         frac_beam_grnd_beam, &
+         frac_diff_grnd_beam, &
+         frac_diff_grnd_diff)
 
     return
   end subroutine WrapSolve
