@@ -321,8 +321,6 @@ contains
        ! Loop through each canopy layer to calculate nitrogen profile using
        ! cumulative lai at the midpoint of the layer
 
-
-
        ! Pre-process some variables that are PFT dependent
        ! but not environmentally dependent
        ! ------------------------------------------------------------------------
@@ -359,8 +357,7 @@ contains
              ! 3 = patch has been called for photosynthesis already
              ! ---------------------------------------------------------------------------
              if(bc_in(s)%filter_photo_pa(ifp)==2)then
-
-
+                
                 ! Part III. Calculate the number of sublayers for each pft and layer.
                 ! And then identify which layer/pft combinations have things in them.
                 ! Output:
@@ -438,7 +435,7 @@ contains
 
                       ! are there any leaves of this pft in this layer?
                       canopy_mask_if: if(currentPatch%canopy_mask(cl,ft) == 1)then
-
+                         
                          ! Loop over leaf-layers
                          leaf_layer_loop : do iv = 1,currentCohort%nv
 
@@ -570,7 +567,6 @@ contains
 
                                end select
 
-                               
                                ! Pre-process PAR absorbed per unit leaf area for different schemes
                                ! par_per_sunla = [W absorbed beam+diffuse radiation / m2 of sunlit leaves]
                                ! par_per_shala = [W absorbed diffuse radiation / m2 of shaded leaves]

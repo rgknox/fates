@@ -46,7 +46,12 @@ contains
     integer :: n_col(nclmax) ! Number of parallel column elements per layer
     integer :: ican,ft,icol
     type(twostream_type), pointer :: twostr
-    real(r8), parameter :: canopy_open_frac = 0.02_r8
+
+
+    ! DO NOT MAKE CANOPY_OPEN_FRAC >0 UNTIL LAI COMPRESSION
+    ! HAS BEEN THOUGHT THROUGH. WE CANT JUST DECREASE THE
+    ! AREA WITHOUT CONSERVING TOTAL LEAF AND STEM AREA
+    real(r8), parameter :: canopy_open_frac = 0.00_r8
 
     integer :: maxcol
     real(r8) :: canopy_frac
@@ -74,12 +79,9 @@ contains
          n_col(1:nclmax) = 0
          cohort => patch%tallest
          do while (associated(cohort))
-
             ft = cohort%pft
             ican = cohort%canopy_layer
-
             n_col(ican) = n_col(ican) + 1
-
             cohort => cohort%shorter
          enddo
 
@@ -94,12 +96,19 @@ contains
                n_col(ican) = n_col(ican) + 1
             end if
          end do
-         n_col(patch%ncl_p) = n_col(patch%ncl_p) + 1
 
-         maxcol = 0
-         do ican = 1,patch%ncl_p
-            if (n_col(ican)>maxcol) maxcol=n_col(ican)
-         end do
+         ! If there is only one layer, then we don't
+         ! need to add an air element to the only
+         ! layer. This is because all non-veg
+         ! area will be attributed to a ground patch
+         ! But if there is more than one layer, then
+         ! an air element is needed for all the non
+         ! occupied space, even if the canopy_open_frac
+         ! is zero.
+         
+         if(patch%ncl_p>1)then
+            n_col(patch%ncl_p) = n_col(patch%ncl_p) + 1
+         end if
 
 
          ! Handle memory
@@ -108,6 +117,11 @@ contains
          ! re-allocate the object
          ! -------------------------------------------------------------------------------------------
 
+         maxcol = 0
+         do ican = 1,patch%ncl_p
+            if (n_col(ican)>maxcol) maxcol=n_col(ican)
+         end do
+
          if(.not.associated(twostr%scelg)) then
 
             call twostr%AllocInitTwoStream((/ivis,inir/),patch%ncl_p,maxcol+2)
@@ -115,8 +129,8 @@ contains
          else
 
             if(ubound(twostr%scelg,2) <  maxcol .or. &
-                 ubound(twostr%scelg,2) > (maxcol+4) .or. &
-                 ubound(twostr%scelg,1) < patch%ncl_p ) then
+               ubound(twostr%scelg,2) > (maxcol+4) .or. &
+               ubound(twostr%scelg,1) < patch%ncl_p ) then
 
                call twostr%DeallocTwoStream()
 
@@ -125,6 +139,7 @@ contains
                call twostr%AllocInitTwoStream((/ivis,inir/),patch%ncl_p,maxcol+2)
 
             end if
+            
          end if
 
 
@@ -139,6 +154,8 @@ contains
             ft = cohort%pft
             ican = cohort%canopy_layer
 
+            patch%canopy_mask(ican,ft) = 1
+            
             ! Every cohort gets its own element right now
             n_col(ican) = n_col(ican)+1
 
@@ -152,7 +169,7 @@ contains
                print*,"FT>1",ft
                stop
             end if
-            
+
             twostr%scelg(ican,n_col(ican))%pft = ft
             twostr%scelg(ican,n_col(ican))%area = canopy_frac*cohort%c_area/patch%total_canopy_area
             twostr%scelg(ican,n_col(ican))%lai  = cohort%treelai
@@ -163,7 +180,6 @@ contains
 
             cohort => cohort%shorter
          enddo
-
 
          ! Add the air (open) elements
          do ican = 1,patch%ncl_p
@@ -182,14 +198,14 @@ contains
                twostr%scelg(ican,n_col(ican))%lai  = 0._r8
                twostr%scelg(ican,n_col(ican))%sai  = 0._r8
             end if
-
+            
+            
          end do
 
          twostr%n_col(1:patch%ncl_p) = n_col(1:patch%ncl_p)
 
          if(debug) then
             do ican = 1,patch%ncl_p
-
                canopy_frac = 0._r8
                do icol=1,n_col(ican)
                   canopy_frac = canopy_frac + twostr%scelg(ican,icol)%area
@@ -204,6 +220,7 @@ contains
                end if
             end do
          end if
+
 
 
          ! Set up some non-element parameters

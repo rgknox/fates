@@ -30,7 +30,7 @@ Module TwoStreamMLPEMod
   integer, parameter :: r8 = selected_real_kind(12)
   real(r8),parameter :: nearzero = 1.e-20_r8
   logical, parameter :: debug=.true.
-  logical, parameter :: use_derivation1 = .true.
+  logical, parameter :: use_derivation1 = .false.
   real(r8), parameter :: unset_r8 = 1.e-36_r8
   real(r8), parameter :: unset_int = -999
   integer, parameter :: twostr_vis = 1         ! Named index of visible shortwave radiation
@@ -40,8 +40,14 @@ Module TwoStreamMLPEMod
   ! Allowable error, as a fraction of total incident for total canopy
   ! radiation balance checks
 
-  real(r8), parameter :: rel_err_thresh = 1.e-6_r8
+  real(r8), parameter :: rel_err_thresh = 1.e-9_r8
 
+  ! These are the codes for how the upper boundary is specified, normalized or absolute
+  integer,public, parameter :: normalized_upper_boundary = 1
+  integer,public, parameter :: absolute_upper_boundary   = 2
+  
+
+  
   ! These are parameter constants, ie things that are specific to the plant material
   ! and radiation band.  Not all of these need to be used. 2-stream ultimately wants
   ! optical depth, scattering coefficient and backscatter fractions for diffuse and
@@ -116,30 +122,30 @@ Module TwoStreamMLPEMod
      real(r8) :: B2u     ! Compound term w/ lambdas
      real(r8) :: B1d     ! Compound term w/ lambdas
      real(r8) :: B2d     ! Compound term w/ lambdas
-     real(r8) :: lambda1 ! Compount term w/ B1d and B1u for diffuse forcing
-     real(r8) :: lambda2 ! Compound term w/ B2d and B2u for diffuse forcing
-     !real(r8) :: lambda1b ! Compount term w/ B1d and B1u for beam forcing
-     !real(r8) :: lambda2b ! Compound term w/ B2d and B2u for beam forcing
+     real(r8) :: lambda1_diff ! Compount term w/ B1d and B1u for diffuse forcing
+     real(r8) :: lambda2_diff ! Compound term w/ B2d and B2u for diffuse forcing
+     real(r8) :: lambda1_beam ! Compount term w/ B1d and B1u for beam forcing
+     real(r8) :: lambda2_beam ! Compound term w/ B2d and B2u for beam forcing
      
      real(r8) :: a       ! Complex term operating on veg area index
      real(r8) :: om      ! scattering coefficient for media as a whole
      real(r8) :: betad   ! backscatter fraction of diffuse radiation for media as a whole
      real(r8) :: betab   ! backscatter fraction of beam radiation for media as a whole
-     real(r8) :: Rbeam0  ! Downwelling beam radiation at
-     ! top of the element [w/m2]
-
+     real(r8) :: Rbeam0  ! Normalized downwelling beam radiation at
+                         ! top of the element (relative to downwelling atmospheric beam) [-]
 
   end type scelb_type
 
 
   type band_type
 
-     type(scelb_type), pointer :: scelb(:,:)            ! array of scattering coefficients (layer, column)
-     ! can be sparse, will only solve indices up to
-
-     integer                  :: ib                   ! band index, should be consistent with rad_params
-     real(r8)                 :: albedo_grnd_diff     ! Ground albedo diffuse
-     real(r8)                 :: albedo_grnd_beam     ! Ground albedo direct 
+     type(scelb_type), pointer :: scelb(:,:)       ! array of scattering coefficients (layer, column)
+                                                   ! can be sparse, will only solve indices up to
+     integer                   :: ib               ! band index, should be consistent with rad_params
+     real(r8)                  :: Rbeam_atm        ! Downwelling beam radiation from atmosphere [W/m2 ground]
+     real(r8)                  :: Rdiff_atm        ! Downwelling diffuse radiation from atmosphere [W/m2 ground]
+     real(r8)                  :: albedo_grnd_diff ! Ground albedo diffuse
+     real(r8)                  :: albedo_grnd_beam ! Ground albedo direct 
 
   end type band_type
 
@@ -161,26 +167,26 @@ Module TwoStreamMLPEMod
 
   type, public :: twostream_type
 
-     type(scelg_type), pointer :: scelg(:,:)            ! array of scattering elements (layer, column)
-     ! can be sparse, will only solve indices up to
-     ! n_lyr,n_col(n_lyr)
+     type(scelg_type), pointer :: scelg(:,:)    ! array of scattering elements (layer, column)
+                                                ! can be sparse, will only solve indices up to
+                                                ! n_lyr,n_col(n_lyr)
 
-     type(band_type), pointer :: band(:)              ! Holds scattering coefficients for each band
-     ! vis,nir,etc (nothing that emits though, no thermal)
+     type(band_type), pointer  :: band(:)       ! Holds scattering coefficients for each band
+                                                ! vis,nir,etc (nothing that emits though, no thermal)
 
-     integer                      :: n_bands          ! number of bands (allocation size of band(:))
-     integer                      :: n_lyr            ! number of (vertical) scattering element layers
-     integer, allocatable         :: n_col(:)         ! number of (horizontal) scattering element columns per layer
-     integer                      :: n_scel           ! total number of scattering elements
-     logical                      :: force_prep       ! Some coefficients are only updated
-     ! when the canopy composition changes, ie
-     ! changes in leaf, stem or snow structure.
-     ! If so, this sets to true, signalling that diffuse
-     ! scattering coefficients should be updated.
-     ! Otherwise, we only updated zenith dependent
-     ! parameters on short sub-daily timesteps
-     real(r8)                     :: frac_snow        ! Current mean snow-fraction of the canopy
-     real(r8)                     :: frac_snow_old    ! Previous mean snow-fraction of the canopy
+     integer                   :: n_bands       ! number of bands (allocation size of band(:))
+     integer                   :: n_lyr         ! number of (vertical) scattering element layers
+     integer, allocatable      :: n_col(:)      ! number of (horizontal) scattering element columns per layer
+     integer                   :: n_scel        ! total number of scattering elements
+     logical                   :: force_prep    ! Some coefficients are only updated
+                                                ! when the canopy composition changes, ie
+                                                ! changes in leaf, stem or snow structure.
+                                                ! If so, this sets to true, signalling that diffuse
+                                                ! scattering coefficients should be updated.
+                                                ! Otherwise, we only updated zenith dependent
+                                                ! parameters on short sub-daily timesteps
+     real(r8)                  :: frac_snow     ! Current mean snow-fraction of the canopy
+     real(r8)                  :: frac_snow_old ! Previous mean snow-fraction of the canopy
 
    contains
 
@@ -305,10 +311,15 @@ contains
     associate(scelb => this%band(ib)%scelb(ican,icol), &
          scelg => this%scelg(ican,icol) )
 
-      r_diff_dn = scelb%Ad*exp(-scelg%Kb*vai) + &
-           scelb%B1d*scelb%lambda1*exp(scelb%a*vai) + &
-           scelb%B2d*scelb%lambda2*exp(-scelb%a*vai)
-
+      r_diff_dn = this%band(ib)%Rbeam_atm*( &
+           scelb%Ad*exp(-scelg%Kb*vai) + &
+           scelb%B1d*scelb%lambda1_beam*exp(scelb%a*vai) + &
+           scelb%B2d*scelb%lambda2_beam*exp(-scelb%a*vai)) + &
+           this%band(ib)%Rdiff_atm*( & 
+           scelb%B1d*scelb%lambda1_diff*exp(scelb%a*vai) + &
+           scelb%B2d*scelb%lambda2_diff*exp(-scelb%a*vai))
+      
+      
     end associate
   end function GetRdDn
 
@@ -326,10 +337,14 @@ contains
     associate(scelb => this%band(ib)%scelb(ican,icol), &
          scelg => this%scelg(ican,icol) )
 
-      r_diff_up = scelb%Au*exp(-scelg%Kb*vai) + &
-           scelb%B1u*scelb%lambda1*exp(scelb%a*vai) + &
-           scelb%B2u*scelb%lambda2*exp(-scelb%a*vai)
-
+      r_diff_up = this%band(ib)%Rbeam_atm*( &
+           scelb%Au*exp(-scelg%Kb*vai) + &
+           scelb%B1u*scelb%lambda1_beam*exp(scelb%a*vai) + &
+           scelb%B2u*scelb%lambda2_beam*exp(-scelb%a*vai)) + &
+           this%band(ib)%Rdiff_atm*( & 
+           scelb%B1u*scelb%lambda1_diff*exp(scelb%a*vai) + &
+           scelb%B2u*scelb%lambda2_diff*exp(-scelb%a*vai)) 
+           
     end associate
   end function GetRdUp
 
@@ -342,7 +357,8 @@ contains
     integer,intent(in)    :: ib
     real(r8)              :: r_beam_dn
 
-    r_beam_dn = this%band(ib)%scelb(ican,icol)%Rbeam0*exp(-this%scelg(ican,icol)%Kb*vai)
+    r_beam_dn = this%band(ib)%Rbeam_atm * &
+         this%band(ib)%scelb(ican,icol)%Rbeam0*exp(-this%scelg(ican,icol)%Kb*vai)
 
   end function GetRb
 
@@ -443,7 +459,7 @@ contains
       ! Mean element transmission coefficients adding snow scattering
 
       if(debug) then
-         if(vai_bot> vai_max)then
+         if( (vai_bot-vai_max)>rel_err_thresh)then
             print*,"During decomposition of the 2-stream radiation solution"
             print*,"A vegetation area index (VAI) was requested in GetAbsRad()"
             print*,"that is larger than the total integrated VAI of the "
@@ -452,7 +468,7 @@ contains
             print*,"vai_bot: ",vai_bot
             stop
          end if
-         if(vai_bot<vai_top) then
+         if( (vai_bot-vai_top)<-rel_err_thresh ) then
             print*,"During decomposition of the 2-stream radiation solution"
             print*,"the vegetation area index at the lower position was set"
             print*,"as greater than the value at the upper position."
@@ -660,16 +676,19 @@ contains
           end associate
        end do do_col
 
-       if(abs(area_check-1._r8)>nearzero)then
-               print*,"Only a partial canopy was specified"
-               print*,"Scattering elements must constitute 100% of the ground cover."
-               print*,"for open spaces, create an air element with the respective area."
-               print*,"total area (out of 1): ",area_check,ican
-               print*,"layer: ",ican," of: ",this%n_lyr
-               print*,"TwoStreamMLPEMod.F90:CanopyPrep"
-               stop
-            end if
-       
+       if(abs(area_check-1._r8)> 0.01_r8*rel_err_thresh  )then
+          print*,"Only a partial canopy was specified"
+          print*,"Scattering elements must constitute 100% of the ground cover."
+          print*,"for open spaces, create an air element with the respective area."
+          print*,"total area (out of 1): ",area_check,ican
+          print*,"layer: ",ican," of: ",this%n_lyr
+          do icol = 1,this%n_col(ican)
+             print*,this%scelg(ican,icol)%area,this%scelg(ican,icol)%pft
+          end do
+          print*,"TwoStreamMLPEMod.F90:CanopyPrep"
+          stop
+       end if
+            
     end do do_can
 
     return
@@ -715,7 +734,6 @@ contains
     end if
        
     cosz = max(nearzero,cosz)
-
 
     do_ican: do ican = 1,this%n_lyr
        do_ical: do icol = 1,this%n_col(ican)
@@ -825,6 +843,7 @@ contains
   ! ===============================================================
 
   subroutine Solve(this, ib, &
+       upper_boundary_type, & 
        Rbeam_atm, & 
        Rdiff_atm, &
        albedo_beam, & 
@@ -835,11 +854,37 @@ contains
        frac_diff_grnd_beam, &
        frac_diff_grnd_diff)
 
+    ! Find the scattering coefficients for two-stream radiation in the canopy.
+
+    ! Note that these scattering coefficients are separated for scattering
+    ! generated by a beam radiation boundary condition, and a diffuse radiation
+    ! boundary conditions. Thus, we need not provide the magnitude of the forcing
+    ! for this step. If the user provides values of 1 for the Rbeam_atm and Rdiff_atm
+    ! boundary condition. It is assumed this is a normalized solution.  If values
+    ! other than 1 are passed, we assume that it is not a normalized solution,
+    ! and we update the data structure values this%band(ib)%Rbeam_atm and
+    ! this%band(ib)%Rdiff_atm.  In a normalized solution, we will leave this
+    ! as unset.
+    ! In ELM and CLM, the land-model requests an albedo and other
+    ! normalized output from from this algorithm for the NEXT STEP. This is
+    ! due to the atmospheric model needing an albedo to calculate the downwelling
+    ! radiation on the next step. THus, the asynchronous nature of things.  That is
+    ! why we allow a normalized solution here. When actual absorption or flux values are
+    ! desired, the scattering coefficients that were determined during the normalized
+    ! solution are still valid when the magnitude of the downwelling beam and diffuse
+    ! radiation boundary conditions to the vegetation canopy are known.
+
+    
     class(twostream_type) :: this
     integer   :: ib                 ! Band of interest, matches indexing of rad_params
+    integer   :: upper_boundary_type ! Is this a normalized(1) or absolute(2) solution?
+    
     real(r8)  :: Rbeam_atm          ! Intensity of beam radiation at top of canopy [W/m2 ground]
     real(r8)  :: Rdiff_atm          ! Intensity of diffuse radiation at top of canopy [W/m2 ground]
+                                    ! 
 
+
+    
     real(r8) :: albedo_beam    ! Mean albedo at canopy top generated from beam radiation [-]
     real(r8) :: albedo_diff    ! Mean albedo at canopy top generated from downwelling diffuse [-]
     real(r8) :: frac_abs_can_beam ! Fraction of incident beam radiation absorbed by the vegetation [-]
@@ -848,14 +893,6 @@ contains
     real(r8) :: frac_diff_grnd_beam  ! fraction of down diffuse radiation at ground resulting from beam at canopy top
     real(r8) :: frac_diff_grnd_diff  ! fraction of down diffuse radiation at ground resulting from down diffuse at canopy top [-]
     
-    !real(r8)  :: Rdiff_up_atm_beam  ! Upwelling diffuse radiation at top from beam scattering [W/m2 ground]
-    !real(r8)  :: Rdiff_up_atm_diff  ! Upwelling diffuse radiation at top from diffuse scattering [W/m2 ground]
-    !real(r8)  :: Rbeam_can_abs      ! Total beam radiation absorbed by the canopy [W/m2 ground]
-    !real(r8)  :: Rdiff_can_abs      ! Total diffuse radiation absorbed by the canopy [W/m2 ground]
-    !real(r8)  :: Rbeam_dn_grnd_beam ! Average beam radiation at ground [W/m2 ground]
-    !real(r8)  :: Rdiff_dn_grnd_beam ! Average downward diffuse radiation at ground due to beam sourcing [W/m2 ground]
-    !real(r8)  :: Rdiff_dn_grnd_diff ! Average downward diffuse radiation at ground from diffuse sourcing [W/m2 ground]
-
     ! Two stream solution arrays
     ! Each of these are given generic names, because
     ! they are assemblages of many terms. But generally
@@ -884,7 +921,6 @@ contains
     real(r8) :: Rbeam_top           ! Mean beam radiation at top of layer      [W/m2]
     real(r8) :: Rbeam_bot           ! Mean beam radiation at bottom of layer   [W/m2]
     real(r8) :: vai                 ! Vegetation area index [m2 vegetation / m2 ground]
-    real(r8),dimension(2) :: Rdiff0
     real(r8) :: rb_abs              ! beam absorbed over an element    [W/m2 ground]
     real(r8) :: rd_abs              ! diffuse absorbed over an element [W/m2 ground]
     real(r8) :: rd_abs_leaf         ! diffuse absorbed over leaves (dummy)
@@ -892,10 +928,10 @@ contains
     real(r8) :: r_abs_stem          ! total absorbed by stems (dummy)
     real(r8) :: r_abs_snow          ! total absorbed by snow (dummy)
     real(r8) :: leaf_sun_frac       ! sunlit fraction of leaves (dummy)
-    real(r8) :: area_check          ! check to see if this sums to 1
     real(r8) :: rel_err             ! radiation canopy balance conservation
                                     ! error, fraction of incident
 
+    real(r8) :: beam_err,diff_err   ! error partitioned by beam and diffuse
     type(scelg_type),pointer :: scelgp   ! Pointer to the scelg data structure
     type(scelb_type),pointer :: scelbp   ! Pointer to the scelb data structure
 
@@ -911,6 +947,8 @@ contains
     ! of different layers, but same row, to have priority
     ! flux into the other element, instead of a mix
     logical, parameter :: continuity_on = .true.    
+
+
 
     ! ------------------------------------------------------------------------------------
     ! Example system of equations for 2 parallel columns in each of two canopy
@@ -951,40 +989,23 @@ contains
     ! upper canopy.
     ! --------------------------------------------------------------------------
 
-    Rbeam_top = Rbeam_atm
-
     if((Rbeam_atm+Rdiff_atm)<nearzero)then
        print*,"No radiation"
        print*,"Two stream should not had been called"
        print*,Rbeam_atm,Rdiff_atm
        stop
     end if
-
     
+    Rbeam_top = 1.0_r8
     do ican = 1,this%n_lyr
-
-       area_check = 0._r8
        Rbeam_bot = 0._r8
        do icol = 1,this%n_col(ican)
           scelgp => this%scelg(ican,icol)
           scelbp => this%band(ib)%scelb(ican,icol)
           scelbp%Rbeam0 = Rbeam_top
-          area_check = area_check + scelgp%area
           Rbeam_bot = Rbeam_bot + &
                Rbeam_top*scelgp%area*exp(-scelgp%Kb*(scelgp%lai+scelgp%sai))
        end do
-
-       if(abs(1._r8-area_check)>nearzero)then
-          print*,"Element area does not sum to unity"
-          print*,"sum area:",area_check
-          print*,"icol,ican:",icol,ican
-          do icol = 1,this%n_col(ican)
-             scelgp => this%scelg(ican,icol)
-             print*,this%scelg(ican,icol)%area
-          end do
-          stop
-       end if
-       
        Rbeam_top = Rbeam_bot
     end do
 
@@ -1073,12 +1094,6 @@ contains
 
              
           end if
-
-          !print*,"ican,icol:",ican,icol
-          !print*,(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb),scelbp%a,scelbp%B1u,scelbp%B2u,scelbp%B1d,scelbp%B2d
-          !print*,"As:",b2,b1,scelbp%Ad,scelbp%Au
-          !print*,scelgp%Kd,scelbp%om,scelbp%betab,scelgp%Kb,scelbp%Rbeam0
-          !print*,"--------"
        end do
     end do
 
@@ -1111,37 +1126,42 @@ contains
     ! use that solution to understand everything
     ! else, including the absorbed radiation
 
-    Rdiff0(1) = 0._r8
-    Rdiff0(2) = Rdiff_atm
-
     do_isol: do isol = 1,2
 
-       OMEGA  = 0._r8
-       !TAU    = 0._r8 ! Dont need to zero thsese
-       !LAMBDA = 0._r8
-
+       
+       ! This is temporary (these need to be set
+       ! because this routine makes a call to get normalized
+       ! absorbtions to get total noramalized canopy absorbtion)
+       ! We will set it back to unknown following that call
+       
+       if(isol==1)then
+          this%band(ib)%Rbeam_atm = 1.0_r8
+          this%band(ib)%Rdiff_atm = 0.0_r8
+       else
+          this%band(ib)%Rbeam_atm = 0.0_r8
+          this%band(ib)%Rdiff_atm = 1.0_r8
+       end if
+       
+       OMEGA(:,:) = 0._r8
+       TAU(:)     = 0._r8
+       
        ! --------------------------------------------------------------------
        ! I. Flux equations with the atmospheric boundary
        ! These balance with all elements in the upper
        ! canopy, only.  The upper canopy is layer 1.
        ! --------------------------------------------------------------------
 
-       qp   = 0    ! e"Q"uation "P"osition
-
+       qp = 0    ! e"Q"uation "P"osition
        do icol = 1,this%n_col(1)
-
           scelgp => this%scelg(1,icol)
           scelbp => this%band(ib)%scelb(1,icol)
           ilem = icol
           qp   = qp   + 1
-
           k1 = 2*(ilem-1)+1
           k2 = k1+1
-
-          TAU(qp)      =  Rdiff0(isol) - scelbp%Ad
+          TAU(qp)      =  this%band(ib)%Rdiff_atm - this%band(ib)%Rbeam_atm*scelbp%Ad
           OMEGA(qp,k1) =  scelbp%B1d
           OMEGA(qp,k2) =  scelbp%B2d
-
        end do
 
 
@@ -1180,7 +1200,7 @@ contains
                 ! Include the self terms for the current element
                 ! This term is at v=0
 
-                TAU(qp) = this%band(ib)%scelb(ibot,jcol)%Ad
+                TAU(qp) = this%band(ib)%Rbeam_atm*this%band(ib)%scelb(ibot,jcol)%Ad
                 OMEGA(qp,k1) = OMEGA(qp,k1) - this%band(ib)%scelb(ibot,jcol)%B1d
                 OMEGA(qp,k2) = OMEGA(qp,k2) - this%band(ib)%scelb(ibot,jcol)%B2d
 
@@ -1198,7 +1218,7 @@ contains
 
                    vai = scelgp%lai + scelgp%sai
 
-                   TAU(qp) = TAU(qp) - scelgp%area * scelbp%Ad *exp(-scelgp%Kb*vai)
+                   TAU(qp) = TAU(qp) - scelgp%area * this%band(ib)%Rbeam_atm*scelbp%Ad *exp(-scelgp%Kb*vai)
                    OMEGA(qp,k1) = OMEGA(qp,k1) + scelgp%area * scelbp%B1d*exp(scelbp%a*vai)
                    OMEGA(qp,k2) = OMEGA(qp,k2) + scelgp%area * scelbp%B2d*exp(-scelbp%a*vai)
 
@@ -1241,7 +1261,7 @@ contains
                 scelbp => this%band(ib)%scelb(itop,icol)
 
                 vai = scelgp%lai + scelgp%sai
-                TAU(qp) = scelbp%Au*exp(-scelgp%Kb*vai)
+                TAU(qp) = this%band(ib)%Rbeam_atm*scelbp%Au*exp(-scelgp%Kb*vai)
                 OMEGA(qp,k1) = OMEGA(qp,k1) - scelbp%B1u*exp(scelbp%a*vai)
                 OMEGA(qp,k2) = OMEGA(qp,k2) - scelbp%B2u*exp(-scelbp%a*vai)
 
@@ -1253,7 +1273,7 @@ contains
                    scelgp => this%scelg(ibot,jcol)
                    scelbp => this%band(ib)%scelb(ibot,jcol)
 
-                   TAU(qp) = TAU(qp) - scelgp%area*scelbp%Au
+                   TAU(qp) = TAU(qp) - this%band(ib)%Rbeam_atm*scelgp%area*scelbp%Au
                    OMEGA(qp,k1) = OMEGA(qp,k1) + scelgp%area*scelbp%B1u
                    OMEGA(qp,k2) = OMEGA(qp,k2) + scelgp%area*scelbp%B2u
                 end do
@@ -1286,9 +1306,9 @@ contains
 
           vai = scelgp%lai + scelgp%sai
 
-          TAU(qp) = scelbp%Au*exp(-scelgp%Kb*vai)  &
+          TAU(qp) = this%band(ib)%Rbeam_atm*(scelbp%Au*exp(-scelgp%Kb*vai)  &
                - this%band(ib)%albedo_grnd_diff*scelbp%Ad*exp(-scelgp%Kb*vai) &
-               - this%band(ib)%albedo_grnd_beam*scelbp%Rbeam0*exp(-scelgp%Kb*vai)
+               - this%band(ib)%albedo_grnd_beam*scelbp%Rbeam0*exp(-scelgp%Kb*vai))
 
           OMEGA(qp,k1) = OMEGA(qp,k1) - scelbp%B1u*exp(scelbp%a*vai)
           OMEGA(qp,k2) = OMEGA(qp,k2) - scelbp%B2u*exp(-scelbp%a*vai)
@@ -1312,21 +1332,42 @@ contains
        call dgels(trans, this%n_scel*2, this%n_scel*2, 1, OMEGA, this%n_scel*2, LAMBDA, this%n_scel*2, work, lwork, info)
 
        ! Save the solution terms
-       ilem_off = 0
-       do ican = 1,this%n_lyr
-          do icol = 1,this%n_col(ican)
-             ilem = ilem_off + icol
-             k1 = 2*(ilem-1)+1
-             k2 = k1 + 1
-             scelgp => this%scelg(ican,icol)
-             scelbp => this%band(ib)%scelb(ican,icol)
-             scelbp%lambda1 = LAMBDA(k1)
-             scelbp%lambda2 = LAMBDA(k2)
-          end do
-          ilem_off = ilem_off + this%n_col(ican)
-       end do
 
-       if(isol==1)then
+       ilem_off = 0
+       if(isol==1)then  !Beam
+          do ican = 1,this%n_lyr
+             do icol = 1,this%n_col(ican)
+                ilem = ilem_off + icol
+                k1 = 2*(ilem-1)+1
+                k2 = k1 + 1
+                scelgp => this%scelg(ican,icol)
+                scelbp => this%band(ib)%scelb(ican,icol)
+                scelbp%lambda1_beam = LAMBDA(k1)
+                scelbp%lambda2_beam = LAMBDA(k2)
+             end do
+             ilem_off = ilem_off + this%n_col(ican)
+          end do
+       else
+          do ican = 1,this%n_lyr
+             do icol = 1,this%n_col(ican)
+                ilem = ilem_off + icol
+                k1 = 2*(ilem-1)+1
+                k2 = k1 + 1
+                scelgp => this%scelg(ican,icol)
+                scelbp => this%band(ib)%scelb(ican,icol)
+                scelbp%lambda1_diff = LAMBDA(k1)
+                scelbp%lambda2_diff = LAMBDA(k2)
+             end do
+             ilem_off = ilem_off + this%n_col(ican)
+          end do
+       end if
+          
+       ! Process the total canopy absorbed radiation in the
+       ! two types of radiation, as well as the downwelling
+       ! flux at the ground interface
+       ! --------------------------------------------------------------------------------
+       
+       if_beam: if(isol==1)then
 
           ican = 1
           albedo_beam = 0._r8
@@ -1337,83 +1378,67 @@ contains
                   scelgp%area * this%GetRdUp(ican,icol,ib,0._r8)
           end do
 
-
           frac_diff_grnd_beam = 0._r8
-
+          frac_beam_grnd_beam = 0._r8
           ican = this%n_lyr
           do icol = 1,this%n_col(ican)
-
              scelgp => this%scelg(ican,icol)
              scelbp => this%band(ib)%scelb(ican,icol)
-
              frac_diff_grnd_beam = frac_diff_grnd_beam + &
                   scelgp%area*this%GetRdDn(ican,icol,ib,scelgp%lai+scelgp%sai)
-
+             frac_beam_grnd_beam = frac_beam_grnd_beam + &
+                  scelgp%area*scelbp%Rbeam0*exp(-scelgp%Kb*(scelgp%lai+scelgp%sai))
           end do
 
+          frac_abs_can_beam = 0._r8
+          do ican = 1,this%n_lyr
+             do icol = 1,this%n_col(ican)
+                scelgp => this%scelg(ican,icol)
+                scelbp => this%band(ib)%scelb(ican,icol)
+                call this%GetAbsRad(ican,icol,ib, 0._r8,scelgp%lai+scelgp%sai, &
+                     rb_abs,rd_abs,rd_abs_leaf,rb_abs_leaf,r_abs_stem,r_abs_snow,leaf_sun_frac)
+                frac_abs_can_beam = frac_abs_can_beam + scelgp%area*(rb_abs+rd_abs)
+             end do
+          end do
+          
+       else  ! Diffuse
+             
+          albedo_diff = 0._r8
+          do icol = 1,this%n_col(1)
+             scelgp => this%scelg(1,icol)
+             scelbp => this%band(ib)%scelb(1,icol)
+             albedo_diff = albedo_diff + &
+                  scelgp%area * this%GetRdUp(1,icol,ib,0._r8)
+          end do
 
-       end if
+          frac_abs_can_diff = 0._r8
+          
+          do ican = 1,this%n_lyr
+             do icol = 1,this%n_col(ican)
+                scelgp => this%scelg(ican,icol)
+                scelbp => this%band(ib)%scelb(ican,icol)
+                call this%GetAbsRad(ican,icol,ib,0._r8,scelgp%lai+scelgp%sai, &
+                     rb_abs,rd_abs,rd_abs_leaf,rb_abs_leaf,r_abs_stem,r_abs_snow,leaf_sun_frac)
+                frac_abs_can_diff = frac_abs_can_diff + scelgp%area*rd_abs
+             end do
+          end do
+          
+          frac_diff_grnd_diff = 0._r8
+          ican = this%n_lyr
+          do icol = 1,this%n_col(ican)
+             scelgp => this%scelg(ican,icol)
+             scelbp => this%band(ib)%scelb(ican,icol)
+             frac_diff_grnd_diff = frac_diff_grnd_diff + &
+                  scelgp%area*this%GetRdDn(ican,icol,ib,scelgp%lai+scelgp%sai)
+          end do
+          
+       end if if_beam
+       
     end do do_isol
-
-
-      
 
     deallocate(OMEGA)
     deallocate(TAU)
     deallocate(LAMBDA)
-
-    ! Process the total canopy absorbed radiation in the
-    ! two types of radiation, as well as the downwelling
-    ! flux at the ground interface
-    ! -----------------------------------------------------------------------------------
-       
-    
-    albedo_diff = 0._r8
-    
-    do icol = 1,this%n_col(1)
-       scelgp => this%scelg(1,icol)
-       scelbp => this%band(ib)%scelb(1,icol)
-       albedo_diff = albedo_diff + &
-            scelgp%area * this%GetRdUp(1,icol,ib,0._r8)
-    end do
-
-    albedo_diff = albedo_diff - albedo_beam
-
-    frac_abs_can_beam = 0._r8
-    frac_abs_can_diff = 0._r8
-
-    do ican = 1,this%n_lyr
-       do icol = 1,this%n_col(ican)
-          scelgp => this%scelg(ican,icol)
-          scelbp => this%band(ib)%scelb(ican,icol)
-
-          call this%GetAbsRad(ican,icol,ib,0._r8,scelgp%lai+scelgp%sai, &
-               rb_abs,rd_abs,rd_abs_leaf,rb_abs_leaf,r_abs_stem,r_abs_snow,leaf_sun_frac)
-
-          frac_abs_can_beam = frac_abs_can_beam + scelgp%area*rb_abs
-          frac_abs_can_diff = frac_abs_can_diff + scelgp%area*rd_abs
-
-       end do
-    end do
-
-    frac_beam_grnd_beam = 0._r8
-    frac_diff_grnd_diff = 0._r8
-
-    ican = this%n_lyr
-    do icol = 1,this%n_col(ican)
-
-       scelgp => this%scelg(ican,icol)
-       scelbp => this%band(ib)%scelb(ican,icol)
-
-       frac_beam_grnd_beam = frac_beam_grnd_beam + &
-            scelgp%area*scelbp%Rbeam0*exp(-scelgp%Kb*(scelgp%lai+scelgp%sai))
-
-       frac_diff_grnd_diff = frac_diff_grnd_diff + &
-            scelgp%area*this%GetRdDn(ican,icol,ib,scelgp%lai+scelgp%sai)
-
-    end do
-
-    frac_diff_grnd_diff = frac_diff_grnd_diff - frac_diff_grnd_beam
 
     
     ! Check the error balance
@@ -1427,27 +1452,56 @@ contains
                ((frac_diff_grnd_diff+frac_diff_grnd_beam)*(1._r8-this%band(ib)%albedo_grnd_diff)) - &
                (frac_beam_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_beam)) ) / (Rbeam_atm + Rdiff_atm)
 
-    ! Normalize the diagnostics by their forcing
-    albedo_diff         = albedo_diff/Rdiff_atm
-    albedo_beam         = albedo_beam/Rbeam_atm
-    frac_abs_can_beam   = frac_abs_can_beam/Rbeam_atm
-    frac_abs_can_diff   = frac_abs_can_diff/Rdiff_atm
-    frac_diff_grnd_diff = frac_diff_grnd_diff/Rdiff_atm
-    frac_diff_grnd_beam = frac_diff_grnd_beam/Rbeam_atm
-    frac_beam_grnd_beam = frac_beam_grnd_beam/Rbeam_atm
-               
+    beam_err = Rbeam_atm - (albedo_beam + frac_abs_can_beam + &
+         frac_diff_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_diff) + &
+         frac_beam_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_beam))
+
+    diff_err = Rdiff_atm - (albedo_diff + frac_abs_can_diff + &
+         frac_diff_grnd_diff*(1._r8-this%band(ib)%albedo_grnd_diff))
+    
     if( abs(rel_err) > rel_err_thresh ) then
        print*,"Total canopy flux balance not closing in TwoStrteamMLPEMod:Solve"
        print*,"Relative Error, delta/(Rbeam_atm+Rdiff_atm) :",rel_err
        print*,"Max Error: ",rel_err_thresh
        print*,"ib: ",ib
-       print*, albedo_diff,albedo_beam
-       print*, frac_abs_can_diff,frac_abs_can_beam
-       print*, frac_diff_grnd_diff,frac_diff_grnd_beam,frac_beam_grnd_beam
+       print*, beam_err,diff_err
+       print*, frac_diff_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_diff) + &
+            frac_beam_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_beam)
+       print*, frac_diff_grnd_diff*(1._r8-this%band(ib)%albedo_grnd_diff)
+       print*, albedo_beam,albedo_diff
+       print*, frac_abs_can_beam,frac_abs_can_diff
+       print*, frac_diff_grnd_beam,frac_beam_grnd_beam,frac_diff_grnd_diff
        print*, "scattering coeff: ",(2*rad_params%om_leaf(ib,1)+0.5*rad_params%om_stem(ib,1))/2.5
+       print*, "Breakdown:",this%n_lyr
+       do ican = 1,this%n_lyr
+          do icol = 1,this%n_col(ican)
+             scelgp => this%scelg(ican,icol)
+             scelbp => this%band(ib)%scelb(ican,icol)
+             print*,"    ",ican,icol
+             print*,"    ",scelgp%lai+scelgp%sai,scelgp%pft,scelgp%area
+             print*,"    ",scelbp%om,scelgp%Kb,scelgp%Kd,scelbp%betab,scelbp%betad
+             print*,"    ",scelbp%om*(1.0-scelbp%betad)
+             print*,"    ",scelbp%lambda1_beam,scelbp%lambda2_beam
+             print*,"    ",scelbp%lambda1_diff,scelbp%lambda2_diff
+          end do
+       end do
        stop
     end if
 
+    
+    ! Set the boundary conditions back to unknown for a normalized solution
+    ! This prevents us from calling the absorption and flux query routines incorrectly.
+    ! For non-normalized, set it to the actual input boundary conditions
+    
+    if(upper_boundary_type.eq.normalized_upper_boundary) then
+       this%band(ib)%Rbeam_atm = unset_r8
+       this%band(ib)%Rdiff_atm = unset_r8
+    else
+       this%band(ib)%Rbeam_atm = Rbeam_atm
+       this%band(ib)%Rdiff_atm = Rdiff_atm
+    end if
+
+    
     return
   end subroutine Solve
 

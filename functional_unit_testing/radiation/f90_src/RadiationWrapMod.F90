@@ -141,17 +141,10 @@ contains
     return
   end subroutine WrapZenithPrep
 
-  subroutine WrapSolve(ib,Rbeam_atm,Rdiff_atm)
-
-    !,Rdiff_up_atm_beam,           &
-    !                            Rdiff_up_atm_diff,           &
-    !                            Rbeam_can_abs,               &
-    !                            Rdiff_can_abs,               &
-    !                            Rbeam_dn_grnd_beam,          &
-    !                            Rdiff_dn_grnd_beam,          &
-    !                            Rdiff_dn_grnd_diff)
+  subroutine WrapSolve(ib,boundary_type,Rbeam_atm,Rdiff_atm)
 
     integer(c_int) :: ib
+    integer(c_int) :: boundary_type
     real(r8)  :: Rbeam_atm          ! Intensity of beam radiation at top of canopy [W/m2 ground]
     real(r8)  :: Rdiff_atm          ! Intensity of diffuse radiation at top of canopy [W/m2 ground]
     real(r8)  :: Rdiff_up_atm_beam  ! Upwelling diffuse radiation at top from beam scattering [W/m2 ground]
@@ -162,7 +155,8 @@ contains
     real(r8)  :: Rdiff_dn_grnd_beam ! Average downward diffuse radiation at ground due to beam sourcing [W/m2 ground]
     real(r8)  :: Rdiff_dn_grnd_diff ! Average downward diffuse radiation at ground from diffuse sourcing [W/m2 ground]
     
-    call twostream%Solve(ib,Rbeam_atm,Rdiff_atm, &
+    call twostream%Solve(ib,boundary_type, & 
+         Rbeam_atm,Rdiff_atm, &
          Rdiff_up_atm_beam,           &
          Rdiff_up_atm_diff,           &
          Rbeam_can_abs,               &

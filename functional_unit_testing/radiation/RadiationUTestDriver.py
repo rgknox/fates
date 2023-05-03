@@ -141,7 +141,7 @@ def main(argv):
     # Process the core 2Stream parameters from parameters in file
     iret = param_prep_call(ci(n_pft))
 
-    if(True):
+    if(False):
         ParallelElementPerturbDist()
 
     
@@ -150,7 +150,7 @@ def main(argv):
     if(True):
         SingleElementPerturbTest()
 
-    if(True):
+    if(False):
         SerialParallelCanopyTest()
 
     plt.show()
@@ -497,7 +497,8 @@ def ParallelElementPerturbDist():
     plt.tight_layout()
     plt.show()
     code.interact(local=dict(globals(), **locals()))
-                
+
+    
 def SingleElementPerturbTest():
 
     
@@ -532,14 +533,14 @@ def SingleElementPerturbTest():
 
     # Make parameter pertubations, bump up 50%
     pp_dict = {}
-    pp_dict['Kb'] = 0.9  #0.74*1.5
-    pp_dict['Kd'] = 1.03*1.5
-    pp_dict['om'] = 0.18*1.5
-    pp_dict['betab'] = 0.45*1.5
-    pp_dict['betad'] = 0.6*1.5
+    pp_dict['Kb'] = 0.66118239744  #74   #*1.5
+    pp_dict['Kd'] = 0.9063246621781269  #*1.5
+    pp_dict['om'] = 0.17819999999999997  #*1.5
+    pp_dict['betab'] = 0.48253004714288084  #*1.5
+    pp_dict['betad'] = 0.5999777777777778  #*1.5
 
-    R_beam = 120.
-    R_diff = 0.
+    R_beam = 0.
+    R_diff = 70.
     cosz   = np.cos(0.0)
     n_vai  = 100
     vai_a  = np.linspace(0,vai,num=n_vai)
@@ -563,8 +564,8 @@ def SingleElementPerturbTest():
     p_drdv_ubeam    = np.zeros([n_vai-1,len(pp_dict)])
     p_drdv_dbeam    = np.zeros([n_vai-1,len(pp_dict)])
 
-    ground_albedo_diff = 0.3
-    ground_albedo_beam = 0.3
+    ground_albedo_diff = 0.1
+    ground_albedo_beam = 0.1
     frac_snow = 0.0
     
     iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
@@ -575,6 +576,10 @@ def SingleElementPerturbTest():
     iret = getparams_call(ci(ican),ci(icol),ci(ib),byref(cd_kb), \
                           byref(cd_kd),byref(cd_om),byref(cd_betad),byref(cd_betab))
 
+    #print(cd_kb.value,cd_kd.value,cd_om.value,cd_betad.value,cd_betab.value)
+    #exit(0)
+    
+    
     for iv in range(n_vai):
         iret = getintens_call(ci(ican),ci(icol),ci(ib),c8(vai_a[iv]),byref(cd_r_diff_dn), \
                               byref(cd_r_diff_up),byref(cd_r_beam))
@@ -597,14 +602,16 @@ def SingleElementPerturbTest():
         iret = zenith_prep_call(c8(cosz))
         iret = forceparam_call(c_int(ican),c_int(icol),ci(ib),c_double(val),*ccharnb(key))
         print(key)
-        iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
+        iret = solver_call(2,ci(ib),c8(R_beam),c8(1.0))
+        
+        #iret = solver_call(ci(ib),c8(R_beam),c8(R_diff))
         
         for iv in range(n_vai):
             iret = getintens_call(ci(ican),ci(icol),ci(ib),c8(vai_a[iv]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
             #print(iv,i,cd_r_beam.value)
-            p_r_beam[iv,i] = cd_r_beam.value
-            p_r_diff_up[iv,i] = cd_r_diff_up.value
-            p_r_diff_dn[iv,i] = cd_r_diff_dn.value
+            p_r_beam[iv,i] = 70.*cd_r_beam.value
+            p_r_diff_up[iv,i] = 70.*cd_r_diff_up.value
+            p_r_diff_dn[iv,i] = 70.*cd_r_diff_dn.value
 
             if(iv>0):
                 p_drdv_ubeam[iv-1] = -cd_om.value*cd_betab.value*(p_r_beam[iv]-p_r_beam[iv-1])/dv
