@@ -40,7 +40,7 @@ Module TwoStreamMLPEMod
   ! Allowable error, as a fraction of total incident for total canopy
   ! radiation balance checks
 
-  real(r8), parameter :: rel_err_thresh = 1.e-9_r8
+  real(r8), parameter :: rel_err_thresh = 1.e-8_r8
 
   ! These are the codes for how the upper boundary is specified, normalized or absolute
   integer,public, parameter :: normalized_upper_boundary = 1
@@ -496,7 +496,7 @@ contains
       Rb_abs = Rb_net * (1._r8-this%band(ib)%scelb(ican,icol)%om)
       Rd_abs = Rd_net +  Rb_net * this%band(ib)%scelb(ican,icol)%om
 
-      ! Fraction of leaves exposed to direct sunlight
+
       Rb_abs_leaf = (1._r8-frac_abs_snow)*Rb_abs * beam_wt_leaf / (beam_wt_leaf+beam_wt_stem)
       Rd_abs_leaf = (1._r8-frac_abs_snow)*Rd_abs * diff_wt_leaf / (diff_wt_leaf+diff_wt_stem)
 

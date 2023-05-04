@@ -137,6 +137,11 @@ contains
              currentPatch%gnd_alb_dir(1:hlm_numSWb) = bc_in(s)%albgr_dir_rb(1:hlm_numSWb)
              currentPatch%fcansno                   = bc_in(s)%fcansno_pa(ifp)
 
+             if(rad_solver.eq.twostr_solver) then
+                call currentPatch%twostr%CanopyPrep(bc_in(s)%fcansno_pa(ifp))
+                call currentPatch%twostr%ZenithPrep(bc_in(s)%coszen_pa(ifp))
+             end if
+             
              if(currentPatch%solar_zenith_flag )then
 
                 bc_out(s)%albd_parb(ifp,:)            = 0._r8  ! output HLM
@@ -178,9 +183,9 @@ contains
                    else
 
                       associate( twostr => currentPatch%twostr)
-
-                        call twostr%CanopyPrep(bc_in(s)%fcansno_pa(ifp))
-                        call twostr%ZenithPrep(bc_in(s)%coszen_pa(ifp))
+                        
+                        !call twostr%CanopyPrep(bc_in(s)%fcansno_pa(ifp))
+                        !call twostr%ZenithPrep(bc_in(s)%coszen_pa(ifp))
 
                         do ib = 1,hlm_numSWb
 

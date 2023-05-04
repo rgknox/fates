@@ -23,7 +23,8 @@ Module FatesTwoStreamInterfaceMod
   use TwoStreamMLPEMod      , only : ParamPrep
   use TwoStreamMLPEMod      , only : AllocateRadParams
   use EDPftvarcon           , only : EDPftvarcon_inst
-
+  use FatesRadiationMemMod  , only : rad_solver,twostr_solver
+  
   implicit none
 
   logical, parameter :: debug  = .false. ! local debug flag
@@ -64,6 +65,9 @@ contains
     !real(r8), parameter :: init_max_vai_diff_per_elem = 0.2_r8
     !type(ed_cohort_type), pointer :: elem_co_ptrs(ncl*max_el_per_layer,100)
 
+    
+    if(rad_solver.ne.twostr_solver)return
+    
     patch => site%oldest_patch
     do while (associated(patch))
        associate(twostr => patch%twostr)
@@ -165,11 +169,6 @@ contains
                canopy_frac = 1._r8
             end if
 
-            if(ft>1) then
-               print*,"FT>1",ft
-               stop
-            end if
-
             twostr%scelg(ican,n_col(ican))%pft = ft
             twostr%scelg(ican,n_col(ican))%area = canopy_frac*cohort%c_area/patch%total_canopy_area
             twostr%scelg(ican,n_col(ican))%lai  = cohort%treelai
@@ -198,7 +197,6 @@ contains
                twostr%scelg(ican,n_col(ican))%lai  = 0._r8
                twostr%scelg(ican,n_col(ican))%sai  = 0._r8
             end if
-            
             
          end do
 
@@ -232,7 +230,7 @@ contains
 
          twostr%force_prep = .true.   ! This signals that two-stream scattering coefficients
          ! that are dependent on geometry need to be updated
-
+         
        end associate
 
        patch => patch%younger
@@ -243,7 +241,7 @@ contains
 
   ! =============================================================================================
 
-  subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,rd_abs_leaf,rb_abs_leaf,r_abs_stem,r_abs_snow,leaf_sun_frac )
+  subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,rd_abs_leaf,rb_abs_leaf,leaf_sun_frac )
 
     ! This subroutine retrieves the absorbed radiation on
     ! leaves and stems, as well as the leaf sunlit fraction
@@ -257,34 +255,50 @@ contains
     real(r8),intent(in)  :: vaibot
     real(r8),intent(out) :: rb_abs_leaf
     real(r8),intent(out) :: rd_abs_leaf
-    real(r8),intent(out) :: r_abs_stem
-    real(r8),intent(out) :: R_abs_snow
     real(r8),intent(out) :: leaf_sun_frac
 
-    real(r8) :: Rb_abs,Rd_abs
+    real(r8) :: rb_abs,rd_abs
+    real(r8) :: rd_abs_el,rb_abs_el
     real(r8) :: vai_top_el
     real(r8) :: vai_bot_el
     real(r8) :: rd_abs_leaf_el
     real(r8) :: rb_abs_leaf_el
     real(r8) :: r_abs_stem_el
     real(r8) :: r_abs_snow_el
-
+    real(r8) :: diff_wt_leaf,diff_wt_elem
+    real(r8) :: beam_wt_leaf,beam_wt_elem
+    real(r8) :: evai_cvai  ! element VAI / cohort VAI
+    
     associate(scelg => patch%twostr%scelg(cohort%canopy_layer,cohort%twostr_col), &
          scelb => patch%twostr%band(ib)%scelb(cohort%canopy_layer,cohort%twostr_col) )
 
+      evai_cvai = (scelg%lai+scelg%sai)/(cohort%treelai+cohort%treesai)
+      
       ! Convert the vai coordinate from the cohort to the element
-      vai_top_el = vaitop * (scelg%lai+scelg%sai)/(cohort%treelai+cohort%treesai)
-      vai_bot_el = vaibot * (scelg%lai+scelg%sai)/(cohort%treelai+cohort%treesai)
+      vai_top_el = vaitop * evai_cvai
+      vai_bot_el = vaibot * evai_cvai
 
       ! Return the absorbed radiation for the element over that band
       call patch%twostr%GetAbsRad(cohort%canopy_layer,cohort%twostr_col,ib,vai_top_el,vai_bot_el, & 
-           Rb_abs,Rd_abs,rd_abs_leaf_el,rb_abs_leaf_el,r_abs_stem_el,r_abs_snow_el,leaf_sun_frac)
+           Rb_abs_el,Rd_abs_el,rd_abs_leaf_el,rb_abs_leaf_el,r_abs_stem_el,r_abs_snow_el,leaf_sun_frac)
 
-      ! Scale the absorbed rad back to the cohort        
-      rd_abs_leaf = rd_abs_leaf_el * cohort%treelai/scelg%lai
-      rb_abs_leaf = rb_abs_leaf_el * cohort%treelai/scelg%lai
-      r_abs_stem  = r_abs_stem_el * cohort%treesai/scelg%sai
+      rd_abs = rd_abs_el / evai_cvai
+      rb_abs = rb_abs_el / evai_cvai
+      
+      diff_wt_leaf = (1._r8-patch%twostr%frac_snow)*cohort%treelai*(1._r8-rad_params%om_leaf(ib,cohort%pft))*rad_params%Kd_leaf(cohort%pft)
+      diff_wt_elem = (cohort%treelai+cohort%treesai)*(1._r8-scelb%om)*scelg%Kd
 
+      beam_wt_leaf = (1._r8-patch%twostr%frac_snow)*cohort%treelai*(1._r8-rad_params%om_leaf(ib,cohort%pft))*scelg%Kb_leaf
+      beam_wt_elem = (cohort%treelai+cohort%treesai)*(1._r8-scelb%om)*scelg%Kb
+
+      !print*,"----"
+      !print*,diff_wt_leaf,patch%twostr%frac_snow,cohort%treelai,rad_params%om_leaf(ib,cohort%pft),rad_params%Kd_leaf(cohort%pft)
+      !print*,diff_wt_elem,(cohort%treelai+cohort%treesai),scelb%om,scelg%Kd,scelg%lai
+      
+      rd_abs_leaf = rd_abs * diff_wt_leaf / diff_wt_elem
+      rb_abs_leaf = rb_abs * beam_wt_leaf / beam_wt_elem
+
+      
     end associate
   end subroutine FatesGetCohortAbsRad
 

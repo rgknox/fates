@@ -240,7 +240,7 @@ contains
     ! This is the direct reciprocal of g_sb_leaves
     real(r8) :: r_stomata          ! Mean stomatal resistance across all leaves in the patch [s/m]
 
-
+    real(r8),dimension(30) :: cohort_elai
     real(r8) :: maintresp_reduction_factor  ! factor by which to reduce maintenance
                                             ! respiration when storage pools are low
     real(r8) :: b_leaf             ! leaf biomass kgC
@@ -414,6 +414,13 @@ contains
 
                 if(currentPatch%countcohorts > 0.0)then   ! Ignore empty patches
 
+                   write(fates_log(),*) "PATCH"
+                   currentCohort => currentPatch%tallest
+                   do while (associated(currentCohort)) ! Cohort loop
+                      write(fates_log(),*) "LAI: ",currentCohort%treelai,currentCohort%dbh
+                      currentCohort => currentCohort%shorter
+                   end do
+                   
                    currentCohort => currentPatch%tallest
                    do while (associated(currentCohort)) ! Cohort loop
 
@@ -422,6 +429,8 @@ contains
                       ft = currentCohort%pft
                       cl = currentCohort%canopy_layer
 
+                     
+                      
                       call bleaf(currentCohort%dbh,currentCohort%pft,&
                            currentCohort%crowndamage,currentCohort%canopy_trim,store_c_target)
                       !                     call bstore_allom(currentCohort%dbh,currentCohort%pft, &
@@ -593,31 +602,56 @@ contains
 
                                else
 
-                                  if(iv>1)then
-                                     vaitop = dlower_vai(iv) - dinc_vai(iv)
-                                  else
-                                     vaitop = 0._r8
-                                  end if
+                                  if(currentCohort%treelai>0._r8)then
+                                     
+                                     if(iv>1)then
+                                        vaitop = dlower_vai(iv) - dinc_vai(iv)
+                                     else
+                                        vaitop = 0._r8
+                                     end if
+                                     
+                                     if(iv<currentCohort%nv) then
+                                        vaibot = dlower_vai(iv)
+                                     else
+                                        vaibot = currentCohort%treelai + currentCohort%treesai
+                                     end if
+                                     
+                                     laibin = (vaibot-vaitop)*currentCohort%treelai / &
+                                          (currentCohort%treelai + currentCohort%treesai)
+                                     
+                                     !if(abs(currentPatch%elai_profile(cl,ft,iv)-laibin)>1.e-6)then
+                                     !   write(fates_log(),*) "LAI issue:",iv,currentCohort%nv,currentPatch%elai_profile(cl,ft,iv),laibin,currentCohort%treelai,currentCohort%treesai,currentCohort%c_area/currentPatch%total_canopy_area
+                                     !   
+                                     !   if(abs(currentPatch%elai_profile(cl,ft,iv)-laibin)>1.e-2)then
+                                     !      call endrun(msg=errMsg(sourcefile, __LINE__))
+                                     !   end if
+                                     !end if
+                                     
+                                     call FatesGetCohortAbsRad(currentPatch, currentCohort, ipar, &
+                                          vaitop, vaibot, rd_abs_leaf, rb_abs_leaf, fsun)
 
-                                  if(iv<currentCohort%nv) then
-                                     vaibot = dlower_vai(iv)
+                                     ! rd_abs_leaf: Watts of diffuse light absorbed by leaves over this
+                                     !              depth interval and ground footprint (m2)
+                                     ! rd_abs_leaf*fsun  Watts of diffuse light absorbed by sunlit leaves
+                                     !                   over this depth interval and ground footprint (m2)
+                                     ! rb_abs_leaf       Watts of beam absorbed by sunlit leaves over this
+                                     !                   depth interval and ground footprint (m2)
+                                     ! laibin*fsun       Leaf area in sunlight within this interval and ground footprint
+                                     ! laibin*(1-fsun)   Leaf area in shade within this interval and ground footprint
+                                     
+                                     if(fsun>nearzero) then
+                                        par_per_sunla = (rd_abs_leaf*fsun + rb_abs_leaf) / (fsun*laibin)
+                                     else
+                                        par_per_sunla = 0._r8
+                                     end if
+                                     par_per_shala = rd_abs_leaf*(1._r8-fsun) / ((1._r8 - fsun)*laibin)
+                                     
                                   else
-                                     vaibot = currentCohort%treelai + currentCohort%treesai
+                                     par_per_sunla = 0._r8
+                                     par_per_shala = 0._r8
+                                     fsun = 0.5_r8 !avoid div0, should have no impact
                                   end if
-                                  
-                                  call FatesGetCohortAbsRad(currentPatch, currentCohort, ipar, &
-                                       vaitop, vaibot, rd_abs_leaf, rb_abs_leaf, r_abs_stem, r_abs_snow, fsun)
-
-                                  laibin = (vaibot-vaitop)*currentCohort%treelai/(currentCohort%treelai + currentCohort%treesai)
-
-                                  if(fsun>nearzero) then
-                                     par_per_sunla = (rd_abs_leaf + rb_abs_leaf/fsun) / (fsun*laibin)
-                                  else
-                                     par_per_sunla = rd_abs_leaf
-                                  end if
-                                  
-                                  par_per_shala = rd_abs_leaf / ((1._r8 - fsun)*laibin)
-                                  
+                                     
                                end if
                                
                                ! Part VII: Calculate (1) maximum rate of carboxylation (vcmax),
@@ -642,7 +676,7 @@ contains
                                     btran_eff,                           &  ! in
                                     vcmax_z,                             &  ! out
                                     jmax_z,                              &  ! out
-                                    kp_z )                                 ! out
+                                    kp_z )                                  ! out
 
                                ! Part IX: This call calculates the actual photosynthesis for the
                                ! leaf layer, as well as the stomatal resistance and the net assimilated carbon.
@@ -697,11 +731,34 @@ contains
                          ! a sum over layers.
                          ! ---------------------------------------------------------------
                          nv = currentCohort%nv
-                         call ScaleLeafLayerFluxToCohort(nv,                                    & !in
+
+                         ! Calculate the cohort specific elai profile
+                         if(currentCohort%treelai>0._r8)then
+                            do iv = 1,nv
+                               if(iv>1)then
+                                  vaitop = dlower_vai(iv) - dinc_vai(iv)
+                               else
+                                  vaitop = 0._r8
+                               end if
+                               if(iv<currentCohort%nv) then
+                                  vaibot = dlower_vai(iv)
+                               else
+                                  vaibot = currentCohort%treelai + currentCohort%treesai
+                               end if
+                               cohort_elai(iv) = (vaibot-vaitop)*currentCohort%treelai / &
+                                    (currentCohort%treelai + currentCohort%treesai)
+                            end do
+                         else
+                            cohort_elai(1:nv) = 0._r8
+                         end if
+                            
+                         
+                         call ScaleLeafLayerFluxToCohort(nv,         & !in
                               currentPatch%psn_z(cl,ft,1:nv),        & !in
                               lmr_z(1:nv,ft,cl),                     & !in
                               rs_z(1:nv,ft,cl),                      & !in
-                              currentPatch%elai_profile(cl,ft,1:nv), & !in
+                              cohort_elai(1:nv),                     & !in
+                              !currentPatch%elai_profile(cl,ft,1:nv), & !in
                               c13disc_z(cl, ft, 1:nv),               & !in
                               currentCohort%c_area,                  & !in
                               currentCohort%n,                       & !in
