@@ -67,6 +67,7 @@ module FATESPlantRespPhotosynthMod
   use FatesRadiationMemMod, only : rad_solver
   use FatesRadiationMemMod, only : ipar
   use FatesTwoStreamInterfaceMod, only : FatesGetCohortAbsRad
+  use FatesAllometryMod     , only : VegAreaLayer
   
   ! CIME Globals
   use shr_log_mod , only      : errMsg => shr_log_errMsg
@@ -220,7 +221,7 @@ contains
     real(r8) :: tcsoi              ! Temperature response function for root respiration.
     real(r8) :: tcwood             ! Temperature response function for wood
 
-    real(r8) :: elai               ! exposed LAI (patch scale)
+    real(r8) :: patch_la               ! exposed LAI (patch scale)
     real(r8) :: live_stem_n        ! Live stem (above-ground sapwood)
     ! nitrogen content (kgN/plant)
     real(r8) :: live_croot_n       ! Live coarse root (below-ground sapwood)
@@ -240,7 +241,13 @@ contains
     ! This is the direct reciprocal of g_sb_leaves
     real(r8) :: r_stomata          ! Mean stomatal resistance across all leaves in the patch [s/m]
 
-    real(r8),dimension(30) :: cohort_elai
+    real(r8),dimension(50) :: cohort_vaitop
+    real(r8),dimension(50) :: cohort_vaibot
+    real(r8),dimension(50) :: cohort_layer_elai
+    real(r8),dimension(50) :: cohort_layer_esai
+    real(r8)               :: cohort_elai
+    real(r8)               :: cohort_esai
+                         
     real(r8) :: maintresp_reduction_factor  ! factor by which to reduce maintenance
                                             ! respiration when storage pools are low
     real(r8) :: b_leaf             ! leaf biomass kgC
@@ -275,8 +282,6 @@ contains
     real(r8) :: sapw_n_agw            ! nitrogen in aboveground portion of sapwood
     real(r8) :: sapw_n_undamaged      ! nitrogen in sapwood of undamaged tree
 
-    
-    real(r8) :: vaitop, vaibot        ! vegetation area index
     real(r8) :: rd_abs_leaf, rb_abs_leaf, r_abs_stem, r_abs_snow
     real(r8) :: fsun
     real(r8) :: par_per_sunla, par_per_shala ! PAR per sunlit and shaded leaf area [W/m2 leaf]
@@ -347,7 +352,7 @@ contains
              bc_out(s)%rssha_pa(ifp)     = 0._r8
 
              g_sb_leaves = 0._r8
-             check_elai  = 0._r8
+             patch_la  = 0._r8
 
              ! Part II. Filter out patches
              ! Patch level filter flag for photosynthesis calculations
@@ -414,13 +419,6 @@ contains
 
                 if(currentPatch%countcohorts > 0.0)then   ! Ignore empty patches
 
-                   write(fates_log(),*) "PATCH"
-                   currentCohort => currentPatch%tallest
-                   do while (associated(currentCohort)) ! Cohort loop
-                      write(fates_log(),*) "LAI: ",currentCohort%treelai,currentCohort%dbh
-                      currentCohort => currentCohort%shorter
-                   end do
-                   
                    currentCohort => currentPatch%tallest
                    do while (associated(currentCohort)) ! Cohort loop
 
@@ -429,7 +427,39 @@ contains
                       ft = currentCohort%pft
                       cl = currentCohort%canopy_layer
 
-                     
+                      ! Calculate the cohort specific elai profile
+                      ! And the top and bottom edges of the veg area index
+                      ! of each layer bin are. Note, if the layers
+                      ! sink below the ground snow line, then the effective
+                      ! LAI and SAI start to shrink to zero, as well as
+                      ! the difference between vaitop and vaibot.
+                      if(currentCohort%treelai>0._r8)then
+                         do iv = 1,currentCohort%nv
+                            call VegAreaLayer(currentCohort%treelai, &
+                                 currentCohort%treesai,              &
+                                 currentCohort%hite,                 &
+                                 iv,                                 &
+                                 currentCohort%nv,                   &
+                                 currentCohort%pft,                  &
+                                 sites(s)%snow_depth,                &
+                                 cohort_vaitop(iv),                  &
+                                 cohort_vaibot(iv),                  & 
+                                 cohort_layer_elai(iv),              &
+                                 cohort_layer_esai(iv))
+                         end do
+
+                         cohort_elai = sum(cohort_layer_elai(1:currentCohort%nv))
+                         cohort_esai = sum(cohort_layer_esai(1:currentCohort%nv))
+                         
+                      else
+                         cohort_layer_elai(1:nv)   = 0._r8
+                         cohort_layer_esai(1:nv)   = 0._r8
+                         cohort_vaitop(1:nv) = 0._r8
+                         cohort_vaibot(1:nv) = 0._r8
+                         cohort_elai = 0._r8
+                         cohort_esai = 0._r8
+                      end if
+
                       
                       call bleaf(currentCohort%dbh,currentCohort%pft,&
                            currentCohort%crowndamage,currentCohort%canopy_trim,store_c_target)
@@ -602,33 +632,11 @@ contains
 
                                else
 
-                                  if(currentCohort%treelai>0._r8)then
-                                     
-                                     if(iv>1)then
-                                        vaitop = dlower_vai(iv) - dinc_vai(iv)
-                                     else
-                                        vaitop = 0._r8
-                                     end if
-                                     
-                                     if(iv<currentCohort%nv) then
-                                        vaibot = dlower_vai(iv)
-                                     else
-                                        vaibot = currentCohort%treelai + currentCohort%treesai
-                                     end if
-                                     
-                                     laibin = (vaibot-vaitop)*currentCohort%treelai / &
-                                          (currentCohort%treelai + currentCohort%treesai)
-                                     
-                                     !if(abs(currentPatch%elai_profile(cl,ft,iv)-laibin)>1.e-6)then
-                                     !   write(fates_log(),*) "LAI issue:",iv,currentCohort%nv,currentPatch%elai_profile(cl,ft,iv),laibin,currentCohort%treelai,currentCohort%treesai,currentCohort%c_area/currentPatch%total_canopy_area
-                                     !   
-                                     !   if(abs(currentPatch%elai_profile(cl,ft,iv)-laibin)>1.e-2)then
-                                     !      call endrun(msg=errMsg(sourcefile, __LINE__))
-                                     !   end if
-                                     !end if
-                                     
+                                  if(cohort_layer_elai(iv) > nearzero) then
+
                                      call FatesGetCohortAbsRad(currentPatch, currentCohort, ipar, &
-                                          vaitop, vaibot, rd_abs_leaf, rb_abs_leaf, fsun)
+                                          cohort_vaitop(iv), cohort_vaibot(iv), cohort_elai, cohort_esai, &
+                                          rd_abs_leaf, rb_abs_leaf, fsun)
 
                                      ! rd_abs_leaf: Watts of diffuse light absorbed by leaves over this
                                      !              depth interval and ground footprint (m2)
@@ -640,11 +648,11 @@ contains
                                      ! laibin*(1-fsun)   Leaf area in shade within this interval and ground footprint
                                      
                                      if(fsun>nearzero) then
-                                        par_per_sunla = (rd_abs_leaf*fsun + rb_abs_leaf) / (fsun*laibin)
+                                        par_per_sunla = (rd_abs_leaf*fsun + rb_abs_leaf) / (fsun*cohort_layer_elai(iv))
                                      else
                                         par_per_sunla = 0._r8
                                      end if
-                                     par_per_shala = rd_abs_leaf*(1._r8-fsun) / ((1._r8 - fsun)*laibin)
+                                     par_per_shala = rd_abs_leaf*(1._r8-fsun) / ((1._r8 - fsun)*cohort_layer_elai(iv))
                                      
                                   else
                                      par_per_sunla = 0._r8
@@ -731,34 +739,12 @@ contains
                          ! a sum over layers.
                          ! ---------------------------------------------------------------
                          nv = currentCohort%nv
-
-                         ! Calculate the cohort specific elai profile
-                         if(currentCohort%treelai>0._r8)then
-                            do iv = 1,nv
-                               if(iv>1)then
-                                  vaitop = dlower_vai(iv) - dinc_vai(iv)
-                               else
-                                  vaitop = 0._r8
-                               end if
-                               if(iv<currentCohort%nv) then
-                                  vaibot = dlower_vai(iv)
-                               else
-                                  vaibot = currentCohort%treelai + currentCohort%treesai
-                               end if
-                               cohort_elai(iv) = (vaibot-vaitop)*currentCohort%treelai / &
-                                    (currentCohort%treelai + currentCohort%treesai)
-                            end do
-                         else
-                            cohort_elai(1:nv) = 0._r8
-                         end if
-                            
                          
                          call ScaleLeafLayerFluxToCohort(nv,         & !in
                               currentPatch%psn_z(cl,ft,1:nv),        & !in
                               lmr_z(1:nv,ft,cl),                     & !in
                               rs_z(1:nv,ft,cl),                      & !in
-                              cohort_elai(1:nv),                     & !in
-                              !currentPatch%elai_profile(cl,ft,1:nv), & !in
+                              cohort_layer_elai(1:nv),               & !in
                               c13disc_z(cl, ft, 1:nv),               & !in
                               currentCohort%c_area,                  & !in
                               currentCohort%n,                       & !in
@@ -784,7 +770,7 @@ contains
                          currentCohort%g_sb_laweight = 0.0_r8
                          currentCohort%ts_net_uptake(:) = 0.0_r8
 
-                      end if canopy_mask_if 
+                      end if canopy_mask_if
 
 
                       ! ------------------------------------------------------------------
@@ -992,26 +978,27 @@ contains
 
                       ! Accumulate the total effective leaf area from all cohorts
                       ! in this patch. Normalize by canopy area outside the loop
-                      check_elai   = check_elai  + cohort_eleaf_area
+                      patch_la   = patch_la + cohort_elai*currentCohort%c_area
 
                       currentCohort => currentCohort%shorter
 
                    enddo  ! end cohort loop.
                 end if !count_cohorts is more than zero.
 
-                check_elai = check_elai / currentPatch%total_canopy_area
-                elai       = calc_areaindex(currentPatch,'elai')
+                ! elai is the mean leaf area index inside the canopy footprint [m2 leaf / m2 ground]
+                !elai = check_elai! / currentPatch%total_canopy_area
+                !elai       = calc_areaindex(currentPatch,'elai')
 
                 ! Normalize canopy total conductance by the effective LAI
                 ! The value here was integrated over each cohort x leaf layer
                 ! and was weighted by m2 of effective leaf area for each layer
 
-                if(check_elai>tiny(check_elai)) then
+                if(patch_la>nearzero) then
 
                    ! Normalize the leaf-area weighted canopy conductance
                    ! The denominator is the total effective leaf area in the canopy,
                    ! units of [m/s]*[m2] / [m2] = [m/s]
-                   g_sb_leaves = g_sb_leaves / (elai*currentPatch%total_canopy_area)
+                   g_sb_leaves = g_sb_leaves / patch_la 
 
                    if( g_sb_leaves > (1._r8/rsmax0) ) then
 
@@ -1534,7 +1521,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
         else
            rstoma_out = 1._r8/gstoma
         end if
-           
         
      else
 
@@ -1550,7 +1536,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
         c13disc_z = 0.0_r8
 
      end if if_leafarea !is there leaf area?
-
 
    end if if_daytime    ! night or day
 

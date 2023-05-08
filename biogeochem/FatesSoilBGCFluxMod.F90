@@ -565,9 +565,9 @@ contains
        end select
 
        litt => cpatch%litter(el)
-       
-       do j = 1,csite%nlevsoil
 
+       do j = 1,csite%nlevsoil
+          
           ! kg/m2/day
           litt%root_fines_frag(ilabile,j) = litt%root_fines_frag(ilabile,j) + &
                efflux_ptr * ccohort%n * AREA_INV * csite%rootfrac_scr(j)
@@ -701,6 +701,8 @@ contains
     do id = 1,nlev_eff_decomp
        surface_prof(id) = surface_prof(id)/surface_prof_tot
     end do
+
+    print*,"-----"
     
     ! Loop over the different elements. 
     do el = 1, num_elements
@@ -741,6 +743,7 @@ contains
           ! patch
           litt       => currentPatch%litter(el)
           area_frac  = currentPatch%area/area
+          print*,"patch:",area_frac,currentPatch%age
           
           do ic = 1, ncwd
 
@@ -753,6 +756,8 @@ contains
                 
              end do
 
+             
+             
              do j = 1, nlev_eff_soil
 
                 id = bc_in%decomp_id(j)  ! Map from soil layer to decomp layer
@@ -766,7 +771,7 @@ contains
              end do
           end do
 
-
+          
 
           
           ! leaf and fine root fragmentation fluxes
@@ -785,6 +790,8 @@ contains
           end do
 
 
+         
+          
           ! decaying seeds from the litter pool
           do ipft = 1,numpft
              do id = 1,nlev_eff_decomp
@@ -813,6 +820,13 @@ contains
                   litt%root_fines_frag(ilignin,j) * area_frac
           enddo
 
+          print*,sum(litt%ag_cwd_frag(:))
+          print*,sum(litt%bg_cwd_frag(:,:))
+          print*,sum(litt%leaf_fines_frag(:))
+          print*,sum(litt%seed_decay(:))
+          print*,sum(litt%seed_germ_decay(:))
+          print*,sum(litt%root_fines_frag(:,:))
+          
           currentPatch => currentPatch%younger
        end do
 
@@ -923,7 +937,10 @@ contains
 
     end if
 
-
+    
+    print*,"CEL OUT: ",sum(bc_out%litt_flux_cel_c_si(:))
+    print*,"LAB OUT: ",sum(bc_out%litt_flux_lab_c_si(:))
+    print*,"LIG OUT: ",sum(bc_out%litt_flux_lig_c_si(:))
 
     
     return

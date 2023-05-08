@@ -396,8 +396,6 @@ contains
     ! to sunlight
 
     real(r8)              :: dvai,dlai     ! Amount of VAI and LAI in this interval [m2/m2]
-    real(r8)              :: sls_frac      ! Fraction of beam radiation attenuated
-    ! over the interval from all media (leaf,stem,snow) [m2/m2]
     real(r8)              :: Rd_net        ! Difference in diffuse radiation at upper and lower boundaries [W/m2]
     real(r8)              :: Rb_net        ! Difference in beam radiation at upper and lower boundaries [W/m2]
     real(r8)              :: vai_max       ! total integrated (leaf+stem) area index of the current element
@@ -406,8 +404,8 @@ contains
     real(r8)              :: diff_wt_stem  ! diffuse absorption weighting for stems
     real(r8)              :: beam_wt_leaf  ! beam absorption weighting for leaves
     real(r8)              :: beam_wt_stem  ! beam absorption weighting for stems
-    real(r8)              :: leaf_Kb_frac  ! The fraction of optical depth attributed to leaves
 
+    
     associate(scelb => this%band(ib)%scelb(ican,icol), &
          scelg => this%scelg(ican,icol), &
          ft => this%scelg(ican,icol)%pft )
@@ -430,20 +428,15 @@ contains
       dvai = vai_bot - vai_top
       dlai = dvai *  scelg%lai/( scelg%lai+ scelg%sai)
 
-      ! Fraction of the beam that is lost to all media in this portion of the element,
-      ! equivalent to 1-Rbeam_bot/Rbeam_top and [m2/m2]
-      sls_frac = 1._r8-exp(-scelg%Kb*dvai)
-
-      ! We need to reduce this fraction to the portion lost to just leaf,
-      ! and not snow or stem.  We also need to divide this fraction
-      ! by the amount of leaf
-
-      ! The fraction of the optical depth that is attributed to leaves
-      leaf_Kb_frac =  (1._r8-this%frac_snow) * &
-           (scelg%Kb_leaf*scelg%lai / (scelg%Kb_leaf*scelg%lai+scelg%sai))
-
-      leaf_sun_frac =  sls_frac * leaf_Kb_frac / dlai
-
+      leaf_sun_frac = max(0.001_r8,min(0.999_r8,scelb%Rbeam0/ &
+           (dvai*scelg%Kb/rad_params%clumping_index(ft)) * (exp(-scelg%Kb*vai_top) - exp(-scelg%Kb*vai_bot)) ))
+               
+      if(debug) then
+         if(leaf_sun_frac>1.0_r8 .or. leaf_sun_frac<0._r8) then
+            print*,"impossible leaf sun fraction"
+            stop
+         end if
+      end if
 
       ! We have to disentangle the absorption between leaves and stems, we give them both
       ! a weighting fraction of total absorption of  area*K*(1-om)

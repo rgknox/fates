@@ -507,7 +507,6 @@ contains
                litt%seed_germ_in(pft) - &
                litt%seed_germ_decay(pft)
 
-
        enddo
 
        ! Update the Coarse Woody Debris pools (above and below)
@@ -538,6 +537,12 @@ contains
 
        end do
 
+       if(sum(litt%root_fines(:,:))<0._r8)then
+          print*,"ROOT FINES"
+          print*,sum(litt%root_fines(:,:)),sum(litt%root_fines_in(:,:)),sum(litt%root_fines_frag(:,:))
+          stop
+       end if
+       
     end do     ! litter element loop
 
     return
@@ -2023,7 +2028,11 @@ contains
     ! of all the organs in the recruits. Used for both [kg per plant] and [kg per cohort]
     real(r8) :: stem_drop_fraction
 
-    !----------------------------------------------------------------------
+    real(r8), parameter :: germ_prevent_zero_scalar = 1._r8 - 1.e-10_r8 ! To prevent incredibly small but
+                                                                        ! negative germation pools, we
+                                                                        ! scale the total usable germination pool
+                                                                        ! by a number less than but incredibly close to 1.
+                                                                        !------------------------------------------------
 
     allocate(temp_cohort) ! create temporary cohort
     call zero_cohort(temp_cohort)
@@ -2142,7 +2151,9 @@ contains
                    call endrun(msg=errMsg(sourcefile, __LINE__))
                 end select
 
-                mass_avail = currentPatch%area * currentPatch%litter(el)%seed_germ(ft)
+                
+                mass_avail = germ_prevent_zero_scalar * &
+                     currentPatch%area * currentPatch%litter(el)%seed_germ(ft)
 
                 ! ------------------------------------------------------------------------
                 ! Update number density if this is the limiting mass
@@ -2774,9 +2785,17 @@ contains
        do ilyr = 1,nlev_eff_decomp
            litt%root_fines_frag(dcmpy,ilyr) = litt%root_fines(dcmpy,ilyr) * &
                  years_per_day *  SF_val_max_decomp(dl_sf) * fragmentation_scaler(ilyr)
-       end do
+        end do
+
+       
+        
     enddo
 
+    if(sum(litt%root_fines_frag(:,:))<0._r8)then
+       print*,"ROOT FINES FRAG NEG:",sum(litt%root_fines_frag(:,:)),sum(litt%root_fines(:,:))
+       stop
+    end if
+    
   end subroutine CWDOut
   
   subroutine UpdateRecruitL2FR(csite)

@@ -24,6 +24,8 @@ Module FatesTwoStreamInterfaceMod
   use TwoStreamMLPEMod      , only : AllocateRadParams
   use EDPftvarcon           , only : EDPftvarcon_inst
   use FatesRadiationMemMod  , only : rad_solver,twostr_solver
+  use FatesAllometryMod     , only : VegAreaLayer
+  
   
   implicit none
 
@@ -56,6 +58,10 @@ contains
 
     integer :: maxcol
     real(r8) :: canopy_frac
+
+    ! Area indices for the cohort [m2 media / m2 crown footprint]
+    real(r8) :: elai_cohort,tlai_cohort,esai_cohort,tsai_cohort
+    real(r8) :: vai_top,vai_bot  ! veg area index at top and bottom of cohort (dummy vars)
 
     ! These parameters are not used yet
     !real(r8) :: max_vai_diff_per_elem ! The maximum vai difference in any element
@@ -169,10 +175,22 @@ contains
                canopy_frac = 1._r8
             end if
 
+            ! If we pass layer index 0 to this routine
+            ! it will return the total plant LAIs and SAIs
+            call VegAreaLayer(cohort%treelai, &
+                              cohort%treesai, &
+                              cohort%hite,    &
+                              0,                     &
+                              cohort%nv,      &
+                              cohort%pft,     &
+                              site%snow_depth,       &
+                              vai_top, vai_bot,      & 
+                              elai_cohort,esai_cohort)
+            
             twostr%scelg(ican,n_col(ican))%pft = ft
             twostr%scelg(ican,n_col(ican))%area = canopy_frac*cohort%c_area/patch%total_canopy_area
-            twostr%scelg(ican,n_col(ican))%lai  = cohort%treelai
-            twostr%scelg(ican,n_col(ican))%sai  = cohort%treesai
+            twostr%scelg(ican,n_col(ican))%lai  = elai_cohort
+            twostr%scelg(ican,n_col(ican))%sai  = esai_cohort
 
             ! Cohort needs to know which column its in
             cohort%twostr_col = n_col(ican)
@@ -241,7 +259,7 @@ contains
 
   ! =============================================================================================
 
-  subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,rd_abs_leaf,rb_abs_leaf,leaf_sun_frac )
+  subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,cohort_elai,cohort_esai,rd_abs_leaf,rb_abs_leaf,leaf_sun_frac )
 
     ! This subroutine retrieves the absorbed radiation on
     ! leaves and stems, as well as the leaf sunlit fraction
@@ -253,6 +271,8 @@ contains
     integer,intent(in)   :: ib
     real(r8),intent(in)  :: vaitop
     real(r8),intent(in)  :: vaibot
+    real(r8),intent(in)  :: cohort_elai
+    real(r8),intent(in)  :: cohort_esai
     real(r8),intent(out) :: rb_abs_leaf
     real(r8),intent(out) :: rd_abs_leaf
     real(r8),intent(out) :: leaf_sun_frac
@@ -272,7 +292,7 @@ contains
     associate(scelg => patch%twostr%scelg(cohort%canopy_layer,cohort%twostr_col), &
          scelb => patch%twostr%band(ib)%scelb(cohort%canopy_layer,cohort%twostr_col) )
 
-      evai_cvai = (scelg%lai+scelg%sai)/(cohort%treelai+cohort%treesai)
+      evai_cvai = (scelg%lai+scelg%sai)/(cohort_elai+cohort_esai)
       
       ! Convert the vai coordinate from the cohort to the element
       vai_top_el = vaitop * evai_cvai
@@ -285,16 +305,12 @@ contains
       rd_abs = rd_abs_el / evai_cvai
       rb_abs = rb_abs_el / evai_cvai
       
-      diff_wt_leaf = (1._r8-patch%twostr%frac_snow)*cohort%treelai*(1._r8-rad_params%om_leaf(ib,cohort%pft))*rad_params%Kd_leaf(cohort%pft)
-      diff_wt_elem = (cohort%treelai+cohort%treesai)*(1._r8-scelb%om)*scelg%Kd
+      diff_wt_leaf = (1._r8-patch%twostr%frac_snow)*cohort_elai*(1._r8-rad_params%om_leaf(ib,cohort%pft))*rad_params%Kd_leaf(cohort%pft)
+      diff_wt_elem = (cohort_elai+cohort_esai)*(1._r8-scelb%om)*scelg%Kd
 
-      beam_wt_leaf = (1._r8-patch%twostr%frac_snow)*cohort%treelai*(1._r8-rad_params%om_leaf(ib,cohort%pft))*scelg%Kb_leaf
-      beam_wt_elem = (cohort%treelai+cohort%treesai)*(1._r8-scelb%om)*scelg%Kb
+      beam_wt_leaf = (1._r8-patch%twostr%frac_snow)*cohort_elai*(1._r8-rad_params%om_leaf(ib,cohort%pft))*scelg%Kb_leaf
+      beam_wt_elem = (cohort_elai+cohort_esai)*(1._r8-scelb%om)*scelg%Kb
 
-      !print*,"----"
-      !print*,diff_wt_leaf,patch%twostr%frac_snow,cohort%treelai,rad_params%om_leaf(ib,cohort%pft),rad_params%Kd_leaf(cohort%pft)
-      !print*,diff_wt_elem,(cohort%treelai+cohort%treesai),scelb%om,scelg%Kd,scelg%lai
-      
       rd_abs_leaf = rd_abs * diff_wt_leaf / diff_wt_elem
       rb_abs_leaf = rb_abs * beam_wt_leaf / beam_wt_elem
 

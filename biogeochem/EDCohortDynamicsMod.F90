@@ -826,6 +826,19 @@ contains
             endif
          endif
 
+         ! Negative storage is almost as much as fine-root
+         ! if it exceeds the fine-root value, we will have
+         ! negative litter to the root fines pool, which will
+         ! cause issues
+         if (store_c<0._r8) then
+            !if( (store_c + fnrt_c) < 1e-8_r8 ) then
+            terminate = itrue
+            if ( debug ) then
+               write(fates_log(),*) 'terminating cohorts 3.5', &
+                    store_c,fnrt_c,currentCohort%pft,call_index
+            end if
+         end if
+         
          ! Total cohort biomass is negative
          if ( ( struct_c+sapw_c+leaf_c+fnrt_c+store_c ) < 0._r8) then
             terminate = itrue
@@ -990,7 +1003,8 @@ contains
     integer  :: crowndamage ! the crown damage class of the cohort
     integer  :: sl        ! loop index for soil layers
     integer  :: dcmpy     ! loop index for decomposability
-
+    real(r8) :: donate_m  ! provisions for replacing negative storage
+    real(r8),parameter :: extra_store_replace = 1.00001_r8 ! Ensure that negative storage gets above 0
     !----------------------------------------------------------------------
 
     pft = ccohort%pft
@@ -1017,6 +1031,47 @@ contains
           struct_m = 0._r8
        endif
 
+       ! Add in provisions to get rid of negative storage
+       replace_neg:if(store_m < 0._r8)then
+
+
+          
+          ! Start with fnrt (they go to the same litter pool)
+          donate_m = min(extra_store_replace*-store_m,fnrt_m)
+          store_m = store_m + donate_m
+          fnrt_m  = fnrt_m  - donate_m
+          if(.not. store_m<-nearzero) exit replace_neg
+          
+          ! Then leaf
+          donate_m = min(extra_store_replace*-store_m,leaf_m)
+          store_m = store_m + donate_m
+          leaf_m  = leaf_m  - donate_m
+          if(.not. store_m<-nearzero) exit replace_neg
+
+          ! then sapwood
+          donate_m = min(extra_store_replace*-store_m,sapw_m)
+          store_m = store_m + donate_m
+          sapw_m  = sapw_m  - donate_m
+          if(.not. store_m<-nearzero) exit replace_neg
+
+          ! then structure
+          donate_m = min(extra_store_replace*-store_m,struct_m)
+          store_m = store_m + donate_m
+          struct_m  = struct_m  - donate_m
+          if(store_m<-nearzero) then
+             write(fates_log(),*) 'Somehow a cohort generated so much negative'
+             write(fates_log(),*) 'storage that the negative is larger than all'
+             write(fates_log(),*) 'other organs combined. This is impossible'
+             write(fates_log(),*) 'to fix, there is no mass to replace it with.'
+             write(fates_log(),*) 'It is likely that this PFTs parameterization'
+             write(fates_log(),*) 'is poorly defined.'
+             call endrun(msg=errMsg(sourcefile, __LINE__))
+          end if
+          
+          
+       end if replace_neg
+       
+       
        litt => cpatch%litter(el)
        flux_diags => csite%flux_diags(el)
 
@@ -1056,7 +1111,12 @@ contains
            dcmpy_frac = GetDecompyFrac(pft,fnrt_organ,dcmpy)
            do sl=1,csite%nlevsoil
                litt%root_fines(dcmpy,sl) = litt%root_fines(dcmpy,sl) + &
-                     plant_dens * (fnrt_m+store_m) * csite%rootfrac_scr(sl) * dcmpy_frac
+                    plant_dens * (fnrt_m+store_m) * csite%rootfrac_scr(sl) * dcmpy_frac
+
+               if(litt%root_fines(dcmpy,sl)<0._r8)then
+                  print*,"TERM:",litt%root_fines(dcmpy,sl),plant_dens,fnrt_m,store_m,csite%rootfrac_scr(sl),dcmpy_frac
+                  stop
+               end if
            end do
 
        end do

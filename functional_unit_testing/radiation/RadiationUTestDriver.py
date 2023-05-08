@@ -147,10 +147,10 @@ def main(argv):
     if(False):
         ParallelElementPerturbDist()
 
-    
-    # Test 1, a single element, visible
-
     if(True):
+        SunFracTests()
+
+    if(False):
         SingleElementPerturbTest()
 
     if(False):
@@ -435,7 +435,7 @@ def SerialParallelCanopyTest():
         x0 = x0+dx
         ic=ic+1
 
-
+    dealloc_twostream_call()
 
 
         
@@ -445,7 +445,128 @@ def SerialParallelCanopyTest():
         PlotRadMaps(elems,2,'Upwelling Diffuse Radiation [W/m2]')
         
 
+def SunFracTests():
 
+
+    n_col    = 1
+    n_layer  = 1
+    iret = alloc_twostream_call(ci(n_layer),ci(n_col))
+
+    ican = 1 # Single canopy layer
+    icol = 1 # Single PFT
+    pft  = 1 # Use PFT number 1
+    area = 1.0  # Assume only 90% of the ground is covered
+    lai  = 5.0  # LAI
+    sai  = 0.5  # SAI
+    vai = lai+sai
+    iret = setup_canopy_call(c_int(1),c_int(1),c_int(pft),c_double(area),c_double(lai),c_double(sai))
+
+    # Decide on a band:
+    ib = visb
+    cd_r_beam = c_double(-9.0)
+    cd_r_diff_up = c_double(-9.0)
+    cd_r_diff_dn = c_double(-9.0)
+    cd_kb = c_double(-9.0)
+    cd_kd = c_double(-9.0)
+    cd_om = c_double(-9.0)
+    cd_betad = c_double(-9.0)
+    cd_betab = c_double(-9.0)
+
+    R_beam = 1.
+    R_diff = 0.
+    cosz   = np.cos(0.0)
+    n_vai  = 200
+    n_cosz = 100
+
+    vai_a  = np.linspace(0,vai,num=n_vai)
+    cosz_a = np.linspace(0,1.0,num=n_cosz)
+    kb_a   = np.zeros([n_cosz])
+    lsf_a  = np.zeros([n_cosz,n_vai])
+    
+    dv = vai/n_vai
+
+    cd_rd_abs_leaf = c_double(-9.0)
+    cd_rb_abs_leaf = c_double(-9.0)
+    cd_r_abs_stem  = c_double(-9.0)
+    cd_r_abs_snow  = c_double(-9.0)
+    cd_leaf_sun_frac = c_double(-9.0)
+    cd_albedo_beam = c_double(-9.0)
+    cd_albedo_diff = c_double(-9.0)
+    cd_canabs_beam = c_double(-9.0)
+    cd_canabs_diff = c_double(-9.0)
+    cd_ffbeam_beam = c_double(-9.0)
+    cd_ffdiff_beam = c_double(-9.0)
+    cd_ffdiff_diff = c_double(-9.0)
+    
+    ground_albedo_diff = 0.3
+    ground_albedo_beam = 0.3
+    frac_snow = 0.5
+    
+    iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
+    iret = grndsnow_albedo_call(c_int(ib),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
+
+    iret = canopy_prep_call(c8(frac_snow))
+
+    for ic,cosz in enumerate(cosz_a):
+        iret = zenith_prep_call(c8(cosz))
+    
+        iret = solver_call(ci(ib),ci(normalized_boundary),c8(1.0),c8(1.0), \
+                           byref(cd_albedo_beam),byref(cd_albedo_diff), \
+                           byref(cd_canabs_beam),byref(cd_canabs_diff), \
+                           byref(cd_ffbeam_beam),byref(cd_ffdiff_beam),byref(cd_ffdiff_diff))
+
+        iret = setdown_call(ci(ib),c8(R_beam),c8(R_diff))
+        
+        iret = getparams_call(ci(ican),ci(icol),ci(ib),byref(cd_kb), \
+                              byref(cd_kd),byref(cd_om),byref(cd_betad),byref(cd_betab))
+
+        kb_a[ic] = cd_betab.value
+
+        for iv in range(n_vai):
+
+            if(iv==0):
+                vai_top = 0.
+            else:
+                vai_top = vai_a[iv-1]
+            if(iv<(n_vai-1)):
+                vai_bot = vai_a[iv]
+            else:
+                vai_bot = vai_a[iv-1]+dv
+            
+            iret = getabsrad_call(ci(ican),ci(icol),ci(ib),c8(vai_top),c8(vai_bot), \
+                                  byref(cd_rd_abs_leaf),byref(cd_rb_abs_leaf),byref(cd_r_abs_stem), \
+                                  byref(cd_r_abs_snow),byref(cd_leaf_sun_frac))
+
+            lsf_a[ic,iv] = cd_leaf_sun_frac.value
+
+            
+    fig, axs = plt.subplots(ncols=2,nrows=2,figsize=(9,5))
+    ax1s = axs.reshape(-1)
+
+    ic0 = [2,25,50,99]
+    
+    for ia,ax in enumerate(ax1s):
+
+        #Plot LSF profiles at 4 different cosz's
+
+        ap = ax.plot(lsf_a[ic0[ia],:],vai_a[:])
+        ax.invert_yaxis()
+        ax.set_title('cos(z) = {:.2f}'.format(cosz_a[ic0[ia]]))
+        ax.set_xlabel('[Sun Fraction]')
+        ax.set_xlim([0,1])
+        ax.grid(True)
+        if(ia<2):
+            ax.set_xlabel('')
+            ax.set_xticklabels([])
+        #if(ia==0):
+        #    ax.set_ylabel('Absorbed Radiation\nVAI [m2/m2]')
+        #else:
+        #    ax.set_yticklabels([])
+    plt.tight_layout()
+    
+    dealloc_twostream_call()
+            
+        
 def ParallelElementPerturbDist():
 
 
@@ -516,8 +637,7 @@ def ParallelElementPerturbDist():
         
     plt.tight_layout()
     plt.show()
-    code.interact(local=dict(globals(), **locals()))
-
+    dealloc_twostream_call()
     
 def SingleElementPerturbTest():
 
@@ -659,41 +779,6 @@ def SingleElementPerturbTest():
                 p_drdv_diff_up[iv-1] = (p_r_diff_up[iv]-p_r_diff_up[iv-1])/dv
 
 
-        # Derivative Plot
-        if(False):
-            fig0, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(9,7))
-
-            ap = ax1.plot(drdv_dbeam,vai_a[1:],p_drdv_dbeam[:,i],vai_a[1:])
-            last_color = ap[-1].get_color()
-            ax1.invert_yaxis()
-            ax1.set_xlabel('')
-            ax1.set_ylabel('Integrated VAI [m2/m2]')
-            ax1.set_title('dIb/dv Beam Intensity [W/m2/m2]')
-            ax1.grid(True)
-            
-            ax2.plot(drdv_diff_dn,vai_a[1:],p_drdv_diff_dn[:,i],vai_a[1:])
-            ax2.invert_yaxis()
-            ax2.set_xlabel('')
-            ax2.set_yticklabels('')
-            ax2.set_ylabel('')
-            ax2.set_title('dIdn/dv Down Diffuse Intensity [W/m2/m2] ')
-            ax2.grid(True)
-
-            ax3.plot(drdv_ubeam,vai_a[1:],p_drdv_ubeam[:,i],vai_a[1:])
-            ax3.invert_yaxis()
-            ax3.set_xlabel('')
-            ax3.set_ylabel('Integrated VAI [m2/m2]')
-            ax3.set_title('dIb/dv Beam Intensity [W/m2/m2]')
-            ax3.grid(True)
-            
-            ax4.plot(drdv_diff_up,vai_a[1:],p_drdv_diff_up[:,i],vai_a[1:])
-            ax4.invert_yaxis()
-            ax4.set_xlabel('')
-            ax4.set_ylabel('Integrated VAI [m2/m2]')
-            ax4.set_title('dIup/dv Up Diffuse Intensity [W/m2/m2]')
-            ax4.grid(True)
-        
-                
         fig1, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(9,7))
 
         ap = ax1.plot(r_beam,vai_a,p_r_beam[:,i],vai_a)

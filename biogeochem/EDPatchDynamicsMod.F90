@@ -1556,10 +1556,27 @@ contains
            
            ! Transfer root fines (none burns)
            do sl = 1,currentSite%nlevsoil
-               donatable_mass = curr_litt%root_fines(dcmpy,sl) * patch_site_areadis             
+              donatable_mass = curr_litt%root_fines(dcmpy,sl) * patch_site_areadis
+
+              print*,new_litt%root_fines(dcmpy,sl),curr_litt%root_fines(dcmpy,sl),patch_site_areadis
+              
                new_litt%root_fines(dcmpy,sl) = new_litt%root_fines(dcmpy,sl) + donatable_mass*donate_m2
                curr_litt%root_fines(dcmpy,sl) = curr_litt%root_fines(dcmpy,sl) + donatable_mass*retain_m2
+
+               if(new_litt%root_fines(dcmpy,sl)<0._r8)then
+                  print*,"BURN1:", new_litt%root_fines(dcmpy,sl),donatable_mass,donate_m2
+                  stop
+               end if
+
+               if(curr_litt%root_fines(dcmpy,sl)<0._r8)then
+                  print*,"BURN2:", curr_litt%root_fines(dcmpy,sl),donatable_mass,retain_m2
+                  stop
+               end if
+
+               
           end do
+          
+         
           
        end do
              
@@ -1775,7 +1792,19 @@ contains
                      new_litt%root_fines(dcmpy,sl) = new_litt%root_fines(dcmpy,sl) + &
                                                      donatable_mass*donate_m2*dcmpy_frac
                      curr_litt%root_fines(dcmpy,sl) = curr_litt%root_fines(dcmpy,sl) + &
-                                                      donatable_mass*retain_m2*dcmpy_frac
+                          donatable_mass*retain_m2*dcmpy_frac
+
+                     if(new_litt%root_fines(dcmpy,sl)<0._r8)then
+                        print*,"TREE1:", new_litt%root_fines(dcmpy,sl),donatable_mass,donate_m2,dcmpy_frac
+                        stop
+                     end if
+                     
+                     if(curr_litt%root_fines(dcmpy,sl)<0._r8)then
+                        print*,"TREE2:", curr_litt%root_fines(dcmpy,sl),donatable_mass,retain_m2,dcmpy_frac
+                        stop
+                     end if
+
+                     
                  end do
              end do
 
@@ -2024,6 +2053,12 @@ contains
                         num_dead * currentSite%rootfrac_scr(sl) * &
                         (fnrt_m + store_m*(1.0_r8-EDPftvarcon_inst%allom_frbstor_repro(pft))) * &
                         retain_m2 * dcmpy_frac
+
+                  if(curr_litt%root_fines(dcmpy,sl)<0._r8)then
+                     print*,"MORT",curr_litt%root_fines(dcmpy,sl),num_dead,currentSite%rootfrac_scr(sl),fnrt_m,store_m,(1.0_r8-EDPftvarcon_inst%allom_frbstor_repro(pft)),retain_m2,dcmpy_frac
+                     stop
+                  end if
+                  
               end do
           end do
               
