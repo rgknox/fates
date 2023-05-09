@@ -36,7 +36,8 @@ Module FatesTwoStreamInterfaceMod
 
   public :: FatesConstructRadElements
   public :: FatesGetCohortAbsRad
-
+  public :: FatesPatchFsun
+  
 contains
 
 
@@ -274,6 +275,48 @@ contains
 
   ! =============================================================================================
 
+  subroutine FatesPatchFSun(patch,fsun,laisun,laisha)
+
+    type(ed_patch_type) :: patch
+    real(r8)            :: fsun    ! Patch average sunlit fraction
+    real(r8)            :: laisun  ! Patch average LAI of leaves in sun
+    real(r8)            :: laisha  ! Patch average LAI of leaves in shade
+
+    integer :: ican, icol  ! Canopy vertical and horizontal element index
+
+    ! Dummy variables
+    real(r8)            :: Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow
+    real(r8)            :: leaf_sun_frac  ! Element specific sunlit fraction of leaf
+
+    laisun = 0._r8
+    laisha = 0._r8
+
+    associate(twostr => patch%twostr, &
+              scelg => patch%twostr%scelg)
+    
+      do ican = 1,twostr%n_lyr
+         do icol = 1,twostr%n_col(ican)
+            
+            call two_str%GetAbsRad(ican,icol,ivis,0._r8,scelg%lai+scelg%sai, &
+                 Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+
+            laisun = laisun + scelg%area*scelg%lai*leaf_sun_frac
+            laisha = laisha + scelg%area*scelg%lai*(1._r8-leaf_sun_frac)
+            
+         end do
+      end do
+
+      if(laisun+laisha>nearzero)then
+         fsun = laisun / (laisun+laisha)
+      else
+         fsun = 0.5_r8  ! Nominal value, should not affect results if no leaves or light!
+      end if
+         
+    end associate
+    return
+  end subroutine FatesPatchFSun
+
+   ! =============================================================================================
   subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,cohort_elai,cohort_esai,rd_abs_leaf,rb_abs_leaf,leaf_sun_frac )
 
     ! This subroutine retrieves the absorbed radiation on

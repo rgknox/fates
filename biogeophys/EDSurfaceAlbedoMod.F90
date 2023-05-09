@@ -1351,6 +1351,11 @@ contains
                 cpatch%twostr%band(ib)%Rbeam_atm = bc_in(s)%solad_parb(ifp,ib)
                 cpatch%twostr%band(ib)%Rdiff_atm = bc_in(s)%solai_parb(ifp,ib)
              end do
+
+             call FatesPatchFSun(cpatch,    &
+                  bc_out(s)%fsun_pa(ifp),   &
+                  bc_out(s)%laisun_pa(ifp), &
+                  bc_out(s)%laisha_pa(ifp))
              
           endif if_norm_twostr
 
