@@ -662,7 +662,7 @@ contains
                          om_snow(ib)*betad_snow(ib)*this%frac_snow
 
                     scelb%betad = betad_om / scelb%om
-
+                    
                  end if
                end associate
             end do do_bands

@@ -1437,7 +1437,8 @@ contains
 
        call leaf_area_profile(sites(s))
 
-       call FatesConstructRadElements(sites(s))
+       call FatesConstructRadElements(sites(s),bc_in(s)%fcansno_pa,bc_in(s)%coszen_pa)
+       
        
     end do ! site loop
 

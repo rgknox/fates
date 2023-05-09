@@ -1558,8 +1558,6 @@ contains
            do sl = 1,currentSite%nlevsoil
               donatable_mass = curr_litt%root_fines(dcmpy,sl) * patch_site_areadis
 
-              print*,new_litt%root_fines(dcmpy,sl),curr_litt%root_fines(dcmpy,sl),patch_site_areadis
-              
                new_litt%root_fines(dcmpy,sl) = new_litt%root_fines(dcmpy,sl) + donatable_mass*donate_m2
                curr_litt%root_fines(dcmpy,sl) = curr_litt%root_fines(dcmpy,sl) + donatable_mass*retain_m2
 

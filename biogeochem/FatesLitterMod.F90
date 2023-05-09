@@ -404,9 +404,6 @@ contains
     this%seed_decay(:)        = 0._r8
     this%seed_germ_decay(:)   = 0._r8
     
-    print*,"ZEROING FLUX",sum(this%seed_germ_decay(:))
-    
-
     return
   end subroutine ZeroFlux
 

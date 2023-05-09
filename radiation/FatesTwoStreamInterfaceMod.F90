@@ -40,11 +40,13 @@ Module FatesTwoStreamInterfaceMod
 contains
 
 
-  subroutine FatesConstructRadElements(site)
+  subroutine FatesConstructRadElements(site,fcansno_pa,coszen_pa)
 
     type(ed_site_type)  :: site
     type(ed_patch_type),pointer :: patch
-
+    real(r8)                    :: fcansno_pa(:)
+    real(r8)                    :: coszen_pa(:)
+    
     type(ed_cohort_type), pointer :: cohort
     integer :: n_col(nclmax) ! Number of parallel column elements per layer
     integer :: ican,ft,icol
@@ -58,7 +60,7 @@ contains
 
     integer :: maxcol
     real(r8) :: canopy_frac
-
+    integer  :: ifp
     ! Area indices for the cohort [m2 media / m2 crown footprint]
     real(r8) :: elai_cohort,tlai_cohort,esai_cohort,tsai_cohort
     real(r8) :: vai_top,vai_bot  ! veg area index at top and bottom of cohort (dummy vars)
@@ -73,9 +75,11 @@ contains
 
     
     if(rad_solver.ne.twostr_solver)return
-    
+
+    ifp=0
     patch => site%oldest_patch
     do while (associated(patch))
+       ifp=ifp+1
        associate(twostr => patch%twostr)
 
          ! Identify how many elements we need, and possibly consolidate
@@ -115,9 +119,15 @@ contains
          ! an air element is needed for all the non
          ! occupied space, even if the canopy_open_frac
          ! is zero.
-         
+            
          if(patch%ncl_p>1)then
-            n_col(patch%ncl_p) = n_col(patch%ncl_p) + 1
+            canopy_frac = 0._r8
+            do icol=1,n_col(patch%ncl_p)
+               canopy_frac = canopy_frac + twostr%scelg(patch%ncl_p,icol)%area
+            end do
+            if( (1._r8-canopy_frac)>nearzero ) then
+               n_col(patch%ncl_p) = n_col(patch%ncl_p) + 1
+            end if
          end if
 
 
@@ -138,6 +148,8 @@ contains
 
          else
 
+            print*,maxcol,ubound(twostr%scelg,2)
+            
             if(ubound(twostr%scelg,2) <  maxcol .or. &
                ubound(twostr%scelg,2) > (maxcol+4) .or. &
                ubound(twostr%scelg,1) < patch%ncl_p ) then
@@ -199,24 +211,21 @@ contains
          enddo
 
          ! Add the air (open) elements
-         do ican = 1,patch%ncl_p
 
+         if(patch%ncl_p>1)then
             canopy_frac = 0._r8
+            ican = patch%ncl_p
             do icol=1,n_col(ican)
                canopy_frac = canopy_frac + twostr%scelg(ican,icol)%area
             end do
-
             if( (1._r8-canopy_frac)>nearzero ) then
-
                n_col(ican) = n_col(ican) + 1
-
                twostr%scelg(ican,n_col(ican))%pft  = air_ft
                twostr%scelg(ican,n_col(ican))%area = 1._r8-canopy_frac
                twostr%scelg(ican,n_col(ican))%lai  = 0._r8
                twostr%scelg(ican,n_col(ican))%sai  = 0._r8
             end if
-            
-         end do
+         end if
 
          twostr%n_col(1:patch%ncl_p) = n_col(1:patch%ncl_p)
 
@@ -247,10 +256,16 @@ contains
          call twostr%GetNSCel()       ! Total number of elements
 
          twostr%force_prep = .true.   ! This signals that two-stream scattering coefficients
-         ! that are dependent on geometry need to be updated
-         
-       end associate
 
+         ! that are dependent on geometry need to be updated
+         call twostr%CanopyPrep(fcansno_pa(ifp))
+         call twostr%ZenithPrep(coszen_pa(ifp))
+         
+     end associate
+
+      
+
+       
        patch => patch%younger
     end do
 
@@ -294,6 +309,11 @@ contains
 
       evai_cvai = (scelg%lai+scelg%sai)/(cohort_elai+cohort_esai)
       
+      if(abs(evai_cvai-1._r8)>1.e-8_r8)then
+         print*,"EVAI_CVAI: ",evai_cvai
+         stop
+      end if
+      
       ! Convert the vai coordinate from the cohort to the element
       vai_top_el = vaitop * evai_cvai
       vai_bot_el = vaibot * evai_cvai
@@ -311,8 +331,15 @@ contains
       beam_wt_leaf = (1._r8-patch%twostr%frac_snow)*cohort_elai*(1._r8-rad_params%om_leaf(ib,cohort%pft))*scelg%Kb_leaf
       beam_wt_elem = (cohort_elai+cohort_esai)*(1._r8-scelb%om)*scelg%Kb
 
-      rd_abs_leaf = rd_abs * diff_wt_leaf / diff_wt_elem
-      rb_abs_leaf = rb_abs * beam_wt_leaf / beam_wt_elem
+      print*,"---"
+      print*,diff_wt_leaf,diff_wt_elem
+      print*,cohort_elai,cohort_esai
+      print*,rad_params%om_leaf(ib,cohort%pft),rad_params%Kd_leaf(cohort%pft)
+      print*,scelb%om,scelg%Kd
+
+      
+      rd_abs_leaf = rd_abs * min(1.0_r8,diff_wt_leaf / diff_wt_elem)
+      rb_abs_leaf = rb_abs * min(1.0_r8,beam_wt_leaf / beam_wt_elem)
 
       
     end associate

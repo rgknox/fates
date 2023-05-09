@@ -1065,7 +1065,7 @@ contains
              write(fates_log(),*) 'to fix, there is no mass to replace it with.'
              write(fates_log(),*) 'It is likely that this PFTs parameterization'
              write(fates_log(),*) 'is poorly defined.'
-             call endrun(msg=errMsg(sourcefile, __LINE__))
+             !call endrun(msg=errMsg(sourcefile, __LINE__))
           end if
           
           

@@ -702,7 +702,7 @@ contains
        surface_prof(id) = surface_prof(id)/surface_prof_tot
     end do
 
-    print*,"-----"
+    !print*,"-----"
     
     ! Loop over the different elements. 
     do el = 1, num_elements
@@ -743,7 +743,7 @@ contains
           ! patch
           litt       => currentPatch%litter(el)
           area_frac  = currentPatch%area/area
-          print*,"patch:",area_frac,currentPatch%age
+          !print*,"patch:",area_frac,currentPatch%age
           
           do ic = 1, ncwd
 
@@ -820,12 +820,12 @@ contains
                   litt%root_fines_frag(ilignin,j) * area_frac
           enddo
 
-          print*,sum(litt%ag_cwd_frag(:))
-          print*,sum(litt%bg_cwd_frag(:,:))
-          print*,sum(litt%leaf_fines_frag(:))
-          print*,sum(litt%seed_decay(:))
-          print*,sum(litt%seed_germ_decay(:))
-          print*,sum(litt%root_fines_frag(:,:))
+          !print*,sum(litt%ag_cwd_frag(:))
+          !print*,sum(litt%bg_cwd_frag(:,:))
+          !print*,sum(litt%leaf_fines_frag(:))
+          !print*,sum(litt%seed_decay(:))
+          !print*,sum(litt%seed_germ_decay(:))
+          !print*,sum(litt%root_fines_frag(:,:))
           
           currentPatch => currentPatch%younger
        end do
@@ -938,9 +938,9 @@ contains
     end if
 
     
-    print*,"CEL OUT: ",sum(bc_out%litt_flux_cel_c_si(:))
-    print*,"LAB OUT: ",sum(bc_out%litt_flux_lab_c_si(:))
-    print*,"LIG OUT: ",sum(bc_out%litt_flux_lig_c_si(:))
+    !print*,"CEL OUT: ",sum(bc_out%litt_flux_cel_c_si(:))
+    !print*,"LAB OUT: ",sum(bc_out%litt_flux_lab_c_si(:))
+    !print*,"LIG OUT: ",sum(bc_out%litt_flux_lig_c_si(:))
 
     
     return
