@@ -36,7 +36,10 @@ module EDSurfaceRadiationMod
   use FatesRadiationMemMod, only : rad_solver
 
   use TwoStreamMLPEMod, only : normalized_upper_boundary
-
+  use FatesTwoStreamInterfaceMod, only : FatesPatchFSun
+  use FatesTwoStreamInterfaceMod, only : CheckPatchRadiationBalance
+  
+  
   ! CIME globals
   use shr_log_mod       , only : errMsg => shr_log_errMsg
 
@@ -188,8 +191,6 @@ contains
                         !call twostr%ZenithPrep(bc_in(s)%coszen_pa(ifp))
 
                         do ib = 1,hlm_numSWb
-
-                           !print*,"cosz:",bc_in(s)%coszen_pa(ifp),bc_in(s)%solad_parb(ifp,ib),bc_in(s)%solai_parb(ifp,ib)
 
                            twostr%band(ib)%albedo_grnd_diff = bc_in(s)%albgr_dif_rb(ib)
                            twostr%band(ib)%albedo_grnd_beam = bc_in(s)%albgr_dir_rb(ib)
@@ -1351,11 +1352,28 @@ contains
                 cpatch%twostr%band(ib)%Rbeam_atm = bc_in(s)%solad_parb(ifp,ib)
                 cpatch%twostr%band(ib)%Rdiff_atm = bc_in(s)%solai_parb(ifp,ib)
              end do
+             
+             !print*,"cosz,fsun,laisun,laisha:",bc_in(s)%coszen_pa(ifp),bc_out(s)%fsun_pa(ifp),   &
+             !     bc_out(s)%laisun_pa(ifp), &
+             !     bc_out(s)%laisha_pa(ifp)
+             
+             
+             if(cpatch%solar_zenith_flag )then
+                call FatesPatchFSun(cpatch,    &
+                     bc_out(s)%fsun_pa(ifp),   &
+                     bc_out(s)%laisun_pa(ifp), &
+                     bc_out(s)%laisha_pa(ifp))
+                
+                call CheckPatchRadiationBalance(cpatch, sites(s)%snow_depth, ivis,bc_out(s)%fabd_parb(ifp,ivis), bc_out(s)%fabi_parb(ifp,ivis))
+                call CheckPatchRadiationBalance(cpatch, sites(s)%snow_depth, inir,bc_out(s)%fabd_parb(ifp,inir), bc_out(s)%fabi_parb(ifp,inir))
+             else
 
-             call FatesPatchFSun(cpatch,    &
-                  bc_out(s)%fsun_pa(ifp),   &
-                  bc_out(s)%laisun_pa(ifp), &
-                  bc_out(s)%laisha_pa(ifp))
+                bc_out(s)%fsun_pa(ifp) = 0.5_r8
+                bc_out(s)%laisun_pa(ifp) = 0.5*calc_areaindex(cpatch,'elai')
+                bc_out(s)%laisha_pa(ifp) = 0.5*calc_areaindex(cpatch,'elai')
+                
+             end if
+             
              
           endif if_norm_twostr
 

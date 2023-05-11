@@ -69,7 +69,7 @@ contains
         currentPatch => currentPatch%younger
      enddo !end patch loop
      
-     total_stock = biomass_stock + seed_stock + litter_stock
+     total_stock = biomass_stock + seed_stock + litter_stock + currentSite%mass_balance(el)%neg_organ_death_err
 
      return
   end subroutine SiteMassStock

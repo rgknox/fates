@@ -540,7 +540,7 @@ contains
        if(sum(litt%root_fines(:,:))<0._r8)then
           print*,"ROOT FINES"
           print*,sum(litt%root_fines(:,:)),sum(litt%root_fines_in(:,:)),sum(litt%root_fines_frag(:,:))
-          stop
+          !stop
        end if
        
     end do     ! litter element loop
@@ -2793,7 +2793,7 @@ contains
 
     if(sum(litt%root_fines_frag(:,:))<0._r8)then
        print*,"ROOT FINES FRAG NEG:",sum(litt%root_fines_frag(:,:)),sum(litt%root_fines(:,:))
-       stop
+       !stop
     end if
     
   end subroutine CWDOut

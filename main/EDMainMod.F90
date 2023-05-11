@@ -313,6 +313,9 @@ contains
     end if
 
     call TotalBalanceCheck(currentSite,5)
+
+    !print*,"STORAGE ERROR:",currentsite%mass_balance(1)%neg_organ_death_err
+
     
   end subroutine ed_ecosystem_dynamics
 

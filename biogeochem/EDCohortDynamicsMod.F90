@@ -132,6 +132,7 @@ Module EDCohortDynamicsMod
   public :: DeallocateCohort
   public :: EvaluateAndCorrectDBH
   public :: DamageRecovery
+  public :: FixNegativeStorage
   
   logical, parameter :: debug  = .false. ! local debug flag
   
@@ -818,26 +819,13 @@ contains
 
          ! live biomass pools are terminally depleted
          if ( ( sapw_c+leaf_c+fnrt_c ) < 1e-10_r8  .or.  &
-               store_c  < 1e-10_r8) then
+               store_c  < 1.e-10_r8) then
             terminate = itrue
             if ( debug ) then
               write(fates_log(),*) 'terminating cohorts 3', &
                     sapw_c,leaf_c,fnrt_c,store_c,currentCohort%pft,call_index
             endif
          endif
-
-         ! Negative storage is almost as much as fine-root
-         ! if it exceeds the fine-root value, we will have
-         ! negative litter to the root fines pool, which will
-         ! cause issues
-         if (store_c<0._r8) then
-            !if( (store_c + fnrt_c) < 1e-8_r8 ) then
-            terminate = itrue
-            if ( debug ) then
-               write(fates_log(),*) 'terminating cohorts 3.5', &
-                    store_c,fnrt_c,currentCohort%pft,call_index
-            end if
-         end if
          
          ! Total cohort biomass is negative
          if ( ( struct_c+sapw_c+leaf_c+fnrt_c+store_c ) < 0._r8) then
@@ -957,7 +945,83 @@ contains
    call DeallocateCohort(currentCohort)
 
  end subroutine terminate_cohort  
-  
+
+ ! =============================================================================
+ 
+ subroutine FixNegativeStorage(store_m,fnrt_m,leaf_m,sapw_m,struct_m,nplant,neg_store_err)
+   
+   ! If storage is negative, get it back to zero by drawing from other positive
+   ! pools. If storage is still negative, after that, borrow from
+   ! an error term.
+
+   real(r8) :: store_m
+   real(r8) :: fnrt_m
+   real(r8) :: leaf_m
+   real(r8) :: sapw_m
+   real(r8) :: struct_m
+   real(r8) :: neg_store_err
+   real(r8) :: nplant
+   
+   real(r8) :: flux_m
+   
+   ! Add in provisions to get rid of negative storage
+   
+   replace_neg:if(store_m<0._r8)then
+
+     
+
+
+      
+      ! Start with fnrt (they go to the same litter pool)
+      flux_m = min(-store_m,fnrt_m)
+      store_m = store_m + flux_m
+      fnrt_m  = fnrt_m  - flux_m
+      if(.not. store_m<-nearzero) exit replace_neg
+      
+      ! Then leaf
+      flux_m = min(-store_m,leaf_m)
+      store_m = store_m + flux_m
+      leaf_m  = leaf_m  - flux_m
+      if(.not. store_m<-nearzero) exit replace_neg
+      
+      ! then sapwood
+      flux_m = min(-store_m,sapw_m)
+      store_m = store_m + flux_m
+      sapw_m  = sapw_m  - flux_m
+      if(.not. store_m<-nearzero) exit replace_neg
+      
+      ! then structure
+      flux_m = min(-store_m,struct_m)
+      store_m = store_m + flux_m
+      struct_m  = struct_m  - flux_m
+      
+      if(store_m<-nearzero) then
+         print*, 'Still Negative storage',store_m,fnrt_m,leaf_m,struct_m,sapw_m
+         call endrun(msg=errMsg(sourcefile, __LINE__))
+         neg_store_err = neg_store_err + store_m*nplant
+         store_m = 0._r8
+      end if
+
+      
+       
+   else
+      
+      if(neg_store_err<0._r8)then
+         
+         flux_m = min(store_m,-neg_store_err)
+         neg_store_err = neg_store_err + flux_m*nplant
+         store_m = store_m - flux_m
+         
+      end if
+      
+   end if replace_neg
+
+
+
+   
+   return
+ end subroutine FixNegativeStorage
+ 
   ! =====================================================================================
 
   subroutine SendCohortToLitter(csite,cpatch,ccohort,nplant,bc_in)
@@ -1004,7 +1068,7 @@ contains
     integer  :: sl        ! loop index for soil layers
     integer  :: dcmpy     ! loop index for decomposability
     real(r8) :: donate_m  ! provisions for replacing negative storage
-    real(r8),parameter :: extra_store_replace = 1.00001_r8 ! Ensure that negative storage gets above 0
+    
     !----------------------------------------------------------------------
 
     pft = ccohort%pft
@@ -1031,46 +1095,8 @@ contains
           struct_m = 0._r8
        endif
 
-       ! Add in provisions to get rid of negative storage
-       replace_neg:if(store_m < 0._r8)then
-
-
-          
-          ! Start with fnrt (they go to the same litter pool)
-          donate_m = min(extra_store_replace*-store_m,fnrt_m)
-          store_m = store_m + donate_m
-          fnrt_m  = fnrt_m  - donate_m
-          if(.not. store_m<-nearzero) exit replace_neg
-          
-          ! Then leaf
-          donate_m = min(extra_store_replace*-store_m,leaf_m)
-          store_m = store_m + donate_m
-          leaf_m  = leaf_m  - donate_m
-          if(.not. store_m<-nearzero) exit replace_neg
-
-          ! then sapwood
-          donate_m = min(extra_store_replace*-store_m,sapw_m)
-          store_m = store_m + donate_m
-          sapw_m  = sapw_m  - donate_m
-          if(.not. store_m<-nearzero) exit replace_neg
-
-          ! then structure
-          donate_m = min(extra_store_replace*-store_m,struct_m)
-          store_m = store_m + donate_m
-          struct_m  = struct_m  - donate_m
-          if(store_m<-nearzero) then
-             write(fates_log(),*) 'Somehow a cohort generated so much negative'
-             write(fates_log(),*) 'storage that the negative is larger than all'
-             write(fates_log(),*) 'other organs combined. This is impossible'
-             write(fates_log(),*) 'to fix, there is no mass to replace it with.'
-             write(fates_log(),*) 'It is likely that this PFTs parameterization'
-             write(fates_log(),*) 'is poorly defined.'
-             !call endrun(msg=errMsg(sourcefile, __LINE__))
-          end if
-          
-          
-       end if replace_neg
-       
+       call FixNegativeStorage(store_m,fnrt_m,leaf_m,sapw_m,struct_m,ccohort%n, &
+            csite%mass_balance(el)%neg_organ_death_err)
        
        litt => cpatch%litter(el)
        flux_diags => csite%flux_diags(el)
@@ -1117,6 +1143,7 @@ contains
                   print*,"TERM:",litt%root_fines(dcmpy,sl),plant_dens,fnrt_m,store_m,csite%rootfrac_scr(sl),dcmpy_frac
                   stop
                end if
+               
            end do
 
        end do

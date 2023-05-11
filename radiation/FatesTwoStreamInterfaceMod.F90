@@ -22,6 +22,7 @@ Module FatesTwoStreamInterfaceMod
   use TwoStreamMLPEMod      , only : twostream_type
   use TwoStreamMLPEMod      , only : ParamPrep
   use TwoStreamMLPEMod      , only : AllocateRadParams
+  use TwoStreamMLPEMod      , only : rel_err_thresh,area_err_thresh
   use EDPftvarcon           , only : EDPftvarcon_inst
   use FatesRadiationMemMod  , only : rad_solver,twostr_solver
   use FatesAllometryMod     , only : VegAreaLayer
@@ -37,6 +38,7 @@ Module FatesTwoStreamInterfaceMod
   public :: FatesConstructRadElements
   public :: FatesGetCohortAbsRad
   public :: FatesPatchFsun
+  public :: CheckPatchRadiationBalance
   
 contains
 
@@ -60,12 +62,19 @@ contains
     real(r8), parameter :: canopy_open_frac = 0.00_r8
 
     integer :: maxcol
-    real(r8) :: canopy_frac
+    real(r8) :: canopy_frac(5)
     integer  :: ifp
     ! Area indices for the cohort [m2 media / m2 crown footprint]
     real(r8) :: elai_cohort,tlai_cohort,esai_cohort,tsai_cohort
     real(r8) :: vai_top,vai_bot  ! veg area index at top and bottom of cohort (dummy vars)
 
+    real(r8) :: area_ratio ! If elements are over 100% of available
+                           ! canopy area, this is how much we squeeze
+                           ! the area down by, as a ratio. This is also
+                           ! applied to increase LAI and SAI in the cohorts
+                           ! and elements as well (to preserve mass and volume).
+
+    
     ! These parameters are not used yet
     !real(r8) :: max_vai_diff_per_elem ! The maximum vai difference in any element
     !                                  ! between the least and most vai of constituting
@@ -100,18 +109,6 @@ contains
             cohort => cohort%shorter
          enddo
 
-         !   iterate_element_count = .false.
-         !end do iterate_count_do
-
-         ! Determine if we need an air element in each layer
-         ! -------------------------------------------------------------------------------------------
-
-         do ican = 1,patch%ncl_p-1
-            if(canopy_open_frac>nearzero)then
-               n_col(ican) = n_col(ican) + 1
-            end if
-         end do
-
          ! If there is only one layer, then we don't
          ! need to add an air element to the only
          ! layer. This is because all non-veg
@@ -121,15 +118,23 @@ contains
          ! occupied space, even if the canopy_open_frac
          ! is zero.
             
-         if(patch%ncl_p>1)then
-            canopy_frac = 0._r8
-            do icol=1,n_col(patch%ncl_p)
-               canopy_frac = canopy_frac + twostr%scelg(patch%ncl_p,icol)%area
-            end do
-            if( (1._r8-canopy_frac)>nearzero ) then
-               n_col(patch%ncl_p) = n_col(patch%ncl_p) + 1
-            end if
+         if(patch%total_canopy_area>nearzero)then
+            canopy_frac(:) = 0._r8
+            cohort => patch%tallest
+            do while (associated(cohort))
+               ican = cohort%canopy_layer
+               canopy_frac(ican) = canopy_frac(ican) + cohort%c_area/patch%total_canopy_area
+               cohort => cohort%shorter
+            enddo
+         else
+            canopy_frac(:) = 0._r8
          end if
+         
+         do ican = 1,patch%ncl_p
+            if( (1._r8-canopy_frac(ican))>area_err_thresh ) then
+               n_col(ican) = n_col(ican) + 1
+            end if
+         end do
 
 
          ! Handle memory
@@ -149,8 +154,6 @@ contains
 
          else
 
-            print*,maxcol,ubound(twostr%scelg,2)
-            
             if(ubound(twostr%scelg,2) <  maxcol .or. &
                ubound(twostr%scelg,2) > (maxcol+4) .or. &
                ubound(twostr%scelg,1) < patch%ncl_p ) then
@@ -182,12 +185,6 @@ contains
             ! Every cohort gets its own element right now
             n_col(ican) = n_col(ican)+1
 
-            if(ican.ne.patch%ncl_p) then
-               canopy_frac = 1._r8 - canopy_open_frac
-            else
-               canopy_frac = 1._r8
-            end if
-
             ! If we pass layer index 0 to this routine
             ! it will return the total plant LAIs and SAIs
             call VegAreaLayer(cohort%treelai, &
@@ -201,7 +198,7 @@ contains
                               elai_cohort,esai_cohort)
             
             twostr%scelg(ican,n_col(ican))%pft = ft
-            twostr%scelg(ican,n_col(ican))%area = canopy_frac*cohort%c_area/patch%total_canopy_area
+            twostr%scelg(ican,n_col(ican))%area = cohort%c_area/patch%total_canopy_area
             twostr%scelg(ican,n_col(ican))%lai  = elai_cohort
             twostr%scelg(ican,n_col(ican))%sai  = esai_cohort
 
@@ -211,43 +208,66 @@ contains
             cohort => cohort%shorter
          enddo
 
-         ! Add the air (open) elements
 
-         if(patch%ncl_p>1)then
-            canopy_frac = 0._r8
-            ican = patch%ncl_p
-            do icol=1,n_col(ican)
-               canopy_frac = canopy_frac + twostr%scelg(ican,icol)%area
-            end do
-            if( (1._r8-canopy_frac)>nearzero ) then
+         do ican = 1,patch%ncl_p
+
+            ! If the canopy is not full, add an air element
+            if( (1._r8-canopy_frac(ican))>area_err_thresh ) then
                n_col(ican) = n_col(ican) + 1
                twostr%scelg(ican,n_col(ican))%pft  = air_ft
-               twostr%scelg(ican,n_col(ican))%area = 1._r8-canopy_frac
+               twostr%scelg(ican,n_col(ican))%area = 1._r8-canopy_frac(ican)
                twostr%scelg(ican,n_col(ican))%lai  = 0._r8
                twostr%scelg(ican,n_col(ican))%sai  = 0._r8
             end if
-         end if
 
+            ! If the layer is overfull, remove some from area from
+            ! the first element
+            ! THIS DOES HELP IMPROVE ENERGY CONSERVATION ON THE
+            ! ELEMENT VERSUS TOTAL AREA CHECK, BUT JUST PASSES
+            ! ERROR TO THE CHECK OF ENERGY CONSERVATION WITH
+            ! FATES COHORTS... THE SOLUTION IS TO HAVE
+            ! HIGHER PRECISION ON 
+            if( (1._r8-canopy_frac(ican))<-area_err_thresh ) then
+
+               !twostr%scelg(ican,1)%area = &
+               !     twostr%scelg(ican,1)%area + (1._r8-canopy_frac(ican))
+               !new_area = twostr%scelg(ican,1)%area + (1._r8-canopy_frac(ican))
+               area_ratio = (twostr%scelg(ican,1)%area + (1._r8-canopy_frac(ican)))/twostr%scelg(ican,1)%area
+
+               twostr%scelg(ican,1)%area = twostr%scelg(ican,1)%area * area_ratio
+               twostr%scelg(ican,1)%lai  = twostr%scelg(ican,1)%lai / area_ratio
+               twostr%scelg(ican,1)%sai  = twostr%scelg(ican,1)%sai / area_ratio
+
+               
+               
+            end if
+            
+         end do
+
+         ! Go ahead an temporarily squeeze crown areas
+         
+         cohort => patch%tallest
+         do while (associated(cohort))
+            ican = cohort%canopy_layer
+            icol = cohort%twostr_col
+            if( (cohort%c_area/patch%total_canopy_area - twostr%scelg(ican,icol)%area) > nearzero) then
+
+               !v_ratio = twostr%scelg(ican,icol)%area / (cohort%c_area/patch%total_canopy_area)
+               !c_area_new = patch%total_canopy_area*twostr%scelg(ican,icol)%area
+
+               area_ratio = (patch%total_canopy_area*twostr%scelg(ican,icol)%area) / cohort%c_area
+
+               cohort%c_area = cohort%c_area * area_ratio
+               cohort%treelai = cohort%treelai / area_ratio
+               cohort%treesai = cohort%treesai / area_ratio
+               
+            end if
+            
+            cohort => cohort%shorter
+         enddo
+
+         
          twostr%n_col(1:patch%ncl_p) = n_col(1:patch%ncl_p)
-
-         if(debug) then
-            do ican = 1,patch%ncl_p
-               canopy_frac = 0._r8
-               do icol=1,n_col(ican)
-                  canopy_frac = canopy_frac + twostr%scelg(ican,icol)%area
-               end do
-               if( abs(1-canopy_frac) > nearzero ) then
-                  write(fates_log(),*) 'Element areas do not add up to 1: ',ican
-                  write(fates_log(),*) 'canopy_frac = ',canopy_frac
-                  do icol=1,n_col(ican)
-                     write(fates_log(),*) 'area: ',twostr%scelg(ican,icol)%area
-                  end do
-                  call endrun(msg=errMsg(sourcefile, __LINE__))
-               end if
-            end do
-         end if
-
-
 
          ! Set up some non-element parameters
          ! -------------------------------------------------------------------------------------------
@@ -286,27 +306,31 @@ contains
 
     ! Dummy variables
     real(r8)            :: Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow
-    real(r8)            :: leaf_sun_frac  ! Element specific sunlit fraction of leaf
 
+    real(r8)            :: leaf_sun_frac  ! Element specific sunlit fraction of leaf
+    real(r8)            :: in_fab
+    
     laisun = 0._r8
     laisha = 0._r8
 
-    associate(twostr => patch%twostr, &
-              scelg => patch%twostr%scelg)
+    associate(twostr => patch%twostr)
+              
     
       do ican = 1,twostr%n_lyr
          do icol = 1,twostr%n_col(ican)
-            
-            call two_str%GetAbsRad(ican,icol,ivis,0._r8,scelg%lai+scelg%sai, &
-                 Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
 
-            laisun = laisun + scelg%area*scelg%lai*leaf_sun_frac
-            laisha = laisha + scelg%area*scelg%lai*(1._r8-leaf_sun_frac)
+            associate(scelg => patch%twostr%scelg(ican,icol))
             
+              call twostr%GetAbsRad(ican,icol,ivis,0._r8,scelg%lai+scelg%sai, &
+                   Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+              
+              laisun = laisun + scelg%area*scelg%lai*leaf_sun_frac
+              laisha = laisha + scelg%area*scelg%lai*(1._r8-leaf_sun_frac)
+            end associate
          end do
       end do
 
-      if(laisun+laisha>nearzero)then
+      if((laisun+laisha)>nearzero)then
          fsun = laisun / (laisun+laisha)
       else
          fsun = 0.5_r8  ! Nominal value, should not affect results if no leaves or light!
@@ -316,8 +340,87 @@ contains
     return
   end subroutine FatesPatchFSun
 
-   ! =============================================================================================
-  subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,cohort_elai,cohort_esai,rd_abs_leaf,rb_abs_leaf,leaf_sun_frac )
+  ! ============================================================================================
+  
+  subroutine CheckPatchRadiationBalance(patch, snow_depth, ib, fabd, fabi)
+
+    ! Loop through the cohorts in the patch, get the
+    ! absorbed radiation, then compare the amount absorbed
+    ! to the fraction the solver calculated
+
+
+    type(ed_patch_type) :: patch
+    integer             :: ib      ! broadband index
+    real(r8)            :: snow_depth
+    real(r8)            :: fabd    ! Fraction of absorbed direct radiation by vegetation
+    real(r8)            :: fabi    ! Fraction of absorbed indirect radiation by vegetation
+    
+    type(ed_cohort_type), pointer :: cohort
+    integer :: iv,ican,icol
+    real(r8),dimension(50) :: cohort_vaitop
+    real(r8),dimension(50) :: cohort_vaibot
+    real(r8),dimension(50) :: cohort_layer_elai
+    real(r8),dimension(50) :: cohort_layer_esai
+    real(r8)               :: cohort_elai
+    real(r8)               :: cohort_esai
+    real(r8) :: rb_abs,rd_abs,rb_abs_leaf,rd_abs_leaf,leaf_sun_frac,check_fab,in_fab
+
+    associate(twostr => patch%twostr)
+
+      check_fab = 0._r8
+      
+      cohort => patch%tallest
+      do while (associated(cohort))
+         
+         do iv = 1,cohort%nv
+            call VegAreaLayer(cohort%treelai, &
+                 cohort%treesai,              &
+                 cohort%hite,                 &
+                 iv,                                 &
+                 cohort%nv,                   &
+                 cohort%pft,                  &
+                 snow_depth,                &
+                 cohort_vaitop(iv),                  &
+                 cohort_vaibot(iv),                  & 
+                 cohort_layer_elai(iv),              &
+                 cohort_layer_esai(iv))
+         end do
+
+         cohort_elai = sum(cohort_layer_elai(1:cohort%nv))
+         cohort_esai = sum(cohort_layer_esai(1:cohort%nv))
+         
+         do iv = 1,cohort%nv
+
+            ican = cohort%canopy_layer
+            icol = cohort%twostr_col
+            
+            call FatesGetCohortAbsRad(patch,cohort,ib,cohort_vaitop(iv),cohort_vaibot(iv), &
+                 cohort_elai,cohort_esai,rb_abs,rd_abs,rb_abs_leaf,rd_abs_leaf,leaf_sun_frac )
+            
+            check_fab = check_fab + (Rb_abs+Rd_abs) * cohort%c_area/patch%total_canopy_area
+            
+         end do
+         cohort => cohort%shorter
+      enddo
+      
+      in_fab = fabd*twostr%band(ib)%Rbeam_atm +  fabi*twostr%band(ib)%Rdiff_atm
+
+      if( abs(check_fab-in_fab) > in_fab*10._r8*rel_err_thresh ) then
+         write(fates_log(),*)'Absorbed radiation didnt balance after cohort sum'
+         write(fates_log(),*) ib,in_fab,check_fab
+         call endrun(msg=errMsg(sourcefile, __LINE__))
+      end if
+      
+      
+    end associate
+    
+    return
+  end subroutine CheckPatchRadiationBalance
+  
+  ! =============================================================================================
+  
+  subroutine FatesGetCohortAbsRad(patch,cohort,ib,vaitop,vaibot,cohort_elai,cohort_esai, &
+       rb_abs,rd_abs,rb_abs_leaf,rd_abs_leaf,leaf_sun_frac )
 
     ! This subroutine retrieves the absorbed radiation on
     ! leaves and stems, as well as the leaf sunlit fraction
@@ -331,11 +434,12 @@ contains
     real(r8),intent(in)  :: vaibot
     real(r8),intent(in)  :: cohort_elai
     real(r8),intent(in)  :: cohort_esai
+    real(r8),intent(out) :: rb_abs
+    real(r8),intent(out) :: rd_abs
     real(r8),intent(out) :: rb_abs_leaf
     real(r8),intent(out) :: rd_abs_leaf
     real(r8),intent(out) :: leaf_sun_frac
 
-    real(r8) :: rb_abs,rd_abs
     real(r8) :: rd_abs_el,rb_abs_el
     real(r8) :: vai_top_el
     real(r8) :: vai_bot_el
@@ -374,11 +478,11 @@ contains
       beam_wt_leaf = (1._r8-patch%twostr%frac_snow)*cohort_elai*(1._r8-rad_params%om_leaf(ib,cohort%pft))*scelg%Kb_leaf
       beam_wt_elem = (cohort_elai+cohort_esai)*(1._r8-scelb%om)*scelg%Kb
 
-      print*,"---"
-      print*,diff_wt_leaf,diff_wt_elem
-      print*,cohort_elai,cohort_esai
-      print*,rad_params%om_leaf(ib,cohort%pft),rad_params%Kd_leaf(cohort%pft)
-      print*,scelb%om,scelg%Kd
+      !print*,"---"
+      !print*,diff_wt_leaf,diff_wt_elem
+      !print*,cohort_elai,cohort_esai
+      !print*,rad_params%om_leaf(ib,cohort%pft),rad_params%Kd_leaf(cohort%pft)
+      !print*,scelb%om,scelg%Kd
 
       
       rd_abs_leaf = rd_abs * min(1.0_r8,diff_wt_leaf / diff_wt_elem)

@@ -30,7 +30,7 @@ module EDTypesMod
   private               ! By default everything is private
   save
 
-  integer, parameter, public :: nclmax = 2                ! Maximum number of canopy layers
+  integer, parameter, public :: nclmax = 3                ! Maximum number of canopy layers
   integer, parameter, public :: ican_upper = 1            ! Nominal index for the upper canopy
   integer, parameter, public :: ican_ustory = 2           ! Nominal index for diagnostics that refer
                                                           ! to understory layers (all layers that
@@ -681,6 +681,11 @@ module EDTypesMod
                                        ! due to re-sizing patches when area math starts to lose
                                        ! precision
 
+     real(r8) :: neg_organ_death_err ! If a plant dies with storage in negative mass balance
+                                     ! we might not be able to give this to the litter pool
+                                     ! So, instead, we draw from this pool, and give
+                                     ! back when we can. This pool should be very small [kg/site]
+
    contains
 
      procedure :: ZeroMassBalState
@@ -940,6 +945,7 @@ module EDTypesMod
       
       this%old_stock = 0._r8
       this%err_fates = 0._r8
+      this%neg_organ_death_err = 0._r8
       
       return
     end subroutine ZeroMassBalState
@@ -959,7 +965,8 @@ module EDTypesMod
       this%flux_generic_in   = 0._r8
       this%flux_generic_out  = 0._r8
       this%patch_resize_err  = 0._r8
-
+      
+      
       return
   end subroutine ZeroMassBalFlux
 

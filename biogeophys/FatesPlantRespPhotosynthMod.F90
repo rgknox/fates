@@ -245,7 +245,7 @@ contains
     real(r8),dimension(50) :: cohort_layer_esai
     real(r8)               :: cohort_elai
     real(r8)               :: cohort_esai
-                         
+
     real(r8) :: maintresp_reduction_factor  ! factor by which to reduce maintenance
                                             ! respiration when storage pools are low
     real(r8) :: b_leaf             ! leaf biomass kgC
@@ -280,7 +280,7 @@ contains
     real(r8) :: sapw_n_agw            ! nitrogen in aboveground portion of sapwood
     real(r8) :: sapw_n_undamaged      ! nitrogen in sapwood of undamaged tree
 
-    real(r8) :: rd_abs_leaf, rb_abs_leaf, r_abs_stem, r_abs_snow
+    real(r8) :: rd_abs_leaf, rb_abs_leaf, r_abs_stem, r_abs_snow, rb_abs, rd_abs
     real(r8) :: fsun
     real(r8) :: par_per_sunla, par_per_shala ! PAR per sunlit and shaded leaf area [W/m2 leaf]
     
@@ -630,11 +630,11 @@ contains
 
                                else
 
-                                  if(cohort_layer_elai(iv) > nearzero) then
+                                  if(cohort_layer_elai(iv) > nearzero .and. currentPatch%solar_zenith_flag) then
 
                                      call FatesGetCohortAbsRad(currentPatch, currentCohort, ipar, &
                                           cohort_vaitop(iv), cohort_vaibot(iv), cohort_elai, cohort_esai, &
-                                          rd_abs_leaf, rb_abs_leaf, fsun)
+                                          rb_abs, rd_abs, rb_abs_leaf, rd_abs_leaf, fsun)
 
                                      ! rd_abs_leaf: Watts of diffuse light absorbed by leaves over this
                                      !              depth interval and ground footprint (m2)
@@ -644,11 +644,6 @@ contains
                                      !                   depth interval and ground footprint (m2)
                                      ! laibin*fsun       Leaf area in sunlight within this interval and ground footprint
                                      ! laibin*(1-fsun)   Leaf area in shade within this interval and ground footprint
-
-                                     !print*,"---"
-                                     !print*,rd_abs_leaf,rb_abs_leaf
-                                     !print*,fsun,cohort_layer_elai(iv)
-                                     !print*,par_per_sunla
                                      
                                      if(fsun>nearzero) then
                                         par_per_sunla = (rd_abs_leaf*fsun + rb_abs_leaf) / (fsun*cohort_layer_elai(iv))
@@ -742,12 +737,20 @@ contains
                          ! a sum over layers.
                          ! ---------------------------------------------------------------
                          nv = currentCohort%nv
+
+                         if(nv>1)then
+                            if( abs(sum(cohort_layer_elai(1:nv-1))-sum(cohort_layer_elai(1:nv-1))) > 1.e-15  ) then
+                               print*,"ELAI DIFF?",sum(cohort_layer_elai(1:nv-1)),sum(cohort_layer_elai(1:nv-1))
+                            end if
+                         end if
+                         
                          
                          call ScaleLeafLayerFluxToCohort(nv,         & !in
                               currentPatch%psn_z(cl,ft,1:nv),        & !in
                               lmr_z(1:nv,ft,cl),                     & !in
                               rs_z(1:nv,ft,cl),                      & !in
                               cohort_layer_elai(1:nv),               & !in
+                              !currentPatch%tlai_profile(cl,ft,1:nv),  & 
                               c13disc_z(cl, ft, 1:nv),               & !in
                               currentCohort%c_area,                  & !in
                               currentCohort%n,                       & !in
@@ -951,6 +954,9 @@ contains
 
                       currentCohort%resp_m = currentCohort%resp_m + currentCohort%rdark
 
+                      !print*,currentCohort%gpp_tstep,currentCohort%resp_m,currentCohort%livestem_mr+currentCohort%livecroot_mr,currentCohort%froot_mr,currentCohort%rdark,maintresp_reduction_factor
+                      
+                      
                       ! save as a diagnostic the un-throttled maintenance respiration to be able to know how strong this is
                       currentCohort%resp_m_unreduced = currentCohort%resp_m / maintresp_reduction_factor
 
@@ -1730,8 +1736,6 @@ subroutine ScaleLeafLayerFluxToCohort(nv,          & ! in   currentCohort%nv
       rdark = rdark + lmr_llz(il) * cohort_layer_eleaf_area
 
    end do
-
-
 
    if (nv > 1) then
       ! cohort%c13disc_clm as weighted mean of d13c flux at all related leave layers

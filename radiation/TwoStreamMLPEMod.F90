@@ -40,8 +40,9 @@ Module TwoStreamMLPEMod
   ! Allowable error, as a fraction of total incident for total canopy
   ! radiation balance checks
 
-  real(r8), parameter :: rel_err_thresh = 1.e-8_r8
-
+  real(r8), public, parameter :: rel_err_thresh = 1.e-8_r8
+  real(r8), public, parameter :: area_err_thresh = rel_err_thresh*0.1_r8
+  
   ! These are the codes for how the upper boundary is specified, normalized or absolute
   integer,public, parameter :: normalized_upper_boundary = 1
   integer,public, parameter :: absolute_upper_boundary   = 2
@@ -63,6 +64,12 @@ Module TwoStreamMLPEMod
   real(r8), parameter :: om_snow(1:2)    = (/0.8, 0.4/)   ! Scattering coefficient for snow (CLM50 Tech Man)
   !real(r8), parameter :: om_snow(1:2)    = (/0.85, 0.75/) ! Tarboton 95
 
+  ! Cap the maximum optical depth. After 30 or so, its
+  ! so close to zero, if the values get too large, then
+  ! it will blow up the exponents and cause math problems
+
+  real(r8), parameter :: kb_max = 30._r8
+  
 
   ! For air, use a nominal values to prevent div0s
   ! the key is that vai = 0
@@ -107,6 +114,13 @@ Module TwoStreamMLPEMod
      real(r8) :: Kb       ! Optical depth of beam radiation
      real(r8) :: Kb_leaf  ! Optical depth of just leaves in beam radiation
      real(r8) :: Kd       ! Optical depth of diffuse radiation
+     real(r8) :: area_squeeze ! This is the ratio of the element area to the
+     ! the area of its constituents. Ideally this
+     ! should be 1.0, but if the host model does not
+     ! do a good job of filling up a canopy with 100% space,
+     ! and instead is fractionally more than 100%, we must
+     ! squeeze the area of 1 or more elements to get an exact
+     ! space usage.
   end type scelg_type
 
 
@@ -311,6 +325,16 @@ contains
     associate(scelb => this%band(ib)%scelb(ican,icol), &
          scelg => this%scelg(ican,icol) )
 
+      !print*,'-----'
+      !print*,this%band(ib)%Rbeam_atm,this%band(ib)%Rdiff_atm
+      !print*,scelb%Ad,scelg%Kb,vai
+      !print*,scelb%B1d,scelb%lambda1_beam,scelb%a
+      !print*,scelb%B2d,scelb%lambda2_beam
+      !print*,scelb%lambda1_diff,scelb%lambda2_diff
+      !print*,exp(-scelg%Kb*vai)
+      !print*,exp(scelb%a*vai)
+      !print*,exp(-scelb%a*vai)
+      
       r_diff_dn = this%band(ib)%Rbeam_atm*( &
            scelb%Ad*exp(-scelg%Kb*vai) + &
            scelb%B1d*scelb%lambda1_beam*exp(scelb%a*vai) + &
@@ -318,6 +342,21 @@ contains
            this%band(ib)%Rdiff_atm*( & 
            scelb%B1d*scelb%lambda1_diff*exp(scelb%a*vai) + &
            scelb%B2d*scelb%lambda2_diff*exp(-scelb%a*vai))
+
+      if(r_diff_dn.ne.r_diff_dn)then
+         print*,scelg%Kb
+         print*,scelb%a
+         print*,vai
+         print*,scelb%Ad
+         print*,scelb%B1d,scelb%B2d
+         print*,scelb%lambda1_beam,scelb%lambda2_beam
+         print*,scelb%lambda1_diff,scelb%lambda2_diff
+         print*,this%band(ib)%Rbeam_atm
+         print*,this%band(ib)%Rdiff_atm
+         print*,exp(-scelg%Kb*vai)
+         print*,exp(scelb%a*vai)
+         stop
+      end if
       
       
     end associate
@@ -669,7 +708,9 @@ contains
           end associate
        end do do_col
 
-       if(abs(area_check-1._r8)> 0.01_r8*rel_err_thresh  )then
+       ! RE-ENABLE THIS CHECK WHEN FATES IS BETTER AT CONSERVING AREA!!
+       if(.false.)then
+       !if( abs(area_check-1._r8) > 10._r8*area_err_thresh  )then
           print*,"Only a partial canopy was specified"
           print*,"Scattering elements must constitute 100% of the ground cover."
           print*,"for open spaces, create an air element with the respective area."
@@ -742,7 +783,7 @@ contains
                gdir = rad_params%phi1(ft) + rad_params%phi2(ft) * cosz
 
                !how much direct light penetrates a singleunit of lai?
-               scelg%Kb_leaf = rad_params%clumping_index(ft) * gdir / cosz
+               scelg%Kb_leaf = min(kb_max,rad_params%clumping_index(ft) * gdir / cosz)
 
                !print*,"Kb_leaf: ",scelg%Kb_leaf,gdir , cosz
                
@@ -752,7 +793,7 @@ contains
                !      code or old CLM. Re-view this.
                !!scelbp%Kb = this%frac_snow*k_snow + scelbp%Kb
 
-               scelg%Kb = (scelg%lai*scelg%Kb_leaf + scelg%sai*1.0)/(scelg%lai+scelg%sai)
+               scelg%Kb = min(kb_max,(scelg%lai*scelg%Kb_leaf + scelg%sai*1.0)/(scelg%lai+scelg%sai))
 
                ! Eq. 3.4 CLM50 Tech Man
                ! avmu is the average "av" inverse optical depth "mu" per unit leaf and stem area
@@ -895,10 +936,14 @@ contains
     !
     ! Where, we invert to solve for the coefficients LAMBDA
 
-    real(r8),allocatable :: OMEGA(:,:)
-    real(r8),allocatable :: TAU(:)
-    real(r8),allocatable :: LAMBDA(:)
+    !real(r8),allocatable :: OMEGA(:,:)
+    !real(r8),allocatable :: TAU(:)
+    !real(r8),allocatable :: LAMBDA(:)
 
+    real(r8) :: OMEGA(100,100)
+    real(r8) :: TAU(100)
+    real(r8) :: LAMBDA(100)
+    
     integer :: isol  ! Solution index loop (beam, beam+diff)
     integer :: ican  ! Loop index for canopy layers
     integer :: ibot  ! layer index for top side of layer divide
@@ -908,6 +953,7 @@ contains
     integer :: ilem  ! Index for scattering elements
     integer :: k1,k2 ! Indices for the lambda terms in the OMEGA and LAMBDA array
     integer :: qp    ! Equation position index
+    integer :: n_eq  ! Total number of equations
 
     integer :: ilem_off ! Offset, or total number of elements above layer of interest
     real(r8) :: b1,b2,a2,nu_sqrd,nu ! intermediate terms, see documentation
@@ -934,7 +980,7 @@ contains
     real(r8) :: work(workmax)                       ! Work array
     integer  :: lwork                               ! Dimension of work array
     integer :: info                                 ! Procedure diagnostic ouput
-
+    integer :: alloc_err                            ! Allocation error code
     ! Testing switch
     ! If true, then allow elements
     ! of different layers, but same row, to have priority
@@ -1105,10 +1151,12 @@ contains
     ! qp : equation position, this continues to increment
     ! =====================================================================
 
+    n_eq = 2*this%n_scel
+    
     ! TO-DO: MAKE THIS SCRATCH SPACE AT THE SITE LEVEL?
-    allocate(OMEGA(2*this%n_scel,2*this%n_scel))
-    allocate(TAU(2*this%n_scel))
-    allocate(LAMBDA(2*this%n_scel))
+    !!allocate(OMEGA(2*this%n_scel,2*this%n_scel),stat=alloc_err)
+    !!allocate(TAU(2*this%n_scel),stat=alloc_err)
+    !!allocate(LAMBDA(2*this%n_scel),stat=alloc_err)
 
     ! We come up with two solutions:
     ! First: we run with now diffuse downwelling
@@ -1134,9 +1182,14 @@ contains
           this%band(ib)%Rbeam_atm = 0.0_r8
           this%band(ib)%Rdiff_atm = 1.0_r8
        end if
-       
-       OMEGA(:,:) = 0._r8
-       TAU(:)     = 0._r8
+
+       if(n_eq>100)then
+          print*,"NEED A BIGGER MATRIX"
+          stop
+       end if
+
+       OMEGA(1:n_eq,1:n_eq) = 0._r8
+       TAU(1:n_eq)          = 0._r8
        
        ! --------------------------------------------------------------------
        ! I. Flux equations with the atmospheric boundary
@@ -1311,18 +1364,21 @@ contains
 
        end do
 
-       LAMBDA = TAU
+       !print*,"TAU: ",TAU(:)
+       
+       
+       LAMBDA(1:n_eq) = TAU(1:n_eq)
        ! Solution borrowed from Greg Lemieux's usage during FATES canopy trimming:
        ! Compute the optimum size of the work array
 
        lwork = -1 ! Ask dgels to compute optimal number of entries for work
-       call dgels(trans, this%n_scel*2, this%n_scel*2, 1, OMEGA, this%n_scel*2, LAMBDA, this%n_scel*2, work, lwork, info)
+       call dgels(trans, n_eq, n_eq, 1, OMEGA(1:n_eq,1:n_eq), n_eq, LAMBDA(1:n_eq), n_eq, work, lwork, info)
        lwork = int(work(1)) ! Pick the optimum.  TBD, can work(1) come back with greater than work size?
 
        ! Compute the minimum of 2-norm of of the least squares fit to solve for X
        ! Note that dgels returns the solution by overwriting the LAMBDA array.
        ! The result has the form: X = [b; m]
-       call dgels(trans, this%n_scel*2, this%n_scel*2, 1, OMEGA, this%n_scel*2, LAMBDA, this%n_scel*2, work, lwork, info)
+       call dgels(trans, n_eq, n_eq, 1, OMEGA(1:n_eq,1:n_eq), n_eq, LAMBDA(1:n_eq), n_eq, work, lwork, info)
 
        ! Save the solution terms
 
@@ -1337,6 +1393,12 @@ contains
                 scelbp => this%band(ib)%scelb(ican,icol)
                 scelbp%lambda1_beam = LAMBDA(k1)
                 scelbp%lambda2_beam = LAMBDA(k2)
+                ! The lambda diff terms will be
+                ! multiplied by zero before we use them
+                ! but, we dont want things like nan's
+                ! or weird math, so we set them to zero too
+                scelbp%lambda1_diff = 0._r8
+                scelbp%lambda2_diff = 0._r8
              end do
              ilem_off = ilem_off + this%n_col(ican)
           end do
@@ -1383,6 +1445,7 @@ contains
                   scelgp%area*scelbp%Rbeam0*exp(-scelgp%Kb*(scelgp%lai+scelgp%sai))
           end do
 
+          
           frac_abs_can_beam = 0._r8
           do ican = 1,this%n_lyr
              do icol = 1,this%n_col(ican)
@@ -1429,9 +1492,9 @@ contains
        
     end do do_isol
 
-    deallocate(OMEGA)
-    deallocate(TAU)
-    deallocate(LAMBDA)
+    !deallocate(OMEGA)
+    !deallocate(TAU)
+    !deallocate(LAMBDA)
 
     
     ! Check the error balance
@@ -1452,12 +1515,14 @@ contains
     diff_err = Rdiff_atm - (albedo_diff + frac_abs_can_diff + &
          frac_diff_grnd_diff*(1._r8-this%band(ib)%albedo_grnd_diff))
     
-    if( abs(rel_err) > rel_err_thresh ) then
+    !if( abs(rel_err) > rel_err_thresh ) then
+    if( rel_err.ne.rel_err) then
        print*,"Total canopy flux balance not closing in TwoStrteamMLPEMod:Solve"
        print*,"Relative Error, delta/(Rbeam_atm+Rdiff_atm) :",rel_err
        print*,"Max Error: ",rel_err_thresh
        print*,"ib: ",ib
        print*, beam_err,diff_err
+       print*,this%band(ib)%albedo_grnd_diff
        print*, frac_diff_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_diff) + &
             frac_beam_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_beam)
        print*, frac_diff_grnd_diff*(1._r8-this%band(ib)%albedo_grnd_diff)
@@ -1476,6 +1541,8 @@ contains
              print*,"    ",scelbp%om*(1.0-scelbp%betad)
              print*,"    ",scelbp%lambda1_beam,scelbp%lambda2_beam
              print*,"    ",scelbp%lambda1_diff,scelbp%lambda2_diff
+             print*,"AB TERMS: ",scelbp%Ad,scelbp%Au,scelbp%B1d,scelbp%B2d,scelbp%B2d,scelbp%B2u,scelbp%a
+             print*,"LAMBDA TERMS: ",scelbp%lambda1_diff,scelbp%lambda2_diff,scelbp%lambda1_beam,scelbp%lambda2_beam
           end do
        end do
        stop

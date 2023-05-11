@@ -11,6 +11,7 @@ module EDPatchDynamicsMod
   use PRTParametersMod      , only : prt_params
   use EDCohortDynamicsMod  , only : fuse_cohorts, sort_cohorts, insert_cohort
   use EDCohortDynamicsMod  , only : DeallocateCohort
+  use EDCohortDynamicsMod  , only : FixNegativeStorage
   use EDTypesMod           , only : area_site => area
   use ChecksBalancesMod    , only : PatchMassStock
   use FatesLitterMod       , only : ncwd
@@ -1757,7 +1758,9 @@ contains
                 struct_m        = 0._r8
              end if
 
-
+             call FixNegativeStorage(store_m,fnrt_m,leaf_m,sapw_m,struct_m,num_dead_trees, &
+                  currentSite%mass_balance(el)%neg_organ_death_err)
+             
              ! Absolute number of dead trees being transfered in with the donated area
              num_dead_trees = (currentCohort%fire_mort*currentCohort%n * &
                                patch_site_areadis/currentPatch%area)
@@ -1967,6 +1970,8 @@ contains
              struct_m        = 0._r8
           end if
 
+          
+          
           if(currentCohort%canopy_layer == 1)then
 
              ! Upper canopy trees. The total dead is based on their disturbance
@@ -1992,6 +1997,9 @@ contains
              
           end if
 
+          call FixNegativeStorage(store_m,fnrt_m,leaf_m,sapw_m,struct_m,num_dead, &
+                  currentSite%mass_balance(el)%neg_organ_death_err)
+          
           ! Update water balance by removing dead plant water
           ! but only do this once (use the carbon element id)
           if( (element_id == carbon12_element) .and. &

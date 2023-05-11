@@ -530,6 +530,12 @@ module PRTAllometricCarbonMod
             carbon_balance         = carbon_balance - store_c_flux
             store_c                = store_c + store_c_flux
 
+            if(store_c<nearzero)then
+               !write(fates_log(),*) 'negative storage in PARTEH',store_c_flux,store_c
+               print*,'negative storage in PARTEH',store_c_flux,store_c
+               !call endrun(msg=errMsg(sourcefile, __LINE__))
+            end if
+            
          else
 
             ! Accumulate some carbon in storage.  If storage is completely depleted, aim to
