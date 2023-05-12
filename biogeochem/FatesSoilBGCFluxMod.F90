@@ -813,11 +813,14 @@ contains
           do j = 1, nlev_eff_soil
              id = bc_in%decomp_id(j)
              flux_lab_si(id) = flux_lab_si(id) + &
-                  max(0._r8,litt%root_fines_frag(ilabile,j)) * area_frac
+                  !max(0._r8,litt%root_fines_frag(ilabile,j)) * area_frac
+                  litt%root_fines_frag(ilabile,j) * area_frac
              flux_cel_si(id) = flux_cel_si(id) + &
-                  max(0._r8,litt%root_fines_frag(icellulose,j)) * area_frac
+                  !max(0._r8,litt%root_fines_frag(icellulose,j)) * area_frac
+                  litt%root_fines_frag(icellulose,j) * area_frac
              flux_lig_si(id) = flux_lig_si(id) + &
-                  max(0._r8,litt%root_fines_frag(ilignin,j)) * area_frac
+                  !max(0._r8,litt%root_fines_frag(ilignin,j)) * area_frac
+                  litt%root_fines_frag(ilignin,j) * area_frac
           enddo
 
           !print*,sum(litt%ag_cwd_frag(:))

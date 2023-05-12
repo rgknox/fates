@@ -245,7 +245,8 @@ contains
     real(r8),dimension(50) :: cohort_layer_esai
     real(r8)               :: cohort_elai
     real(r8)               :: cohort_esai
-
+    real(r8)               :: elai_layer
+    
     real(r8) :: maintresp_reduction_factor  ! factor by which to reduce maintenance
                                             ! respiration when storage pools are low
     real(r8) :: b_leaf             ! leaf biomass kgC
@@ -431,7 +432,7 @@ contains
                       ! sink below the ground snow line, then the effective
                       ! LAI and SAI start to shrink to zero, as well as
                       ! the difference between vaitop and vaibot.
-                      if(currentCohort%treelai>0._r8)then
+                      if(currentCohort%treesai>0._r8)then
                          do iv = 1,currentCohort%nv
                             call VegAreaLayer(currentCohort%treelai, &
                                  currentCohort%treesai,              &
@@ -610,7 +611,7 @@ contains
                                ! fsun          = [m2 of sunlit leaves / m2 of total leaves]
                                ! ------------------------------------------------------------------
                                
-                               if(rad_solver.eq.norman_solver) then
+                               if_radsolver: if(rad_solver.eq.norman_solver) then
                                   
                                   if((currentPatch%ed_laisun_z(cl,ft,iv)*currentPatch%canopy_area_profile(cl,ft,iv)) >nearzero)then
                                      par_per_sunla = currentPatch%ed_parsun_z(cl,ft,iv) / &
@@ -627,7 +628,8 @@ contains
                                   end if
                                   
                                   fsun = currentPatch%f_sun(cl,ft,iv)
-
+                                  elai_layer = currentPatch%ed_laisha_z(cl,ft,iv) + currentPatch%ed_laisun_z(cl,ft,iv)
+                                  
                                else
 
                                   if(cohort_layer_elai(iv) > nearzero .and. currentPatch%solar_zenith_flag) then
@@ -657,8 +659,10 @@ contains
                                      par_per_shala = 0._r8
                                      fsun = 0.5_r8 !avoid div0, should have no impact
                                   end if
-                                     
-                               end if
+
+                                  elai_layer = cohort_layer_elai(iv)
+                                  
+                               end if if_radsolver
                                
                                ! Part VII: Calculate (1) maximum rate of carboxylation (vcmax),
                                ! (2) maximum electron transport rate, (3) triose phosphate
@@ -690,6 +694,7 @@ contains
                                call LeafLayerPhotosynthesis(fsun,       &  ! in
                                     par_per_sunla,                      &  ! in
                                     par_per_shala,                      &  ! in
+                                    elai_layer,                         &  ! in
                                     ft,                                 &  ! in
                                     vcmax_z,                            &  ! in
                                     jmax_z,                             &  ! in
@@ -741,6 +746,7 @@ contains
                          if(nv>1)then
                             if( abs(sum(cohort_layer_elai(1:nv-1))-sum(cohort_layer_elai(1:nv-1))) > 1.e-15  ) then
                                print*,"ELAI DIFF?",sum(cohort_layer_elai(1:nv-1)),sum(cohort_layer_elai(1:nv-1))
+                               stop
                             end if
                          end if
                          
@@ -749,8 +755,8 @@ contains
                               currentPatch%psn_z(cl,ft,1:nv),        & !in
                               lmr_z(1:nv,ft,cl),                     & !in
                               rs_z(1:nv,ft,cl),                      & !in
-                              cohort_layer_elai(1:nv),               & !in
-                              !currentPatch%tlai_profile(cl,ft,1:nv),  & 
+                              !cohort_layer_elai(1:nv),               & !in
+                              currentPatch%tlai_profile(cl,ft,1:nv),  & 
                               c13disc_z(cl, ft, 1:nv),               & !in
                               currentCohort%c_area,                  & !in
                               currentCohort%n,                       & !in
@@ -987,7 +993,7 @@ contains
 
                       ! Accumulate the total effective leaf area from all cohorts
                       ! in this patch. Normalize by canopy area outside the loop
-                      patch_la   = patch_la + cohort_elai*currentCohort%c_area
+                      patch_la   = patch_la + cohort_eleaf_area  !cohort_elai*currentCohort%c_area
 
                       currentCohort => currentCohort%shorter
 
@@ -1007,7 +1013,7 @@ contains
                    ! Normalize the leaf-area weighted canopy conductance
                    ! The denominator is the total effective leaf area in the canopy,
                    ! units of [m/s]*[m2] / [m2] = [m/s]
-                   g_sb_leaves = g_sb_leaves / patch_la 
+                   g_sb_leaves = g_sb_leaves / max(0.1_r8*currentPatch%total_canopy_area,patch_la)
 
                    if( g_sb_leaves > (1._r8/rsmax0) ) then
 
@@ -1134,6 +1140,7 @@ end subroutine RootLayerNFixation
 subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
      parsun_lsl,        &  ! in
      parsha_lsl,        &  ! in
+     elai_lsl,          &  ! in
      ft,                &  ! in
      vcmax,             &  ! in
      jmax,              &  ! in
@@ -1177,6 +1184,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8), intent(in) :: f_sun_lsl         !
   real(r8), intent(in) :: parsun_lsl        ! Absorbed PAR in sunlist leaves per sunlit leaf area [W/m2 leaf]
   real(r8), intent(in) :: parsha_lsl        ! Absorved PAR in shaded leaves per shaded leaf area  [W/m2 leaf]
+  real(r8), intent(in) :: elai_lsl          ! ELAI of this layer [m2/m2]
   integer,  intent(in) :: ft                ! (plant) Functional Type Index
   real(r8), intent(in) :: vcmax             ! maximum rate of carboxylation (umol co2/m**2/s)
   real(r8), intent(in) :: jmax              ! maximum electron transport rate (umol electrons/m**2/s)
@@ -1306,7 +1314,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
 
      ! Is there leaf area? - (NV can be larger than 0 with only stem area if deciduous)
      
-     if_leafarea: if ( parsun_lsl + parsha_lsl > 0._r8 ) then
+     if_leafarea: if ( elai_lsl > 0._r8 ) then
 
         !Loop aroun shaded and unshaded leaves
         psn_out     = 0._r8    ! psn is accumulated across sun and shaded leaves.

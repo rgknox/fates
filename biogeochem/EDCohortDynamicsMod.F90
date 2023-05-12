@@ -997,9 +997,9 @@ contains
       
       if(store_m<-nearzero) then
          print*, 'Still Negative storage',store_m,fnrt_m,leaf_m,struct_m,sapw_m
-         call endrun(msg=errMsg(sourcefile, __LINE__))
-         neg_store_err = neg_store_err + store_m*nplant
-         store_m = 0._r8
+!         call endrun(msg=errMsg(sourcefile, __LINE__))
+!         neg_store_err = neg_store_err + store_m*nplant
+!         store_m = 0._r8
       end if
 
       
@@ -1067,7 +1067,6 @@ contains
     integer  :: crowndamage ! the crown damage class of the cohort
     integer  :: sl        ! loop index for soil layers
     integer  :: dcmpy     ! loop index for decomposability
-    real(r8) :: donate_m  ! provisions for replacing negative storage
     
     !----------------------------------------------------------------------
 
