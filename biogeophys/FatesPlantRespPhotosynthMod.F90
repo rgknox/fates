@@ -756,7 +756,7 @@ contains
                               lmr_z(1:nv,ft,cl),                     & !in
                               rs_z(1:nv,ft,cl),                      & !in
                               !cohort_layer_elai(1:nv),               & !in
-                              currentPatch%tlai_profile(cl,ft,1:nv),  & 
+                              currentPatch%elai_profile(cl,ft,1:nv),  & 
                               c13disc_z(cl, ft, 1:nv),               & !in
                               currentCohort%c_area,                  & !in
                               currentCohort%n,                       & !in
@@ -1013,8 +1013,10 @@ contains
                    ! Normalize the leaf-area weighted canopy conductance
                    ! The denominator is the total effective leaf area in the canopy,
                    ! units of [m/s]*[m2] / [m2] = [m/s]
-                   g_sb_leaves = g_sb_leaves / max(0.1_r8*currentPatch%total_canopy_area,patch_la)
+                   !g_sb_leaves = g_sb_leaves / max(0.1_r8*currentPatch%total_canopy_area,patch_la)
 
+                   g_sb_leaves = g_sb_leaves / (calc_areaindex(currentPatch,'elai')*currentPatch%total_canopy_area)
+                   
                    if( g_sb_leaves > (1._r8/rsmax0) ) then
 
                       ! Combined mean leaf resistance is the inverse of mean leaf conductance

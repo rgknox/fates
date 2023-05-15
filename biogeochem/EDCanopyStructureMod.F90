@@ -1497,8 +1497,6 @@ contains
     ! currentPatch%esai_profile(cl,ft,iv)  ! non-snow covered m2 of stems per m2 of PFT footprint
     ! currentPatch%canopy_area_profile(cl,ft,iv)  ! Fractional area of leaf layer
     !                                             ! relative to vegetated area
-    ! currentPatch%layer_height_profile(cl,ft,iv) ! Elevation of layer in m
-    !
     ! -----------------------------------------------------------------------------------
 
     ! !USES:
@@ -1520,8 +1518,6 @@ contains
     integer  :: iv                       ! Vertical leaf layer index
     integer  :: cl                       ! Canopy layer index
     real(r8) :: fraction_exposed         ! how much of this layer is not covered by snow?
-    real(r8) :: layer_top_hite           ! notional top height of this canopy layer (m)
-    real(r8) :: layer_bottom_hite        ! notional bottom height of this canopy layer (m)
     real(r8) :: frac_canopy(N_HITE_BINS) ! amount of canopy in each height class
     real(r8) :: minh(N_HITE_BINS)        ! minimum height in height class (m)
     real(r8) :: maxh(N_HITE_BINS)        ! maximum height in height class (m)
@@ -1555,7 +1551,6 @@ contains
        currentPatch%tsai_profile(:,:,:)         = 0._r8
        currentPatch%elai_profile(:,:,:)         = 0._r8
        currentPatch%esai_profile(:,:,:)         = 0._r8
-       currentPatch%layer_height_profile(:,:,:) = 0._r8
        currentPatch%canopy_area_profile(:,:,:)  = 0._r8
        currentPatch%canopy_mask(:,:)            = 0
        
@@ -1605,10 +1600,6 @@ contains
 
                 currentPatch%canopy_area_profile(cl,ft,iv) = currentPatch%canopy_area_profile(cl,ft,iv) + &
                      currentCohort%c_area/currentPatch%total_canopy_area
-
-                currentPatch%layer_height_profile(cl,ft,iv) = currentPatch%layer_height_profile(cl,ft,iv) + &
-                     (remainder * fleaf * currentCohort%c_area/currentPatch%total_canopy_area * &
-                     (layer_top_hite+layer_bottom_hite)/2.0_r8) !average height of layer.
 
              end do
 
@@ -1696,11 +1687,6 @@ contains
 
                       currentPatch%esai_profile(cl,ft,iv) = currentPatch%esai_profile(cl,ft,iv) / &
                            currentPatch%canopy_area_profile(cl,ft,iv)
-                   end if
-
-                   if(currentPatch%tlai_profile(cl,ft,iv)>nearzero )then
-                      currentPatch%layer_height_profile(cl,ft,iv) = currentPatch%layer_height_profile(cl,ft,iv) &
-                           /currentPatch%tlai_profile(cl,ft,iv)
                    end if
 
                 enddo
