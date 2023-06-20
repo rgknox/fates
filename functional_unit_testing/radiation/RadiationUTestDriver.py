@@ -39,6 +39,7 @@ matplotlib.rc('font', **font)
 
 
 # Instantiate the F90 modules
+f90_shr_obj = ctypes.CDLL('bld/WrapShare.o',mode=ctypes.RTLD_GLOBAL)
 f90_mem_obj = ctypes.CDLL('bld/FatesRadiationMemMod.o',mode=ctypes.RTLD_GLOBAL)
 f90_twostr_obj = ctypes.CDLL('bld/TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
 f90_wrap_obj = ctypes.CDLL('bld/RadiationWrapMod.o',mode=ctypes.RTLD_GLOBAL)
@@ -51,7 +52,7 @@ alloc_radparams_call = f90_twostr_obj.__twostreammlpemod_MOD_allocateradparams
 set_radparams_call   = f90_wrap_obj.__radiationwrapmod_MOD_setradparam
 set_radparams_call.argtypes = [POINTER(c_double),POINTER(c_int),POINTER(c_int),c_char_p,c_long]
 param_prep_call = f90_twostr_obj.__twostreammlpemod_MOD_paramprep
-
+set_logunit = f90_twostr_obj.__twostreammlpemod_MOD_twostreamloginit
 setup_canopy_call = f90_wrap_obj.__radiationwrapmod_MOD_setupcanopy
 setup_canopy_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int), \
                               POINTER(c_double),POINTER(c_double),POINTER(c_double)]
@@ -81,7 +82,6 @@ stem_rhovis = [0.21, 0.12, 0.12, 0.21, 0.21, 0.21, 0.21, 0.21, 0.21, 0.31, 0.31,
 stem_taunir = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.25, 0.25, 0.25]
 stem_tauvis = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.12, 0.12, 0.12]
 
-
 visb = 1
 nirb = 2
 
@@ -94,7 +94,7 @@ class elem_type:
         self.area = -9.0
         self.lai  = -9.0
         self.sai  = -9.0
-
+        self.pft  = -9
         self.n_vai = n_vai
         self.avai = np.zeros([n_vai])
         self.r_dn = np.zeros([n_vai])
@@ -123,8 +123,11 @@ def main(argv):
     n_bands = 2
     n_pft   = 12
 
+    iret = set_logunit(ci(5))
     iret = alloc_radparams_call(ci(n_pft),ci(n_bands))
 
+   
+    
     for ft in range(n_pft):
 
         pft=ft+1
@@ -690,14 +693,44 @@ def ParallelElementPerturbDist():
     plt.show()
     dealloc_twostream_call()
 
+
+
+
+    
 def CheckPredefinedConfig(xmlfile):
 
     xmlroot = et.parse(xmlfile).getroot()
     print("\nOpened: {}\n".format(xmlfile))
 
-    for elem in xmlroot:
-        print(elem.tag)
+    dvai = 0.05
 
+    # Determine how many elements we have and how to pre-allocate arrays
+    nelem = 0
+    maxlayer = 0
+    maxcol   = 0
+    for elem in xmlroot:
+        icol = int(elem.find('col').text)
+        ilayer = int(elem.find('layer').text)
+        nelem = nelem+1
+        maxcol = np.max(icol,maxcol)
+        maxlayer = np.max(ilayer,maxlayer)
+    
+    elems = []
+    for i in range(maxlayer):
+        elems.append([])
+
+    for elem in xmlroot:
+        icol = int(elem.find('col').text)
+        ilayer = int(elem.find('layer').text
+        n_vai = int((lai+sai)/dvai)
+        elems[ilayer-1].append(elem_type(n_vai))
+        elems[ilayer-1][-1].area = float(elem.find('area').text)
+        elems[ilayer-1][-1].lai = float(elem.find('lai').text)
+        elems[ilayer-1][-1].sai = float(elem.find('sai').text)
+        elems[ilayer-1][-1].pft = int(elem.find('pft').text
+                     
+    code.interact(local=dict(globals(), **locals()))
+        
     exit(0)
     
     
