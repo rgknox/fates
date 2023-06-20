@@ -12,6 +12,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from datetime import datetime
 import argparse
+import xml.etree.ElementTree as et
 #from matplotlib.backends.backend_pdf import PdfPages
 import platform
 import numpy as np
@@ -145,15 +146,21 @@ def main(argv):
     iret = param_prep_call(ci(n_pft))
 
     if(True):
+        CheckPredefinedConfig('element_config1.xml')
+
+    
+    if(False):
         ParallelElementPerturbDist()
 
-    if(True):
+    if(False):
         SunFracTests()
 
-    if(True):
+    if(False):
         SingleElementPerturbTest()
 
-    if(True):
+    
+        
+    if(False):
         SerialParallelCanopyTest()
 
     plt.show()
@@ -682,6 +689,18 @@ def ParallelElementPerturbDist():
     plt.tight_layout()
     plt.show()
     dealloc_twostream_call()
+
+def CheckPredefinedConfig(xmlfile):
+
+    xmlroot = et.parse(xmlfile).getroot()
+    print("\nOpened: {}\n".format(xmlfile))
+
+    for elem in xmlroot:
+        print(elem.tag)
+
+    exit(0)
+    
+    
     
 def SingleElementPerturbTest():
 

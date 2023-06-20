@@ -1,0 +1,203 @@
+<?xml version="1.0"?>
+<all>
+  <elem>
+    <area> 0.165809320127171 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 1 </col>
+    <lai> 3.36684215552089 </lai>
+    <sai> 0.336688886562948 </sai>
+  </elem>
+  <elem>
+    <area> 0.164911686022596 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 2 </col>
+    <lai> 3.21871814761049 </lai>
+    <sai> 0.321874046525429</sai>
+  </elem>
+  <elem>
+    <area> 0.164366201571527 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 3 </col>
+    <lai> 2.44923614160460 </lai>
+    <sai> 0.244924560380909 </sai>
+  </elem>
+  <elem>
+    <area> </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col>  </col>
+    <lai> </lai>
+    <sai> </sai>
+  </elem>
+  <elem>
+    <area> 0.163376117601497 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 4 </col>
+    <lai> 1.13860252548789 </lai>
+    <sai> 0.113860345547687 </sai>
+  </elem>
+  <elem>
+    <area> 0.163282677177725 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 5  </col>
+    <lai> 0.715496650903002 </lai>
+    <sai> 0.07154970746656152E</sai>
+  </elem>
+  <elem>
+    <area> 0.162660860159291 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 6 </col>
+    <lai> 0.330495167611131 </lai>
+    <sai> 0.03304951692797569 </sai>
+  </elem>
+  <elem>
+    <area> 7.477714489576639E-008 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 7 </col>
+    <lai> 0.895624683554724 </lai>
+    <sai> 8.956246835547241E-002 </sai>
+  </elem>
+  <elem>
+    <area> 3.662038095430362E-009 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 8 </col>
+    <lai> 0.262983743623554 </lai>
+    <sai> 2.629837436235536E-002 </sai>
+  </elem>
+  <elem>
+    <area> 1.882426357257380E-007 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 9 </col>
+    <lai> 1.89402604864904 </lai>
+    <sai> 0.189402604864904 </sai>
+  </elem>
+  <elem>
+    <area> 6.656939998636477E-008 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 10  </col>
+    <lai> 0.565762751834320 </lai>
+    <sai> 5.657627518343197E-002 </sai>
+  </elem>
+  <elem>
+    <area> 2.474999843999189E-007 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 11 </col>
+    <lai> 2.45760796820476 </lai>
+    <sai> 0.245760796820476 </sai>
+  </elem>
+  <elem>
+    <area> 3.452908935684351E-007 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 12 </col>
+    <lai> 2.53955331013273 </lai>
+    <sai> 0.253955331013273 </sai>
+  </elem>
+  <elem>
+    <area> 3.725837365671795E-003 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 13 </col>
+    <lai> 2.62755067158957 </lai>
+    <sai> 0.262760084427926 </sai>
+  </elem>
+  <elem>
+    <area> 3.725837365671795E-003 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 14 </col>
+    <lai> 2.62755067158957 </lai>
+    <sai> 0.262760084427926 </sai>
+  </elem>  
+  <elem>
+    <area> 3.668269609434089E-003 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 15 </col>
+    <lai> 1.05103682372977 </lai>
+    <sai> 0.105104033771170 </sai>
+  </elem>
+  <elem>
+    <area> 3.545467565648404E-009 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 16 </col>
+    <lai> 0.840832270169362 </lai>
+    <sai> 8.408322701693625E-002 </sai>
+  </elem>
+   <elem>
+    <area> 9.204349702908249E-009 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 17 </col>
+    <lai> 2.10208067542341 </lai>
+    <sai> 0.210208067542341 </sai>
+   </elem>
+   <elem>
+    <area> 9.204349702908249E-009 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 18 </col>
+    <lai> 2.10208067542341  </lai>
+    <sai> 0.210208067542341 </sai>
+   </elem>
+  <elem>
+    <area> 1.574660741437761E-003 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 19 </col>
+    <lai> 2.62654657767261 </lai>
+    <sai> 0.262760084427926 </sai>
+  </elem>
+  <elem>
+    <area> 1.448779040580578E-003 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 20 </col>
+    <lai> 2.62750490399897 </lai>
+    <sai> 0.262760084427926 </sai>
+  </elem>
+  <elem>
+    <area> 1.448779040580578E-003 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 21 </col>
+    <lai> 2.62750490399897 </lai>
+    <sai> 0.262760084427926 </sai>
+  </elem>
+   <elem>
+    <area> 4.935892023660500E-009 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 22 </col>
+    <lai> 2.10208067542341 </lai>
+    <sai> 0.210208067542341 </sai>
+   </elem>
+  <elem>
+    <area> 4.935892023660500E-009 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 23 </col>
+    <lai> 2.10208067542341 </lai>
+    <sai> 0.210208067542341 </sai>
+  </elem>  
+  <elem>
+    <area> 1.630876926068787E-008 </area>
+    <pft> 1 </pft>
+    <layer> 1 </layer>
+    <col> 24 </col>
+    <lai> 2.10208067542341 </lai>
+    <sai> 0.210208067542341 </sai>
+  </elem>   
+</all>
