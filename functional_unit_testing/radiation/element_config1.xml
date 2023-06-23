@@ -25,14 +25,6 @@
     <sai> 0.244924560380909 </sai>
   </elem>
   <elem>
-    <area> </area>
-    <pft> 1 </pft>
-    <layer> 1 </layer>
-    <col>  </col>
-    <lai> </lai>
-    <sai> </sai>
-  </elem>
-  <elem>
     <area> 0.163376117601497 </area>
     <pft> 1 </pft>
     <layer> 1 </layer>
@@ -46,7 +38,7 @@
     <layer> 1 </layer>
     <col> 5  </col>
     <lai> 0.715496650903002 </lai>
-    <sai> 0.07154970746656152E</sai>
+    <sai> 0.07154970746656152</sai>
   </elem>
   <elem>
     <area> 0.162660860159291 </area>

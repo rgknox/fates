@@ -152,13 +152,13 @@ def main(argv):
         CheckPredefinedConfig('element_config1.xml')
 
     
-    if(False):
+    if(True):
         ParallelElementPerturbDist()
 
-    if(False):
+    if(True):
         SunFracTests()
 
-    if(False):
+    if(True):
         SingleElementPerturbTest()
 
     
@@ -703,36 +703,139 @@ def CheckPredefinedConfig(xmlfile):
     print("\nOpened: {}\n".format(xmlfile))
 
     dvai = 0.05
+    n_cosz = 100
+    cosz_a = np.linspace(0.0,1.0,num=n_cosz)
+    ib = 1
 
+    #n_cosz = 2
+    #cosz_a = np.linspace(0.73,0.730684051530601,num=n_cosz)
+    
     # Determine how many elements we have and how to pre-allocate arrays
-    nelem = 0
+    n_elem = 0
     maxlayer = 0
     maxcol   = 0
     for elem in xmlroot:
-        icol = int(elem.find('col').text)
-        ilayer = int(elem.find('layer').text)
-        nelem = nelem+1
-        maxcol = np.max(icol,maxcol)
-        maxlayer = np.max(ilayer,maxlayer)
+        #code.interact(local=dict(globals(), **locals()))
+        icol = int(elem.find('col').text.strip())
+        ilayer = int(elem.find('layer').text.strip())
+        n_elem = n_elem+1
+        maxcol = np.max([icol,maxcol])
+        maxlayer = np.max([ilayer,maxlayer])
     
     elems = []
+    ncols = np.zeros([maxlayer],dtype=np.int8)
     for i in range(maxlayer):
         elems.append([])
 
+    iret = alloc_twostream_call(ci(maxlayer),ci(maxcol))
+
+    areacheck = np.zeros([maxlayer+1])
+    max_n_vai = 0
     for elem in xmlroot:
-        icol = int(elem.find('col').text)
-        ilayer = int(elem.find('layer').text
+        icol = int(elem.find('col').text.strip())
+        ilayer = int(elem.find('layer').text.strip())
+        area = float(elem.find('area').text.strip())
+        lai = float(elem.find('lai').text.strip())
+        sai = float(elem.find('sai').text.strip())
+        pft = int(elem.find('pft').text.strip())
         n_vai = int((lai+sai)/dvai)
+        max_n_vai = np.max([n_vai,max_n_vai])
+        ncols[ilayer-1] = ncols[ilayer-1]+1
         elems[ilayer-1].append(elem_type(n_vai))
-        elems[ilayer-1][-1].area = float(elem.find('area').text)
-        elems[ilayer-1][-1].lai = float(elem.find('lai').text)
-        elems[ilayer-1][-1].sai = float(elem.find('sai').text)
-        elems[ilayer-1][-1].pft = int(elem.find('pft').text
-                     
-    code.interact(local=dict(globals(), **locals()))
+        elems[ilayer-1][-1].area = area
+        elems[ilayer-1][-1].lai = lai
+        elems[ilayer-1][-1].sai = sai
+        elems[ilayer-1][-1].pft = pft
+        areacheck[ilayer-1] = areacheck[ilayer-1] + area
+        iret = setup_canopy_call(c_int(ilayer),c_int(icol),c_int(pft),c_double(area),c_double(lai),c_double(sai))
+
+    for i in range(maxlayer):
+        print('i: {}'.format(i))
+        print('Area check on element set 1, layer {}: {}'.format(i+1,areacheck[i]))
         
-    exit(0)
+    # Prep the canopy
+    ground_albedo_diff = 0.08
+    ground_albedo_beam = 0.08
+    frac_snow = 0.0
     
+    iret = grndsnow_albedo_call(c_int(visb),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
+    iret = grndsnow_albedo_call(c_int(visb),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
+    iret = grndsnow_albedo_call(c_int(nirb),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
+    iret = grndsnow_albedo_call(c_int(nirb),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
+    
+    iret = canopy_prep_call(c8(frac_snow))
+
+    rdown_bot = np.zeros([n_cosz,n_elem])
+    beam_bot  = np.zeros([n_cosz,n_elem])
+    rup_bot   = np.zeros([n_cosz,n_elem])
+    rup_top   = np.zeros([n_cosz,n_elem])
+    
+    cd_albedo_beam = c_double(-9.0)
+    cd_albedo_diff = c_double(-9.0)
+    cd_canabs_beam = c_double(-9.0)
+    cd_canabs_diff = c_double(-9.0)
+    cd_ffbeam_beam = c_double(-9.0)
+    cd_ffdiff_beam = c_double(-9.0)
+    cd_ffdiff_diff = c_double(-9.0)
+    cd_r_diff_dn = c_double(-9.0)
+    cd_r_diff_up = c_double(-9.0)
+    cd_r_beam = c_double(-9.0)
+    cd_kb = c_double(-9.0)
+    cd_kd = c_double(-9.0)
+    cd_om = c_double(-9.0)
+    cd_betad = c_double(-9.0)
+    cd_betab = c_double(-9.0)
+
+    
+    # Objective - see if the endpoint values are all positive
+    for ic,cosz in enumerate(cosz_a):
+        iret = zenith_prep_call(c8(cosz))
+    
+        iret = solver_call(ci(ib),ci(normalized_boundary),c8(1.0),c8(1.0), \
+                           byref(cd_albedo_beam),byref(cd_albedo_diff), \
+                           byref(cd_canabs_beam),byref(cd_canabs_diff), \
+                           byref(cd_ffbeam_beam),byref(cd_ffdiff_beam),byref(cd_ffdiff_diff))
+
+        iret = setdown_call(ci(ib),c8(1.0),c8(1.0))
+        #code.interact(local=dict(globals(), **locals()))
+        ielem=0
+        for ican in range(maxlayer):
+            for icol in range(ncols[ican]):
+                
+                vai_bot = elems[ican][icol].lai + elems[ican][icol].lai
+                iret = getintens_call(ci(ican+1),ci(icol+1),ci(ib),c8(vai_bot),byref(cd_r_diff_dn), \
+                              byref(cd_r_diff_up),byref(cd_r_beam))
+
+                if(cd_r_diff_dn.value<0.0 or cd_r_beam.value<0.0 or cd_r_diff_up.value<0.0):
+                    print('negatives?')
+                    print(cd_r_diff_dn.value,cd_r_beam.value,cd_r_diff_up.value)
+                    exit(2)
+                
+                rdown_bot[ic,ielem] = cd_r_diff_dn.value
+                beam_bot[ic,ielem]  = cd_r_beam.value
+                rup_bot[ic,ielem]   = cd_r_diff_up.value
+                ielem=ielem+1
+                iret = getparams_call(ci(ican+1),ci(icol+1),ci(ib),byref(cd_kb), \
+                                      byref(cd_kd),byref(cd_om),byref(cd_betad),byref(cd_betab))
+
+                print('ican: {}, icol: {}, ib: {}\nKb: {},Kd: {}\n omega: {}\n beta_d: {}, beta_b: {} \n\n'.format(ican+1,icol+1,ib,cd_kb.value,cd_kd.value,cd_om.value,cd_betad.value,cd_betab.value))
+                
+
+    fig1, ((ax1,ax2,ax3)) = plt.subplots(3,1,figsize=(7,8))
+
+    ax1.plot(cosz_a,rdown_bot)
+    ax1.set_ylabel('norm W/m2')
+    ax1.set_title('R Diff Down')
+    ax2.plot(cosz_a,beam_bot)
+    ax2.set_ylabel('norm W/m2')
+    ax2.set_title('R Beam')
+    ax3.plot(cosz_a,rup_bot)
+    ax3.set_ylabel('norm W/m2')
+    ax3.set_xlabel('cos(z)')
+    ax3.set_title('R Diff Up')
+    plt.tight_layout()
+    plt.show()
+    dealloc_twostream_call()
     
     
 def SingleElementPerturbTest():
