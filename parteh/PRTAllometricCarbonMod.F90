@@ -25,15 +25,8 @@ module PRTAllometricCarbonMod
   use PRTGenericMod , only  : un_initialized
   use PRTGenericMod , only  : prt_carbon_allom_hyp
 
-  use FatesAllometryMod   , only : bleaf
-  use FatesAllometryMod   , only : bsap_allom
-  use FatesAllometryMod   , only : bfineroot
-  use FatesAllometryMod   , only : bstore_allom
-  use FatesAllometryMod   , only : bdead_allom
-  use FatesAllometryMod   , only : bbgw_allom
-  use FatesAllometryMod   , only : bagw_allom
-  use FatesAllometryMod   , only : h_allom
-  use FatesAllometryMod   , only : CheckIntegratedAllometries
+  use FatesAllometryMod   , only : allom
+  use PRTGenericMod       , only : CheckIntegratedAllometries
 
   use FatesGlobals        , only : endrun => fates_endrun
   use FatesGlobals        , only : fates_log
@@ -453,7 +446,7 @@ module PRTAllometricCarbonMod
          store_c  => this%variables(store_c_id)%val(icd), &
          repro_c  => this%variables(repro_c_id)%val(icd), &
          struct_c => this%variables(struct_c_id)%val(icd), &
-         l2fr     => prt_params%allom_l2fr(ipft) )
+         l2fr     => allom%params%allom_l2fr(ipft) )
 
       dbh            => this%bc_inout(ac_bc_inout_id_dbh)%rval
       carbon_balance => this%bc_inout(ac_bc_inout_id_netdc)%rval
@@ -479,25 +472,25 @@ module PRTAllometricCarbonMod
       ! -----------------------------------------------------------------------------------
 
       ! Target sapwood biomass according to allometry and trimming [kgC]
-      call bsap_allom(dbh,ipft, crowndamage, canopy_trim, elongf_stem, sapw_area,target_sapw_c)
+      call allom%bsap_allom(dbh,ipft, crowndamage, canopy_trim, elongf_stem, sapw_area,target_sapw_c)
 
       ! Target total above ground biomass in woody/fibrous tissues  [kgC]
-      call bagw_allom(dbh,ipft, crowndamage, elongf_stem, target_agw_c)
+      call allom%bagw_allom(dbh,ipft, crowndamage, elongf_stem, target_agw_c)
 
       ! Target total below ground biomass in woody/fibrous tissues [kgC] 
-      call bbgw_allom(dbh,ipft, elongf_stem, target_bgw_c)
+      call allom%bbgw_allom(dbh,ipft, elongf_stem, target_bgw_c)
 
       ! Target total dead (structrual) biomass [kgC]
-      call bdead_allom( target_agw_c, target_bgw_c, target_sapw_c, ipft, target_struct_c)
+      call allom%bdead_allom( target_agw_c, target_bgw_c, target_sapw_c, ipft, target_struct_c)
 
       ! Target leaf biomass according to allometry and trimming
-      call bleaf(dbh,ipft,crowndamage,canopy_trim, elongf_leaf, target_leaf_c)
+      call allom%bleaf(dbh,ipft,crowndamage,canopy_trim, elongf_leaf, target_leaf_c)
 
       ! Target fine-root biomass and deriv. according to allometry and trimming [kgC, kgC/cm]
-      call bfineroot(dbh,ipft,canopy_trim,l2fr, elongf_fnrt, target_fnrt_c)
+      call allom%bfineroot(dbh,ipft,canopy_trim,l2fr, elongf_fnrt, target_fnrt_c)
 
       ! Target storage carbon [kgC,kgC/cm]
-      call bstore_allom(dbh,ipft,crowndamage,canopy_trim,target_store_c)
+      call allom%bstore_allom(dbh,ipft,crowndamage,canopy_trim,target_store_c)
 
 
       ! -----------------------------------------------------------------------------------
@@ -1050,16 +1043,16 @@ module PRTAllometricCarbonMod
         elongf_fnrt = intgr_params(ac_bc_in_id_effnrt)
         elongf_stem = intgr_params(ac_bc_in_id_efstem)
         crowndamage = int(intgr_params(ac_bc_in_id_cdamage))
-        l2fr        = prt_params%allom_l2fr(ipft)
+        l2fr        = allom%params%allom_l2fr(ipft)
 
-        call bleaf(dbh,ipft,crowndamage,canopy_trim, elongf_leaf, ct_leaf, dbldd=ct_dleafdd)
-        call bfineroot(dbh,ipft,canopy_trim,l2fr, elongf_fnrt, ct_fnrt,ct_dfnrtdd)
-        call bsap_allom(dbh,ipft, crowndamage, canopy_trim, elongf_stem, sapw_area,ct_sap,ct_dsapdd)
-        call bagw_allom(dbh,ipft,crowndamage, elongf_stem, ct_agw,ct_dagwdd)
-        call bbgw_allom(dbh,ipft, elongf_stem, ct_bgw, ct_dbgwdd)
-        call bdead_allom(ct_agw,ct_bgw, ct_sap, ipft, ct_dead, &
+        call allom%bleaf(dbh,ipft,crowndamage,canopy_trim, elongf_leaf, ct_leaf, dbldd=ct_dleafdd)
+        call allom%bfineroot(dbh,ipft,canopy_trim,l2fr, elongf_fnrt, ct_fnrt,ct_dfnrtdd)
+        call allom%bsap_allom(dbh,ipft, crowndamage, canopy_trim, elongf_stem, sapw_area,ct_sap,ct_dsapdd)
+        call allom%bagw_allom(dbh,ipft,crowndamage, elongf_stem, ct_agw,ct_dagwdd)
+        call allom%bbgw_allom(dbh,ipft, elongf_stem, ct_bgw, ct_dbgwdd)
+        call allom%bdead_allom(ct_agw,ct_bgw, ct_sap, ipft, ct_dead, &
                          ct_dagwdd, ct_dbgwdd, ct_dsapdd, ct_ddeaddd)
-        call bstore_allom(dbh,ipft,crowndamage, canopy_trim,ct_store,ct_dstoredd)
+        call allom%bstore_allom(dbh,ipft,crowndamage, canopy_trim,ct_store,ct_dstoredd)
 
         ! If the TRS is switched off, or if the plant is a shrub or grass
         ! then we use FATES's default reproductive allocation.
@@ -1067,7 +1060,7 @@ module PRTAllometricCarbonMod
         ! is less than 15 cm
         
         if ( regeneration_model == default_regeneration .or. &
-             prt_params%allom_dbh_maxheight(ipft) < min_max_dbh_for_trees ) then
+             allom%params%allom_dbh_maxheight(ipft) < min_max_dbh_for_trees ) then
 
            ! TRS is only for tree pfts
            ! Calculate fraction of carbon going towards reproduction
@@ -1081,7 +1074,7 @@ module PRTAllometricCarbonMod
            ! a pft-specific function of dbh. This allows for the representation of different
            ! reproductive schedules (Wenk and Falster, 2015)
         else if ( any(regeneration_model == [TRS_regeneration, TRS_no_seedling_dyn]) .and. &
-             prt_params%allom_dbh_maxheight(ipft) > min_max_dbh_for_trees ) then
+             allom%params%allom_dbh_maxheight(ipft) > min_max_dbh_for_trees ) then
 
            repro_fraction = prt_params%seed_alloc(ipft) * &
                 (exp(prt_params%repro_alloc_b(ipft) + prt_params%repro_alloc_a(ipft)*dbh*mm_per_cm) / &

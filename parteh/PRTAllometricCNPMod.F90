@@ -28,16 +28,8 @@ module PRTAllometricCNPMod
   use PRTGenericMod , only  : num_organ_types
   use PRTGenericMod , only  : prt_cnp_flex_allom_hyp
   use PRTGenericMod , only  : StorageNutrientTarget
-  
-  use FatesAllometryMod   , only : bleaf
-  use FatesAllometryMod   , only : bsap_allom
-  use FatesAllometryMod   , only : bfineroot
-  use FatesAllometryMod   , only : bstore_allom
-  use FatesAllometryMod   , only : bdead_allom
-  use FatesAllometryMod   , only : bbgw_allom
-  use FatesAllometryMod   , only : bagw_allom
-  use FatesAllometryMod   , only : h_allom
-  use FatesAllometryMod   , only : CheckIntegratedAllometries
+  use FatesAllometryMod   , only : allom
+  use PRTGenericMod       , only : CheckIntegratedAllometries
 
   use FatesGlobals        , only : endrun => fates_endrun
   use FatesGlobals        , only : fates_log
@@ -1504,7 +1496,7 @@ contains
     ! a pft-specific function of dbh. This allows for the representation of different
     ! reproductive schedules (Wenk and Falster, 2015)
     else if ( any(regeneration_model == [TRS_regeneration, TRS_no_seedling_dyn]) .and. &
-                  prt_params%allom_dbh_maxheight(ipft) > min_max_dbh_for_trees ) then
+                  allom%params%allom_dbh_maxheight(ipft) > min_max_dbh_for_trees ) then
 
        repro_c_frac = prt_params%seed_alloc(ipft) * &
        (exp(prt_params%repro_alloc_b(ipft) + prt_params%repro_alloc_a(ipft)*dbh*mm_per_cm) / &
@@ -2333,7 +2325,7 @@ contains
 
            ! If the TRS is switched off then we use FATES's default reproductive allocation.
            if ( regeneration_model == default_regeneration .or. &
-                prt_params%allom_dbh_maxheight(ipft) < min_max_dbh_for_trees ) then ! The Tree Recruitment Scheme 
+                allom%params%allom_dbh_maxheight(ipft) < min_max_dbh_for_trees ) then ! The Tree Recruitment Scheme 
                                                                              ! is only for trees
               if (dbh <= prt_params%dbh_repro_threshold(ipft)) then
                  repro_fraction = prt_params%seed_alloc(ipft)
@@ -2481,7 +2473,7 @@ contains
         ! a pft-specific function of dbh. This allows for the representation of different
         ! reproductive schedules (Wenk and Falster, 2015)
         else if ( any(regeneration_model == [TRS_regeneration, TRS_no_seedling_dyn]) .and. &
-                  prt_params%allom_dbh_maxheight(ipft) > min_max_dbh_for_trees ) then
+                  allom%params%allom_dbh_maxheight(ipft) > min_max_dbh_for_trees ) then
 
            repro_c_frac = prt_params%seed_alloc(ipft) * &
            (exp(prt_params%repro_alloc_b(ipft) + prt_params%repro_alloc_a(ipft)*dbh*mm_per_cm) / &

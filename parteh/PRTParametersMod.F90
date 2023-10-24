@@ -105,67 +105,9 @@ module PRTParametersMod
                                                          ! by all the possible organs in parteh, and each index
                                                          ! may point to the index in the parameter file, or will be -1
      
-     ! Allometry Parameters
-     ! --------------------------------------------------------------------------------------------
 
-     ! Root profile parameters. Note we have separate parameters for those that govern
-     ! hydraulics, and those that govern biomass (for decomposition and respiration)
 
-     real(r8), allocatable :: fnrt_prof_mode(:)             ! Fine root profile functional form
-     real(r8), allocatable :: fnrt_prof_a(:)                ! Fine root profile scaling parameter A
-     real(r8), allocatable :: fnrt_prof_b(:)                ! Fine root profile scaling parameter B
 
-     real(r8), allocatable :: c2b(:)                        ! Carbon to biomass multiplier [kg/kgC]
-     real(r8), allocatable :: wood_density(:)               ! wood density  g cm^-3  ...
-     real(r8), allocatable :: crown_depth_frac(:)           ! fraction of the height of the plant
-     integer , allocatable :: woody(:)                      ! Does the plant have wood?      (1=yes, 0=no)
-                                                            ! that is occupied by crown
-     real(r8), allocatable :: slamax(:)                     ! Maximum specific leaf area of plant (at bottom) [m2/gC]
-     real(r8), allocatable :: slatop(:)                     ! Specific leaf area at canopy top [m2/gC]
-     real(r8), allocatable :: allom_sai_scaler(:)           ! 
-     real(r8), allocatable :: allom_dbh_maxheight(:)        ! dbh at which height growth ceases
-     real(r8), allocatable :: allom_hmode(:)                ! height allometry function type
-     real(r8), allocatable :: allom_lmode(:)                ! maximum leaf allometry function type
-     real(r8), allocatable :: allom_fmode(:)                ! maximum root allometry function type
-     real(r8), allocatable :: allom_amode(:)                ! AGB allometry function type
-     real(r8), allocatable :: allom_cmode(:)                ! Coarse root allometry function type
-     real(r8), allocatable :: allom_smode(:)                ! sapwood allometry function type
-     real(r8), allocatable :: allom_stmode(:)               ! storage allometry functional type
-                                                            !   0 - storage is proportional to maximum leaf biomass 
-                                                            !       (considering trimmed)
-                                                            !   1 - storage is proportional to maximum leaf biomass 
-                                                            !       (untrimmed)
-                                                            ! (HARD-CODED FOR TIME BEING, RGK 11-2017)
-     real(r8), allocatable :: allom_la_per_sa_int(:)        ! Leaf area to sap area conversion, intercept 
-                                                            ! (sapwood area / leaf area) [cm2/m2]
-     real(r8), allocatable :: allom_la_per_sa_slp(:)        ! Leaf area to sap area conversion, slope 
-                                                            ! (sapwood area / leaf area / diameter) [cm2/m2/cm]
-     real(r8), allocatable :: allom_l2fr(:)                 ! Fine root biomass per leaf biomass ratio [kgC/kgC]
-                                                            ! FOR C-ONLY: this is the static, unchanging ratio
-                                                            ! FOR CNP: this is the initial value a cohort starts with
-     real(r8), allocatable :: allom_agb_frac(:)             ! Fraction of stem above ground [-]
-     real(r8), allocatable :: allom_d2h1(:)                 ! Parameter 1 for d2h allometry (intercept, or "c")
-     real(r8), allocatable :: allom_d2h2(:)                 ! Parameter 2 for d2h allometry (slope, or "m")
-     real(r8), allocatable :: allom_d2h3(:)                 ! Parameter 3 for d2h allometry (optional)
-     real(r8), allocatable :: allom_d2bl1(:)                ! Parameter 1 for d2bl allometry (intercept)
-     real(r8), allocatable :: allom_d2bl2(:)                ! Parameter 2 for d2bl allometry (slope)
-     real(r8), allocatable :: allom_d2bl3(:)                ! Parameter 3 for d2bl allometry (optional)
-     real(r8), allocatable :: allom_blca_expnt_diff(:)      ! Any difference in the exponent between the leaf
-                                                            ! biomass and crown area scaling
-     real(r8), allocatable :: allom_d2ca_coefficient_max(:) ! upper (savanna) value for crown 
-                                                            ! area to dbh coefficient
-     real(r8), allocatable :: allom_d2ca_coefficient_min(:) ! lower (closed-canopy forest) value for crown 
-                                                            ! area to dbh coefficient
-     real(r8), allocatable :: allom_agb1(:)                 ! Parameter 1 for agb allometry
-     real(r8), allocatable :: allom_agb2(:)                 ! Parameter 2 for agb allometry
-     real(r8), allocatable :: allom_agb3(:)                 ! Parameter 3 for agb allometry
-     real(r8), allocatable :: allom_agb4(:)                 ! Parameter 3 for agb allometry
-
-     real(r8), allocatable :: allom_zroot_max_dbh(:)        ! dbh at which maximum rooting depth saturates (largest possible) [cm]
-     real(r8), allocatable :: allom_zroot_max_z(:)          ! the maximum rooting depth defined at dbh = fates_allom_zroot_max_dbh [m]
-     real(r8), allocatable :: allom_zroot_min_dbh(:)        ! dbh at which the maximum rooting depth for a recruit is defined [cm]
-     real(r8), allocatable :: allom_zroot_min_z(:)          ! the maximum rooting depth defined at dbh = fates_allom_zroot_min_dbh [m]
-     real(r8), allocatable :: allom_zroot_k(:)              ! scale coefficient of logistic rooting depth model
      
 
      ! PID controller parameters

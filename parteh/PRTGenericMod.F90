@@ -31,6 +31,7 @@ module PRTGenericMod
   use FatesGlobals     , only : fates_log 
   use shr_log_mod      , only : errMsg => shr_log_errMsg
   use PRTParametersMod , only : prt_params
+  use FatesAllometryMod, only : allom
   
   implicit none
   private ! Modules are private by default
@@ -1407,14 +1408,6 @@ contains
 
         elseif(store_prop==cstore_store_prop) then
 
-           !call bsap_allom(dbh,ipft,canopy_trim,elongf_stem,sapw_area,target_sapw_c)
-           !call bagw_allom(dbh,ipft,elongf_stem,agw_c_target)
-           !call bbgw_allom(dbh,ipft,elongf_stem,bgw_c_target)
-           !call bdead_allom(agw_c_target,bgw_c_target,target_sapw_c,ipft,target_struct_c)
-           !call bleaf(dbh,ipft,canopy_trim, elongf_leaf, target_leaf_c)
-           !call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_fnrt_c)
-           !call bstore_allom(dbh,ipft,canopy_trim, target_store_c)
-
            ! Strategy, store as much nutrient as needed to match carbon's growth potential
            ! ie, nutrient storage is proportional to carbon storage times plant NC ratio
 
@@ -1456,6 +1449,131 @@ contains
      
    end function StorageNutrientTarget
 
+     subroutine CheckIntegratedAllometries(dbh,ipft,crowndamage, &
+       canopy_trim, elongf_leaf, elongf_fnrt, elongf_stem, &
+       l2fr, bl,bfr,bsap,bstore,bdead, &
+       grow_leaf, grow_fr, grow_sap, grow_store, grow_dead, &
+       max_err, l_pass)
+
+    ! This routine checks the error on the carbon allocation
+    ! integration step.  The integrated quantities should
+    ! be a close match on the diagnosed quantities.
+    ! We don't have to worry about small accumulating biases,
+    ! or small errors because the scheme automatically pushes
+    ! all carbon pools towards the allometric value corresponding
+    ! to the diameter on each step, prior to performing an integration.
+
+    real(r8),intent(in) :: dbh    ! diameter of plant [cm]
+    integer,intent(in)  :: ipft   ! plant functional type index
+    integer,intent(in)  :: crowndamage ! crowndamage [1: undamaged, >1 damaged]
+    real(r8),intent(in) :: canopy_trim ! trimming function
+    real(r8),intent(in) :: elongf_leaf ! Leaf elongation factor
+    real(r8),intent(in) :: elongf_fnrt ! Fine-root elongation factor
+    real(r8),intent(in) :: elongf_stem ! Stem elongation factor
+    real(r8),intent(in) :: l2fr   ! leaf to fine-root biomass multiplier (fr/leaf)
+    real(r8),intent(in) :: bl     ! integrated leaf biomass [kgC]
+    real(r8),intent(in) :: bfr    ! integrated fine root biomass [kgC]
+    real(r8),intent(in) :: bsap   ! integrated sapwood biomass [kgC]
+    real(r8),intent(in) :: bstore ! integrated storage biomass [kgC]
+    real(r8),intent(in) :: bdead  ! integrated structural biomass [kgc]
+    logical,intent(in)  :: grow_leaf ! on-off switch for leaf growth
+    logical,intent(in)  :: grow_fr   ! on-off switch for root growth
+    logical,intent(in)  :: grow_sap  ! on-off switch for sapwood
+    logical,intent(in)  :: grow_store! on-off switch for storage
+    logical,intent(in)  :: grow_dead ! on-off switch for structure
+    real(r8),intent(in) :: max_err   ! maximum allowable error
+
+    logical,intent(out) :: l_pass   ! Error flag (pass=true,no-pass=false)
+
+    real(r8) :: height            ! diagnosed height [m]
+    real(r8) :: bl_diag           ! diagnosed leaf biomass [kgC]
+    real(r8) :: bfr_diag          ! diagnosed fine-root biomass [kgC]
+    real(r8) :: bsap_diag         ! diagnosed sapwood biomass [kgC]
+    real(r8) :: asap_diag         ! sapwood area (dummy) [m2]
+    real(r8) :: bdead_diag        ! diagnosed structural biomass [kgC]
+    real(r8) :: bstore_diag       ! diagnosed storage biomass [kgC]
+    real(r8) :: bagw_diag         ! diagnosed agbw [kgC]
+    real(r8) :: bbgw_diag         ! diagnosed below ground wood [kgC]
+
+    l_pass = .true.  ! Default assumption is that step passed
+
+    if (grow_leaf) then
+       call allom%bleaf(dbh,ipft,crowndamage, canopy_trim, elongf_leaf, bl_diag)
+       if( abs(bl_diag-bl) > max_err ) then
+          if(verbose_logging) then
+             write(fates_log(),*) 'disparity in integrated/diagnosed leaf carbon'
+             write(fates_log(),*) 'resulting from the on-allometry growth integration step'
+             write(fates_log(),*) 'bl (integrated): ',bl
+             write(fates_log(),*) 'bl (diagnosed): ',bl_diag
+             write(fates_log(),*) 'relative error: ',abs(bl_diag-bl)/bl_diag
+          end if
+          l_pass = .false.
+       end if
+    end if
+
+    if (grow_fr) then
+       call allom%bfineroot(dbh,ipft,canopy_trim,l2fr, elongf_fnrt, bfr_diag)
+       if( abs(bfr_diag-bfr) > max_err ) then
+          if(verbose_logging) then
+             write(fates_log(),*) 'disparity in integrated/diagnosed fineroot carbon'
+             write(fates_log(),*) 'resulting from the on-allometry growth integration step'
+             write(fates_log(),*) 'bfr (integrated): ',bfr
+             write(fates_log(),*) 'bfr (diagnosed): ',bfr_diag
+             write(fates_log(),*) 'relative error: ',abs(bfr_diag-bfr)/bfr_diag
+          end if
+          l_pass = .false.
+       end if
+    end if
+
+    if (grow_sap) then
+       call allom%bsap_allom(dbh,ipft,crowndamage, canopy_trim, elongf_stem, asap_diag,bsap_diag)
+       if( abs(bsap_diag-bsap) > max_err ) then
+          if(verbose_logging) then
+             write(fates_log(),*) 'disparity in integrated/diagnosed sapwood carbon'
+             write(fates_log(),*) 'resulting from the on-allometry growth integration step'
+             write(fates_log(),*) 'bsap (integrated): ',bsap
+             write(fates_log(),*) 'bsap (diagnosed): ',bsap_diag
+             write(fates_log(),*) 'relative error: ',abs(bsap_diag-bsap)/bsap_diag
+          end if
+          l_pass = .false.
+       end if
+    end if
+
+    if (grow_store) then
+       call allom%bstore_allom(dbh,ipft,crowndamage, canopy_trim,bstore_diag)
+       if( abs(bstore_diag-bstore) > max_err ) then
+          if(verbose_logging) then
+             write(fates_log(),*) 'disparity in integrated/diagnosed storage carbon'
+             write(fates_log(),*) 'resulting from the on-allometry growth integration step'
+             write(fates_log(),*) 'bsap (integrated): ',bstore
+             write(fates_log(),*) 'bsap (diagnosed): ',bstore_diag
+             write(fates_log(),*) 'relative error: ',abs(bstore_diag-bstore)/bstore_diag
+          end if
+          l_pass = .false.
+       end if
+    end if
+
+    if (grow_dead) then
+       call allom%bsap_allom(dbh,ipft,crowndamage, canopy_trim, elongf_stem,asap_diag,bsap_diag)
+       call allom%bagw_allom(dbh,ipft,crowndamage, elongf_stem, bagw_diag)
+       call allom%bbgw_allom(dbh,ipft, elongf_stem,bbgw_diag)
+       call allom%bdead_allom( bagw_diag, bbgw_diag, bsap_diag, ipft, bdead_diag )
+
+       if( abs(bdead_diag-bdead) > max_err ) then
+          if(verbose_logging) then
+             write(fates_log(),*) 'disparity in integrated/diagnosed structural carbon'
+             write(fates_log(),*) 'resulting from the on-allometry growth integration step'
+             write(fates_log(),*) 'bdead (integrated): ',bdead
+             write(fates_log(),*) 'bdead (diagnosed): ',bdead_diag
+             write(fates_log(),*) 'relative error: ',abs(bdead_diag-bdead)/bdead_diag
+          end if
+          l_pass = .false.
+       end if
+    end if
+
+    return
+  end subroutine CheckIntegratedAllometries
+   
   
 
 end module PRTGenericMod
