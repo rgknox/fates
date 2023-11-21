@@ -24,6 +24,7 @@ module FatesPatchMod
   use TwoStreamMLPEMod,    only : twostream_type
   use FatesRadiationMemMod,only : num_swb
   use FatesRadiationMemMod,only : num_rad_stream_types
+  use FatesInterfaceTypesMod,only : hlm_hio_ignore_val
   use shr_infnan_mod,      only : nan => shr_infnan_nan, assignment(=)
   use shr_log_mod,         only : errMsg => shr_log_errMsg
 
@@ -380,8 +381,10 @@ module FatesPatchMod
       this%scorch_ht(:)                 = nan 
       this%frac_burnt                   = nan
       this%tfc_ros                      = nan    
-      this%burnt_frac_litter(:)         = nan    
-  
+      this%burnt_frac_litter(:)         = nan
+      this%solve_err(:)                 = hlm_hio_ignore_val
+      this%consv_err(:)                 = hlm_hio_ignore_val
+      
     end subroutine NanValues
 
     !===========================================================================

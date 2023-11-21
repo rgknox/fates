@@ -26,14 +26,13 @@ Module TwoStreamMLPEMod
 
   use shr_log_mod   , only: errMsg => shr_log_errMsg
   use shr_sys_mod   , only: shr_sys_abort
-  
+  use FatesConstantsMod, only : r8 => fates_r8
+ 
   implicit none
   private
 
-  integer, parameter :: r8 = selected_real_kind(12)
   real(r8),parameter :: nearzero = 1.e-20_r8
   logical, parameter :: debug=.true.
-  logical, parameter :: use_derivation1 = .true.
   real(r8), parameter :: unset_r8 = 1.e-36_r8
   real(r8), parameter :: unset_int = -999
   integer, parameter :: twostr_vis = 1         ! Named index of visible shortwave radiation
@@ -43,7 +42,7 @@ Module TwoStreamMLPEMod
   ! Allowable error, as a fraction of total incident for total canopy
   ! radiation balance checks
 
-  real(r8), public, parameter :: rel_err_thresh = 1.e-4_r8
+  real(r8), public, parameter :: rel_err_thresh = 1.e-6_r8
   real(r8), public, parameter :: area_err_thresh = rel_err_thresh*0.1_r8
   
   ! These are the codes for how the upper boundary is specified, normalized or absolute
@@ -96,6 +95,7 @@ Module TwoStreamMLPEMod
      ! Derived parameters
      real(r8), allocatable :: phi1(:)       ! intermediate term for kd and kb
      real(r8), allocatable :: phi2(:)       ! intermediate term for kd and kb
+     real(r8), allocatable :: avmu(:)       ! average "av" inverse optical depth "mu" per unit leaf and stem area
      real(r8), allocatable :: kd_leaf(:)    ! Mean optical depth per unit area leaves in diffuse
      real(r8), allocatable :: kd_stem(:)    ! Mean optical depth per unit area stems in diffuse
      real(r8), allocatable :: om_leaf(:,:)  ! Leaf scattering coefficient (band x pft)
@@ -134,14 +134,12 @@ Module TwoStreamMLPEMod
      ! Terms used in the final solution, also used for decomposing solution
      real(r8) :: Au      ! Compound intercept term
      real(r8) :: Ad      ! Compound intercept term
-     real(r8) :: B1u     ! Compound term w/ lambdas
-     real(r8) :: B2u     ! Compound term w/ lambdas
-     real(r8) :: B1d     ! Compound term w/ lambdas
-     real(r8) :: B2d     ! Compound term w/ lambdas
-     real(r8) :: lambda1_diff ! Compount term w/ B1d and B1u for diffuse forcing
-     real(r8) :: lambda2_diff ! Compound term w/ B2d and B2u for diffuse forcing
-     real(r8) :: lambda1_beam ! Compount term w/ B1d and B1u for beam forcing
-     real(r8) :: lambda2_beam ! Compound term w/ B2d and B2u for beam forcing
+     real(r8) :: B1      ! Compound term w/ lambdas (operates on e^{av})
+     real(r8) :: B2      ! Compound term w/ lambdas (operates on e^{-av})
+     real(r8) :: lambda1_diff ! Compount term w/ B for diffuse forcing
+     real(r8) :: lambda2_diff ! Compound term w/ B for diffuse forcing
+     real(r8) :: lambda1_beam ! Compount term w/ B for beam forcing
+     real(r8) :: lambda2_beam ! Compound term w/ B for beam forcing
      
      real(r8) :: a       ! Complex term operating on veg area index
      real(r8) :: om      ! scattering coefficient for media as a whole
@@ -338,6 +336,7 @@ contains
 
     allocate(rad_params%phi1(n_pft))
     allocate(rad_params%phi2(n_pft))
+    allocate(rad_params%avmu(n_pft))
     allocate(rad_params%kd_leaf(n_pft))
     allocate(rad_params%kd_stem(n_pft))
     allocate(rad_params%om_leaf(n_bands,n_pft))
@@ -356,27 +355,27 @@ contains
     integer,intent(in)    :: ib
     real(r8)              :: r_diff_dn
 
-    ! Rdn = Ad e−(Kbv) + Re + λ1 B1d e^(av) + λ2 B2d e^(−av)
+    ! Rdn = Ad e−(Kbv) + Re + λ1 B2 e^(av) + λ2 B1 e^(−av)
 
     associate(scelb => this%band(ib)%scelb(ican,icol), &
          scelg => this%scelg(ican,icol) )
 
       r_diff_dn = this%band(ib)%Rbeam_atm*( &
            scelb%Ad*exp(-scelg%Kb*vai) + &
-           scelb%B1d*scelb%lambda1_beam*exp(scelb%a*vai) + &
-           scelb%B2d*scelb%lambda2_beam*exp(-scelb%a*vai)) + &
+           scelb%B2*scelb%lambda1_beam*exp(scelb%a*vai) + &
+           scelb%B1*scelb%lambda2_beam*exp(-scelb%a*vai)) + &
            this%band(ib)%Rdiff_atm*( & 
-           scelb%B1d*scelb%lambda1_diff*exp(scelb%a*vai) + &
-           scelb%B2d*scelb%lambda2_diff*exp(-scelb%a*vai))
+           scelb%B2*scelb%lambda1_diff*exp(scelb%a*vai) + &
+           scelb%B1*scelb%lambda2_diff*exp(-scelb%a*vai))
 
       if(debug)then
-         if(r_diff_dn.ne.r_diff_dn)then
+         if(isnan(r_diff_dn))then
             write(log_unit,*)"GETRDN"
             write(log_unit,*)scelg%Kb
             write(log_unit,*)scelb%a
             write(log_unit,*)vai
             write(log_unit,*)scelb%Ad
-            write(log_unit,*)scelb%B1d,scelb%B2d
+            write(log_unit,*)scelb%B1,scelb%B2
             write(log_unit,*)scelb%lambda1_beam,scelb%lambda2_beam
             write(log_unit,*)scelb%lambda1_diff,scelb%lambda2_diff
             write(log_unit,*)this%band(ib)%Rbeam_atm
@@ -399,18 +398,18 @@ contains
     integer,intent(in)    :: ib
     real(r8)              :: r_diff_up
 
-    ! Rup = Au e−(Kbv) + Re + λ1 B1u e^(av) + λ2 B2u e^(−av)
+    ! Rup = Au e−(Kbv) + Re + λ1 B1 e^(av) + λ2 B2 e^(−av)
 
     associate(scelb => this%band(ib)%scelb(ican,icol), &
          scelg => this%scelg(ican,icol) )
 
       r_diff_up = this%band(ib)%Rbeam_atm*( &
            scelb%Au*exp(-scelg%Kb*vai) + &
-           scelb%B1u*scelb%lambda1_beam*exp(scelb%a*vai) + &
-           scelb%B2u*scelb%lambda2_beam*exp(-scelb%a*vai)) + &
+           scelb%B1*scelb%lambda1_beam*exp(scelb%a*vai) + &
+           scelb%B2*scelb%lambda2_beam*exp(-scelb%a*vai)) + &
            this%band(ib)%Rdiff_atm*( & 
-           scelb%B1u*scelb%lambda1_diff*exp(scelb%a*vai) + &
-           scelb%B2u*scelb%lambda2_diff*exp(-scelb%a*vai)) 
+           scelb%B1*scelb%lambda1_diff*exp(scelb%a*vai) + &
+           scelb%B2*scelb%lambda2_diff*exp(-scelb%a*vai)) 
            
     end associate
   end function GetRdUp
@@ -442,8 +441,8 @@ contains
     ! which includes an assumption of the leaf/stem proportionality.
     ! ---------------------------------------------------------------------------
     ! Solution for radiative intensity of diffuse up and down at tai=v
-    ! Rup = Au e−(Kbv) + Re + λ1 B1u e^(av) + λ2 B2u e^(−av)
-    ! Rdn = Ad e−(Kbv) + Re + λ1 B1d e^(av) + λ2 B2d e^(−av)
+    ! Rup = Au e−(Kbv) + Re + λ1 B1 e^(av) + λ2 B2 e^(−av)
+    ! Rdn = Ad e−(Kbv) + Re + λ1 B2 e^(av) + λ2 B1 e^(−av)
     ! ---------------------------------------------------------------------------
 
     ! Arguments
@@ -641,7 +640,6 @@ contains
 
   subroutine ParamPrep()
 
-    real(r8) :: avmu   ! average inverse optical depth (see Eq 3.4 CLM50 tech man)
     integer  :: ft
     integer  :: nbands
     integer  :: numpft
@@ -674,17 +672,42 @@ contains
        ! There must be protections on xl to prevent div0 and other weirdness
        rad_params%phi1(ft) = 0.5_r8 - 0.633_r8*rad_params%xl(ft) - 0.330_r8*rad_params%xl(ft)*rad_params%xl(ft)
        rad_params%phi2(ft) = 0.877_r8 * (1._r8 - 2._r8*rad_params%phi1(ft)) !0 = horiz leaves, 1 - vert leaves.
-       
-       avmu = (1._r8/rad_params%phi2(ft))* &
+
+       ! Eq. 3.4 CLM50 Tech Man
+       rad_params%avmu(ft) = (1._r8/rad_params%phi2(ft))* &
             (1._r8-(rad_params%phi1(ft)/rad_params%phi2(ft))* &
             log((rad_params%phi2(ft)+rad_params%phi1(ft))/rad_params%phi1(ft)))
        
        do ib = 1, nbands
-          rad_params%Kd_leaf(ft) = rad_params%clumping_index(ft)/avmu
-          rad_params%Kd_stem(ft) = 1._r8  ! Isotropic assumption
+          rad_params%Kd_leaf(ft) = rad_params%clumping_index(ft)/rad_params%avmu(ft)
+          rad_params%Kd_stem(ft) = 1._r8 
           
           rad_params%om_leaf(ib,ft) = rad_params%rhol(ib,ft) + rad_params%taul(ib,ft)
           rad_params%om_stem(ib,ft) = rad_params%rhos(ib,ft) + rad_params%taus(ib,ft)
+
+          if( rad_params%om_leaf(ib,ft) > 0.99_r8 ) then
+             write(log_unit,*) "In: TwoStreamMLPEMod.F90:ParamPrep()"
+             write(log_unit,*) "An extremely high leaf scattering coefficient was generated:"
+             write(log_unit,*) "om = tau + rho"
+             write(log_unit,*) "band = ",ib
+             write(log_unit,*) "pft = ",ft
+             write(log_unit,*) "om_leaf = ",rad_params%om_leaf(ib,ft)
+             write(log_unit,*) "rhol = ",rad_params%rhol(ib,ft)
+             write(log_unit,*) "taul = ",rad_params%taul(ib,ft)
+             call endrun(msg=errMsg(sourcefile, __LINE__))
+          end if
+           if( rad_params%om_stem(ib,ft) > 0.99_r8 ) then
+             write(log_unit,*) "In: TwoStreamMLPEMod.F90:ParamPrep()"
+             write(log_unit,*) "An extremely high stem scattering coefficient was generated:"
+             write(log_unit,*) "om = tau + rho"
+             write(log_unit,*) "band = ",ib
+             write(log_unit,*) "pft = ",ft
+             write(log_unit,*) "om_stem = ",rad_params%om_stem(ib,ft)
+             write(log_unit,*) "rhos = ",rad_params%rhos(ib,ft)
+             write(log_unit,*) "taus = ",rad_params%taus(ib,ft)
+             call endrun(msg=errMsg(sourcefile, __LINE__))
+          end if
+          
        end do
        
     end do
@@ -722,7 +745,8 @@ contains
     real(r8) :: betad_veg  ! diffuse backscatter for vegetation (no snow)
     real(r8) :: betad_om   ! multiplication of diffuse backscatter and reflectance
     real(r8) :: area_check ! Checks to make sure each layer has 100% coverage
-
+    real(r8) :: a2         ! The "a" term squared
+    
     this%frac_snow = frac_snow
 
     if(.not.this%force_prep) then
@@ -803,15 +827,29 @@ contains
                     scelb%betad = betad_om / scelb%om
 
                     if(debug)then
-                       if(scelb%betad /= scelb%betad)then
+                       if(isnan(scelb%betad))then
                           write(log_unit,*)"nans in canopy prep"
-                          write(log_unit,*) ib,ican,icol,ft,scelb%betad,scelb%om,lai,sai,this%frac_snow,om_snow(ib),vai,om_veg
+                          write(log_unit,*) ib,ican,icol,ft
+                          write(log_unit,*) scelb%betad,scelb%om,lai,sai
+                          write(log_unit,*) this%frac_snow,om_snow(ib),vai,om_veg
                           write(log_unit,*)"TwoStreamMLPEMod.F90:CanopyPrep"
                           call endrun(msg=errMsg(sourcefile, __LINE__))
                        end if
                     end if                    
                     
                  end if
+
+                 a2 = scelg%Kd*scelg%Kd*(1._r8-scelb%om)*(1._r8-scelb%om+2._r8*scelb%om*scelb%betad)
+                 if(a2<0._r8) then
+                    write(log_unit,*)'a^2 is less than zero'
+                    call endrun(msg=errMsg(sourcefile, __LINE__))
+                 end if
+                 
+                 ! We also have to avoid singularities, see Ad and Au below,
+                 ! where a^2-Kb^2 is in the denominator
+                 
+                 scelb%a  = sqrt(a2)
+                 
                end associate
             end do do_bands
           end associate
@@ -856,13 +894,20 @@ contains
     integer :: ican  ! scattering element canopy layer index (top down)
     integer :: icol  ! scattering element column
     real(r8) :: asu  ! single scattering albedo
-    real(r8) :: avmu ! Average inverse diffuse optical depth per unit leaf area
     real(r8) :: gdir
     real(r8) :: tmp0,tmp1,tmp2
     real(r8) :: betab_veg  ! beam backscatter for vegetation (no snow)
     real(r8) :: betab_om   ! multiplication of beam backscatter and reflectance
     real(r8) :: om_veg     ! scattering coefficient for vegetation (no snow)
-
+    real(r8) :: Kb_sing    ! the KB_leaf that would generate a singularity
+                           ! with the scelb%a parameter
+    real(r8) :: Kb_stem    ! actual optical depth of stem with not planar geometry effects
+                           ! usually the base value
+    real(r8), parameter :: Kb_stem_base = 1.0_r8
+    real(r8), parameter :: sing_tol = 0.01_r8 ! allowable difference between
+                                               ! the Kb_leaf that creates
+                                               ! a singularity and the actual
+    
     if( (cosz-1.0) > nearzero ) then
        write(log_unit,*)"The cosine of the zenith angle cannot exceed 1"
        write(log_unit,*)"cosz: ",cosz
@@ -893,25 +938,45 @@ contains
             else
                gdir = rad_params%phi1(ft) + rad_params%phi2(ft) * cosz
 
+               Kb_stem = Kb_stem_base
+               
                !how much direct light penetrates a singleunit of lai?
                scelg%Kb_leaf = min(kb_max,rad_params%clumping_index(ft) * gdir / cosz)
 
-               !write(log_unit,*)"Kb_leaf: ",scelg%Kb_leaf,gdir , cosz
+               ! To avoid singularities, we need to make sure that Kb =/ a
+               ! If they are too similar, it will create a very large
+               ! term in the linear solution and generate solution errors
+               ! Lets identify the Kb_leaf that gives a singularity.
+               ! We don't need to include the min() function
+               ! a will never be that large.
+               !
+               ! kb = a = (lai*kb_leaf + sai*kb_stem)/(lai+sai)
+               ! (a*(lai+sai) - sai*kb_stem)/lai = Kb_sing
+               ! or.. adjust stem Kb?
+               ! (a*(lai+sai) - lai*kb_leaf)/sai = kb_stem_sing
+               if(scelg%lai>nearzero) then
+                  do ib = 1,this%n_bands
+                     Kb_sing = (this%band(ib)%scelb(ican,icol)%a*(scelg%lai+scelg%sai) - scelg%sai*Kb_stem)/scelg%lai
+                     if(abs(scelg%Kb_leaf - Kb_sing)<sing_tol)then
+                        scelg%Kb_leaf = Kb_sing + sing_tol
+                     end if
+                  end do
+               else
+                  do ib = 1,this%n_bands
+                     Kb_sing = this%band(ib)%scelb(ican,icol)%a
+                     if(abs(Kb_stem - Kb_sing)<sing_tol)then
+                        Kb_stem = Kb_sing + sing_tol
+                     end if
+                  end do
+               end if
                
-
                ! RGK: My sense is that snow should be adding optical depth
                !      but we don't have any precedent for that in the FATES
                !      code or old CLM. Re-view this.
                !!scelbp%Kb = this%frac_snow*k_snow + scelbp%Kb
 
-               scelg%Kb = min(kb_max,(scelg%lai*scelg%Kb_leaf + scelg%sai*1.0)/(scelg%lai+scelg%sai))
-
-               ! Eq. 3.4 CLM50 Tech Man
-               ! avmu is the average "av" inverse optical depth "mu" per unit leaf and stem area
-
-               avmu = (1._r8 - rad_params%phi1(ft)/rad_params%phi2(ft) * &
-                    log((rad_params%phi1(ft)+rad_params%phi2(ft))/rad_params%phi1(ft))) / rad_params%phi2(ft)
-
+               scelg%Kb = min(kb_max,(scelg%lai*scelg%Kb_leaf + scelg%sai*Kb_stem)/(scelg%lai+scelg%sai))
+               
                ! Component terms for asu (single scatering albedo)
                tmp0 = gdir +  rad_params%phi2(ft) * cosz
                tmp1 =  rad_params%phi1(ft) * cosz
@@ -936,7 +1001,7 @@ contains
 
                     asu = 0.5_r8 * gdir / tmp0 * tmp2
 
-                    betab_veg = (1._r8 + avmu*scelg%Kb) / (avmu*scelg%Kb) * asu
+                    betab_veg = (1._r8 + rad_params%avmu(ft)*scelg%Kb) / (rad_params%avmu(ft)*scelg%Kb) * asu
 
                     om_veg  =  (scelg%lai*rad_params%om_leaf(ib,ft) + &
                          scelg%sai*rad_params%om_stem(ib,ft))/(scelg%lai+scelg%sai)
@@ -950,7 +1015,7 @@ contains
                     if(debug)then
                        if( .not.(scelb%betab==scelb%betab))then
                           write(log_unit,*)"Beam backscatter fraction is NaN"
-                          write(log_unit,*) betab_om,scelb%om,om_veg,this%frac_snow,betab_veg,asu,avmu,scelg%Kb
+                          write(log_unit,*) betab_om,scelb%om,om_veg,this%frac_snow,betab_veg,asu,rad_params%avmu(ft),scelg%Kb
                           call endrun(msg=errMsg(sourcefile, __LINE__))
                        end if
                     end if
@@ -1038,16 +1103,14 @@ contains
     real(r8) :: albedo_beam    ! Mean albedo at canopy top generated from beam radiation [-]
     real(r8) :: albedo_diff    ! Mean albedo at canopy top generated from downwelling diffuse [-]
 
+    real(r8) :: temp_err  ! Used to build the other error terms, a temp
     real(r8) :: solve_err ! This is the maximum error encountered when comparing the forward solution
                           ! of the linear solution A*x, to the known b, in Ax=b. This is the maximum
                           ! considering all equations, and both beam and diffuse boundaries. Units
                           ! are a fraction relative to the boundary flux.
-
-    real(r8) :: consv_err ! This is the error that is returned when seeing if the
-                          ! total albedo matches the total absorbed by all cohorts and
-                          ! the soil absorbed radiation.  It is a fraction based
-                          ! on upper boundaries of 1 W/m2 for both beam and diffuse
-    
+    real(r8) :: consv_err ! radiation canopy balance conservation
+                          ! error, fraction of incident
+     
     real(r8) :: frac_abs_can_beam ! Fraction of incident beam radiation absorbed by the vegetation [-]
     real(r8) :: frac_abs_can_diff ! Fraction of incident diffuse radiation absorbed by the vegetation [-]
     real(r8) :: frac_beam_grnd_beam  ! fraction of beam radiation at ground resulting from of beam at canopy top [-]
@@ -1080,7 +1143,7 @@ contains
     integer :: n_eq  ! Total number of equations
 
     integer :: ilem_off ! Offset, or total number of elements above layer of interest
-    real(r8) :: b1,b2,a2,nu_sqrd,nu ! intermediate terms, see documentation
+    real(r8) :: b1,b2,nu_sqrd    ! intermediate terms, see documentation
     real(r8) :: Rbeam_top           ! Mean beam radiation at top of layer      [W/m2]
     real(r8) :: Rbeam_bot           ! Mean beam radiation at bottom of layer   [W/m2]
     real(r8) :: vai                 ! Vegetation area index [m2 vegetation / m2 ground]
@@ -1091,14 +1154,13 @@ contains
     real(r8) :: r_abs_stem          ! total absorbed by stems (dummy)
     real(r8) :: r_abs_snow          ! total absorbed by snow (dummy)
     real(r8) :: leaf_sun_frac       ! sunlit fraction of leaves (dummy)
-    real(r8) :: rel_err             ! radiation canopy balance conservation
-                                    ! error, fraction of incident
+   
 
     real(r8) :: beam_err,diff_err   ! error partitioned by beam and diffuse
     type(scelg_type),pointer :: scelgp   ! Pointer to the scelg data structure
     type(scelb_type),pointer :: scelbp   ! Pointer to the scelb data structure
 
-    ! Parameters for solving via LAPACK DGELS() and DGESV()
+    ! Parameters for solving via LAPACK  DGESV() and DGESVXX()
     integer :: info                                 ! Procedure diagnostic ouput
 
     ! Testing switch
@@ -1148,13 +1210,7 @@ contains
     ! upper canopy.
     ! --------------------------------------------------------------------------
 
-    if(debug)then
-       solve_err = 0._r8
-    else
-       solve_err = -unset_r8
-    end if
-    
-    consv_err = 0._r8
+    solve_err = 0._r8
     
     if((Rbeam_atm+Rdiff_atm)<nearzero)then
        write(log_unit,*)"No radiation"
@@ -1187,80 +1243,32 @@ contains
           scelgp => this%scelg(ican,icol)
           scelbp => this%band(ib)%scelb(ican,icol)
 
-          a2 = scelgp%Kd*scelgp%Kd*(scelbp%om-1._r8)*(scelbp%om-1._r8-2._r8*scelbp%om*scelbp%betad)
-
-          if(a2<0._r8) then
-             write(log_unit,*)'a^2 is less than zero'
-             call endrun(msg=errMsg(sourcefile, __LINE__))
-          end if
-
-          scelbp%a  = sqrt(a2)
-
-          b1 = (scelgp%Kd*(1._r8-scelbp%om)*(1._r8-2._r8*scelbp%betab)+scelgp%Kb) * &
+          b2 = -(scelgp%Kd*(1._r8-scelbp%om)*(1._r8-2._r8*scelbp%betab)+scelgp%Kb) * &
                scelbp%om*scelgp%Kb*scelbp%Rbeam0
-          b2 = (scelgp%Kd*(scelbp%om-1._r8-2._r8*scelbp%om*scelbp%betad) - &
+          
+          b1 = -(scelgp%Kd*(1._r8-scelbp%om+2._r8*scelbp%om*scelbp%betad) + &
                (1._r8-2._r8*scelbp%betab)*scelgp%Kb) * &
                scelbp%om*scelgp%Kb*scelbp%Rbeam0
-
-          if(use_derivation1) then
-
-             nu_sqrd = (1._r8-scelbp%om+2._r8*scelbp%om*scelbp%betad)/(1._r8-scelbp%om)
-
-             if(nu_sqrd<0._r8)then
-                write(log_unit,*)'nu_sqrd is less than zero'
-                call endrun(msg=errMsg(sourcefile, __LINE__))
-             end if
-
-             ! B_1 up term from documentation:
-             scelbp%B1u  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
-
-             ! B_2 up term from documentation
-             scelbp%B2u = 0.5_r8*(1._r8-sqrt(nu_sqrd))
-
-             ! B_1 down term from documentation:
-             scelbp%B1d  = -0.5_r8*(1._r8-sqrt(nu_sqrd))
-
-             ! B_2 down term from documentation
-             scelbp%B2d = -0.5_r8*(1._r8+sqrt(nu_sqrd))
-
-             ! A_2 term from documentation
-             scelbp%Ad    = -0.5_r8*(b2-b1)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b2 minus b1
-
-             ! A_1 term from documentation
-             scelbp%Au    = -0.5_r8*(b2+b1)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b1 plus b2
-
-          else
-
-             nu_sqrd = (scelbp%om-1._r8)/(scelbp%om - 1._r8-2._r8*scelbp%om*scelbp%betad)
-
-             nu = (scelgp%Kd*(scelbp%om-1._r8))/scelbp%a
-
-             b1 = -b1
-
-             ! B 1 up term from documentation
-             !scelbp%B1u  = 0.5_r8*(1._r8-nu)
-             scelbp%B1u  = 0.5_r8*(1._r8-sqrt(nu_sqrd))
-
-             ! B_2 term from documentation
-             !scelbp%B2u = 0.5_r8*(1._r8+nu)
-             scelbp%B2u  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
-
-             ! B 1 up term from documentation
-             !scelbp%B1d  = 0.5_r8*(1._r8+nu)
-             scelbp%B1d  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
-
-             ! B_2 term from documentation
-             !scelbp%B2d = 0.5_r8*(1._r8-nu)
-             scelbp%B2d  = 0.5_r8*(1._r8-sqrt(nu_sqrd))
-
-             ! A_2 term from documentation
-             scelbp%Ad    = -0.5_r8*(b2+b1)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b2 minus b1
-
-             ! A_1 term from documentation
-             scelbp%Au    = -0.5_r8*(b2-b1)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b1 plus b2
-
-             
+          
+          nu_sqrd = (1._r8-scelbp%om)/(1._r8-scelbp%om+2._r8*scelbp%om*scelbp%betad)
+          
+          if(nu_sqrd<0._r8)then
+             write(log_unit,*)'nu_sqrd is less than zero'
+             call endrun(msg=errMsg(sourcefile, __LINE__))
           end if
+          
+          ! B_1 term from documentation:
+          scelbp%B1  = 0.5_r8*(1._r8+sqrt(nu_sqrd))
+          
+          ! B_2 term from documentation
+          scelbp%B2 = 0.5_r8*(1._r8-sqrt(nu_sqrd))
+          
+          ! A_2 term from documentation
+          scelbp%Ad    = -0.5_r8*(b1+b2)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b2 minus b1
+
+          ! A_1 term from documentation
+          scelbp%Au    = -0.5_r8*(b1-b2)/(scelbp%a*scelbp%a-scelgp%Kb*scelgp%Kb)   ! aka half b1 plus b2
+          
        end do
     end do
 
@@ -1329,8 +1337,8 @@ contains
           k1 = 2*(ilem-1)+1
           k2 = k1+1
           taulamb(qp)      =  this%band(ib)%Rdiff_atm - this%band(ib)%Rbeam_atm*scelbp%Ad
-          omega(qp,k1) =  scelbp%B1d
-          omega(qp,k2) =  scelbp%B2d
+          omega(qp,k1) =  scelbp%B2
+          omega(qp,k2) =  scelbp%B1
        end do
 
 
@@ -1370,8 +1378,8 @@ contains
                 ! This term is at v=0
 
                 taulamb(qp) = this%band(ib)%Rbeam_atm*this%band(ib)%scelb(ibot,jcol)%Ad
-                omega(qp,k1) = omega(qp,k1) - this%band(ib)%scelb(ibot,jcol)%B1d
-                omega(qp,k2) = omega(qp,k2) - this%band(ib)%scelb(ibot,jcol)%B2d
+                omega(qp,k1) = omega(qp,k1) - this%band(ib)%scelb(ibot,jcol)%B2
+                omega(qp,k2) = omega(qp,k2) - this%band(ib)%scelb(ibot,jcol)%B1
 
                 ! We need to include the terms from
                 ! all elements above the current element of interest
@@ -1388,8 +1396,8 @@ contains
                    vai = scelgp%lai + scelgp%sai
 
                    taulamb(qp) = taulamb(qp) - scelgp%area * this%band(ib)%Rbeam_atm*scelbp%Ad *exp(-scelgp%Kb*vai)
-                   omega(qp,k1) = omega(qp,k1) + scelgp%area * scelbp%B1d*exp(scelbp%a*vai)
-                   omega(qp,k2) = omega(qp,k2) + scelgp%area * scelbp%B2d*exp(-scelbp%a*vai)
+                   omega(qp,k1) = omega(qp,k1) + scelgp%area * scelbp%B2*exp(scelbp%a*vai)
+                   omega(qp,k2) = omega(qp,k2) + scelgp%area * scelbp%B1*exp(-scelbp%a*vai)
 
                 end do
 
@@ -1431,8 +1439,8 @@ contains
 
                 vai = scelgp%lai + scelgp%sai
                 taulamb(qp) = this%band(ib)%Rbeam_atm*scelbp%Au*exp(-scelgp%Kb*vai)
-                omega(qp,k1) = omega(qp,k1) - scelbp%B1u*exp(scelbp%a*vai)
-                omega(qp,k2) = omega(qp,k2) - scelbp%B2u*exp(-scelbp%a*vai)
+                omega(qp,k1) = omega(qp,k1) - scelbp%B1*exp(scelbp%a*vai)
+                omega(qp,k2) = omega(qp,k2) - scelbp%B2*exp(-scelbp%a*vai)
 
                 ! Terms for mean diffuse exiting lower elements (move out of this loop for efficiency)
                 do jcol = 1,this%n_col(ibot)
@@ -1443,8 +1451,8 @@ contains
                    scelbp => this%band(ib)%scelb(ibot,jcol)
 
                    taulamb(qp) = taulamb(qp) - this%band(ib)%Rbeam_atm*scelgp%area*scelbp%Au
-                   omega(qp,k1) = omega(qp,k1) + scelgp%area*scelbp%B1u
-                   omega(qp,k2) = omega(qp,k2) + scelgp%area*scelbp%B2u
+                   omega(qp,k1) = omega(qp,k1) + scelgp%area*scelbp%B1
+                   omega(qp,k2) = omega(qp,k2) + scelgp%area*scelbp%B2
                 end do
 
              end do
@@ -1479,11 +1487,11 @@ contains
                - this%band(ib)%albedo_grnd_diff*scelbp%Ad*exp(-scelgp%Kb*vai) &
                - this%band(ib)%albedo_grnd_beam*scelbp%Rbeam0*exp(-scelgp%Kb*vai))
 
-          omega(qp,k1) = omega(qp,k1) - scelbp%B1u*exp(scelbp%a*vai)
-          omega(qp,k2) = omega(qp,k2) - scelbp%B2u*exp(-scelbp%a*vai)
+          omega(qp,k1) = omega(qp,k1) - scelbp%B1*exp(scelbp%a*vai)
+          omega(qp,k2) = omega(qp,k2) - scelbp%B2*exp(-scelbp%a*vai)
 
-          omega(qp,k1) = omega(qp,k1) + this%band(ib)%albedo_grnd_diff*scelbp%B1d*exp(scelbp%a*vai)
-          omega(qp,k2) = omega(qp,k2) + this%band(ib)%albedo_grnd_diff*scelbp%B2d*exp(-scelbp%a*vai)
+          omega(qp,k1) = omega(qp,k1) + this%band(ib)%albedo_grnd_diff*scelbp%B2*exp(scelbp%a*vai)
+          omega(qp,k2) = omega(qp,k2) + this%band(ib)%albedo_grnd_diff*scelbp%B1*exp(-scelbp%a*vai)
 
        end do
 
@@ -1497,34 +1505,38 @@ contains
           omega_temp(1:n_eq,1:n_eq) = omega(1:n_eq,1:n_eq) 
        end if
 
+       ! the desired precision of the iterative algorithm is:
+       ! RNRM < SQRT(N)*XNRM*ANRM*EPS
+       ! eps is the machine precision of the real number type
+       ! ANRM is the "infinity-norm", ie the infinity norm is the abs() maximum row sum
+       ! XNRM is the abs() maximum value in that column
+       
        ! Find the solution
        call dgesv(n_eq, 1, omega(1:n_eq,1:n_eq), n_eq, ipiv(1:n_eq),  taulamb(1:n_eq), n_eq, info)
-
+       
        if(info.ne.0)then
           write(log_unit,*) 'Could not find a solution via dgesv'
           call endrun(msg=errMsg(sourcefile, __LINE__))
        end if
 
-       if(debug)then
-          ! Perform a forward check on the solution error
-          do ilem = 1,n_eq
-             rel_err = tau_temp(ilem) - sum(taulamb(1:n_eq)*omega_temp(ilem,1:n_eq))
-             solve_err = max(solve_err,abs(rel_err))
-             if(abs(rel_err)>rel_err_thresh)then
-                write(log_unit,*) 'Poor forward solution on two-stream solver'
-                write(log_unit,*) 'isol (1=beam or 2=diff): ',isol
-                write(log_unit,*) 'i (equation): ',ilem
-                write(log_unit,*) 'band index (1=vis,2=nir): ',ib
-                write(log_unit,*) 'error (tau(i) - omega(i,:)*lambda(:)) ',rel_err
-                this%band(ib)%Rbeam_atm = 1._r8
-                this%band(ib)%Rdiff_atm = 1._r8
-                call this%Dump(ib)
-                call endrun(msg=errMsg(sourcefile, __LINE__))
-             end if
-          end do
-          deallocate(tau_temp,omega_temp)
-       end if
-       
+       ! Perform a forward check on the solution error
+       do ilem = 1,n_eq
+          temp_err = tau_temp(ilem) - sum(taulamb(1:n_eq)*omega_temp(ilem,1:n_eq))
+          solve_err = max(solve_err,abs(temp_err))
+          if(abs(temp_err)>rel_err_thresh)then
+             write(log_unit,*) 'Poor forward solution on two-stream solver'
+             write(log_unit,*) 'isol (1=beam or 2=diff): ',isol
+             write(log_unit,*) 'i (equation): ',ilem
+             write(log_unit,*) 'band index (1=vis,2=nir): ',ib
+             write(log_unit,*) 'error (tau(i) - omega(i,:)*lambda(:)) ',temp_err
+             this%band(ib)%Rbeam_atm = 1._r8
+             this%band(ib)%Rdiff_atm = 1._r8
+             call this%Dump(ib)
+             call endrun(msg=errMsg(sourcefile, __LINE__))
+          end if
+       end do
+       deallocate(tau_temp,omega_temp)
+              
 
        ! Save the solution terms
 
@@ -1644,12 +1656,15 @@ contains
 
     ! Source = upwelling + canopy absorbed + ground absorbed
     
-    rel_err = ((Rbeam_atm + Rdiff_atm) - &
+    consv_err = ((Rbeam_atm + Rdiff_atm) - &
                (albedo_diff  + albedo_beam ) - & 
                (frac_abs_can_diff   + frac_abs_can_beam) - & 
                ((frac_diff_grnd_diff+frac_diff_grnd_beam)*(1._r8-this%band(ib)%albedo_grnd_diff)) - &
                (frac_beam_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_beam)) ) / (Rbeam_atm + Rdiff_atm)
 
+    ! This is an error magnitude, not a bias
+    consv_err = abs(consv_err)
+    
     beam_err = Rbeam_atm - (albedo_beam + frac_abs_can_beam + &
          frac_diff_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_diff) + &
          frac_beam_grnd_beam*(1._r8-this%band(ib)%albedo_grnd_beam))
@@ -1657,9 +1672,9 @@ contains
     diff_err = Rdiff_atm - (albedo_diff + frac_abs_can_diff + &
          frac_diff_grnd_diff*(1._r8-this%band(ib)%albedo_grnd_diff))
     
-    if( abs(rel_err) > rel_err_thresh ) then
+    if( consv_err > rel_err_thresh ) then
        write(log_unit,*)"Total canopy flux balance not closing in TwoStrteamMLPEMod:Solve"
-       write(log_unit,*)"Relative Error, delta/(Rbeam_atm+Rdiff_atm) :",rel_err
+       write(log_unit,*)"Relative Error, delta/(Rbeam_atm+Rdiff_atm) :",consv_err
        write(log_unit,*)"Max Error: ",rel_err_thresh
        write(log_unit,*)"ib: ",ib
        write(log_unit,*)"scattering coeff: ",(2*rad_params%om_leaf(ib,1)+0.5*rad_params%om_stem(ib,1))/2.5
@@ -1674,7 +1689,7 @@ contains
              write(log_unit,*)"    ",scelbp%om*(1.0-scelbp%betad)
              write(log_unit,*)"    ",scelbp%lambda1_beam,scelbp%lambda2_beam
              write(log_unit,*)"    ",scelbp%lambda1_diff,scelbp%lambda2_diff
-             write(log_unit,*)"AB TERMS: ",scelbp%Ad,scelbp%Au,scelbp%B1d,scelbp%B2d,scelbp%B2d,scelbp%B2u,scelbp%a
+             write(log_unit,*)"AB TERMS: ",scelbp%Ad,scelbp%Au,scelbp%B1,scelbp%B2,scelbp%a
              write(log_unit,*)"LAMBDA TERMS: ",scelbp%lambda1_diff,scelbp%lambda2_diff,scelbp%lambda1_beam,scelbp%lambda2_beam
           end do
        end do
