@@ -50,12 +50,9 @@ module FatesRestartInterfaceMod
   use FatesRadiationMemMod,    only : num_swb,norman_solver,twostr_solver
   use TwoStreamMLPEMod,        only : normalized_upper_boundary
   use EDParamsMod,             only : regeneration_model
-<<<<<<< HEAD
   use EDParamsMod,             only : radiation_model
-=======
   use FatesConstantsMod,       only : n_landuse_cats
   use FatesConstantsMod,       only : N_DIST_TYPES
->>>>>>> main
   
   ! CIME GLOBALS
   use shr_log_mod       , only : errMsg => shr_log_errMsg

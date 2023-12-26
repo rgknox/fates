@@ -126,7 +126,7 @@ module FatesInterfaceTypesMod
    ! Switch indicating if high-frequency multi-dimensional history output should be
    ! used in this run
    logical, public, parameter :: hio_include_hifr_multi = .true.        
-   
+
    integer, public :: hlm_use_luh                   ! flag to signal whether or not to use luh2 drivers
    integer, public :: hlm_num_luh2_states           ! number of land use state types provided in LUH2 forcing dataset
 
