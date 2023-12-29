@@ -56,6 +56,17 @@ Module FatesRadiationMemMod
   real(r8), public  :: tau_snow(num_swb) = (/ 0.01_r8, 0.01_r8 /)
 
 
+
+  ! This type helps us map between cohort constituents inside consolidated
+  ! radiation elements. This will be allocated at the matrix of
+  ! number of layer x column
+
+  type, public :: rad_elem_comap
+     real(r8) :: int_vai(100)  ! Integrated vegetation area indices of the
+     real(r8) :: int_area(100) ! The area of the contributing cohorts
+                               ! up to each integrated VAI points
+  end type rad_elem_comap
+
   
 
   
