@@ -61,6 +61,7 @@ module FATESPlantRespPhotosynthMod
   use PRTGenericMod,     only : struct_organ
   use EDParamsMod,       only : maintresp_nonleaf_baserate
   use EDParamsMod,       only : stomatal_model
+  use EDParamsMod,       only : dayl_switch
   use EDParamsMod,       only : stomatal_assim_model
   use EDParamsMod,       only : photo_tempsens_model
   use PRTParametersMod,  only : prt_params
@@ -109,6 +110,10 @@ module FATESPlantRespPhotosynthMod
   integer, parameter :: medlyn_model = 2
   integer, parameter :: ballberry_model = 1
   
+  ! Constants used to define day_length switch for scaling photosynthetic parameters
+  integer, parameter :: dayl_on = 1
+  integer, parameter :: dayl_off = 2
+ 
   ! Alternatively, Gross Assimilation can be used to estimate
   ! leaf co2 partial pressure and therefore conductance. The default
   ! is to use anet
@@ -2425,6 +2430,7 @@ subroutine LeafLayerBiophysicalRates( parsun_per_la, &
       co2_rcurve_islope = 0._r8
    else                                     ! day time
 
+     if ( dayl_switch == dayl_on ) then
       ! Vcmax25top was already calculated to derive the nscaler function
       vcmax25 = vcmax25top_ft * nscaler * dayl_factor
       select case(photo_tempsens_model)
@@ -2436,6 +2442,21 @@ subroutine LeafLayerBiophysicalRates( parsun_per_la, &
          write (fates_log(),*)'error, incorrect leaf photosynthesis temperature acclimation model specified'
          call endrun(msg=errMsg(sourcefile, __LINE__))
       end select
+
+     else if ( dayl_switch == dayl_off ) then
+      ! Vcmax25top was already calculated to derive the nscaler function
+      vcmax25 = vcmax25top_ft * nscaler
+      select case(photo_tempsens_model)
+      case (photosynth_acclim_model_none)
+         jmax25  = jmax25top_ft * nscaler
+      case (photosynth_acclim_model_kumarathunge_etal_2019)
+         jmax25 = vcmax25*jvr
+      case default
+         write (fates_log(),*)'error, incorrect leaf photosynthesis temperature acclimation model specified'
+         call endrun(msg=errMsg(sourcefile, __LINE__))
+      end select
+
+     end if
 
       co2_rcurve_islope25 = co2_rcurve_islope25top_ft * nscaler
 
