@@ -54,6 +54,9 @@ contains
     
     type(fates_cohort_type), pointer :: cohort
     integer :: n_col(nclmax) ! Number of parallel column elements per layer
+
+    
+
     integer :: ican,ft,icol
     type(twostream_type), pointer :: twostr
 
@@ -88,8 +91,13 @@ contains
     !real(r8), parameter :: init_max_vai_diff_per_elem = 0.2_r8
     !type(fates_cohort_type), pointer :: elem_co_ptrs(ncl*max_el_per_layer,100)
 
-    
-    
+    integer, parameter :: max_clusters = 3
+    integer, parameter :: max_iter = 20
+    real(r8), parameter :: conv_tol = -4
+    real(r8) :: vaivec(200)
+    real(r8) :: clusteridvec(200)
+    integer  :: n_clusters
+    integer  :: out_code
 
     max_elements = -1
     ifp=0
@@ -105,15 +113,52 @@ contains
          !max_vai_diff_per_elem = init_max_vai_diff_per_elem
          !iterate_count_do: do while(iterate_element_count)then
 
-         ! Identify how many elements we need
-         n_col(1:nclmax) = 0
-         cohort => patch%tallest
-         do while (associated(cohort))
-            ft = cohort%pft
-            ican = cohort%canopy_layer
-            n_col(ican) = n_col(ican) + 1
-            cohort => cohort%shorter
-         enddo
+         do ican = 1,nclmax
+            do ft = 1,numpft
+               ico = 0
+               vai(:) = 0._r8
+               cohort => patch%tallest
+               do while (associated(cohort))
+                  if((cohort%pft==ft) .and. (ican == cohort%canopy_layer))then
+                     ico=ico+1
+                     vai(ico) = cohort%treelai+cohort%treesai
+                     cohort => cohort%shorter
+                  enddo
+               end do
+               if(ico>0)then
+                  call ClusterKMeanNaive1D(vaivec(1:ico), max_clusters, max_iter, conv_tol, &
+                                           clusteridvec(1:ico),n_clusters, out_code)
+
+                  ! clusteridvec tells us how to break things up
+                  n_col(ican) = n_col(ican) + n_clusters
+
+                  ico = 0
+                  cohort => patch%tallest
+                  do while (associated(cohort))
+                     ico=ico+1
+                     cid = clusteridvec(ico)
+                     
+                     
+                     cohort => cohort%shorter
+                  enddo
+                  
+                  
+                  
+               end if
+               
+               
+            end do
+         end do
+         
+         !! Identify how many elements we need
+         !!n_col(1:nclmax) = 0
+         !!cohort => patch%tallest
+         !!do while (associated(cohort))
+         !!   ft = cohort%pft
+         !!   ican = cohort%canopy_layer
+         !!   n_col(ican) = n_col(ican) + 1
+         !!   cohort => cohort%shorter
+         !!enddo
 
          ! If there is only one layer, then we don't
          ! need to add an air element to the only
