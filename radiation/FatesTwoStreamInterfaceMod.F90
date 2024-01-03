@@ -27,6 +27,7 @@ Module FatesTwoStreamInterfaceMod
   use TwoStreamMLPEMod      , only : rel_err_thresh,area_err_thresh
   use EDPftvarcon           , only : EDPftvarcon_inst
   use FatesAllometryMod     , only : VegAreaLayer
+  use ClusteringMod         , only : ClusterKMeanNaive1D
   
   implicit none
 
@@ -112,18 +113,17 @@ contains
 
          !max_vai_diff_per_elem = init_max_vai_diff_per_elem
          !iterate_count_do: do while(iterate_element_count)then
-
+         n_col(1:nclmax) = 0
          do ican = 1,nclmax
             do ft = 1,numpft
                ico = 0
-               vai(:) = 0._r8
                cohort => patch%tallest
                do while (associated(cohort))
                   if((cohort%pft==ft) .and. (ican == cohort%canopy_layer))then
                      ico=ico+1
                      vai(ico) = cohort%treelai+cohort%treesai
-                     cohort => cohort%shorter
                   enddo
+                  cohort => cohort%shorter
                end do
                if(ico>0)then
                   call ClusterKMeanNaive1D(vaivec(1:ico), max_clusters, max_iter, conv_tol, &
@@ -131,35 +131,19 @@ contains
 
                   ! clusteridvec tells us how to break things up
                   n_col(ican) = n_col(ican) + n_clusters
-
                   ico = 0
                   cohort => patch%tallest
                   do while (associated(cohort))
                      ico=ico+1
-                     cid = clusteridvec(ico)
-                     
-                     
+                     if((cohort%pft==ft) .and. (ican == cohort%canopy_layer))then
+                        cohort%twostr_col = clusteridvec(ico)
+                     end if
                      cohort => cohort%shorter
                   enddo
-                  
-                  
-                  
                end if
-               
-               
             end do
          end do
          
-         !! Identify how many elements we need
-         !!n_col(1:nclmax) = 0
-         !!cohort => patch%tallest
-         !!do while (associated(cohort))
-         !!   ft = cohort%pft
-         !!   ican = cohort%canopy_layer
-         !!   n_col(ican) = n_col(ican) + 1
-         !!   cohort => cohort%shorter
-         !!enddo
-
          ! If there is only one layer, then we don't
          ! need to add an air element to the only
          ! layer. This is because all non-veg
@@ -494,6 +478,7 @@ contains
     real(r8),intent(in)  :: vaibot
     real(r8),intent(in)  :: cohort_elai
     real(r8),intent(in)  :: cohort_esai
+    real(r8),intent(in)  :: elem_area_frac
     real(r8),intent(out) :: rb_abs
     real(r8),intent(out) :: rd_abs
     real(r8),intent(out) :: rb_abs_leaf
@@ -523,12 +508,58 @@ contains
          return
       end if
 
+      ! Some mapping is required here. We have to map the cohort VAI
+      ! range to the element VAI range.
+
+      ! 1) Determine the element VAI at the top point
+      ! vai_sub is integrated VAI of the cohorts layered
+      ! in this element. If the results of maxloc is 0
+      ! this is the cohort with smallest VAI. If the result is
+      ! 1, then the vaitop is greater than the only the smallest.
+
+      ! isub is the sublayer the top-most part of the VAI is in
+      isub_t = maxloc( vaitop > scelg%vai_sub(:) ) + 1
+      isub_b = maxloc( vaibot > scelg%vai_sub(:) ) + 1
+
+      if(isub_t>1) then
+         vai_top_el = 0._r8
+         do j=1,isub_t-1
+            vai_top_el = vai_top_el + scelg%vai_sub(j)*scelg%areafrac_sub(j)
+         end do
+         vai_top_el = vai_top_el + (vaitop - scelg%vai_sub(isub_t-1))*scelg%areafrac_sub(isub_t)
+      else
+         vai_top_el = vaitop*scelg%areafrac_sub(1)
+         vai_top_sub = 0._r8
+      end if
+      
+      do i = isub_t,isub_t
+
+         vai_bot_sub = vai_top_sub + scelg%vai_sub(i)*scelg%areafrac_sub(i)
+
+         vai_top = max(vai_top_el, vai_top_sub )
+         
+         vai_bot = min(vai_bot_el, vai_bot_sub )
+         
+         call patch%twostr%GetAbsRad(cohort%canopy_layer,cohort%twostr_col,ib,vai_top,vai_bot, & 
+              Rb_abs_el,Rd_abs_el,rd_abs_leaf_el,rb_abs_leaf_el,r_abs_stem_el,r_abs_snow_el,leaf_sun_frac)
+         
+         vai_top_sub = vai_bot_sub
+         
+      end do
+
+
+      
+
+      
       evai_cvai = (scelg%lai+scelg%sai)/(cohort_elai+cohort_esai)
+
+      
+
       
       ! Convert the vai coordinate from the cohort to the element
-      vai_top_el = vaitop * evai_cvai
+      !vai_top_el = vaitop * evai_cvai
       vai_bot_el = vaibot * evai_cvai
-
+      
       ! Return the absorbed radiation for the element over that band
       call patch%twostr%GetAbsRad(cohort%canopy_layer,cohort%twostr_col,ib,vai_top_el,vai_bot_el, & 
            Rb_abs_el,Rd_abs_el,rd_abs_leaf_el,rb_abs_leaf_el,r_abs_stem_el,r_abs_snow_el,leaf_sun_frac)
