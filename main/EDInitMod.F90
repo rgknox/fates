@@ -698,12 +698,19 @@ contains
                    newparea_withlanduse = newparea * state_vector(i_lu_state)
 
                    ! for now, spread nocomp PFTs evenly across land use types
-                   new_patch_area_gt_zero: if(newparea_withlanduse.gt.0._r8)then ! Stop patches being initilialized when PFT not present in nocomop mode
+                   new_patch_area_gt_zero: if(newparea_withlanduse.gt.0._r8)then
+                      ! Stop patches being initilialized when PFT
+                      ! not present in nocomop mode
                       allocate(newp)
 
+                      ! note that "cair_pa" has the same canopy co2 concentration
+                      ! for all patches on the grid, any patch index will do
+                      ! this cair_pa(1). Even if this changes in the future,
+                      ! this approximation on the first step is acceptable
+                      
                       call newp%Create(age, newparea_withlanduse, i_lu_state, nocomp_pft, &
                            num_swb, numpft, sites(s)%nlevsoil, hlm_current_tod, &
-                           regeneration_model)
+                           regeneration_model, bc_in(s)%cair_pa(1))
 
                       if(is_first_patch.eq.itrue)then !is this the first patch?
                          ! set poointers for first patch (or only patch, if nocomp is false)
@@ -808,11 +815,11 @@ contains
        enddo sites_loop !s
     end if
 
-    ! zero all the patch fire variables for the first timestep
     do s = 1, nsites
        currentPatch => sites(s)%youngest_patch
        do while(associated(currentPatch))
 
+          ! zero all the patch fire variables for the first timestep
           currentPatch%litter_moisture(:)         = 0._r8
           currentPatch%fuel_eff_moist             = 0._r8
           currentPatch%livegrass                  = 0._r8
@@ -832,11 +839,14 @@ contains
           currentPatch%scorch_ht(:)               = 0._r8
           currentPatch%frac_burnt                 = 0._r8
           currentPatch%burnt_frac_litter(:)       = 0._r8
-
+          
           currentPatch => currentPatch%older
        enddo
     enddo
 
+    
+
+    
     ! This sets the rhizosphere shells based on the plant initialization
     ! The initialization of the plant-relevant hydraulics variables
     ! were set from a call inside of the init_cohorts()->create_cohort() subroutine
@@ -850,6 +860,30 @@ contains
     return
   end subroutine init_patches
 
+  function InitCO2InterC(can_co2_ppress,pft) result(co2_inter_c)
+      
+      ! This routine simply initializes a plant's
+      ! interstitial co2 partial pressure based on the
+      ! partial pressure of the canopy air and
+      ! a scaling constant that is c3/c4 dependant
+
+      real(r8) :: can_co2_ppress ! canopy co2 partial press (Pa)
+      integer  :: pft            ! plant functional type index
+      real(r8) :: co2_inter_c    ! result, interstitial co2 partial pressure first guess (Pa)
+      integer  :: c3c4_path_index ! photosynthetic pathway
+      
+      ! photosynthetic pathway: 0. = c4, 1. = c3
+      c3c4_path_index = nint(EDPftvarcon_inst%c3psn(pft))
+      
+      if (c3c4_path_index == c3_path_index) then
+         co2_inter_c = init_a2l_co2_c3 * can_co2_ppress
+      else
+         co2_inter_c = init_a2l_co2_c4 * can_co2_ppress
+      end if
+      
+      return
+    end function InitCO2InterC
+  
   ! ============================================================================
  
    subroutine init_cohorts(site_in, patch_in, bc_in)

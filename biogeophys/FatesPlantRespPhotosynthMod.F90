@@ -715,7 +715,8 @@ contains
                                       co2_cpoint,                         &  ! in
                                       lmr_z(iv,ft,cl),                    &  ! in
                                       leaf_psi,                           &  ! in
-                                      bc_in(s)%rb_pa(ifp),                &  ! in  
+                                      bc_in(s)%rb_pa(ifp),                &  ! in
+                                      currentPatch%co2_inter_c(cl,ft,iv), &  ! inout
                                       currentPatch%psn_z(cl,ft,iv),       &  ! out
                                       rs_z(iv,ft,cl),                     &  ! out
                                       anet_av_z(iv,ft,cl),                &  ! out
@@ -1093,6 +1094,8 @@ contains
 
             end if if_notbare
 
+           
+               
             currentPatch => currentPatch%younger
          end do
 
@@ -1189,6 +1192,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
      lmr,               &  ! in
      leaf_psi,          &  ! in
      rb,                &  ! in
+     co2_inter_c,       &  ! inout
      psn_out,           &  ! out
      rstoma_out,        &  ! out
      anet_av_out,       &  ! out
@@ -1246,6 +1250,8 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8), intent(in) :: lmr             ! Leaf Maintenance Respiration  (umol CO2/m**2/s)
   real(r8), intent(in) :: leaf_psi        ! Leaf water potential [MPa]
   real(r8), intent(in) :: rb              ! Boundary Layer resistance of leaf [s/m]
+  real(r8), intent(inout) :: co2_inter_c  ! Interstitial co2, updated from previous
+                                          ! calculation
   
   real(r8), intent(out) :: psn_out        ! carbon assimilated in this leaf layer umolC/m2/s
   real(r8), intent(out) :: rstoma_out     ! stomatal resistance (1/gs_lsl) (s/m)
@@ -1270,7 +1276,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8) :: qabs              ! PAR absorbed by PS II (umol photons/m**2/s)
   real(r8) :: aquad,bquad,cquad ! terms for quadratic equations
   real(r8) :: r1,r2             ! roots of quadratic equation
-  real(r8) :: co2_inter_c       ! intercellular leaf CO2 (Pa)
+!  real(r8) :: co2_inter_c       ! intercellular leaf CO2 (Pa)
   real(r8) :: co2_inter_c_old   ! intercellular leaf CO2 (Pa) (previous iteration)
   logical  :: loop_continue     ! Loop control variable
   integer  :: niter             ! iteration loop index
@@ -1284,7 +1290,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   ! (C4) gross photosynthesis (umol CO2/m**2/s)
   real(r8) :: ai                ! intermediate co-limited photosynthesis (umol CO2/m**2/s)
   real(r8) :: leaf_co2_ppress   ! CO2 partial pressure at leaf surface (Pa)
-  real(r8) :: init_co2_inter_c  ! First guess intercellular co2 specific to C path
+  !real(r8) :: init_co2_inter_c  ! First guess intercellular co2 specific to C path
   real(r8) :: term                 ! intermediate variable in Medlyn stomatal conductance model
   real(r8) :: vpd                  ! water vapor deficit in Medlyn stomatal model (KPa)
 
@@ -1319,11 +1325,11 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   ! photosynthetic pathway: 0. = c4, 1. = c3
   c3c4_path_index = nint(EDPftvarcon_inst%c3psn(ft))
 
-  if (c3c4_path_index == c3_path_index) then
-     init_co2_inter_c = init_a2l_co2_c3 * can_co2_ppress
-  else
-     init_co2_inter_c = init_a2l_co2_c4 * can_co2_ppress
-  end if
+  !if (c3c4_path_index == c3_path_index) then
+  !   init_co2_inter_c = init_a2l_co2_c3 * can_co2_ppress
+  !else
+  !   init_co2_inter_c = init_a2l_co2_c4 * can_co2_ppress
+  !end if
 
   ! Part III: Photosynthesis and Conductance
   ! ----------------------------------------------------------------------------------
@@ -1383,7 +1389,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
            je = min(r1,r2)
 
            ! Initialize intercellular co2
-           co2_inter_c = init_co2_inter_c
+           ! co2_inter_c = init_co2_inter_c
 
            niter = 0
            loop_continue = .true.
@@ -1608,8 +1614,11 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
    return
   end subroutine LeafLayerPhotosynthesis
 
-  ! =======================================================================================
 
+
+    
+  ! =======================================================================================
+  
   function LeafHumidityStomaResis(leaf_psi, veg_tempk, ceair, can_press, veg_esat, &
        rb, gstoma, ft) result(rstoma_out)
 

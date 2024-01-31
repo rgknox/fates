@@ -119,6 +119,10 @@ module FatesPatchMod
 
     !---------------------------------------------------------------------------
 
+    ! Memory of the most recent interstitial leaf CO2 concentration (Pa)
+    real(r8) :: co2_inter_c(nclmax,maxpft,nlevleaf)
+
+    
     ! RADIATION
     real(r8) :: rad_error(num_swb)                        ! radiation consv error by band [W/m2]
     real(r8) :: fcansno                                   ! fraction of canopy covered in snow [0-1]
@@ -559,7 +563,7 @@ module FatesPatchMod
     !===========================================================================
 
     subroutine Create(this, age, area, label, nocomp_pft, num_swb, num_pft,    &
-      num_levsoil, current_tod, regeneration_model) 
+      num_levsoil, current_tod, regeneration_model, canopy_co2) 
       !
       ! DESCRIPTION:
       ! create a new patch with input and default values
@@ -576,7 +580,8 @@ module FatesPatchMod
       integer,                 intent(in)    :: num_levsoil        ! number of soil layers
       integer,                 intent(in)    :: current_tod        ! time of day [seconds past 0Z]
       integer,                 intent(in)    :: regeneration_model ! regeneration model version
-    
+      real(r8),                intent(in)    :: canopy_co2         ! canopy co2 partial pressure (Pa)
+      
       ! initialize patch
       ! sets all values to nan, then some values to zero
       call this%Init(num_swb, num_levsoil)
@@ -609,6 +614,20 @@ module FatesPatchMod
       this%tr_soil_dif(:) = 1.0_r8
       this%NCL_p          = 1
 
+      ! Initialize the interstitial co2 of leaf layers
+      ! Use the rate mask to determine what layers were updated
+      ! and set the memory of interstitial leaf co2 to the default
+      ! ----------------------------------------------------------
+      !do cl = 1,nclmax
+      !   do ft = 1,numpft
+      !      init_co2_inter_c = InitCO2InterC(can_co2_ppress,ft)
+      ! currentPatch%co2_inter_c(cl,ft,1:nlevleaf) = init_co2_inter_c
+      !   end do
+      !end do
+      
+      currentPatch%co2_inter_c(1:nclmax,1:numpft,1:nlevleaf) = 0.5*canopy_co2 !init_co2_inter_c
+
+      
     end subroutine Create
 
     !===========================================================================
@@ -819,4 +838,7 @@ module FatesPatchMod
 
     !===========================================================================  
 
+ 
+
+    
 end module FatesPatchMod
