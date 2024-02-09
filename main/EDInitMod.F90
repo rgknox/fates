@@ -860,30 +860,6 @@ contains
     return
   end subroutine init_patches
 
-  function InitCO2InterC(can_co2_ppress,pft) result(co2_inter_c)
-      
-      ! This routine simply initializes a plant's
-      ! interstitial co2 partial pressure based on the
-      ! partial pressure of the canopy air and
-      ! a scaling constant that is c3/c4 dependant
-
-      real(r8) :: can_co2_ppress ! canopy co2 partial press (Pa)
-      integer  :: pft            ! plant functional type index
-      real(r8) :: co2_inter_c    ! result, interstitial co2 partial pressure first guess (Pa)
-      integer  :: c3c4_path_index ! photosynthetic pathway
-      
-      ! photosynthetic pathway: 0. = c4, 1. = c3
-      c3c4_path_index = nint(EDPftvarcon_inst%c3psn(pft))
-      
-      if (c3c4_path_index == c3_path_index) then
-         co2_inter_c = init_a2l_co2_c3 * can_co2_ppress
-      else
-         co2_inter_c = init_a2l_co2_c4 * can_co2_ppress
-      end if
-      
-      return
-    end function InitCO2InterC
-  
   ! ============================================================================
  
    subroutine init_cohorts(site_in, patch_in, bc_in)

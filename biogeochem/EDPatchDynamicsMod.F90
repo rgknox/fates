@@ -604,7 +604,7 @@ contains
 
                    call newPatch%Create(age, site_areadis, i_landusechange_receiverpatchlabel, i_nocomp_pft, &
                                          num_swb, numpft, currentSite%nlevsoil, hlm_current_tod,              &
-                                         regeneration_model,bc_in(s)%cair_pa(1))
+                                         regeneration_model)
 
                    ! Initialize the litter pools to zero, these
                    ! pools will be populated by looping over the existing patches

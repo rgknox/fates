@@ -119,9 +119,12 @@ module FatesPatchMod
 
     !---------------------------------------------------------------------------
 
-    ! Memory of the most recent interstitial leaf CO2 concentration (Pa)
+    ! Memory of the most recent interstitial leaf CO2 (C_i) concentration (Pa)
     real(r8) :: co2_inter_c(nclmax,maxpft,nlevleaf)
 
+    ! Counter for how many iterations were necessary to find C_i closure
+    integer  :: psnsun_iter(nclmax,maxpft,nlevleaf)
+    integer  :: psnsha_iter(nclmax,maxpft,nlevleaf)
     
     ! RADIATION
     real(r8) :: rad_error(num_swb)                        ! radiation consv error by band [W/m2]
@@ -471,6 +474,10 @@ module FatesPatchMod
       this%tfc_ros                           = 0.0_r8
       this%burnt_frac_litter(:)              = 0.0_r8
 
+      this%co2_inter_c(:,:,:)                = -9._r8
+      this%psnsun_iter(:,:,:)                = 0._r8
+      this%psnsha_iter(:,:,:)                = 0._r8
+      
     end subroutine ZeroValues
 
     !===========================================================================
@@ -563,7 +570,7 @@ module FatesPatchMod
     !===========================================================================
 
     subroutine Create(this, age, area, label, nocomp_pft, num_swb, num_pft,    &
-      num_levsoil, current_tod, regeneration_model, canopy_co2) 
+      num_levsoil, current_tod, regeneration_model)
       !
       ! DESCRIPTION:
       ! create a new patch with input and default values
@@ -580,7 +587,7 @@ module FatesPatchMod
       integer,                 intent(in)    :: num_levsoil        ! number of soil layers
       integer,                 intent(in)    :: current_tod        ! time of day [seconds past 0Z]
       integer,                 intent(in)    :: regeneration_model ! regeneration model version
-      real(r8),                intent(in)    :: canopy_co2         ! canopy co2 partial pressure (Pa)
+      !real(r8),                intent(in)    :: canopy_co2         ! canopy co2 partial pressure (Pa)
       
       ! initialize patch
       ! sets all values to nan, then some values to zero
@@ -625,7 +632,7 @@ module FatesPatchMod
       !   end do
       !end do
       
-      currentPatch%co2_inter_c(1:nclmax,1:numpft,1:nlevleaf) = 0.5*canopy_co2 !init_co2_inter_c
+      !currentPatch%co2_inter_c(1:nclmax,1:numpft,1:nlevleaf) = 
 
       
     end subroutine Create
