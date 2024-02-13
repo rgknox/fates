@@ -794,6 +794,7 @@ contains
       ! Locals
       class(prt_vartypes), pointer                :: prt_obj
       real(r8)                                    :: c_time        ! Time patch was recorded
+      character(len=cohortname_strlen)             :: c_name        ! The patch associated with this cohort
       character(len=patchname_strlen)             :: p_name        ! The patch associated with this cohort
       real(r8)                                    :: c_dbh         ! diameter at breast height (cm)
       real(r8)                                    :: c_height      ! tree height (m)
@@ -837,7 +838,7 @@ contains
       integer,  parameter :: recruitstatus = 0
 
      
-      read(css_file_unit,fmt=*,iostat=ios) c_time, p_name, c_dbh, &
+      read(css_file_unit,fmt=*,iostat=ios) c_time, p_name, c_name, c_dbh, &
             c_height, c_pft, c_nplant
 
       if( debug_inv) then

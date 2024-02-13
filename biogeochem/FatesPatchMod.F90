@@ -120,8 +120,9 @@ module FatesPatchMod
     !---------------------------------------------------------------------------
 
     ! Memory of the most recent interstitial leaf CO2 (C_i) concentration (Pa)
-    real(r8) :: co2_inter_c(nclmax,maxpft,nlevleaf)
-
+    real(r8) :: co2_interc_sun(nclmax,maxpft,nlevleaf)
+    real(r8) :: co2_interc_sha(nclmax,maxpft,nlevleaf)
+    
     ! Counter for how many iterations were necessary to find C_i closure
     integer  :: psnsun_iter(nclmax,maxpft,nlevleaf)
     integer  :: psnsha_iter(nclmax,maxpft,nlevleaf)
@@ -473,8 +474,8 @@ module FatesPatchMod
       this%frac_burnt                        = 0.0_r8  
       this%tfc_ros                           = 0.0_r8
       this%burnt_frac_litter(:)              = 0.0_r8
-
-      this%co2_inter_c(:,:,:)                = -9._r8
+      this%co2_interc_sun(:,:,:)             = -9._r8
+      this%co2_interc_sha(:,:,:)             = -9._r8
       this%psnsun_iter(:,:,:)                = 0._r8
       this%psnsha_iter(:,:,:)                = 0._r8
       

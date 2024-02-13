@@ -710,7 +710,7 @@ contains
                       
                       call newp%Create(age, newparea_withlanduse, i_lu_state, nocomp_pft, &
                            num_swb, numpft, sites(s)%nlevsoil, hlm_current_tod, &
-                           regeneration_model, bc_in(s)%cair_pa(1))
+                           regeneration_model)
 
                       if(is_first_patch.eq.itrue)then !is this the first patch?
                          ! set poointers for first patch (or only patch, if nocomp is false)

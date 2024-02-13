@@ -716,7 +716,8 @@ contains
                                       lmr_z(iv,ft,cl),                    &  ! in
                                       leaf_psi,                           &  ! in
                                       bc_in(s)%rb_pa(ifp),                &  ! in
-                                      currentPatch%co2_inter_c(cl,ft,iv), &  ! inout
+                                      currentPatch%co2_interc_sun(cl,ft,iv), &  ! inout
+                                      currentPatch%co2_interc_sha(cl,ft,iv), &  ! inout
                                       currentPatch%psnsun_iter(cl,ft,iv), &  ! out
                                       currentPatch%psnsha_iter(cl,ft,iv), &  ! out
                                       currentPatch%psn_z(cl,ft,iv),       &  ! out
@@ -1194,7 +1195,8 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
      lmr,               &  ! in
      leaf_psi,          &  ! in
      rb,                &  ! in
-     co2_inter_c,       &  ! inout
+     ci_sun,            &  ! inout
+     ci_sha,            &  ! inout
      sun_iter,          &  ! out
      sha_iter,          &  ! out
      psn_out,           &  ! out
@@ -1254,9 +1256,8 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8), intent(in) :: lmr             ! Leaf Maintenance Respiration  (umol CO2/m**2/s)
   real(r8), intent(in) :: leaf_psi        ! Leaf water potential [MPa]
   real(r8), intent(in) :: rb              ! Boundary Layer resistance of leaf [s/m]
-  real(r8), intent(inout) :: co2_inter_c  ! Interstitial co2, updated from previous
-                                          ! calculation
-
+  real(r8), intent(inout) :: ci_sun       ! Interstitial co2, sunlit leaves
+  real(r8), intent(inout) :: ci_sha       ! Interstitial co2, shaded leaves
   integer,  intent(out) :: sun_iter       ! Iteration counts for sunlit solve
   integer,  intent(out) :: sha_iter       ! Iteration counts for shaded solve
   real(r8), intent(out) :: psn_out        ! carbon assimilated in this leaf layer umolC/m2/s
@@ -1294,7 +1295,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8) :: leaf_co2_ppress   ! CO2 partial pressure at leaf surface (Pa)
   real(r8) :: term                 ! intermediate variable in Medlyn stomatal conductance model
   real(r8) :: vpd                  ! water vapor deficit in Medlyn stomatal model (KPa)
-
+  real(r8) :: co2_inter_c       ! ci of the current shaded/sunlit portion (Pa)
 
   ! Parameters
   ! ------------------------------------------------------------------------
@@ -1322,6 +1323,13 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   ! This is used for testing, if this is true, we ignore and override
   ! any memory of Ci, to help us develope a baseline for time-saving
   logical, parameter :: override_ci_memory = .true. 
+
+  integer, parameter :: max_iter = 50   ! Maximum number of ci iterations
+
+  real(r8), parameter :: ci_del_rel_thresh = 0.01_r8 ! Ci iteration convergence threshold
+                                                     ! Change in Ci relative to can CO2 (Pa/Pa)
+  
+
   
   associate( bb_slope  => EDPftvarcon_inst%bb_slope      ,& ! slope of BB relationship, unitless
        medlyn_slope=> EDPftvarcon_inst%medlyn_slope          , & ! Slope for Medlyn stomatal conductance model method, the unit is KPa^0.5
@@ -1337,6 +1345,8 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
      else
         co2_inter_c = init_a2l_co2_c4 * can_co2_ppress
      end if
+  else
+     co2_inter_c = ci_sun
   end if
 
   sun_iter = 0
@@ -1522,8 +1532,8 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               ! convergence criteria of +/- 1 x 10**-6 ppm is met OR if at least ten
               ! iterations (niter=10) are completed
 
-              if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
-                   .or. niter == 5) then
+              !if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8).or. niter == 5 ) then
+              if ( (abs(co2_inter_c-co2_inter_c_old)/can_co2_ppress <= ci_del_rel_thresh) .or. niter == max_iter ) then
                  loop_continue = .false.
               end if
            end do iter_loop
@@ -1561,12 +1571,14 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               psn_out     = psn_out + agross * f_sun_lsl
               anet_av_out = anet_av_out + anet * f_sun_lsl
               gstoma  = gstoma + 1._r8/(min(1._r8/gs, rsmax0)) * f_sun_lsl
+              ci_sun   = co2_inter_c
               sun_iter = niter
            else
               psn_out = psn_out + agross * (1.0_r8-f_sun_lsl)
               anet_av_out = anet_av_out + anet * (1.0_r8-f_sun_lsl)
               gstoma  = gstoma + &
                    1._r8/(min(1._r8/gs, rsmax0)) * (1.0_r8-f_sun_lsl)
+              ci_sha = co2_inter_c
               sha_iter = niter
            end if
 

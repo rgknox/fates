@@ -467,6 +467,12 @@ module FatesHistoryInterfaceMod
   integer :: ih_npp_agdw_si_scpf
   integer :: ih_npp_stor_si_scpf
 
+  integer :: ih_canco2_si
+  integer :: ih_ci_sun_clll
+  integer :: ih_ci_sha_clll
+  integer :: ih_psnsun_iter_clll
+  integer :: ih_psnsha_iter_clll
+  
   integer :: ih_mortality_canopy_si_scpf
   integer :: ih_mortality_understory_si_scpf
   integer :: ih_m3_mortality_canopy_si_scpf
@@ -2990,14 +2996,14 @@ contains
                end if
             end if
          end do elloop2
-
-         if(this%hvars(ih_fnrtc_si)%r81d(io_si)>nearzero)then
-            this%hvars(ih_l2fr_si)%r81d(io_si) = this%hvars(ih_l2fr_si)%r81d(io_si) / &
-                 this%hvars(ih_fnrtc_si)%r81d(io_si)
-         else
-            this%hvars(ih_l2fr_si)%r81d(io_si) = hlm_hio_ignore_val
+         if( hlm_parteh_mode == prt_cnp_flex_allom_hyp) then
+            if(this%hvars(ih_fnrtc_si)%r81d(io_si)>nearzero)then
+               this%hvars(ih_l2fr_si)%r81d(io_si) = this%hvars(ih_l2fr_si)%r81d(io_si) / &
+                    this%hvars(ih_fnrtc_si)%r81d(io_si)
+            else
+               this%hvars(ih_l2fr_si)%r81d(io_si) = hlm_hio_ignore_val
+            end if
          end if
-
          
          ! zero the site-level termination carbon flux variable
          sites(s)%term_carbonflux_canopy(:,:) = 0._r8
@@ -4944,7 +4950,8 @@ contains
          hio_livecroot_mr_si          => this%hvars(ih_livecroot_mr_si)%r81d, &
          hio_livestem_mr_si           => this%hvars(ih_livestem_mr_si)%r81d, &
          hio_maint_resp_unreduced_si  => this%hvars(ih_maint_resp_unreduced_si)%r81d, &
-         hio_tveg                     => this%hvars(ih_tveg_si)%r81d)
+         hio_tveg                     => this%hvars(ih_tveg_si)%r81d, &
+         hio_canco2_si                => this%hvars(ih_canco2_si)%r81d)
 
 
       ! Flush the relevant history variables
@@ -4968,6 +4975,7 @@ contains
          ! a) there is no vegetation
          ! b) there is no light! (ie cos(zenith) ~= 0)
          age_area_rad(:) = 0._r8
+         ipa=0
          cpatch => sites(s)%oldest_patch
          do while(associated(cpatch))
             ! We initialize the solver error to the ignore value
@@ -4979,6 +4987,9 @@ contains
                age_class = get_age_class_index(cpatch%age)
                age_area_rad(age_class) = age_area_rad(age_class) + cpatch%total_canopy_area
             end if
+            ipa=ipa+1
+            hio_canco2_si(io_si) = hio_canco2_si(io_si) + bc_in(s)%cair_pa(ipa)*cpatch%area*area_inv
+            
             cpatch => cpatch%younger
          end do
 
@@ -5180,7 +5191,7 @@ contains
     real(r8) :: canopy_area_by_age(nlevage) ! canopy area in each bin for normalizing purposes
     real(r8) :: site_area_veg_inv           ! 1/area of the site that is not bare-ground 
     integer  :: ipa2     ! patch incrementer
-    integer :: clllpf_indx, cnlf_indx, ipft, ican, ileaf ! more iterators and indices
+    integer :: clllpf_indx, clll_indx, ipft, ican, ileaf ! more iterators and indices
     real(r8) :: clllpf_area  ! area footprint (m2) for the current cl x ll x pft bin
     real(r8) :: clll_area    ! area footprint (m2) for the cl x ll bin (ie adds up pfts in parallel)
     real(r8) :: cl_area      ! total weight of all ll x pft bins in the canopy layer
@@ -5232,8 +5243,12 @@ contains
          hio_parsun_si_can                   => this%hvars(ih_parsun_si_can)%r82d, &
          hio_parsha_si_can                   => this%hvars(ih_parsha_si_can)%r82d, &
          hio_laisun_si_can                    => this%hvars(ih_laisun_si_can)%r82d, &
-         hio_laisha_si_can                    => this%hvars(ih_laisha_si_can)%r82d )
-
+         hio_laisha_si_can                    => this%hvars(ih_laisha_si_can)%r82d, &
+         hio_ci_sun_clll    => this%hvars(ih_ci_sun_clll)%r82d, &
+         hio_ci_sha_clll    => this%hvars(ih_ci_sha_clll)%r82d, &
+         hio_psnsun_iter_clll => this%hvars(ih_psnsun_iter_clll)%r82d, &
+         hio_psnsha_iter_clll => this%hvars(ih_psnsha_iter_clll)%r82d)
+  
       ! Flush the relevant history variables
       call this%flush_hvars(nc,upfreq_in=group_hifr_complx)
 
@@ -5351,6 +5366,9 @@ contains
                             resp_g  * ccohort%n * dt_tstep_inv * ha_per_m2
                        hio_resp_m_canopy_si_scls(io_si,scls) = hio_resp_m_canopy_si_scls(io_si,scls) + &
                             ccohort%resp_m  * ccohort%n * dt_tstep_inv * ha_per_m2
+
+ 
+    
                     else
 
                        ! size-resolved respiration fluxes are in kg C / m2 / s
@@ -5366,6 +5384,7 @@ contains
                             resp_g  * ccohort%n * dt_tstep_inv  * ha_per_m2
                        hio_resp_m_understory_si_scls(io_si,scls) = hio_resp_m_understory_si_scls(io_si,scls) + &
                             ccohort%resp_m  * ccohort%n * dt_tstep_inv  * ha_per_m2
+
                     endif
                   end associate
                endif
@@ -5373,8 +5392,8 @@ contains
 !!! canopy leaf carbon balance
                ican = ccohort%canopy_layer
                do ileaf=1,ccohort%nv
-                  cnlf_indx = ileaf + (ican-1) * nlevleaf
-                  hio_ts_net_uptake_si_cnlf(io_si, cnlf_indx) = hio_ts_net_uptake_si_cnlf(io_si, cnlf_indx) + &
+                  clll_indx = ileaf + (ican-1) * nlevleaf
+                  hio_ts_net_uptake_si_cnlf(io_si, clll_indx) = hio_ts_net_uptake_si_cnlf(io_si, clll_indx) + &
                        ccohort%ts_net_uptake(ileaf) * dt_tstep_inv * ccohort%c_area * area_inv
                end do
 
@@ -5391,7 +5410,7 @@ contains
 
                      ! calculate where we are on multiplexed dimensions
                      clllpf_indx = ileaf + (ican-1) * nlevleaf + (ipft-1) * nlevleaf * nclmax
-                     cnlf_indx = ileaf + (ican-1) * nlevleaf
+                     clll_indx = ileaf + (ican-1) * nlevleaf
 
                      ! canopy_area_profile is the fraction of the total canopy area that
                      ! is occupied by this bin.  If you add up the top leaf layer bins in the
@@ -5399,6 +5418,20 @@ contains
 
                      clllpf_area = cpatch%canopy_area_profile(ican,ipft,ileaf)*cpatch%total_canopy_area
 
+                     ! Photosynthesis tracking variables
+                     hio_ci_sun_clll(io_si,clll_indx) = hio_ci_sun_clll(io_si,clll_indx) + &
+                          cpatch%co2_interc_sun(ican,ipft,ileaf) * clllpf_area
+
+                     hio_ci_sha_clll(io_si,clll_indx) = hio_ci_sha_clll(io_si,clll_indx) + &
+                          cpatch%co2_interc_sha(ican,ipft,ileaf) * clllpf_area
+                      
+                     hio_psnsun_iter_clll(io_si,clll_indx) = hio_psnsun_iter_clll(io_si,clll_indx) + &
+                          cpatch%psnsun_iter(ican,ipft,ileaf) * clllpf_area
+                     
+                     hio_psnsha_iter_clll(io_si,clll_indx) = hio_psnsha_iter_clll(io_si,clll_indx) + &
+                          cpatch%psnsha_iter(ican,ipft,ileaf) * clllpf_area
+                     
+                     
                      ! Canopy by leaf by pft level diagnostics
                      ! -------------------------------------------------------------------
                      hio_parsun_z_si_cnlfpft(io_si,clllpf_indx) = hio_parsun_z_si_cnlfpft(io_si,clllpf_indx) + &
@@ -5429,22 +5462,22 @@ contains
 
                      ! Canopy by leaf layer (mean across pfts) level diagnostics
                      ! ----------------------------------------------------------------------------
-                     hio_parprof_dir_si_cnlf(io_si,cnlf_indx) = hio_parprof_dir_si_cnlf(io_si,cnlf_indx) + &
+                     hio_parprof_dir_si_cnlf(io_si,clll_indx) = hio_parprof_dir_si_cnlf(io_si,clll_indx) + &
                           cpatch%parprof_pft_dir_z(ican,ipft,ileaf) * clllpf_area
 
-                     hio_parprof_dif_si_cnlf(io_si,cnlf_indx) = hio_parprof_dif_si_cnlf(io_si,cnlf_indx) + &
+                     hio_parprof_dif_si_cnlf(io_si,clll_indx) = hio_parprof_dif_si_cnlf(io_si,clll_indx) + &
                           cpatch%parprof_pft_dif_z(ican,ipft,ileaf) * clllpf_area
 
-                     hio_parsun_z_si_cnlf(io_si,cnlf_indx) = hio_parsun_z_si_cnlf(io_si,cnlf_indx) + &
+                     hio_parsun_z_si_cnlf(io_si,clll_indx) = hio_parsun_z_si_cnlf(io_si,clll_indx) + &
                           cpatch%ed_parsun_z(ican,ipft,ileaf) * clllpf_area
 
-                     hio_parsha_z_si_cnlf(io_si,cnlf_indx) = hio_parsha_z_si_cnlf(io_si,cnlf_indx) + &
+                     hio_parsha_z_si_cnlf(io_si,clll_indx) = hio_parsha_z_si_cnlf(io_si,clll_indx) + &
                           cpatch%ed_parsha_z(ican,ipft,ileaf) * clllpf_area
 
-                     hio_laisun_z_si_cnlf(io_si,cnlf_indx) = hio_laisun_z_si_cnlf(io_si,cnlf_indx) + &
+                     hio_laisun_z_si_cnlf(io_si,clll_indx) = hio_laisun_z_si_cnlf(io_si,clll_indx) + &
                           cpatch%f_sun(ican,ipft,ileaf)*clllpf_area
 
-                     hio_laisha_z_si_cnlf(io_si,cnlf_indx) = hio_laisha_z_si_cnlf(io_si,cnlf_indx) + &
+                     hio_laisha_z_si_cnlf(io_si,clll_indx) = hio_laisha_z_si_cnlf(io_si,clll_indx) + &
                           (1._r8-cpatch%f_sun(ican,ipft,ileaf))*clllpf_area
 
                      ! Canopy mean diagnostics
@@ -5488,8 +5521,9 @@ contains
                      hio_laisha_clllpf(io_si,clllpf_indx) = hlm_hio_ignore_val
                      hio_parprof_dir_si_cnlfpft(io_si,clllpf_indx) = hlm_hio_ignore_val
                      hio_parprof_dif_si_cnlfpft(io_si,clllpf_indx) = hlm_hio_ignore_val
+                     
                   else
-
+                     
                      hio_parsun_z_si_cnlfpft(io_si,clllpf_indx) = &
                           hio_parsun_z_si_cnlfpft(io_si,clllpf_indx)/hio_crownfrac_clllpf(io_si,clllpf_indx)
 
@@ -5516,29 +5550,54 @@ contains
                   end if
                end do do_ipft2
 
-               cnlf_indx = ileaf + (ican-1) * nlevleaf
+               clll_indx = ileaf + (ican-1) * nlevleaf
 
                if(clll_area<nearzero)then
-                  hio_parprof_dir_si_cnlf(io_si,cnlf_indx) = hlm_hio_ignore_val
-                  hio_parprof_dif_si_cnlf(io_si,cnlf_indx) = hlm_hio_ignore_val
-                  hio_parsun_z_si_cnlf(io_si,cnlf_indx) = hlm_hio_ignore_val
-                  hio_parsha_z_si_cnlf(io_si,cnlf_indx) = hlm_hio_ignore_val
-                  hio_laisun_z_si_cnlf(io_si,cnlf_indx) = hlm_hio_ignore_val
-                  hio_laisha_z_si_cnlf(io_si,cnlf_indx) = hlm_hio_ignore_val
+                  hio_parprof_dir_si_cnlf(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_parprof_dif_si_cnlf(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_parsun_z_si_cnlf(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_parsha_z_si_cnlf(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_laisun_z_si_cnlf(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_laisha_z_si_cnlf(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_ci_sun_clll(io_si,clll_indx)      = hlm_hio_ignore_val
+                  hio_ci_sha_clll(io_si,clll_indx)      = hlm_hio_ignore_val
+                  hio_psnsun_iter_clll(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_psnsha_iter_clll(io_si,clll_indx) = hlm_hio_ignore_val
+
+                  ! If there are zero iterations, then we didn't
+                  ! have photosynthesis, don't average in a zero!
+                  ! It will confuse statistics
+               elseif(hio_psnsun_iter_clll(io_si,clll_indx)==0)then
+                  hio_ci_sun_clll(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_ci_sha_clll(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_psnsun_iter_clll(io_si,clll_indx) = hlm_hio_ignore_val
+                  hio_psnsha_iter_clll(io_si,clll_indx) = hlm_hio_ignore_val
+                  
                else
 
-                  hio_parprof_dir_si_cnlf(io_si,cnlf_indx) = &
-                       hio_parprof_dir_si_cnlf(io_si,cnlf_indx)/clll_area
-                  hio_parprof_dif_si_cnlf(io_si,cnlf_indx) = &
-                       hio_parprof_dif_si_cnlf(io_si,cnlf_indx)/clll_area
-                  hio_parsun_z_si_cnlf(io_si,cnlf_indx) = &
-                       hio_parsun_z_si_cnlf(io_si,cnlf_indx)/clll_area
-                  hio_parsha_z_si_cnlf(io_si,cnlf_indx) = &
-                       hio_parsha_z_si_cnlf(io_si,cnlf_indx)/clll_area
-                  hio_laisun_z_si_cnlf(io_si,cnlf_indx) = &
-                       hio_laisun_z_si_cnlf(io_si,cnlf_indx)/clll_area
-                  hio_laisha_z_si_cnlf(io_si,cnlf_indx) = &
-                       hio_laisha_z_si_cnlf(io_si,cnlf_indx)/clll_area
+                  hio_ci_sun_clll(io_si,clll_indx) = &
+                       hio_ci_sun_clll(io_si,clll_indx)/clll_area
+                  hio_ci_sha_clll(io_si,clll_indx) = &
+                       hio_ci_sha_clll(io_si,clll_indx)/clll_area
+                  
+                  hio_psnsun_iter_clll(io_si,clll_indx) = &
+                       hio_psnsun_iter_clll(io_si,clll_indx)/clll_area
+                  
+                  hio_psnsha_iter_clll(io_si,clll_indx) = &
+                       hio_psnsha_iter_clll(io_si,clll_indx)/clll_area
+                  
+                  hio_parprof_dir_si_cnlf(io_si,clll_indx) = &
+                       hio_parprof_dir_si_cnlf(io_si,clll_indx)/clll_area
+                  hio_parprof_dif_si_cnlf(io_si,clll_indx) = &
+                       hio_parprof_dif_si_cnlf(io_si,clll_indx)/clll_area
+                  hio_parsun_z_si_cnlf(io_si,clll_indx) = &
+                       hio_parsun_z_si_cnlf(io_si,clll_indx)/clll_area
+                  hio_parsha_z_si_cnlf(io_si,clll_indx) = &
+                       hio_parsha_z_si_cnlf(io_si,clll_indx)/clll_area
+                  hio_laisun_z_si_cnlf(io_si,clll_indx) = &
+                       hio_laisun_z_si_cnlf(io_si,clll_indx)/clll_area
+                  hio_laisha_z_si_cnlf(io_si,clll_indx) = &
+                       hio_laisha_z_si_cnlf(io_si,clll_indx)/clll_area
                end if
             end do do_ileaf2
 
@@ -8504,6 +8563,13 @@ contains
             avgflag='A', vtype=site_r8, hlms='CLM:ALM',  upfreq=group_hifr_simple,                &
             ivar=ivar, initialize=initialize_variables, index = ih_c_lblayer_si)
 
+
+       call this%set_history_var(vname='FATES_CANCO2', units='Pa',        &
+               long='CO2 partial pressure of canopy air', &
+               use_default='active', avgflag='A', vtype=site_r8,               &
+               hlms='CLM:ALM', upfreq=group_hifr_simple, ivar=ivar, &
+               initialize=initialize_variables, index = ih_canco2_si)
+       
        ! Temperature
 
        call this%set_history_var(vname='FATES_TVEG', units='degree_Celsius', &
@@ -8720,6 +8786,30 @@ contains
           ! over the short timestep. We turn off these variables when we want
           ! to save time (and some space)
 
+          call this%set_history_var(vname='FATES_CI_SUN_CLLL', units='Pa',        &
+               long='Intracellular CO2 Concentration in sunlit leaves', &
+               use_default='inactive', avgflag='A', vtype=site_cnlf_r8,               &
+               hlms='CLM:ALM', upfreq=group_hifr_complx, ivar=ivar, initialize=initialize_variables, &
+               index = ih_ci_sun_clll)
+
+          call this%set_history_var(vname='FATES_CI_SHA_CLLL', units='Pa',        &
+               long='Intracellular CO2 Concentration in shaded leaves', &
+               use_default='inactive', avgflag='A', vtype=site_cnlf_r8,               &
+               hlms='CLM:ALM', upfreq=group_hifr_complx, ivar=ivar, initialize=initialize_variables, &
+               index = ih_ci_sha_clll)
+
+          call this%set_history_var(vname='FATES_PSNSUN_ITER_CLLL', units='count',        &
+               long='Convergence iterations for photosynthesis on sunlit leaves', &
+               use_default='inactive', avgflag='A', vtype=site_cnlf_r8,               &
+               hlms='CLM:ALM', upfreq=group_hifr_complx, ivar=ivar, initialize=initialize_variables, &
+               index = ih_psnsun_iter_clll)
+          
+          call this%set_history_var(vname='FATES_PSNSHA_ITER_CLLL', units='count',        &
+               long='Convergence iterations for photosynthesis on shaded leaves', &
+               use_default='inactive', avgflag='A', vtype=site_cnlf_r8,               &
+               hlms='CLM:ALM', upfreq=group_hifr_complx, ivar=ivar, initialize=initialize_variables, &
+               index = ih_psnsha_iter_clll)
+                  
           call this%set_history_var(vname='FATES_NPP_AP', units='kg m-2 s-1',        &
                long='net primary productivity by age bin in kg carbon per m2 per second', &
                use_default='inactive', avgflag='A', vtype=site_age_r8,               &
