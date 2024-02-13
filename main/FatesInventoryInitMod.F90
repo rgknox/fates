@@ -37,7 +37,6 @@ module FatesInventoryInitMod
    use FatesInterfaceTypesMod, only : hlm_inventory_ctrl_file
    use FatesInterfaceTypesMod, only : nleafage
    use FatesInterfaceTypesMod, only : hlm_current_tod
-   use FatesInterfaceTypesMod, only : hlm_numSWb
    use FatesInterfaceTypesMod, only : numpft
    use FatesLitterMod   , only : litter_type
    use EDTypesMod       , only : ed_site_type
@@ -71,12 +70,12 @@ module FatesInventoryInitMod
    use PRTGenericMod,       only : nitrogen_element
    use PRTGenericMod,       only : phosphorus_element
    use PRTGenericMod,       only : SetState
-   use FatesConstantsMod,   only : primaryforest
+   use FatesConstantsMod,   only : primaryland
    use FatesRunningMeanMod, only : ema_lpa
    use PRTGenericMod,       only : StorageNutrientTarget
    use FatesConstantsMod,   only : fates_unset_int
    use EDCanopyStructureMod, only : canopy_summarization, canopy_structure
-
+   use FatesRadiationMemMod, only : num_swb
    implicit none
    private
 
@@ -284,14 +283,13 @@ contains
             age_init            = 0.0_r8
             area_init           = 0.0_r8
             allocate(newpatch)
-            call newpatch%Create(age_init, area_init, primaryforest,           &
-               fates_unset_int, hlm_numSWb, numpft, sites(s)%nlevsoil,         &
+            call newpatch%Create(age_init, area_init, primaryland,           &
+               fates_unset_int, num_swb, numpft, sites(s)%nlevsoil,         &
                hlm_current_tod, regeneration_model)
 
             newpatch%patchno = ipa
             newpatch%younger => null()
             newpatch%older   => null()
-
 
             if( inv_format_list(invsite) == 1 ) then
                call set_inventory_patch_type1(newpatch,pss_file_unit,ipa,ios,patch_name)
@@ -953,7 +951,7 @@ contains
             temp_cohort%height  = c_height
             call h2d_allom(c_height,temp_cohort%pft,temp_cohort%dbh)
          end if
-            
+
          temp_cohort%canopy_trim = 1.0_r8
 
          ! Determine the phenology status and the elongation factors.
