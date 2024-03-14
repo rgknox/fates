@@ -44,7 +44,7 @@
                                             ! elastic-caviation region
 
 
-  real(r8), parameter :: min_psi_cch = -9._r8 ! Minimum psi we are willing to track in cch
+  real(r8), parameter :: min_psi_cch = -25._r8 ! Minimum psi we are willing to track in cch [MPa]
   
   ! Generic class that can be extended to describe
   ! specific water retention functions

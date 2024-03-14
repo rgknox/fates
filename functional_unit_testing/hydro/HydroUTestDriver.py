@@ -157,9 +157,11 @@ def OMParams(zsoi):
     om_bsw            = min(2.7  + 9.3   *(zsoi/zsapric), 12.0)
     om_sucsat         = min(10.3 - 0.2   *(zsoi/zsapric), 10.1)
 
+    #om_sucsat = SuctionMMtoMPa(om_sucsat)
+    
     return(om_watsat,om_sucsat,om_bsw)
     
-def CCHParmsCosby84T5(om_frac,sand_frac,clay_frac):
+def CCHParmsCosby84T5(zsoi,om_frac,sand_frac,clay_frac):
              
     # cosby_1984_table5
 
@@ -168,18 +170,33 @@ def CCHParmsCosby84T5(om_frac,sand_frac,clay_frac):
     bsw    = 2.91 + 0.159*clay_frac
     sucsat = 10. * ( 10.**(1.88-0.0131*sand_frac) ) 
 
-
+    [om_watsat,om_sucsat,om_bsw] = OMParams(zsoi)
     
     # Update pedotransfer to include organic material
     watsat  = (1.0 - om_frac) * watsat  + om_watsat * om_frac
     bsw     = (1.0 - om_frac) * bsw     + om_bsw * om_frac
     sucsat  = (1.0 - om_frac) * sucsat  + om_sucsat * om_frac
 
+    # Convert from mm to MPa
+    sucsat = SuctionMMtoMPa(sucsat)
+
+    
     # psi = psi_sat*(th/th_sat)**(-beta)
     # th  = th_sat*(psi / psi_sat)^(-1/beta)
     
     return(watsat,sucsat,bsw)
+
+
+def SuctionMMtoMPa(suction_mm):
+
+    denh2o     = 1.0e3    # kg/m3
+    grav_earth = 9.8      # m/s2
+    mpa_per_pa = 1.0e-6   # MPa per Pa
+    m_per_mm   = 1.0e-3   # meters per millimeter
     
+    suction_mpa = (-1.0)*suction_mm*denh2o*grav_earth*mpa_per_pa*m_per_mm
+
+    return(suction_mpa)
                 
 def main(argv):
 
@@ -216,8 +233,10 @@ def main(argv):
 #    avuln   = [2.0, 2.0, 2.5, 2.5]
 #    p50     = [-1.5, -1.5, -2.25, -2.25]
 
-    ncomp= 4
 
+    ncomp = 4
+    ncomp_tot = 20
+    
     rwc_fd  = [1.0,0.958,0.958,0.958]
     rwccap  = [1.0,0.947,0.947,0.947]
     cap_slp = []
@@ -238,7 +257,7 @@ def main(argv):
 
 
     # Allocate memory to our objective classes
-    iret = initalloc_wtfs(ci(ncomp),ci(ncomp))
+    iret = initalloc_wtfs(ci(ncomp_tot),ci(ncomp_tot))
     print('Allocated')
 
 
@@ -411,11 +430,11 @@ def main(argv):
     ax2.set_xlabel('Saturated Suction [mm]')
     ax3.set_ylabel('soil depth')
     ax3.set_xlabel('beta ')
-#    ax1.set_xlim([-10,3])
-#    ax1.set_ylim([0,2])
-#    ax1.set_ylim([0,10])
-#    ax1.legend(loc='upper right')
-    plt.show()
+    #    ax1.set_xlim([-10,3])
+    #    ax1.set_ylim([0,2])
+    #    ax1.set_ylim([0,10])
+    #    ax1.legend(loc='upper right')
+    plt.tight_layout()
 
         
     # Soil texture distributions
@@ -423,9 +442,12 @@ def main(argv):
     #clay_frac = np.zeros(shape=(100,1))
     #sand_frac = np.zeros(shape=(100,1))
     #om_frac   = np.zeros(shape=(100,1))
-
     #clay_frac = np.linspace(0.0, 0.7, num=npts)
 
+    watsat_v = []
+    sucsat_v = []
+    bsw_v    = []
+    
     ntex = 100
     for icl in range(ntex):
         clay_frac = float(ic)/float(ntex)
@@ -433,13 +455,52 @@ def main(argv):
             sand_frac =  float(isa)/float(ntex)
             
             if( (clay_frac+sand_frac)<1.0 ):
+                for om_frac in [0.0,1.0]:
+                    for zsoi in [0.01,10.0]:
+                        [watsat,sucsat,bsw] = CCHParmsCosby84T5(zsoi,om_frac,sand_frac,clay_frac)
+                        watsat_v.append(watsat)
+                        sucsat_v.append(sucsat)
+                        bsw_v.append(bsw)
+                
 
-                for iom in range(ntex):
-                    om_frac = float(iom)/float(ntex)
-                    #[watsat,sucsat,bsw] = CCHParmsCosby84T5(om_frac,sand_frac,clay_frac)
+    fig5,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(9,6))
     
+    ax1.hist(watsat_v,bins=50)
+    ax2.hist(sucsat_v,bins=50)
+    ax3.hist(bsw_v,bins=50)
+    ax4.axis('off')
+
+    
+    ax1.set_xlabel('Sat. WC [m3/m3]')
+    ax2.set_xlabel('Sat. Sucation [MPa]')
+    ax3.set_xlabel('Beta')
+
+    plt.tight_layout()
+
+    ind = []
+    ind.append(np.argmin(bsw_v))
+    ind.append(np.argmax(bsw_v))
+    ind.append(np.argmin(sucsat_v))
+    ind.append(np.argmax(sucsat_v))
+    ind.append(np.argmin(watsat_v))
+    ind.append(np.argmax(watsat_v))
+    
+    # Now lets test the lowest possible water contents using these 
+
+    ii=4
+
+    for i in ind:
+        ii = ii+1
+        cch_wrf(ii,th_sat=watsat_v[i], psi_sat=sucsat_v[i], beta=bsw_v[i])
+        cch_wkf(ii,th_sat=watsat_v[i], psi_sat=sucsat_v[i], beta=bsw_v[i])
+        print('---th sat: {}, psi sat: {}, beat: {}'.format(watsat_v[i],sucsat_v[i],bsw_v[i]))
+        for psi in -np.linspace(1,24,24):
+            th = th_from_psi(ci(ii),c8(psi))
+            print('{}, psi: {}, th: {}'.format(ii,psi,th))
     
 
+
+    #plt.show()
 
 #    code.interact(local=dict(globals(), **locals()))
 
