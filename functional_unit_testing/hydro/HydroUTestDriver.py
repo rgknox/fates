@@ -150,18 +150,43 @@ class tfs_wkf:
         iret = setwkf(ci(index),ci(tfs_type),ci(len(init_wkf_args)),c8_arr(init_wkf_args))
 
 
+def OMParams(zsoi):
+
+    zsapric= 0.5
+    om_watsat         = max(0.93 - 0.1   *(zsoi/zsapric), 0.83)
+    om_bsw            = min(2.7  + 9.3   *(zsoi/zsapric), 12.0)
+    om_sucsat         = min(10.3 - 0.2   *(zsoi/zsapric), 10.1)
+
+    return(om_watsat,om_sucsat,om_bsw)
+    
+def CCHParmsCosby84T5(om_frac,sand_frac,clay_frac):
+             
+    # cosby_1984_table5
+
+    # Get pedotransfer for soil matrix
+    watsat = 0.489 - 0.00126*sand_frac
+    bsw    = 2.91 + 0.159*clay_frac
+    sucsat = 10. * ( 10.**(1.88-0.0131*sand_frac) ) 
+
+
+    
+    # Update pedotransfer to include organic material
+    watsat  = (1.0 - om_frac) * watsat  + om_watsat * om_frac
+    bsw     = (1.0 - om_frac) * bsw     + om_bsw * om_frac
+    sucsat  = (1.0 - om_frac) * sucsat  + om_sucsat * om_frac
+
+    # psi = psi_sat*(th/th_sat)**(-beta)
+    # th  = th_sat*(psi / psi_sat)^(-1/beta)
+    
+    return(watsat,sucsat,bsw)
+    
+                
 def main(argv):
 
-    # First check to make sure python 2.7 is being used
+
     version = platform.python_version()
     verlist = version.split('.')
 
-    if( not ((verlist[0] == '2') & (verlist[1] ==  '7') & (int(verlist[2])>=15) )  ):
-        print("The PARTEH driver mus be run with python 2.7")
-        print(" with tertiary version >=15.")
-        print(" your version is {}".format(version))
-        print(" exiting...")
-        sys.exit(2)
 
     # Read in the arguments
     # =======================================================================================
@@ -361,9 +386,59 @@ def main(argv):
     ax1.set_ylim([0,2])
 #    ax1.set_ylim([0,10])
     ax1.legend(loc='upper right')
+
+
+    ndepth = 1000
+    zdepth = np.linspace(0.01,10.0,num = ndepth)
+
+    om_watsat_z = np.zeros(shape=(ndepth,1))
+    om_sucsat_z = np.zeros(shape=(ndepth,1))
+    om_bsw_z    = np.zeros(shape=(ndepth,1))
+
+    for icl in range(ndepth):
+        [om_watsat_z[icl],om_sucsat_z[icl],om_bsw_z[icl]] = OMParams(zdepth[icl])
+
+    fig4,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(9,6))
+    
+    ax1.plot(om_watsat_z,-zdepth)
+    ax2.plot(om_sucsat_z,-zdepth)
+    ax3.plot(om_bsw_z,-zdepth)
+    ax4.axis('off')
+
+    
+    ax1.set_ylabel('soil depth')
+    ax1.set_xlabel('Saturated WC [m3/m3]')
+    ax2.set_xlabel('Saturated Suction [mm]')
+    ax3.set_ylabel('soil depth')
+    ax3.set_xlabel('beta ')
+#    ax1.set_xlim([-10,3])
+#    ax1.set_ylim([0,2])
+#    ax1.set_ylim([0,10])
+#    ax1.legend(loc='upper right')
     plt.show()
 
+        
+    # Soil texture distributions
 
+    #clay_frac = np.zeros(shape=(100,1))
+    #sand_frac = np.zeros(shape=(100,1))
+    #om_frac   = np.zeros(shape=(100,1))
+
+    #clay_frac = np.linspace(0.0, 0.7, num=npts)
+
+    ntex = 100
+    for icl in range(ntex):
+        clay_frac = float(ic)/float(ntex)
+        for isa in range(ntex):
+            sand_frac =  float(isa)/float(ntex)
+            
+            if( (clay_frac+sand_frac)<1.0 ):
+
+                for iom in range(ntex):
+                    om_frac = float(iom)/float(ntex)
+                    #[watsat,sucsat,bsw] = CCHParmsCosby84T5(om_frac,sand_frac,clay_frac)
+    
+    
 
 
 #    code.interact(local=dict(globals(), **locals()))
