@@ -60,6 +60,15 @@ _ALL_TESTS_DICT = {
           "other_args": [],
           "plotting_function": plot_allometry_dat,
         },
+        "twostream": {
+          "test_dir": "fates_twostream_test",
+          "test_exe": "FATES_twostream_exe",
+          "out_file": "twostream_out.nc",
+          "has_unit_test": False,
+          "use_param_file": True,
+          "other_args": [],
+          "plotting_function": plot_twostream_dat,
+        },
         "quadratic": {
           "test_dir": "fates_math_test",
           "test_exe": "FATES_math_exe",
