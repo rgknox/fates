@@ -29,7 +29,8 @@
     <!-- Override values for the new PFT, this is now PFT 8 -->
     <!-- because it duplicated the 7th PFT -->
     <pft_group ids="8">
-      <fates_pft_name> broadleaf_evergreen_shrub2 </fates_pft_name>
+      <!-- The modify scripts can't change the name ... sorry 
+	   <fates_pft_name> broadleaf_evergreen_shrub2 </fates_pft_name> -->
       <fates_leaf_slatop> 0.005 </fates_leaf_slatop>
       <fates_leaf_vcmax25top> 62 </fates_leaf_vcmax25top>
       <fates_wood_density> 0.4 </fates_wood_density>
