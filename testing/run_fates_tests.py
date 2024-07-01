@@ -70,7 +70,7 @@ _ALL_TESTS_DICT = {
           "other_args": [],
           "plotting_function": plot_quadratic_dat,
         },
-        "fire_weather":{
+        "fire_weather": {
             "test_dir": "fates_fire_weather_utest",
             "test_exe": None,
             "out_file": None,
@@ -78,7 +78,16 @@ _ALL_TESTS_DICT = {
             "use_param_file": False,
             "other_args": [],
             "plotting_function": None,
-        }
+        },
+        "leaf_photosynthesis": {
+            "test_dir": "fates_photo_ftest",
+            "test_exe": "FATES_leafphoto_exe",
+            "out_file": None,
+            "has_unit_test": False,
+            "use_param_file": True,
+            "other_args": [],
+            "plotting_function": None,
+        },
     }
 
 def run_fortran_exectuables(build_dir, test_dir, test_exe, run_dir, args):

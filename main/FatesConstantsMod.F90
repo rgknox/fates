@@ -303,6 +303,9 @@ integer, parameter, public :: isemi_stress_decid = 2 ! If the PFT is stress (dro
   ! Approximate molar mass of water vapor to dry air (-)
   real(fates_r8), parameter, public :: molar_mass_ratio_vapdry= 0.622_fates_r8
   
+  ! unit conversion of W/m2 to umol photons/m^2/s
+  real(fates_r8), parameter, public :: wm2_to_umolm2s = 4.6_fates_r8 
+  
   ! Gravity constant on earth [m/s]
   real(fates_r8), parameter, public :: grav_earth = 9.8_fates_r8
 
