@@ -91,7 +91,7 @@ module FATESPlantRespPhotosynthMod
   !-------------------------------------------------------------------------------------
 
   ! maximum stomatal resistance [s/m] (used across several procedures)
-  real(r8),parameter :: rsmax0 =  2.e8_r8
+  real(r8), parameter :: rsmax0 =  2.e8_r8
 
   logical   ::  debug = .false.
   !-------------------------------------------------------------------------------------
@@ -269,6 +269,8 @@ contains
     real(r8) :: rd_abs_leaf, rb_abs_leaf, r_abs_stem, r_abs_snow, rb_abs, rd_abs
     real(r8) :: fsun
     real(r8) :: par_per_sunla, par_per_shala ! PAR per sunlit and shaded leaf area [W/m2 leaf]
+    real(r8) :: ppfd_sun   ! PAR for sunlit leaf [umol photos/m2/s]
+    real(r8) :: ppfd_shade ! PAR for shaded leaf [umol photos/m2/s]
     real(r8),dimension(75) :: cohort_vaitop
     real(r8),dimension(75) :: cohort_vaibot
     real(r8),dimension(75) :: cohort_layer_elai
@@ -277,7 +279,9 @@ contains
     real(r8),dimension(75) :: cohort_layer_tsai
     real(r8)               :: cohort_elai
     real(r8)               :: cohort_esai
-    real(r8)               :: laisun,laisha
+    real(r8)               :: laisun, laisha
+    real(r8)               :: leaf_area_sun    ! sunlit leaf area [m2]
+    real(r8)               :: leaf_area_shade  ! shaded leaf area [m2]
     real(r8)               :: canopy_area
     real(r8)               :: elai
     ! -----------------------------------------------------------------------------------
@@ -690,37 +694,61 @@ contains
 
                                  ! Part IX: This call calculates the actual photosynthesis for the
                                  ! leaf layer, as well as the stomatal resistance and the net assimilated carbon.
-
-                                 call LeafLayerPhotosynthesis(fsun,       &  ! in
-                                      par_per_sunla,                      &  ! in
-                                      par_per_shala,                      &  ! in
-                                      laisun,                             &  ! in
-                                      laisha,                             &  ! in
-                                      canopy_area,                        &  ! in
-                                      ft,                                 &  ! in
-                                      vcmax_z,                            &  ! in
-                                      jmax_z,                             &  ! in
-                                      kp_z,                               &  ! in
-                                      bc_in(s)%t_veg_pa(ifp),             &  ! in
-                                      bc_in(s)%esat_tv_pa(ifp),           &  ! in
-                                      bc_in(s)%forc_pbot,                 &  ! in
-                                      bc_in(s)%cair_pa(ifp),              &  ! in
-                                      bc_in(s)%oair_pa(ifp),              &  ! in
-                                      btran_eff,                          &  ! in
-                                      stomatal_intercept_btran,           &  ! in
-                                      cf,                                 &  ! in
-                                      gb_mol,                             &  ! in
-                                      ceair,                              &  ! in
-                                      mm_kco2,                            &  ! in
-                                      mm_ko2,                             &  ! in
-                                      co2_cpoint,                         &  ! in
-                                      lmr_z(iv,ft,cl),                    &  ! in
-                                      leaf_psi,                           &  ! in
-                                      bc_in(s)%rb_pa(ifp),                &  ! in  
-                                      currentPatch%psn_z(cl,ft,iv),       &  ! out
-                                      rs_z(iv,ft,cl),                     &  ! out
-                                      anet_av_z(iv,ft,cl),                &  ! out
-                                      c13disc_z(cl,ft,iv))                   ! out
+                                 if (par_per_sunla <= 0.0_r8) then
+                                    
+                                    ! nighttime
+                                    call NighttimeGasExchange(stomatal_intercept_btran,   &
+                                       cf, lmr_z(iv,ft,cl), currentPatch%psn_z(cl,ft,iv), &
+                                       rs_z(iv,ft,cl), anet_av_z(iv,ft,cl),               &
+                                       c13disc_z(cl,ft,iv))
+                                 else 
+                                    ! daytime
+                                    if (laisun + laisha > 0.0_r8) then 
+                                       
+                                       ! calculate leaf area as LAI * canopy area
+                                       leaf_area_sun = laisun*canopy_area
+                                       leaf_area_shade = laisha*canopy_area
+                                       
+                                       ! convert par from W/m2 to umol photons/m2/s so it is
+                                       ! consistent with vcmax and lmr units
+                                       ppfd_sun = ConvertPar(par_per_sunla, leaf_area_sun)
+                                       ppfd_shade = ConvertPar(par_per_shala, leaf_area_shade)
+                                       
+                                       call LeafLayerPhotosynthesis(fsun,     &  ! in
+                                          ppfd_sun,                           &  ! in
+                                          ppfd_shade,                         &  ! in
+                                          ft,                                 &  ! in
+                                          vcmax_z,                            &  ! in
+                                          jmax_z,                             &  ! in
+                                          kp_z,                               &  ! in
+                                          bc_in(s)%t_veg_pa(ifp),             &  ! in
+                                          bc_in(s)%esat_tv_pa(ifp),           &  ! in
+                                          bc_in(s)%forc_pbot,                 &  ! in
+                                          bc_in(s)%cair_pa(ifp),              &  ! in
+                                          bc_in(s)%oair_pa(ifp),              &  ! in
+                                          btran_eff,                          &  ! in
+                                          stomatal_intercept_btran,           &  ! in
+                                          cf,                                 &  ! in
+                                          gb_mol,                             &  ! in
+                                          ceair,                              &  ! in
+                                          mm_kco2,                            &  ! in
+                                          mm_ko2,                             &  ! in
+                                          co2_cpoint,                         &  ! in
+                                          lmr_z(iv,ft,cl),                    &  ! in
+                                          leaf_psi,                           &  ! in
+                                          bc_in(s)%rb_pa(ifp),                &  ! in  
+                                          currentPatch%psn_z(cl,ft,iv),       &  ! out
+                                          rs_z(iv,ft,cl),                     &  ! out
+                                          anet_av_z(iv,ft,cl),                &  ! out
+                                          c13disc_z(cl,ft,iv))                   ! out
+                                    else 
+                                       ! no leaf area, so we just transpire some through stems
+                                       ! net assimilation is 0.0, c13 is 0.0
+                                       call GasExchangeStemsNoLeafArea(cf,                  &
+                                          currentPatch%psn_z(cl,ft,iv), rs_z(iv,ft,cl),     &
+                                          anet_av_z(iv,ft,cl), c13disc_z(cl,ft,iv))
+                                    end if
+                                 end if
 
                                  rate_mask_z(iv,ft,cl) = .true.
 
@@ -1164,8 +1192,8 @@ contains
 
   ! =======================================================================================
 
-   subroutine LeafLayerPhotosynthesis(f_sun_lsl, parsun_lsl, parsha_lsl, laisun_lsl,     &  
-      laisha_lsl, canopy_area_lsl, ft, vcmax, jmax, co2_rcurve_islope, veg_tempk,        &  
+   subroutine LeafLayerPhotosynthesis(f_sun_lsl, parsun_lsl, parsha_lsl,                 &
+      ft, vcmax, jmax, co2_rcurve_islope, veg_tempk,                                     &  
       veg_esat, can_press, can_co2_ppress, can_o2_ppress, btran,                         &
       stomatal_intercept_btran, cf, gb_mol, ceair, mm_kco2, mm_ko2, co2_cpoint, lmr,     &  
       leaf_psi, rb, psn_out, rstoma_out, anet_av_out, c13disc_z)
@@ -1189,15 +1217,12 @@ contains
       ! layer.  We use the convention "can_" because a reference point of within the canopy
       ! ia a best reasonable scenario of where we can get that information from.
       
-      use EDParamsMod,       only : theta_cj_c3, theta_cj_c4
+      use EDParamsMod, only : theta_cj_c3, theta_cj_c4
 
       ! ARGUMENTS:
       real(r8), intent(in)  :: f_sun_lsl         ! fraction sunlit leaf area / shaded leaf area [0-1]
-      real(r8), intent(in)  :: parsun_lsl        ! absorbed PAR in sunlit leaves [W/m2]
-      real(r8), intent(in)  :: parsha_lsl        ! absorved PAR in shaded leaves [W/m2]
-      real(r8), intent(in)  :: laisun_lsl        ! LAI in sunlit leaves [m2 leaves/m2 canopy area]
-      real(r8), intent(in)  :: laisha_lsl        ! LAI in shaded leaves [m2 leaves/m2 canopy area]
-      real(r8), intent(in)  :: canopy_area_lsl   ! canopy area [m2]
+      real(r8), intent(in)  :: parsun_lsl        ! absorbed PAR in sunlit leaves [umol photos/m2/s]
+      real(r8), intent(in)  :: parsha_lsl        ! absorved PAR in shaded leaves [umol photos/m2/s]
       integer,  intent(in)  :: ft                ! plant functional type index
       real(r8), intent(in)  :: vcmax             ! maximum rate of carboxylation [umol co2/m^2/s]
       real(r8), intent(in)  :: jmax              ! maximum electron transport rate [umol electrons/m^2/s]
@@ -1226,8 +1251,6 @@ contains
       ! LOCALS:
       integer  :: c3c4_path_index     ! index for which photosynthetic pathway is active [C4 = 0; C3 = 1]
       integer  :: sunsha              ! looping index for sun and shade leaves
-      real(r8) :: leaf_area_sun       ! sunlit leaf area [m2]
-      real(r8) :: leaf_area_shade     ! shaded leaf area [m2]
       real(r8) :: gstoma              ! stomatal conductance of this leaf layer [m/s]
       real(r8) :: agross              ! co-limited gross leaf photosynthesis [umol CO2/m^2/s]
       real(r8) :: anet                ! net leaf photosynthesis [umol CO2/m^2/s]
@@ -1254,7 +1277,6 @@ contains
       real(r8) :: vpd                 ! water vapor deficit in Medlyn stomatal model [kPa]
 
       ! CONSTANTS 
-      real(r8), parameter :: stem_cuticle_loss_frac = 0.1_r8 ! for plants with no leaves, a miniscule amount of conductance can happen through the stems, at a partial rate of cuticular conductance
       real(r8), parameter :: theta_psii = 0.7_r8             ! empirical curvature parameter for electron transport rate
       real(r8), parameter :: init_a2l_co2_c3 = 0.7_r8        ! first guess on ratio between intercellular co2 and the atmosphere for C3 plants [0-1]
       real(r8), parameter :: init_a2l_co2_c4 = 0.4_r8        ! first guess on ratio between intercellular co2 and the atmosphere for C4 plants [0-1]
@@ -1274,285 +1296,301 @@ contains
             init_co2_inter_c = init_a2l_co2_c4*can_co2_ppress
          end if
 
-         if_daytime: if (parsun_lsl <= 0.0_r8) then  
+         ! loop around shaded and sunlit leaves
+         psn_out     = 0.0_r8 ! psn is accumulated across sun and shaded leaves.
+         rstoma_out  = 0.0_r8 ! 1/rs is accumulated across sun and shaded leaves.
+         anet_av_out = 0.0_r8
+         gstoma  = 0.0_r8
 
-            ! night time
-            anet_av_out = -lmr
-            psn_out = 0._r8
-
-            ! the cuticular conductance already factored in maximum resistance as a bound
-            ! no need to re-bound it
-            rstoma_out = cf/stomatal_intercept_btran
-
-            c13disc_z = 0.0_r8 ! carbon 13 discrimination in night time carbon flux, note value of 1.0 is used in CLM
-
-         else
-
-            ! day time
-            ! Is there leaf area? - (NV can be larger than 0 with only stem area if deciduous)
-            if_leafarea: if (laisun_lsl + laisha_lsl > 0.0_r8) then
+         do sunsha = 1, 2
                
-               ! calculate leaf area as LAI * canopy area
-               leaf_area_sun = laisun_lsl*canopy_area_lsl
-               leaf_area_shade = laisha_lsl*canopy_area_lsl
+            if (sunsha == 1) then 
+               qabs = parsun_lsl              
+            else
+               qabs = parsha_ls
+            end if
 
-               ! loop around shaded and sunlit leaves
-               psn_out     = 0.0_r8 ! psn is accumulated across sun and shaded leaves.
-               rstoma_out  = 0.0_r8 ! 1/rs is accumulated across sun and shaded leaves.
-               anet_av_out = 0.0_r8
-               gstoma  = 0.0_r8
+            ! electron transport rate for C3 plants
+            aquad = theta_psii
+            bquad = -(qabs + jmax)
+            cquad = qabs*jmax
+            call QuadraticRoots(aquad, bquad, cquad, r1, r2)
+            je = min(r1, r2)
 
-               do sunsha = 1, 2
-                     
-                  ! convert par from W/m2 to umol photons/m2/s so it is consistent
-                  ! with vcmax and lmr numbers
-                  if (sunsha == 1) then 
-                     qabs = ConvertPar(parsun_lsl, leaf_area_sun)                  
-                  else
-                     qabs = ConvertPar(parsha_ls, leaf_area_shade)
-                  end if
+            ! initialize intercellular co2
+            co2_inter_c = init_co2_inter_c
 
-                  ! electron transport rate for C3 plants
-                  aquad = theta_psii
-                  bquad = -(qabs + jmax)
-                  cquad = qabs*jmax
+            niter = 0
+            loop_continue = .true.
+            iter_loop: do while(loop_continue)
+               
+               ! increment iteration counter. Stop if too many iterations
+               niter = niter + 1
+
+               ! save old co2_inter_c
+               co2_inter_c_old = co2_inter_c
+
+               ! photosynthesis limitation rate calculations
+               if (c3c4_path_index == c3_path_index) then
+
+                  ! C3: Rubisco-limited photosynthesis
+                  ac = vcmax*max(co2_inter_c - co2_cpoint, 0.0_r8)/                &
+                     (co2_inter_c + mm_kco2*(1.0_r8 + can_o2_ppress/mm_ko2))
+
+                  ! C3: RuBP-limited photosynthesis
+                  aj = je*max(co2_inter_c - co2_cpoint, 0.0_r8)/                   &
+                     (4.0_r8*co2_inter_c + 8.0_r8*co2_cpoint)
+
+                  ! Gross photosynthesis smoothing calculations. Co-limit ac and aj.
+                  aquad = theta_cj_c3
+                  bquad = -(ac + aj)
+                  cquad = ac*aj
                   call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-                  je = min(r1, r2)
+                  agross = min(r1,r2)
 
-                  ! initialize intercellular co2
-                  co2_inter_c = init_co2_inter_c
+               else
 
-                  niter = 0
-                  loop_continue = .true.
-                  iter_loop: do while(loop_continue)
-                     
-                     ! increment iteration counter. Stop if too many iterations
-                     niter = niter + 1
+                  ! C4: Rubisco-limited photosynthesis
+                  ac = vcmax
 
-                     ! save old co2_inter_c
-                     co2_inter_c_old = co2_inter_c
+                  ! C4: RuBP-limited photosynthesis
+                  aj = quant_eff*qabs
+                  
+                  ! C4: PEP carboxylase-limited (CO2-limited)
+                  ap = co2_rcurve_islope*max(co2_inter_c, 0._r8)/can_press
 
-                     ! photosynthesis limitation rate calculations
-                     if (c3c4_path_index == c3_path_index) then
+                  ! gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
+                  aquad = theta_cj_c4
+                  bquad = -(ac + aj)
+                  cquad = ac * aj
+                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
+                  ai = min(r1,r2)
 
-                        ! C3: Rubisco-limited photosynthesis
-                        ac = vcmax*max(co2_inter_c - co2_cpoint, 0.0_r8)/                &
-                           (co2_inter_c + mm_kco2*(1.0_r8 + can_o2_ppress/mm_ko2))
+                  aquad = theta_ip
+                  bquad = -(ai + ap)
+                  cquad = ai * ap
+                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
+                  agross = min(r1,r2)
 
-                        ! C3: RuBP-limited photosynthesis
-                        aj = je*max(co2_inter_c - co2_cpoint, 0.0_r8)/                   &
-                           (4.0_r8*co2_inter_c + 8.0_r8*co2_cpoint)
+               end if
 
-                        ! Gross photosynthesis smoothing calculations. Co-limit ac and aj.
-                        aquad = theta_cj_c3
-                        bquad = -(ac + aj)
-                        cquad = ac*aj
-                        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-                        agross = min(r1,r2)
+               ! calculate anet, only exit iteration with negative anet when
+               ! using anet in calculating gs this is version B  
+               anet = agross  - lmr
 
-                     else
-
-                        ! C4: Rubisco-limited photosynthesis
-                        ac = vcmax
-
-                        ! C4: RuBP-limited photosynthesis
-                        aj = quant_eff*qabs
-                        
-                        ! C4: PEP carboxylase-limited (CO2-limited)
-                        ap = co2_rcurve_islope*max(co2_inter_c, 0._r8)/can_press
-
-                        ! gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
-                        aquad = theta_cj_c4
-                        bquad = -(ac + aj)
-                        cquad = ac * aj
-                        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-                        ai = min(r1,r2)
-
-                        aquad = theta_ip
-                        bquad = -(ai + ap)
-                        cquad = ai * ap
-                        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-                        agross = min(r1,r2)
-
-                     end if
-
-                     ! calculate anet, only exit iteration with negative anet when
-                     ! using anet in calculating gs this is version B  
-                     anet = agross  - lmr
-
-                     if (stomatal_assim_model == gross_assim_model) then
-                        if (stomatal_model == medlyn_model) then
-                           write (fates_log(),*) 'Gross Assimilation conductance is incompatible with the Medlyn model'
-                           call endrun(msg=errMsg(sourcefile, __LINE__))
-                        end if
-                        a_gs = agross
-                     else
-                        if (anet < 0._r8) then
-                           loop_continue = .false.
-                        end if
-                        a_gs = anet
-                     end if
-
-                     ! with an <= 0, then gs_mol = stomatal_intercept_btran
-                     leaf_co2_ppress = can_co2_ppress - h2o_co2_bl_diffuse_ratio/gb_mol*a_gs*can_press 		   
-                     leaf_co2_ppress = max(leaf_co2_ppress, 1.e-06_r8)
-
-                     ! A note about the use of the quadratic equations for calculating stomatal conductance
-                     ! ------------------------------------------------------------------------------------
-                     ! These two following models calculate the conductance between the intercellular leaf
-                     ! space and the leaf surface, not the canopy air space.  Transport between the leaf
-                     ! surface and the canopy air space is governed by the leaf boundary layer conductance.
-                     ! However, we need to estimate the properties at the surface of the leaf to solve for
-                     ! the stomatal conductance. We do this by using Fick's law (gradient resistance
-                     ! approximation of diffusion) to estimate the flux of water vapor across the
-                     ! leaf boundary layer, and balancing that with the flux across the stomata. It
-                     ! results in the following equation for leaf surface humidity:
-                     !
-                     ! e_s = (e_i g_s + e_c g_b)/(g_b + g_s)
-                     !
-                     ! The leaf surface humidity (e_s) becomes an expression of canopy humidity (e_c),
-                     ! intercellular humidity (e_i, which is the saturation humidity at leaf temperature),
-                     ! boundary layer conductance (g_b) (these are all known) and stomatal conductance
-                     ! (g_s) (this is still unknown).  This expression is substituted into the stomatal
-                     ! conductance equation. The resulting form of these equations becomes a quadratic.
-                     !
-                     ! For a detailed explanation, see the FATES technical note, section
-                     ! "1.11 Stomatal Conductance"
-                     !
-                     ! ------------------------------------------------------------------------------------
-
-                     if (stomatal_model == medlyn_model) then
-                        ! stomatal conductance calculated from Medlyn et al. (2011), the numerical 
-                        ! implementation was adapted from the equations in CLM5.0
-                        vpd =  max(veg_esat - ceair, 50.0_r8)*0.001_r8 ! adapted from CLM5. Put some constraint on VPD
-                        ! when Medlyn stomatal conductance is being used, the unit is KPa. Ignoring the constraint will cause errors when model runs.
-                        term = h2o_co2_stoma_diffuse_ratio*anet/(leaf_co2_ppress/can_press)
-                        aquad = 1.0_r8
-                        bquad = -(2.0*(stomatal_intercept_btran + term) + (medlyn_slope(ft) * term)**2 /  &
-                           (gb_mol*vpd ))
-                        cquad = stomatal_intercept_btran*stomatal_intercept_btran + &
-                           (2.0*stomatal_intercept_btran + term * &
-                           (1.0 - medlyn_slope(ft)*medlyn_slope(ft)/vpd))*term
-
-                        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-                        gs_mol = max(r1,r2)
-
-                     else if (stomatal_model == ballberry_model) then ! stomatal conductance calculated from Ball et al. (1987)
-                        aquad = leaf_co2_ppress
-                        bquad = leaf_co2_ppress*(gb_mol - stomatal_intercept_btran) - bb_slope(ft)*a_gs*can_press
-                        cquad = -gb_mol*(leaf_co2_ppress*stomatal_intercept_btran + &
-                           bb_slope(ft)*anet*can_press*ceair/veg_esat)
-
-                        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-                        gs_mol = max(r1,r2)
-                     end if
-
-                     ! derive new estimate for co2_inter_c
-                     co2_inter_c = can_co2_ppress - anet*can_press * &
-                        (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol)/(gb_mol*gs_mol)
-
-                     ! Check for co2_inter_c convergence. Delta co2_inter_c/pair = mol/mol.
-                     ! Multiply by 10**6 to convert to umol/mol (ppm). Exit iteration if
-                     ! convergence criteria of +/- 1 x 10**-6 ppm is met OR if at least ten
-                     ! iterations (niter=10) are completed
-
-                     if ((abs(co2_inter_c - co2_inter_c_old)/can_press*1.e06_r8 <= 2.e-06_r8) &
-                        .or. niter == 5) then
-                        loop_continue = .false.
-                     end if
-                  end do iter_loop
-
-                  ! End of co2_inter_c iteration.  Check for an < 0, in which case gs_mol = bbb
-                  ! And Final estimates for leaf_co2_ppress and co2_inter_c 
-                  ! (needed for early exit of co2_inter_c iteration when an < 0)	 
-                  if (anet < 0._r8) then
-                     gs_mol = stomatal_intercept_btran
-                  end if
-
-                  ! Final estimates for leaf_co2_ppress and co2_inter_c
-                  leaf_co2_ppress = can_co2_ppress - h2o_co2_bl_diffuse_ratio/gb_mol*anet*can_press
-                  leaf_co2_ppress = max(leaf_co2_ppress, 1.e-06_r8)
-                  co2_inter_c = can_co2_ppress - anet*can_press * &
-                     (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol)/(gb_mol*gs_mol)
-
-                  ! Convert gs_mol (umol /m**2/s) to gs (m/s) and then to rs (s/m)
-                  gs = gs_mol/cf
-
-                  ! estimate carbon 13 discrimination in leaf level carbon
-                  ! flux Liang WEI and Hang ZHOU 2018, based on
-                  ! Ubierna and Farquhar, 2014 doi:10.1111/pce.12346, using the simplified model:
-                  ! $\Delta ^{13} C = \alpha_s + (b - \alpha_s) \cdot \frac{C_i}{C_a}$
-                  ! just hard code b and \alpha_s for now, might move to parameter set in future
-                  ! b = 27.0 alpha_s = 4.4
-                  ! TODO, not considering C4 or CAM right now, may need to address this
-                  ! note co2_inter_c is intracelluar CO2, not intercelluar
-                  c13disc_z = 4.4_r8 + (27.0_r8 - 4.4_r8)* &
-                     min(can_co2_ppress, max(co2_inter_c, 0._r8))/can_co2_ppress
-
-                  ! accumulate total photosynthesis umol/m2 ground/s-1.
-                  ! weight per unit sun and sha leaves.
-                  if (sunsha == 1) then ! sunlit
-                     psn_out = psn_out + agross*f_sun_lsl
-                     anet_av_out = anet_av_out + anet*f_sun_lsl
-                     gstoma  = gstoma + 1.0_r8/(min(1._r8/gs, rsmax0))*f_sun_lsl
-                  else
-                     psn_out = psn_out + agross*(1.0_r8 - f_sun_lsl)
-                     anet_av_out = anet_av_out + anet*(1.0_r8 - f_sun_lsl)
-                     gstoma  = gstoma + &
-                        1.0_r8/(min(1.0_r8/gs, rsmax0))*(1.0_r8 - f_sun_lsl)
-                  end if
-
-                  ! Make sure iterative solution is correct
-                  if (gs_mol < 0.0_r8) then
-                     write (fates_log(), *) 'Negative stomatal conductance:'
-                     write (fates_log(), *) 'gs_mol= ', gs_mol
+               if (stomatal_assim_model == gross_assim_model) then
+                  if (stomatal_model == medlyn_model) then
+                     write (fates_log(),*) 'Gross Assimilation conductance is incompatible with the Medlyn model'
                      call endrun(msg=errMsg(sourcefile, __LINE__))
                   end if
-
-                  if (stomatal_model == 2) then
-                     ! Compare with Medlyn model: gs_mol = 1.6*(1+m/sqrt(vpd)) * an/leaf_co2_ppress*p + b
-                     gs_mol_err = h2o_co2_stoma_diffuse_ratio*(1 + medlyn_slope(ft)/sqrt(vpd))*max(anet, 0._r8)/leaf_co2_ppress*can_press + stomatal_intercept_btran
-                  else if (stomatal_model == 1) then
-                     ! Compare with Ball-Berry model: gs_mol = m * an * hs/leaf_co2_ppress*p + b
-                     hs = (gb_mol*ceair + gs_mol*veg_esat )/((gb_mol+gs_mol)*veg_esat)
-                     gs_mol_err = bb_slope(ft)*max(anet, 0.0_r8)*hs/leaf_co2_ppress*can_press + stomatal_intercept_btran
-                  end if
-
-                  if (abs(gs_mol-gs_mol_err) > 1.e-01_r8) then
-                     warn_msg = 'Stomatal conductance error check - weak convergence: '//trim(N2S(gs_mol))//' '//trim(N2S(gs_mol_err))
-                     call FatesWarn(warn_msg,index=1)
-                  end if
-
-               end do !sun/shade loop
-
-               ! stomatal resistance of the leaf-layer
-               if ((hlm_use_planthydro == itrue .and. EDPftvarcon_inst%hydr_k_lwp(ft) > nearzero)) then
-                  rstoma_out = LeafHumidityStomaResis(leaf_psi, veg_tempk, ceair, can_press, veg_esat, &
-                  rb, gstoma, ft)
+                  a_gs = agross
                else
-                  rstoma_out = 1._r8/gstoma
+                  if (anet < 0._r8) then
+                     loop_continue = .false.
+                  end if
+                  a_gs = anet
                end if
+
+               ! with an <= 0, then gs_mol = stomatal_intercept_btran
+               leaf_co2_ppress = can_co2_ppress - h2o_co2_bl_diffuse_ratio/gb_mol*a_gs*can_press 		   
+               leaf_co2_ppress = max(leaf_co2_ppress, 1.e-06_r8)
+
+               ! A note about the use of the quadratic equations for calculating stomatal conductance
+               ! ------------------------------------------------------------------------------------
+               ! These two following models calculate the conductance between the intercellular leaf
+               ! space and the leaf surface, not the canopy air space.  Transport between the leaf
+               ! surface and the canopy air space is governed by the leaf boundary layer conductance.
+               ! However, we need to estimate the properties at the surface of the leaf to solve for
+               ! the stomatal conductance. We do this by using Fick's law (gradient resistance
+               ! approximation of diffusion) to estimate the flux of water vapor across the
+               ! leaf boundary layer, and balancing that with the flux across the stomata. It
+               ! results in the following equation for leaf surface humidity:
+               !
+               ! e_s = (e_i g_s + e_c g_b)/(g_b + g_s)
+               !
+               ! The leaf surface humidity (e_s) becomes an expression of canopy humidity (e_c),
+               ! intercellular humidity (e_i, which is the saturation humidity at leaf temperature),
+               ! boundary layer conductance (g_b) (these are all known) and stomatal conductance
+               ! (g_s) (this is still unknown).  This expression is substituted into the stomatal
+               ! conductance equation. The resulting form of these equations becomes a quadratic.
+               !
+               ! For a detailed explanation, see the FATES technical note, section
+               ! "1.11 Stomatal Conductance"
+               !
+               ! ------------------------------------------------------------------------------------
+
+               if (stomatal_model == medlyn_model) then
+                  ! stomatal conductance calculated from Medlyn et al. (2011), the numerical 
+                  ! implementation was adapted from the equations in CLM5.0
+                  vpd =  max(veg_esat - ceair, 50.0_r8)*0.001_r8 ! adapted from CLM5. Put some constraint on VPD
+                  ! when Medlyn stomatal conductance is being used, the unit is KPa. Ignoring the constraint will cause errors when model runs.
+                  term = h2o_co2_stoma_diffuse_ratio*anet/(leaf_co2_ppress/can_press)
+                  aquad = 1.0_r8
+                  bquad = -(2.0*(stomatal_intercept_btran + term) + (medlyn_slope(ft) * term)**2 /  &
+                     (gb_mol*vpd ))
+                  cquad = stomatal_intercept_btran*stomatal_intercept_btran + &
+                     (2.0*stomatal_intercept_btran + term * &
+                     (1.0 - medlyn_slope(ft)*medlyn_slope(ft)/vpd))*term
+
+                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
+                  gs_mol = max(r1,r2)
+
+               else if (stomatal_model == ballberry_model) then ! stomatal conductance calculated from Ball et al. (1987)
+                  aquad = leaf_co2_ppress
+                  bquad = leaf_co2_ppress*(gb_mol - stomatal_intercept_btran) - bb_slope(ft)*a_gs*can_press
+                  cquad = -gb_mol*(leaf_co2_ppress*stomatal_intercept_btran + &
+                     bb_slope(ft)*anet*can_press*ceair/veg_esat)
+
+                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
+                  gs_mol = max(r1,r2)
+               end if
+
+               ! derive new estimate for co2_inter_c
+               co2_inter_c = can_co2_ppress - anet*can_press * &
+                  (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol)/(gb_mol*gs_mol)
+
+               ! Check for co2_inter_c convergence. Delta co2_inter_c/pair = mol/mol.
+               ! Multiply by 10**6 to convert to umol/mol (ppm). Exit iteration if
+               ! convergence criteria of +/- 1 x 10**-6 ppm is met OR if at least ten
+               ! iterations (niter=10) are completed
+
+               if ((abs(co2_inter_c - co2_inter_c_old)/can_press*1.e06_r8 <= 2.e-06_r8) &
+                  .or. niter == 5) then
+                  loop_continue = .false.
+               end if
+            end do iter_loop
+
+            ! End of co2_inter_c iteration.  Check for an < 0, in which case gs_mol = bbb
+            ! And Final estimates for leaf_co2_ppress and co2_inter_c 
+            ! (needed for early exit of co2_inter_c iteration when an < 0)	 
+            if (anet < 0._r8) then
+               gs_mol = stomatal_intercept_btran
+            end if
+
+            ! Final estimates for leaf_co2_ppress and co2_inter_c
+            leaf_co2_ppress = can_co2_ppress - h2o_co2_bl_diffuse_ratio/gb_mol*anet*can_press
+            leaf_co2_ppress = max(leaf_co2_ppress, 1.e-06_r8)
+            co2_inter_c = can_co2_ppress - anet*can_press * &
+               (h2o_co2_bl_diffuse_ratio*gs_mol + h2o_co2_stoma_diffuse_ratio*gb_mol)/(gb_mol*gs_mol)
+
+            ! Convert gs_mol (umol /m**2/s) to gs (m/s) and then to rs (s/m)
+            gs = gs_mol/cf
+
+            ! estimate carbon 13 discrimination in leaf level carbon
+            ! flux Liang WEI and Hang ZHOU 2018, based on
+            ! Ubierna and Farquhar, 2014 doi:10.1111/pce.12346, using the simplified model:
+            ! $\Delta ^{13} C = \alpha_s + (b - \alpha_s) \cdot \frac{C_i}{C_a}$
+            ! just hard code b and \alpha_s for now, might move to parameter set in future
+            ! b = 27.0 alpha_s = 4.4
+            ! TODO, not considering C4 or CAM right now, may need to address this
+            ! note co2_inter_c is intracelluar CO2, not intercelluar
+            c13disc_z = 4.4_r8 + (27.0_r8 - 4.4_r8)* &
+               min(can_co2_ppress, max(co2_inter_c, 0._r8))/can_co2_ppress
+
+            ! accumulate total photosynthesis umol/m2 ground/s-1.
+            ! weight per unit sun and sha leaves.
+            if (sunsha == 1) then ! sunlit
+               psn_out = psn_out + agross*f_sun_lsl
+               anet_av_out = anet_av_out + anet*f_sun_lsl
+               gstoma  = gstoma + 1.0_r8/(min(1._r8/gs, rsmax0))*f_sun_lsl
             else
+               psn_out = psn_out + agross*(1.0_r8 - f_sun_lsl)
+               anet_av_out = anet_av_out + anet*(1.0_r8 - f_sun_lsl)
+               gstoma  = gstoma + &
+                  1.0_r8/(min(1.0_r8/gs, rsmax0))*(1.0_r8 - f_sun_lsl)
+            end if
 
-               ! No leaf area. This layer is present only because of stems.
-               ! Net assimilation is zero, not negative because there are
-               ! no leaves to even respire
-               ! (leaves are off, or have reduced to 0)
+            ! Make sure iterative solution is correct
+            if (gs_mol < 0.0_r8) then
+               write (fates_log(), *) 'Negative stomatal conductance:'
+               write (fates_log(), *) 'gs_mol= ', gs_mol
+               call endrun(msg=errMsg(sourcefile, __LINE__))
+            end if
 
-               psn_out     = 0._r8
-               anet_av_out = 0._r8
+            if (stomatal_model == 2) then
+               ! Compare with Medlyn model: gs_mol = 1.6*(1+m/sqrt(vpd)) * an/leaf_co2_ppress*p + b
+               gs_mol_err = h2o_co2_stoma_diffuse_ratio*(1 + medlyn_slope(ft)/sqrt(vpd))*max(anet, 0._r8)/leaf_co2_ppress*can_press + stomatal_intercept_btran
+            else if (stomatal_model == 1) then
+               ! Compare with Ball-Berry model: gs_mol = m * an * hs/leaf_co2_ppress*p + b
+               hs = (gb_mol*ceair + gs_mol*veg_esat )/((gb_mol+gs_mol)*veg_esat)
+               gs_mol_err = bb_slope(ft)*max(anet, 0.0_r8)*hs/leaf_co2_ppress*can_press + stomatal_intercept_btran
+            end if
 
-               rstoma_out  = min(rsmax0,cf/(stem_cuticle_loss_frac*stomatal_intercept(ft)))
-               c13disc_z = 0.0_r8
+            if (abs(gs_mol-gs_mol_err) > 1.e-01_r8) then
+               warn_msg = 'Stomatal conductance error check - weak convergence: '//trim(N2S(gs_mol))//' '//trim(N2S(gs_mol_err))
+               call FatesWarn(warn_msg,index=1)
+            end if
 
-            end if if_leafarea 
+         end do !sun/shade loop
 
-         end if if_daytime 
+         ! stomatal resistance of the leaf-layer
+         if ((hlm_use_planthydro == itrue .and. EDPftvarcon_inst%hydr_k_lwp(ft) > nearzero)) then
+            rstoma_out = LeafHumidityStomaResis(leaf_psi, veg_tempk, ceair, can_press, veg_esat, &
+            rb, gstoma, ft)
+         else
+            rstoma_out = 1._r8/gstoma
+         end if
 
       end associate
       
    end subroutine LeafLayerPhotosynthesis
 
+   ! =====================================================================================
+   
+   subroutine NighttimeGasExchange(stomatal_intercept_btran, cf, lmr, psn_out,           &
+          rstoma_out, anet_av_out, c13disc_z)
+      !
+      ! DESCRIPTION
+      ! Calculates gas exchange during nighttime (par < 0.0)
+      !
+      ! ARGUMENTS:
+      real(r8), intent(in)  :: stomatal_intercept_btran ! water-stressed minimum stomatal conductance [umol H2O/m^2/s]
+      real(r8), intent(in)  :: cf                       ! s m^2/umol -> s/m (ideal gas conversion) [umol/m3]
+      real(r8), intent(in)  :: lmr                      ! leaf maintenance respiration  [umol CO2/m^2/s]
+      real(r8), intent(out) :: psn_out                  ! carbon assimilated in this leaf layer [umolC/m2/s]
+      real(r8), intent(out) :: rstoma_out               ! stomatal resistance (1/gs_lsl) [s/m]
+      real(r8), intent(out) :: anet_av_out              ! net leaf photosynthesis averaged over sun and shade leaves [umol CO2/m^2/s]
+      real(r8), intent(out) :: c13disc_z                ! carbon 13 in newly assimilated carbon
+      
+      anet_av_out = -1.0_r8*lmr
+      psn_out = 0.0_r8
+
+      ! the cuticular conductance already factored in maximum resistance as a bound
+      ! no need to re-bound it
+      rstoma_out = cf/stomatal_intercept_btran
+
+      c13disc_z = 0.0_r8 ! carbon 13 discrimination in night time carbon flux, note value of 1.0 is used in CLM
+      
+   end subroutine NighttimeGasExchange
+      
+   ! =====================================================================================
+   
+   subroutine GasExchangeStemsNoLeafArea(cf, psn_out, rstoma_out, anet_av_out, c13disc_z)
+      !
+      ! DESCRIPTION
+      ! Calculates gas exchange when there is no leaf area
+      ! This layer is present only because of stems - leaves are off or have been reduced to 0.0
+      ! Net assimilation is 0.0, not negative, because there are no leaves to respire
+      !
+      
+      ! ARGUMENTS:
+      real(r8), intent(in)  :: cf          ! s m^2/umol -> s/m (ideal gas conversion) [umol/m3]
+      real(r8), intent(out) :: psn_out     ! carbon assimilated in this leaf layer [umolC/m2/s]
+      real(r8), intent(out) :: rstoma_out  ! stomatal resistance (1/gs_lsl) [s/m]
+      real(r8), intent(out) :: anet_av_out ! net leaf photosynthesis averaged over sun and shade leaves [umol CO2/m^2/s]
+      real(r8), intent(out) :: c13disc_z   ! carbon 13 in newly assimilated carbon
+      
+      ! CONSTANTS:
+      real(r8), parameter :: stem_cuticle_loss_frac = 0.1_r8 ! rate of cuticular conductance [0-1]
+      
+      ! a miniscule amount of conductance can happen through the stems, at a partial rate of cuticular conductance
+      rstoma_out  = min(rsmax0, cf/(stem_cuticle_loss_frac*EDPftvarcon_inst%stomatal_intercept(ft)))
+      psn_out     = 0.0_r8
+      anet_av_out = 0.0_r8
+      c13disc_z = 0.0_r8
+
+   end subroutine GasExchangeStemsNoLeafArea
+      
    ! =====================================================================================
    
    function ConvertPar(par, leaf_area) result(qabs)
@@ -1562,9 +1600,9 @@ contains
       !
       
       ! ARGUMENTS:
-      real(r8) :: par       ! absorbed PAR [W/m2]
-      real(r8) :: leaf_area ! leaf area [m2]
-      real(r8) :: qabs      ! absorbed PAR [umol/m2/s]
+      real(r8), intent(in) :: par       ! absorbed PAR [W/m2]
+      real(r8), intent(in) :: leaf_area ! leaf area [m2]
+      real(r8)             :: qabs      ! absorbed PAR [umol/m2/s]
       
       ! CONSTANTS
       real(r8), parameter :: min_la_to_solve = 1.0E-10_r8 ! minimum leaf area to solve, too little has shown instability [m2]
