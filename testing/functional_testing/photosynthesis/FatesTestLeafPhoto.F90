@@ -1,8 +1,10 @@
 program FatesTestLeafPhoto
   
   use FatesConstantsMod,           only : r8 => fates_r8
-  use FATESPlantRespPhotosynthMod, only : LeafLayerPhotosynthesis
+  use FATESPlantRespPhotosynthMod, only : LeafLayerPhotosynthesis, LeafLayerBiophysicalRates
   use FatesUnitTestParamReaderMod, only : fates_unit_test_param_reader
+  use EDPftvarcon,                 only : EDPftvarcon_inst
+  use FatesParameterDerivedMod,    only : param_derived
   
   implicit none
   
@@ -12,12 +14,9 @@ program FatesTestLeafPhoto
   integer                            :: numpft            ! number of pfts (from parameter file)
   integer                            :: arglen            ! length of command line argument
   integer                            :: nargs             ! number of command line arguments
-  real(r8)                           :: f_sun_lsl         ! fraction sun / shaded leaf area [0-1]
-  real(r8)                           :: parsun_lsl        ! absorbed PAR in sunlit leaves []
-  real(r8)                           :: parsha_lsl        ! absorved PAR in shaded leaves
-  real(r8)                           :: laisun_lsl        ! LAI in sunlit leaves
-  real(r8)                           :: laisha_lsl        ! LAI in shaded leaves
-  real(r8)                           :: canopy_area_lsl   ! canopy area
+  real(r8)                           :: frac_sun          ! fraction sun / shaded leaf area [0-1]
+  real(r8)                           :: par_sun           ! absorbed PAR in sunlit leaves []
+  real(r8)                           :: par_sha           ! absorved PAR in shaded leaves
   integer                            :: ft                ! plant functional type index
   real(r8)                           :: vcmax             ! maximum rate of carboxylation (umol co2/m**2/s)
   real(r8)                           :: jmax              ! maximum electron transport rate (umol electrons/m**2/s)
@@ -38,10 +37,13 @@ program FatesTestLeafPhoto
   real(r8)                           :: lmr               ! Leaf Maintenance Respiration  (umol CO2/m**2/s)
   real(r8)                           :: leaf_psi          ! Leaf water potential [MPa]
   real(r8)                           :: rb                ! Boundary Layer resistance of leaf [s/m]
-  real(r8)                           :: psn_out           ! carbon assimilated in this leaf layer umolC/m2/s
-  real(r8)                           :: rstoma_out        ! stomatal resistance (1/gs_lsl) (s/m)
-  real(r8)                           :: anet_av_out       ! net leaf photosynthesis (umol CO2/m**2/s)
-  real(r8)                           :: c13disc_z         ! carbon 13 in newly assimilated carbon
+  real(r8)                           :: psn               ! carbon assimilated in this leaf layer umolC/m2/s
+  real(r8)                           :: rstoma            ! stomatal resistance (1/gs_lsl) (s/m)
+  real(r8)                           :: anet_av           ! net leaf photosynthesis (umol CO2/m**2/s)
+  real(r8)                           :: c13disc           ! carbon 13 in newly assimilated carbon
+  real(r8)                           :: kn 
+  real(r8)                           :: cumulative_lai, nscaler
+  real(r8)                           :: daylength_factor, kp
   
   ! CONSTANTS:
   character(len=*), parameter :: out_file = 'leaf_photo_out.nc' ! output file
@@ -61,6 +63,27 @@ program FatesTestLeafPhoto
   call param_reader%Init(param_file)
   call param_reader%RetrieveParameters()
   
-  print *, "hello photosynthesis"
+  ! initialize values
+  frac_sun = 0.5_r8
+  par_sun = 850.0_r8
+  par_sha = 850.0_r8
+  ft = 1
+  kn = 0.11_r8
+  cumulative_lai = 5.0
+  nscaler = 1.0 !exp(-kn*cumulative_lai)
+  daylength_factor = 1.0_r8
+  veg_tempk = 25.0_r8 + 273.15_r8
+  veg_esat = 
+  btran = 1.0_r8
+
+  ! need this to calculate vcmax, jmax, and kp
+  call LeafLayerBiophysicalRates(50.0_r8, ft, EDPftvarcon_inst%vcmax25top(ft,1),         &
+    param_derived%jmax25top(ft,1), param_derived%kp25top(ft,1), nscaler, veg_tempk,      &
+    daylength_factor, veg_tempk, veg_tempk, btran, vcmax, jmax, kp)
+
+  call LeafLayerPhotosynthesis(frac_sun, par_sun, par_sha, ft, vcmax, jmax,              &
+    kp, veg_tempk, veg_esat, can_press, can_co2_ppress,                                  &
+    can_o2_ppress, btran, stom_int_btran, cf, gb_mol, ceair, mm_kco2, mm_ko2, co2_cpoint, &  
+    lmr, leaf_psi, rb, psn, rstoma, anet_av, c13disc)   
   
 end program FatesTestLeafPhoto

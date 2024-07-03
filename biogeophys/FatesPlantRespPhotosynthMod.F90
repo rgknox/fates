@@ -80,6 +80,7 @@ module FATESPlantRespPhotosynthMod
 
   public :: FatesPlantRespPhotosynthDrive ! Called by the HLM-Fates interface
   public :: LeafLayerPhotosynthesis
+  public :: LeafLayerBiophysicalRates
 
 
   character(len=*), parameter, private :: sourcefile = &
@@ -744,8 +745,9 @@ contains
                                     else 
                                        ! no leaf area, so we just transpire some through stems
                                        ! net assimilation is 0.0, c13 is 0.0
-                                       call GasExchangeStemsNoLeafArea(cf,                  &
-                                          currentPatch%psn_z(cl,ft,iv), rs_z(iv,ft,cl),     &
+                                       call GasExchangeStemsNoLeafArea(cf,               &
+                                          stomatal_intercept(ft),                        &
+                                          currentPatch%psn_z(cl,ft,iv), rs_z(iv,ft,cl),  &
                                           anet_av_z(iv,ft,cl), c13disc_z(cl,ft,iv))
                                     end if
                                  end if
@@ -1307,7 +1309,7 @@ contains
             if (sunsha == 1) then 
                qabs = parsun_lsl              
             else
-               qabs = parsha_ls
+               qabs = parsha_lsl
             end if
 
             ! electron transport rate for C3 plants
@@ -1565,7 +1567,8 @@ contains
       
    ! =====================================================================================
    
-   subroutine GasExchangeStemsNoLeafArea(cf, psn_out, rstoma_out, anet_av_out, c13disc_z)
+   subroutine GasExchangeStemsNoLeafArea(cf, stomatal_intercept, psn_out, rstoma_out,    &
+         anet_av_out, c13disc_z)
       !
       ! DESCRIPTION
       ! Calculates gas exchange when there is no leaf area
@@ -1574,17 +1577,18 @@ contains
       !
       
       ! ARGUMENTS:
-      real(r8), intent(in)  :: cf          ! s m^2/umol -> s/m (ideal gas conversion) [umol/m3]
-      real(r8), intent(out) :: psn_out     ! carbon assimilated in this leaf layer [umolC/m2/s]
-      real(r8), intent(out) :: rstoma_out  ! stomatal resistance (1/gs_lsl) [s/m]
-      real(r8), intent(out) :: anet_av_out ! net leaf photosynthesis averaged over sun and shade leaves [umol CO2/m^2/s]
-      real(r8), intent(out) :: c13disc_z   ! carbon 13 in newly assimilated carbon
+      real(r8), intent(in)  :: cf                 ! s m^2/umol -> s/m (ideal gas conversion) [umol/m3]
+      real(r8), intent(in)  :: stomatal_intercept ! stomatal intercept for leaf 
+      real(r8), intent(out) :: psn_out            ! carbon assimilated in this leaf layer [umolC/m2/s]
+      real(r8), intent(out) :: rstoma_out         ! stomatal resistance (1/gs_lsl) [s/m]
+      real(r8), intent(out) :: anet_av_out        ! net leaf photosynthesis averaged over sun and shade leaves [umol CO2/m^2/s]
+      real(r8), intent(out) :: c13disc_z          ! carbon 13 in newly assimilated carbon
       
       ! CONSTANTS:
       real(r8), parameter :: stem_cuticle_loss_frac = 0.1_r8 ! rate of cuticular conductance [0-1]
       
       ! a miniscule amount of conductance can happen through the stems, at a partial rate of cuticular conductance
-      rstoma_out  = min(rsmax0, cf/(stem_cuticle_loss_frac*EDPftvarcon_inst%stomatal_intercept(ft)))
+      rstoma_out  = min(rsmax0, cf/(stem_cuticle_loss_frac*stomatal_intercept))
       psn_out     = 0.0_r8
       anet_av_out = 0.0_r8
       c13disc_z = 0.0_r8
@@ -1610,7 +1614,7 @@ contains
       real(r8), parameter :: photon_to_e = 0.5_r8         ! term accounting that two photons are needed to fully transport a single electron in PSII
       
       if (par > nearzero .and. leaf_area > min_la_to_solve) then
-         qabs = parsun_lsl/leaf_area*photon_to_e*(1.0_r8 - fnps)*wm2_to_umolm2s
+         qabs = par/leaf_area*photon_to_e*(1.0_r8 - fnps)*wm2_to_umolm2s
       else
          qabs = 0.0_r8
       end if
