@@ -81,6 +81,7 @@ module FATESPlantRespPhotosynthMod
   public :: FatesPlantRespPhotosynthDrive ! Called by the HLM-Fates interface
   public :: LeafLayerPhotosynthesis
   public :: LeafLayerBiophysicalRates
+  public :: GetCanopyGasParameters
 
 
   character(len=*), parameter, private :: sourcefile = &

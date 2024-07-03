@@ -1,4 +1,4 @@
-set(leaf_photo_sources FatesTestLeafPhoto.F90)
+set(leaf_photo_sources FatesTestGasExchange.F90)
 
 set(NETCDF_C_DIR ${NETCDF_C_PATH})
 set(NETCDF_FORTRAN_DIR ${NETCDF_F_PATH})
