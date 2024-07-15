@@ -1,4 +1,4 @@
-set(leaf_photo_sources FatesTestLeafPhoto.F90)
+set(leaf_gasexch_sources FatesTestGasExchange.F90 FatesTestPhotosynthesisMod.F90)
 
 set(NETCDF_C_DIR ${NETCDF_C_PATH})
 set(NETCDF_FORTRAN_DIR ${NETCDF_F_PATH})
@@ -13,9 +13,9 @@ link_directories(${NETCDF_C_DIR}/lib
                 ${NETCDF_FORTRAN_DIR}/lib
                 ${PFUNIT_TOP_DIR}/lib)
                 
-add_executable(FATES_leafphoto_exe ${leaf_photo_sources})
+add_executable(FATES_gasexch_exe ${leaf_gasexch_sources})
 
-target_link_libraries(FATES_leafphoto_exe
+target_link_libraries(FATES_gasexch_exe
                   netcdf
                   netcdff
                   fates

@@ -14,6 +14,7 @@ module FatesUnitTestParamReaderMod
   use FatesSynchronizedParamsMod, only : FatesSynchronizedParamsInst
   use EDPftvarcon,                only : EDPftvarcon_inst
   use FatesUnitTestIOMod,         only : OpenNCFile, GetDimID, GetDimLen, GetVar, CloseNCFile
+  use FatesInterfaceTypesMod,     only : nleafage
 
   implicit none
   private
@@ -142,8 +143,9 @@ module FatesUnitTestParamReaderMod
     deallocate(fates_pft_params)
 
     ! initialize derived parameters
+    nleafage = size(prt_params%leaf_long, dim=2)
     call param_derived%Init(size(prt_params%wood_density, dim=1))
-
+    
   end subroutine RetrieveParameters
 
   ! --------------------------------------------------------------------------------------

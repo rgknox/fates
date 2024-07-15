@@ -1481,7 +1481,7 @@ contains
      name = 'fates_leaf_vcmax25top'
      call fates_params%RetrieveParameterAllocate(name=name, &
           data=this%vcmax25top)
-
+          
      return
    end subroutine Receive_PFT_leafage
 

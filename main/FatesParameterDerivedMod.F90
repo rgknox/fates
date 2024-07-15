@@ -100,7 +100,7 @@ contains
       call this%InitAllocate(numpft)
       call this%InitDamageTransitions(numpft)
       
-      do ft = 1,numpft
+      do ft = 1, numpft
          
          do iage = 1, nleafage
 
