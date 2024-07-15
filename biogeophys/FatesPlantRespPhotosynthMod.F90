@@ -31,6 +31,7 @@ module FATESPlantRespPhotosynthMod
   use FatesConstantsMod, only : rgas_J_K_mol
   use FatesConstantsMod, only : fates_unset_r8
   use FatesConstantsMod, only : tfrz => t_water_freeze_k_1atm
+  use FatesConstantsMod, only : wm2_to_umolm2s
   use FatesConstantsMod, only : nocomp_bareground
   use FatesConstantsMod, only : photosynth_acclim_model_none
   use FatesConstantsMod, only : photosynth_acclim_model_kumarathunge_etal_2019
@@ -93,6 +94,9 @@ module FATESPlantRespPhotosynthMod
 
   ! maximum stomatal resistance [s/m] (used across several procedures)
   real(r8),parameter :: rsmax0 =  2.e8_r8
+  
+  ! minimum Leaf area to solve, too little has shown instability
+  real(r8), parameter :: min_la_to_solve = 0.0000000001_r8
 
   logical   ::  debug = .false.
   !-------------------------------------------------------------------------------------
@@ -1304,9 +1308,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   ! term accounting that two photons are needed to fully transport a single 
   ! electron in photosystem 2
   real(r8), parameter :: photon_to_e = 0.5_r8
-
-  ! Unit conversion of w/m2 to umol photons m-2 s-1
-  real(r8), parameter :: wm2_to_umolm2s = 4.6_r8
   
   ! For plants with no leaves, a miniscule amount of conductance
   ! can happen through the stems, at a partial rate of cuticular conductance
@@ -1325,9 +1326,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
 
   ! empirical curvature parameter for ap photosynthesis co-limitation
   real(r8),parameter :: theta_ip = 0.999_r8
-
-  ! minimum Leaf area to solve, too little has shown instability
-  real(r8), parameter :: min_la_to_solve = 0.0000000001_r8
   
   associate( bb_slope  => EDPftvarcon_inst%bb_slope      ,& ! slope of BB relationship, unitless
        medlyn_slope=> EDPftvarcon_inst%medlyn_slope          , & ! Slope for Medlyn stomatal conductance model method, the unit is KPa^0.5
@@ -1375,28 +1373,13 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
            ! Convert from units of par absorbed per unit ground area to par
            ! absorbed per unit leaf area.
 
-           if(sunsha == 1)then !sunlit
-              if(( laisun_lsl * canopy_area_lsl) > min_la_to_solve)then
-
-                 qabs = parsun_lsl / (laisun_lsl * canopy_area_lsl )
-                 qabs = qabs * photon_to_e * (1._r8 - fnps) * wm2_to_umolm2s
-
-              else
-                 qabs = 0.0_r8
-              end if
-           else
-
-              if( (parsha_lsl>nearzero) .and. (laisha_lsl * canopy_area_lsl) > min_la_to_solve  ) then
-
-                 qabs = parsha_lsl / (laisha_lsl * canopy_area_lsl)
-                 qabs = qabs * photon_to_e * (1._r8 - fnps) *  wm2_to_umolm2s
-              else                 
-                 ! The radiative transfer schemes are imperfect
-                 ! they can sometimes generate negative values here
-                 qabs = 0._r8
-              end if
-              
-           end if
+            if (sunsha == 1) then ! sunlit
+               qabs = ConvertPar(laisun_lsl, canopy_area_lsl, parsun_lsl)
+            else
+               qabs = ConvertPar(laisha_lsl, canopy_area_lsl, parsha_lsl)               
+            end if
+            
+            qabs = qabs*photon_to_e*(1.0_r8 - fnps)*wm2_to_umolm2s
 
            !convert the absorbed par into absorbed par per m2 of leaf,
            ! so it is consistant with the vcmax and lmr numbers.
@@ -2509,5 +2492,29 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
 
 
   end subroutine lowstorage_maintresp_reduction
+  
+   ! =====================================================================================
+
+   real(r8) function ConvertPar(lai, canopy_area, par_wm2) result(par_umolm2s)
+      !
+      ! DESCRIPTION:
+      ! Convert par from W/m2 to umol photons/m2/s
+      !
+
+      ! ARGUMENTS:
+      real(r8), intent(in) :: lai         ! leaf are index [m2/m2]
+      real(r8), intent(in) :: canopy_area ! canopy area [m2]
+      real(r8), intent(in) :: par_wm2     ! absorbed PAR [W/m2]
+
+      if (par_wm2 > nearzero .and. lai*canopy_area > min_la_to_solve) then
+         par_umolm2s = par_wm2/(lai*canopy_area)
+         par_umolm2s = par_umolm2s
+      else                 
+         ! The radiative transfer schemes are imperfect
+         ! they can sometimes generate negative values here if par or leaf area is 0.0
+         par_umolm2s = 0.0_r8
+      end if
+
+   end function ConvertPar
 
 end module FATESPlantRespPhotosynthMod
