@@ -34,6 +34,7 @@ from path_utils import add_cime_lib_to_path
 from utils import copy_file, create_nc_file
 from functional_testing.allometry.allometry_plotting import plot_allometry_dat
 from functional_testing.math_utils.math_plotting import plot_quadratic_dat
+from functional_testing.photosynthesis.gas_exchange_plotting import plot_gas_exchange_dat
 
 add_cime_lib_to_path()
 
@@ -79,14 +80,14 @@ _ALL_TESTS_DICT = {
             "other_args": [],
             "plotting_function": None,
         },
-        "leaf_photosynthesis": {
-            "test_dir": "fates_photo_ftest",
-            "test_exe": "FATES_leafphoto_exe",
-            "out_file": None,
+        "leaf_gas_exchange": {
+            "test_dir": "fates_photosynthesis_ftest",
+            "test_exe": "FATES_gasexch_exe",
+            "out_file": "gas_exchange_out.nc",
             "has_unit_test": False,
-            "use_param_file": True,
+            "use_param_file": False,
             "other_args": [],
-            "plotting_function": None,
+            "plotting_function": plot_gas_exchange_dat,
         },
     }
 

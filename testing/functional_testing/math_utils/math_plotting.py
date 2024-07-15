@@ -1,4 +1,4 @@
-"""Utility functions for allometry functional unit tests
+"""Utility functions for math functional unit tests
 """
 import os
 import math

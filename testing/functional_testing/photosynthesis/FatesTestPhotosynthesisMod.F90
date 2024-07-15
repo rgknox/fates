@@ -42,7 +42,7 @@ module FatesTestPhotosynthesisMod
     real(r8), intent(in) :: temperature ! temperature [degrees C]
     
     ! LOCALS:
-    real(r8), pointer :: a(0:8)
+    real(r8) :: a(0:8)
     
     ! CONSTANTS:
     real(r8), parameter :: a_water(0:8) =                                                &
@@ -56,9 +56,9 @@ module FatesTestPhotosynthesisMod
       0.262655803E-14_r8/)
       
     if (temperature >= 0.0_r8 .and. temperature <= 100.0_r8) then 
-      a => a_water
+      a(0:8) = a_water(0:8)
     else if (temperature >= -75.0_r8 .and. temperature < 0.0_r8) then
-      a => a_ice
+      a(0:8) = a_ice(0:8)
     else 
       print *, "Temperature ", temperature, " is outside the range that we can calculate."
       stop
