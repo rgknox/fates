@@ -89,6 +89,24 @@ _ALL_TESTS_DICT = {
             "other_args": [],
             "plotting_function": plot_gas_exchange_dat,
         },
+        "biophysical_rates": {
+            "test_dir": "fates_photosynthesis_ftest",
+            "test_exe": "FATES_biophysrates_exe",
+            "out_file": 'biophys_rates_out.nc',
+            "has_unit_test": False,
+            "use_param_file": True,
+            "other_args": [],
+            "plotting_function": None,
+        },
+        "leaf_photosynthesis": {
+            "test_dir": "fates_photosynthesis_ftest",
+            "test_exe": "FATES_leaf_photo_exe",
+            "out_file": 'leaf_photo_out.nc',
+            "has_unit_test": False,
+            "use_param_file": True,
+            "other_args": [],
+            "plotting_function": None,
+        },
     }
 
 def run_fortran_exectuables(build_dir, test_dir, test_exe, run_dir, args):

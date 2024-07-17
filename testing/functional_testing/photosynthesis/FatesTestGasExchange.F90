@@ -79,9 +79,11 @@ program FatesTestGasExchange
     ! calculate saturation vapor pressure and vapor pressure
     call CalcVaporPressure(veg_tempk(i), default_vpd, veg_esat, can_air_vpress)
     
+    ! get canopy gas parameters
     call GetCanopyGasParameters(can_air_press, can_o2_partial_press, veg_tempk(i),       &
       veg_tempk(i), can_air_vpress, veg_esat, leaf_bl_resistance, mm_kco2(i), mm_ko2(i), &
       co2_compensation_pt(i), cf(i), leaf_bl_conductance(i), constrained_air_vpress(i))
+
   end do
   
   call WriteGasExchangeData(out_file, num_temp, veg_tempk, mm_kco2, mm_ko2,              &
