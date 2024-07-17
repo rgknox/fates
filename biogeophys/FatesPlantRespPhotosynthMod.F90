@@ -1298,6 +1298,8 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8) :: init_co2_inter_c  ! First guess intercellular co2 specific to C path
   real(r8) :: term                 ! intermediate variable in Medlyn stomatal conductance model
   real(r8) :: vpd                  ! water vapor deficit in Medlyn stomatal model (KPa)
+  real(r8) :: leaf_area_sun_lsl
+  real(r8) :: leaf_area_sha_lsl
 
 
   ! Parameters
@@ -1371,15 +1373,18 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
            ! Electron transport rate for C3 plants.
            ! Convert par from W/m2 to umol photons/m**2/s
            ! Convert from units of par absorbed per unit ground area to par
-           ! absorbed per unit leaf area.
+           ! absorbed per unit leaf area
 
+            leaf_area_sun_lsl = laisun_lsl*canopy_area_lsl
+            leaf_area_sha_lsl = laisha_lsl*canopy_area_lsl
+            
             if (sunsha == 1) then ! sunlit
-               qabs = ConvertPar(laisun_lsl, canopy_area_lsl, parsun_lsl)
+               qabs = ConvertPar(leaf_area_sun_lsl, parsun_lsl)
             else
-               qabs = ConvertPar(laisha_lsl, canopy_area_lsl, parsha_lsl)               
+               qabs = ConvertPar(leaf_area_sha_lsl, parsha_lsl)               
             end if
             
-            qabs = qabs*photon_to_e*(1.0_r8 - fnps)*wm2_to_umolm2s
+            qabs = qabs*wm2_to_umolm2s*photon_to_e*(1.0_r8 - fnps)
 
            !convert the absorbed par into absorbed par per m2 of leaf,
            ! so it is consistant with the vcmax and lmr numbers.
@@ -2495,19 +2500,18 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   
    ! =====================================================================================
 
-   real(r8) function ConvertPar(lai, canopy_area, par_wm2) result(par_umolm2s)
+   real(r8) function ConvertPar(leaf_area, par_wm2) result(par_umolm2s)
       !
       ! DESCRIPTION:
       ! Convert par from W/m2 to umol photons/m2/s
       !
 
       ! ARGUMENTS:
-      real(r8), intent(in) :: lai         ! leaf are index [m2/m2]
-      real(r8), intent(in) :: canopy_area ! canopy area [m2]
-      real(r8), intent(in) :: par_wm2     ! absorbed PAR [W/m2]
+      real(r8), intent(in) :: leaf_area ! leaf area index [m2]
+      real(r8), intent(in) :: par_wm2   ! absorbed PAR [W/m2]
 
-      if (par_wm2 > nearzero .and. lai*canopy_area > min_la_to_solve) then
-         par_umolm2s = par_wm2/(lai*canopy_area)
+      if (par_wm2 > nearzero .and. leaf_area > min_la_to_solve) then
+         par_umolm2s = par_wm2/leaf_area
          par_umolm2s = par_umolm2s
       else                 
          ! The radiative transfer schemes are imperfect
