@@ -68,7 +68,6 @@ module FATESPlantRespPhotosynthMod
   use EDParamsMod,       only : photo_tempsens_model
   use PRTParametersMod,  only : prt_params
   use EDPftvarcon      , only : EDPftvarcon_inst
-  use TemperatureType,   only : temperature_type
   use FatesRadiationMemMod, only : norman_solver,twostr_solver
   use EDParamsMod,          only : radiation_model
   use FatesRadiationMemMod, only : ipar
