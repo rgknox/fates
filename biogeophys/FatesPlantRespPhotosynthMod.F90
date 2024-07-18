@@ -1449,7 +1449,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                  ! C4: PEP carboxylase-limited (CO2-limited)
                  ap = co2_rcurve_islope * max(co2_inter_c, 0._r8) / can_press
                  
-
                  ! Gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
 
                  aquad = theta_cj_c4
@@ -1458,14 +1457,13 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
                  ai = min(r1,r2)
                  
-                 if (sunsha == 1) test_out = aquad
-
-
                  aquad = theta_ip
                  bquad = -(ai + ap)
                  cquad = ai * ap
                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
                  agross = min(r1,r2)
+                 
+
 
               end if
               
@@ -1548,6 +1546,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               ! Derive new estimate for co2_inter_c
               co2_inter_c = can_co2_ppress - anet * can_press * &
                    (h2o_co2_bl_diffuse_ratio*gs_mol+h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
+               if (sunsha == 1) test_out = co2_inter_c
                    
                
 
@@ -1559,8 +1558,10 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
                    .or. niter >= max_iters) then
                  loop_continue = .false.
+                 !if (.not. loop_continue) print *, veg_tempk - 273.15
               end if
            end do iter_loop
+           
 
            ! End of co2_inter_c iteration.  Check for an < 0, in which case gs_mol = bbb
            ! And Final estimates for leaf_co2_ppress and co2_inter_c 

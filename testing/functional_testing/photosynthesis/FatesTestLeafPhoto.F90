@@ -40,26 +40,26 @@ program FatesTestLeafPhoto
   integer                            :: ft                        ! plant functional type index
   integer                            :: nargs                     ! number of command-line arguments
   integer                            :: arglen                    ! command-line argument length
-  real(r8) :: vpd
+  real(r8)                           :: vpd, can_air_esat, default_can_air_vpress
+  real(r8)                           :: default_vpd
   
   ! CONSTANTS:
   character(len=*), parameter :: out_file = 'leaf_photo_out.nc' ! output file
-  real(r8),         parameter :: default_vpd = 500.0_r8                   ! default vapor pressure deficit [Pa]
-  real(r8),         parameter :: default_RH = 25.0_r8 
+  real(r8),         parameter :: default_RH = 15.0_r8                      ! default value for relative humidity [%]
   real(r8),         parameter :: can_air_press = 101325.0_r8               ! default value for canopy air pressure [Pa]
   real(r8),         parameter :: can_o2_partial_press = 20900.0_r8         ! default value for O2 partial pressure [Pa]
-  real(r8),         parameter :: can_co2_partial_press = 30.0_r8           ! default value for CO2 partial pressure [Pa]
+  real(r8),         parameter :: can_co2_partial_press = 39.5_r8           ! default value for CO2 partial pressure [Pa]
   real(r8),         parameter :: default_veg_tempk = 25.0_r8 + 273.15_r8   ! default value for vegetation temperature [K]
-  real(r8),         parameter :: default_can_air_tempk = default_veg_tempk ! default value for canopy air temperature [K]
-  real(r8),         parameter :: leaf_bl_resistance = 125.0_r8             ! default value for leaf boundary layer resistance [umol H2O/m2/s]
+  real(r8),         parameter :: default_can_air_tempk = 25.0_r8 + 273.15_r8  ! default value for canopy air temperature [K]
+  real(r8),         parameter :: leaf_bl_resistance = 42.3_r8             ! default value for leaf boundary layer resistance [s/m]
   real(r8),         parameter :: min_temp = 268.15                         ! minimum temperature to calculate [K]
   real(r8),         parameter :: max_temp = 323.15_r8                      ! maximum temperature to calculate [K]
   real(r8),         parameter :: temp_inc = 0.5_r8                         ! temperature increment to use [K]
   real(r8),         parameter :: default_nscaler = 1.0_r8                  ! default scaler for leaf nitrogen [0-1]
   real(r8),         parameter :: default_dayl_fact = 1.0_r8                ! default scaler for day length [0-1]
   real(r8),         parameter :: default_btran = 1.0_r8                    ! default scaler for BTRAN [0-1]
-  real(r8),         parameter :: default_leaf_psi = -1.25_r8               ! leaf water potential [MPa]
-  real(r8),         parameter :: default_par = 1100.0_r8                   ! default value for PAR [umol/m2/s]
+  real(r8),         parameter :: default_leaf_psi = 9999                   ! leaf water potential [MPa] - only effective if using plant hydro
+  real(r8),         parameter :: default_par = 2000.0_r8                   ! default value for PAR [umol/m2/s]
   
   interface
 
@@ -125,32 +125,47 @@ end interface
   allocate(c13disc(num_temp, numpft))
   allocate(test_out(num_temp, numpft))
   
-  ! initialize temperature array
-  do i = 1, num_temp
-    veg_tempk(i) = min_temp + temp_inc*(i-1)
-  end do
+  ! calculate saturation vapor pressure at canopy air (25)
+  !call CalcVaporPressure(default_can_air_tempk, default_RH, default_vpd, can_air_esat,   &
+  !  default_can_air_vpress)
   
+  ! calculate vapor pressure with RH (80%)
+  ! calculate vpd
+  ! vpd_at_leaf_temp
+  ! adjust canopy air so that VPD is the same
+
   ! calculate photosynthesis as we scale temperature and hold everything else constant
   do i = 1, num_temp
+          
+    ! initialize temperature array
+    veg_tempk(i) = min_temp + temp_inc*(i-1)
     
     ! calculate saturation vapor pressure and vapor pressure
     call CalcVaporPressure(veg_tempk(i), default_rh, vpd, veg_esat(i), can_air_vpress(i))
-    
+    can_air_vpress(i) = (default_RH/100.0_r8)*veg_esat(i)
+       
     ! calculate canopy gas parameters
     call GetCanopyGasParameters(can_air_press, can_o2_partial_press, veg_tempk(i),       &
-      veg_tempk(i), can_air_vpress(i), veg_esat(i), leaf_bl_resistance, mm_kco2(i), mm_ko2(i), &
+      default_can_air_tempk, can_air_vpress(i), veg_esat(i), leaf_bl_resistance, mm_kco2(i), mm_ko2(i), &
       co2_compensation_pt(i), cf(i), leaf_bl_conductance(i), constrained_air_vpress(i))
       
     do ft = 1, numpft 
+      
       ! calculate leaf biophysical rates
       call LeafLayerBiophysicalRates(100.0_r8, ft, EDPftvarcon_inst%vcmax25top(ft,1),    &
         param_derived%jmax25top(ft,1), param_derived%kp25top(ft,1), default_nscaler,     &
         veg_tempk(i), default_dayl_fact, veg_tempk(i), veg_tempk(i), default_btran,      &
         vcmax(i,ft), jmax(i,ft), co2_rcurve_islope(i,ft))
       
+      ! pulled out from model for now
       stomatal_intercept_btran = max(cf(i)/2.E8_r8,                                      &
         EDPftvarcon_inst%stomatal_intercept(ft)*default_btran)
-      leaf_maintenance_resp = 0.015_r8*EDPftvarcon_inst%vcmax25top(ft,1)
+      
+      if (ft == 12) then
+        leaf_maintenance_resp = 0.025_r8*EDPftvarcon_inst%vcmax25top(ft,1)
+      else 
+        leaf_maintenance_resp = 0.015_r8*EDPftvarcon_inst%vcmax25top(ft,1)
+      end if 
       
       ! calculate leaf-level photosynthesis
       call LeafLayerPhotosynthesis(1.0_r8, default_par, 0.0_r8, 10.0_r8, 0.0_r8, ft,     &

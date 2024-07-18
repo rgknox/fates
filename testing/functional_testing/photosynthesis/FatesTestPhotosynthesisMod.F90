@@ -31,28 +31,7 @@ module FatesTestPhotosynthesisMod
   end subroutine CalcVaporPressure
   
   ! --------------------------------------------------------------------------------------
-  
-  subroutine CalcVPD(temperature, vapor_pressure, vapor_pressure_deficit, sat_vapor_pressure)
-  !
-  ! DESCRIPTION:
-  ! Calculates saturation vapor pressure and VPD based on input
-  ! temperature and vapor pressure 
-  !
-  
-  ! ARGUMENTS:
-  real(r8), intent(in)  :: temperature            ! temperature [K]
-  real(r8), intent(in)  :: vapor_pressure         ! vapor pressure 
-  real(r8), intent(out) :: vapor_pressure_deficit ! vapor pressure [Pa]
-  real(r8), intent(out) :: sat_vapor_pressure     ! saturation vapor pressure [Pa]
-  
-  sat_vapor_pressure = sat_vapor_press(temperature - 273.15_r8) ! function uses temperature in Celsius
-  
-  vapor_pressure_deficit = sat_vapor_pressure - vapor_pressure
-    
-end subroutine CalcVPD
-  
-  ! --------------------------------------------------------------------------------------
-  
+
   real(r8) function sat_vapor_press(temperature)
     !
     ! DESCRIPTION:
