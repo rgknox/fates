@@ -290,9 +290,11 @@ contains
     real(r8)               :: cohort_elai
     real(r8)               :: cohort_esai
     real(r8)               :: laisun,laisha
-    real(r8),              :: leaf_area_sun, leaf_area_sha
+    real(r8)               :: leaf_area_sun, leaf_area_sha
+    real(r8)               :: par_sun, par_sha
     real(r8)               :: canopy_area
     real(r8)               :: elai
+    real(r8)               :: test_out
     ! -----------------------------------------------------------------------------------
     ! Keeping these two definitions in case they need to be added later
     !
@@ -706,10 +708,12 @@ contains
                                  
                                  leaf_area_sun = laisun*canopy_area
                                  leaf_area_sha = laisha*canopy_area
+                                 par_sun = ConvertPar(leaf_area_sun, par_per_sunla)
+                                 par_sha = ConvertPar(leaf_area_sha, par_per_shala)
 
                                  call LeafLayerPhotosynthesis(fsun,       &  ! in
-                                      par_per_sunla,                      &  ! in
-                                      par_per_shala,                      &  ! in
+                                      par_sun,                      &  ! in
+                                      par_sha,                      &  ! in
                                       leaf_area_sun,                      &  ! in
                                       leaf_area_sha,                      &  ! in
                                       ft,                                 &  ! in
@@ -735,7 +739,7 @@ contains
                                       currentPatch%psn_z(cl,ft,iv),       &  ! out
                                       rs_z(iv,ft,cl),                     &  ! out
                                       anet_av_z(iv,ft,cl),                &  ! out
-                                      c13disc_z(cl,ft,iv))                   ! out
+                                      c13disc_z(cl,ft,iv), test_out)                   ! out
 
                                  rate_mask_z(iv,ft,cl) = .true.
 
@@ -1207,7 +1211,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
      psn_out,           &  ! out
      rstoma_out,        &  ! out
      anet_av_out,       &  ! out
-     c13disc_z)            ! out
+     c13disc_z, test_out)            ! out
 
 
   ! ------------------------------------------------------------------------------------
@@ -1266,6 +1270,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8), intent(out) :: anet_av_out    ! net leaf photosynthesis (umol CO2/m**2/s)
   ! averaged over sun and shade leaves.
   real(r8), intent(out) :: c13disc_z      ! carbon 13 in newly assimilated carbon
+  real(r8), intent(out) :: test_out       ! for testing
 
  
 
@@ -1325,6 +1330,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
 
   ! quantum efficiency, used only for C4 (mol CO2 / mol photons) (index 0)
   real(r8),parameter,dimension(0:1) :: quant_eff = [0.05_r8,0.0_r8]
+  integer, parameter :: max_iters = 5
 
   ! empirical curvature parameter for ap photosynthesis co-limitation
   real(r8),parameter :: theta_ip = 0.999_r8
@@ -1376,9 +1382,9 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
            ! absorbed per unit leaf area
             
             if (sunsha == 1) then ! sunlit
-               qabs = ConvertPar(leaf_area_sun, parsun_lsl)
+               qabs = parsun_lsl
             else
-               qabs = ConvertPar(leaf_area_sha, parsha_lsl)               
+               qabs = parsha_lsl             
             end if
             
             qabs = qabs*photon_to_e*(1.0_r8 - fnps)
@@ -1390,7 +1396,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
            cquad = qabs * jmax
            call QuadraticRoots(aquad, bquad, cquad, r1, r2)
            je = min(r1,r2)
-
+             
            ! Initialize intercellular co2
            co2_inter_c = init_co2_inter_c
 
@@ -1409,40 +1415,40 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                  ! C3: Rubisco-limited photosynthesis
                  ac = vcmax * max(co2_inter_c-co2_cpoint, 0._r8) / &
                       (co2_inter_c+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
-
+                      
                  ! C3: RuBP-limited photosynthesis
                  aj = je * max(co2_inter_c-co2_cpoint, 0._r8) / &
                       (4._r8*co2_inter_c+8._r8*co2_cpoint)
-
+                      
                     ! Gross photosynthesis smoothing calculations. Co-limit ac and aj.
                     aquad = theta_cj_c3
                     bquad = -(ac + aj)
                     cquad = ac * aj
                     call QuadraticRoots(aquad, bquad, cquad, r1, r2)
                     agross = min(r1,r2)
-
+                    
               else
 
                  ! C4: Rubisco-limited photosynthesis
                  ac = vcmax
 
+
                  ! C4: RuBP-limited photosynthesis
                  if(sunsha == 1)then !sunlit
                     !guard against /0's in the night.
-                    if (leaf_area_sun_lsl > min_la_to_solve) then
-                       aj = quant_eff(c3c4_path_index) * parsun_lsl * wm2_to_umolm2s
-                       !convert from per cohort to per m2 of leaf)
-                       aj = aj / leaf_area_sun
+                    if (leaf_area_sun > min_la_to_solve) then
+                       aj = quant_eff(c3c4_path_index)*parsun_lsl
                     else
                        aj = 0._r8
                     end if
                  else
-                    aj = quant_eff(c3c4_path_index) * parsha_lsl * wm2_to_umolm2s
-                    aj = aj / leaf_area_sha
+                    aj = quant_eff(c3c4_path_index)*parsha_lsl
                  end if
+               
 
                  ! C4: PEP carboxylase-limited (CO2-limited)
                  ap = co2_rcurve_islope * max(co2_inter_c, 0._r8) / can_press
+                 
 
                  ! Gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
 
@@ -1451,6 +1457,9 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                  cquad = ac * aj
                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
                  ai = min(r1,r2)
+                 
+                 if (sunsha == 1) test_out = aquad
+
 
                  aquad = theta_ip
                  bquad = -(ai + ap)
@@ -1463,7 +1472,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               ! Calculate anet, only exit iteration with negative anet when
               ! using anet in calculating gs this is version B  
               anet = agross  - lmr
-
+              
               if ( stomatal_assim_model == gross_assim_model ) then
                  if ( stomatal_model == medlyn_model ) then
                     write (fates_log(),*) 'Gross Assimilation conductance is incompatible with the Medlyn model'
@@ -1480,7 +1489,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               ! With an <= 0, then gs_mol = stomatal_intercept_btran
               leaf_co2_ppress = can_co2_ppress- h2o_co2_bl_diffuse_ratio/gb_mol * a_gs * can_press 		   
               leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
-
+              
               ! A note about the use of the quadratic equations for calculating stomatal conductance
               ! ------------------------------------------------------------------------------------
               ! These two following models calculate the conductance between the intercellular leaf
@@ -1523,18 +1532,24 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                  gs_mol = max(r1,r2)
 
               else if ( stomatal_model == ballberry_model ) then         !stomatal conductance calculated from Ball et al. (1987)
+
                  aquad = leaf_co2_ppress
                  bquad = leaf_co2_ppress*(gb_mol - stomatal_intercept_btran) - bb_slope(ft) * a_gs * can_press
                  cquad = -gb_mol*(leaf_co2_ppress*stomatal_intercept_btran + &
                       bb_slope(ft)*anet*can_press * ceair/ veg_esat )
+                      
+
 
                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
                  gs_mol = max(r1,r2)
+                 
               end if
               
               ! Derive new estimate for co2_inter_c
               co2_inter_c = can_co2_ppress - anet * can_press * &
                    (h2o_co2_bl_diffuse_ratio*gs_mol+h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
+                   
+               
 
               ! Check for co2_inter_c convergence. Delta co2_inter_c/pair = mol/mol.
               ! Multiply by 10**6 to convert to umol/mol (ppm). Exit iteration if
@@ -1542,7 +1557,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               ! iterations (niter=10) are completed
 
               if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
-                   .or. niter == 5) then
+                   .or. niter >= max_iters) then
                  loop_continue = .false.
               end if
            end do iter_loop

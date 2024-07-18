@@ -18,10 +18,12 @@ program FatesTestGasExchange
   real(r8), allocatable :: constrained_air_vpress(:) ! vapor pressure of air, constrained [Pa]
   integer               :: num_temp                  ! array size
   integer               :: i                         ! looping index
+  real(r8) :: vpd
   
   ! CONSTANTS:
   character(len=*), parameter :: out_file = 'gas_exchange_out.nc'          ! output file
   real(r8),         parameter :: default_vpd = 1000.0_r8                   ! default vapor pressure deficit [Pa]
+  real(r8),         parameter :: default_rh = 30.0_r8
   real(r8),         parameter :: can_air_press = 101325.0_r8               ! default value for canopy air pressure [Pa]
   real(r8),         parameter :: can_o2_partial_press = 20900.0_r8         ! default value for O2 partial pressure [Pa]
   real(r8),         parameter :: default_veg_tempk = 25.0_r8 + 273.15_r8   ! default value for vegetation temperature [K]
@@ -77,7 +79,7 @@ program FatesTestGasExchange
   do i = 1, num_temp
     
     ! calculate saturation vapor pressure and vapor pressure
-    call CalcVaporPressure(veg_tempk(i), default_vpd, veg_esat, can_air_vpress)
+    call CalcVaporPressure(veg_tempk(i), default_rh, vpd, veg_esat, can_air_vpress)
     
     ! get canopy gas parameters
     call GetCanopyGasParameters(can_air_press, can_o2_partial_press, veg_tempk(i),       &

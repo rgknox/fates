@@ -7,7 +7,7 @@ module FatesTestPhotosynthesisMod
   
   contains 
   
-  subroutine CalcVaporPressure(temperature, vapor_pressure_deficit, sat_vapor_pressure,  &
+  subroutine CalcVaporPressure(temperature, RH, vapor_pressure_deficit, sat_vapor_pressure,  &
       vapor_pressure)
     !
     ! DESCRIPTION:
@@ -16,16 +16,40 @@ module FatesTestPhotosynthesisMod
     !
     
     ! ARGUMENTS:
-    real(r8), intent(in)  :: temperature            ! temperature [K]
-    real(r8), intent(in)  :: vapor_pressure_deficit ! vapor pressure deficit [Pa]
-    real(r8), intent(out) :: sat_vapor_pressure     ! saturation vapor pressure [Pa]
-    real(r8), intent(out) :: vapor_pressure         ! vapor pressure [Pa]
+    real(r8), intent(in)  :: temperature             ! temperature [K]
+    real(r8), intent(in)  :: RH                      ! RH
+    real(r8), intent(out) :: vapor_pressure_deficit ! vapor pressure deficit [Pa]
+    real(r8), intent(out) :: sat_vapor_pressure      ! saturation vapor pressure [Pa]
+    real(r8), intent(out) :: vapor_pressure          ! vapor pressure [Pa]
     
     sat_vapor_pressure = sat_vapor_press(temperature - 273.15_r8) ! function uses temperature in Celsius
+    
+    vapor_pressure_deficit = sat_vapor_pressure*(1 - RH/100.0_r8)
     
     vapor_pressure = max(0.0_r8, sat_vapor_pressure - vapor_pressure_deficit)
     
   end subroutine CalcVaporPressure
+  
+  ! --------------------------------------------------------------------------------------
+  
+  subroutine CalcVPD(temperature, vapor_pressure, vapor_pressure_deficit, sat_vapor_pressure)
+  !
+  ! DESCRIPTION:
+  ! Calculates saturation vapor pressure and VPD based on input
+  ! temperature and vapor pressure 
+  !
+  
+  ! ARGUMENTS:
+  real(r8), intent(in)  :: temperature            ! temperature [K]
+  real(r8), intent(in)  :: vapor_pressure         ! vapor pressure 
+  real(r8), intent(out) :: vapor_pressure_deficit ! vapor pressure [Pa]
+  real(r8), intent(out) :: sat_vapor_pressure     ! saturation vapor pressure [Pa]
+  
+  sat_vapor_pressure = sat_vapor_press(temperature - 273.15_r8) ! function uses temperature in Celsius
+  
+  vapor_pressure_deficit = sat_vapor_pressure - vapor_pressure
+    
+end subroutine CalcVPD
   
   ! --------------------------------------------------------------------------------------
   

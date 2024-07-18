@@ -106,7 +106,7 @@ end program FatesBiophysicalRates
 subroutine WriteBiophysicalRates(out_file, num_temp, numpft, veg_tempk, vcmax, jmax, kp) 
   !
   ! DESCRIPTION:
-  ! Writes out data from the gas exchange test
+  ! Writes out data from the leaf biophysical rates test
   !
   use FatesConstantsMod,  only : r8 => fates_r8
   use FatesUnitTestIOMod, only : OpenNCFile, RegisterNCDims, CloseNCFile
