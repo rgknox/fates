@@ -58,12 +58,18 @@
 
     <!-- Update the HLM-PFT map since PFTs 9 and 10 now share area -->
     <pft_group ids="9" >
-      <fates_hlm_pft_map> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 0.3, 0, 0, 0 </fates_hlm_pft_map>
+      <fates_hlm_pft_map> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.3, 0, 0, 0 </fates_hlm_pft_map>
     </pft_group>
     
     <pft_group ids="10">
-      <fates_hlm_pft_map> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.7, 0.7, 0, 0, 0 </fates_hlm_pft_map>
+      <fates_hlm_pft_map> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7, 0, 0, 0 </fates_hlm_pft_map>
     </pft_group>
+
+
+    <!-- update PFT 8 to now map to an HLM pft -->
+    <pft_group ids="8" >
+      <fates_hlm_pft_map> 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.0, 0, 0, 0 </fates_hlm_pft_map>
+    </pft_group
     
     <!-- Updating parameters for c3_arctic grass based on Yanlan's work. Now PFT #11 -->
     <pft_group ids="11">
