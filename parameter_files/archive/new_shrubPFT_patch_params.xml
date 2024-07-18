@@ -15,7 +15,7 @@
     <!-- 7  broadleaf_evergreen_extratrop_shrub   -->
     <!-- 8  broadleaf_hydrodecid_extratrop_shrub  -->
     <!-- 9  broadleaf_colddecid_extratrop_shrub   -->
-    <!-- 10 broadleaf_colddecid_arctic_shrub      -->
+    <!-- 10 broadleaf_colddecid_arctic_shrub (NEW)-->
     <!-- 11 arctic_c3_grass                       -->
     <!-- 12 cool_c3_grass                         -->
     <!-- 13 c4_grass                              -->
@@ -55,6 +55,16 @@
       <fates_recruit_seed_germination_rate> 0.49 </fates_recruit_seed_germination_rate>
     </pft_group>
 
+
+    <!-- Update the HLM-PFT map since PFTs 9 and 10 now share area -->
+    <pft_group ids="9" >
+      <fates_hlm_pft_map> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 0.3, 0, 0, 0 </fates_hlm_pft_map>
+    </pft_group>
+    
+    <pft_group ids="10">
+      <fates_hlm_pft_map> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.7, 0.7, 0, 0, 0 </fates_hlm_pft_map>
+    </pft_group>
+    
     <!-- Updating parameters for c3_arctic grass based on Yanlan's work. Now PFT #11 -->
     <pft_group ids="11">
       <fates_recruit_height_min> 0.11 </fates_recruit_height_min>
@@ -72,7 +82,7 @@
     <!-- Creates a new 10th column, and separates the two cold-deciduous shrubs-->
     <!-- into 0.3 for extratropical, and 0.7 for arctic -->
     <!-- Introduces a 1:1 match for FATES hydro-deciduous shrub and HLM deciduous temperate shrub -->
-    <mods>
+    <!--<mods>
       <mod type="variable_change" name="fates_hlm_pft_map">
         <di> fates_hlm_pftno, fates_pft </di>
         <val>  0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -91,7 +101,7 @@
                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 ;
         </val>
       </mod>
-    </mods>
-
+    </mods>   -->
+    
   </parameters>
 </all>
