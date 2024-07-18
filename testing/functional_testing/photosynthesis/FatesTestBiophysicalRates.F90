@@ -6,6 +6,7 @@ program FatesBiophysicalRates
   use EDPftvarcon,                 only : EDPftvarcon_inst
   use FatesParameterDerivedMod,    only : param_derived
   use PRTParametersMod,            only : prt_params
+  use FatesConstantsMod,           only : tfrz => t_water_freeze_k_1atm
   
   implicit none
   
@@ -24,14 +25,15 @@ program FatesBiophysicalRates
   integer                            :: numpft       ! number of PFTs (from parameter file)
   
   ! CONSTANTS:
-  character(len=*), parameter :: out_file = 'biophys_rates_out.nc' ! output file
-  real(r8),         parameter :: par = 100.0_r8                    ! default PAR, just needs to be above 0.0 [W/m2]
-  real(r8),         parameter :: default_nscaler = 1.0_r8          ! default scaler for leaf nitrogen [0-1]
-  real(r8),         parameter :: default_dayl_fact = 1.0_r8        ! default scaler for day length [0-1]
-  real(r8),         parameter :: default_btran = 1.0_r8            ! default scaler for BTRAN [0-1]
-  real(r8),         parameter :: min_temp = 273.15_r8              ! minimum temperature to calculate [K]
-  real(r8),         parameter :: max_temp = 323.15_r8              ! maximum temperature to calculate [K]
-  real(r8),         parameter :: temp_inc = 0.5_r8                 ! temperature increment to use [K]
+  character(len=*), parameter :: out_file = 'biophys_rates_out.nc'         ! output file
+  real(r8),         parameter :: par = 100.0_r8                            ! default PAR, just needs to be above 0.0 [W/m2]
+  real(r8),         parameter :: default_nscaler = 1.0_r8                  ! default scaler for leaf nitrogen [0-1]
+  real(r8),         parameter :: default_can_air_tempk = 25.0_r8 + tfrz    ! default value for canopy air temperature [K]
+  real(r8),         parameter :: default_dayl_fact = 1.0_r8                ! default scaler for day length [0-1]
+  real(r8),         parameter :: default_btran = 1.0_r8                    ! default scaler for BTRAN [0-1]
+  real(r8),         parameter :: min_temp = -5.0_r8                        ! minimum temperature to calculate [degC]
+  real(r8),         parameter :: max_temp = 50.0_r8                        ! maximum temperature to calculate [degC]
+  real(r8),         parameter :: temp_inc = 0.5_r8                         ! temperature increment to use [degC]
   
   interface
 
@@ -84,7 +86,7 @@ program FatesBiophysicalRates
   
   ! initialize temperature array
   do i = 1, num_temp
-    veg_tempk(i) = min_temp + temp_inc*(i-1)
+    veg_tempk(i) = (min_temp + temp_inc*(i-1)) + tfrz
   end do
   
   ! get canopy gas parameters as we scale temperature and hold everything else constant
@@ -92,8 +94,8 @@ program FatesBiophysicalRates
     do ft = 1, numpft
       call LeafLayerBiophysicalRates(par, ft, EDPftvarcon_inst%vcmax25top(ft,1),         &
         param_derived%jmax25top(ft,1), param_derived%kp25top(ft,1), default_nscaler,     &
-        veg_tempk(i), default_dayl_fact, veg_tempk(i), veg_tempk(i), default_btran,      &
-        vcmax(i,ft), jmax(i,ft), kp(i,ft))
+        veg_tempk(i), default_dayl_fact, default_can_air_tempk, default_can_air_tempk,   &
+        default_btran, vcmax(i,ft), jmax(i,ft), kp(i,ft))
     end do
   end do
   
