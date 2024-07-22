@@ -1296,7 +1296,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8) :: gs_mol            ! leaf stomatal conductance (umol H2O/m**2/s)
   real(r8) :: gs                ! leaf stomatal conductance (m/s)
   real(r8) :: hs                ! fractional humidity at leaf surface (dimensionless)
-  real(r8) :: gs_mol_err        ! gs_mol for error check
   real(r8) :: ac                ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
   real(r8) :: aj                ! RuBP-limited gross photosynthesis (umol CO2/m**2/s)
   real(r8) :: ap                ! product-limited (C3) or CO2-limited
@@ -1338,6 +1337,15 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
 
   ! empirical curvature parameter for ap photosynthesis co-limitation
   real(r8),parameter :: theta_ip = 0.999_r8
+
+  ! Set this to true if you want to assume zero resistance between
+  ! leaf surface and boundary layer, which then assumes leaf surface
+  ! humidity is the same as humidity on the other side of the boundary
+  ! layer, essentially bypassing the use
+  ! of Fick's law while calculating stomatal conductance.
+  
+  logical, parameter :: zero_bl_resist = .true.
+  
   
   associate( bb_slope  => EDPftvarcon_inst%bb_slope      ,& ! slope of BB relationship, unitless
        medlyn_slope=> EDPftvarcon_inst%medlyn_slope          , & ! Slope for Medlyn stomatal conductance model method, the unit is KPa^0.5
@@ -1521,37 +1529,61 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               !
               ! ------------------------------------------------------------------------------------
               
-              
-              if ( stomatal_model == medlyn_model ) then
-                 !stomatal conductance calculated from Medlyn et al. (2011), the numerical &
-                 !implementation was adapted from the equations in CLM5.0
-                 vpd =  max((veg_esat - ceair), 50._r8) * 0.001_r8          !addapted from CLM5. Put some constraint on VPD
-                 !when Medlyn stomatal conductance is being used, the unit is KPa. Ignoring the constraint will cause errors when model runs.
-                 term = h2o_co2_stoma_diffuse_ratio * anet / (leaf_co2_ppress / can_press)
-                 aquad = 1.0_r8
-                 bquad = -(2.0 * (stomatal_intercept_btran+ term) + (medlyn_slope(ft) * term)**2 / &
-                      (gb_mol * vpd ))
-                 cquad = stomatal_intercept_btran*stomatal_intercept_btran + &
-                      (2.0*stomatal_intercept_btran + term * &
-                      (1.0 - medlyn_slope(ft)* medlyn_slope(ft) / vpd)) * term
-
-                 call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-                 gs_mol = max(r1,r2)
+              ! Evaluate trival solution, if there is no positive net assimiolation
+              ! the stomatal conductance is the intercept conductance
+              if_pos_anet_cond: if (anet <= nearzero) then
                  
-              else if ( stomatal_model == ballberry_model ) then         !stomatal conductance calculated from Ball et al. (1987)
+                 gs_mol = stomatal_intercept_btran
 
-                 aquad = leaf_co2_ppress
-                 bquad = leaf_co2_ppress*(gb_mol - stomatal_intercept_btran) - bb_slope(ft) * a_gs * can_press
-                 cquad = -gb_mol*(leaf_co2_ppress*stomatal_intercept_btran + &
-                      bb_slope(ft)*anet*can_press * ceair/ veg_esat )
-                      
+              else
+               
+                 if ( stomatal_model == medlyn_model ) then
+                    
+                    ! stomatal conductance calculated from Medlyn et al. (2011), the numerical &
+                    ! implementation was adapted from the equations in CLM5.0 [kPa]
+                    
+                    vpd =  max((veg_esat - ceair), 50._r8) * 0.001_r8          !addapted from CLM5. Put some constraint on VPD
+                    
+                    if(zero_bl_resist) then
+                       
+                       ! We assume zero resistance in the leaf boundary layer, and that humidity at
+                       ! the leaf surface is equal to humidity outside the boundary layer
+                       gs_mol = h2o_co2_stoma_diffuse_ratio*(1._r8 + medlyn_slope(ft)/sqrt(vpd))*anet/leaf_co2_ppress*can_press + stomatal_intercept_btran
+                    else
+                       
+                       !when Medlyn stomatal conductance is being used, the unit is KPa. Ignoring the constraint will cause errors when model runs.
+                       term = h2o_co2_stoma_diffuse_ratio * anet / (leaf_co2_ppress / can_press)
+                       aquad = 1.0_r8
+                       bquad = -(2.0 * (stomatal_intercept_btran+ term) + (medlyn_slope(ft) * term)**2 / &
+                            (gb_mol * vpd ))
+                       cquad = stomatal_intercept_btran*stomatal_intercept_btran + &
+                            (2.0*stomatal_intercept_btran + term * &
+                            (1.0 - medlyn_slope(ft)* medlyn_slope(ft) / vpd)) * term
+                       
+                       call QuadraticRoots(aquad, bquad, cquad, r1, r2)
+                       gs_mol = max(r1,r2)
+                    end if
+                    
+                 else if ( stomatal_model == ballberry_model ) then         !stomatal conductance calculated from Ball et al. (1987)
+                    
+                    if(zero_bl_resist) then
+                       
+                       hs = (ceair/ veg_esat)  
+                       gs_mol = bb_slope(ft)*anet*hs/leaf_co2_ppress*can_press + stomatal_intercept_btran
+                       
+                    else
+                       aquad = leaf_co2_ppress
+                       bquad = leaf_co2_ppress*(gb_mol - stomatal_intercept_btran) - bb_slope(ft) * a_gs * can_press
+                       cquad = -gb_mol*(leaf_co2_ppress*stomatal_intercept_btran + &
+                            bb_slope(ft)*anet*can_press * ceair/ veg_esat )
+                       
+                       call QuadraticRoots(aquad, bquad, cquad, r1, r2)
+                       gs_mol = max(r1,r2)
+                    end if
+                 end if
 
-
-                 call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-                 gs_mol = max(r1,r2)
+              end if if_pos_anet_cond
                  
-              end if
-              
               ! Derive new estimate for co2_inter_c
               co2_inter_c = can_co2_ppress - anet * can_press * &
                    (h2o_co2_bl_diffuse_ratio*gs_mol+h2o_co2_stoma_diffuse_ratio*gb_mol) / (gb_mol*gs_mol)
@@ -1617,20 +1649,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               write (fates_log(),*)'Negative stomatal conductance:'
               write (fates_log(),*)'gs_mol= ',gs_mol
               call endrun(msg=errMsg(sourcefile, __LINE__))
-           end if
-
-           ! Compare with Medlyn model: gs_mol = 1.6*(1+m/sqrt(vpd)) * an/leaf_co2_ppress*p + b
-           if ( stomatal_model == 2 ) then
-              gs_mol_err = h2o_co2_stoma_diffuse_ratio*(1 + medlyn_slope(ft)/sqrt(vpd))*max(anet,0._r8)/leaf_co2_ppress*can_press + stomatal_intercept_btran
-              ! Compare with Ball-Berry model: gs_mol = m * an * hs/leaf_co2_ppress*p + b
-           else if ( stomatal_model == 1 ) then
-              hs = (gb_mol*ceair + gs_mol* veg_esat ) / ((gb_mol+gs_mol)*veg_esat )
-              gs_mol_err = bb_slope(ft)*max(anet, 0._r8)*hs/leaf_co2_ppress*can_press + stomatal_intercept_btran
-           end if
-
-           if (abs(gs_mol-gs_mol_err) > 1.e-01_r8) then
-              warn_msg = 'Stomatal conductance error check - weak convergence: '//trim(N2S(gs_mol))//' '//trim(N2S(gs_mol_err))
-              call FatesWarn(warn_msg,index=1)
            end if
 
         enddo !sunsha loop
