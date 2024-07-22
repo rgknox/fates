@@ -2,13 +2,13 @@ module FatesTestPhotosynthesisMod
   ! Helper methods for testing the FATES photosynthesis routines
   
   use FatesConstantsMod, only : r8 => fates_r8
+  use FatesConstantsMod, only : tfrz => t_water_freeze_k_1atm
   
   implicit none
   
   contains 
   
-  subroutine CalcVaporPressure(temperature, vapor_pressure_deficit, sat_vapor_pressure,  &
-      vapor_pressure)
+  subroutine CalcVaporPressure(temperature, RH, sat_vapor_pressure, vapor_pressure)
     !
     ! DESCRIPTION:
     ! Calculates saturation vapor pressure and actual vapor pressure based on input
@@ -16,19 +16,19 @@ module FatesTestPhotosynthesisMod
     !
     
     ! ARGUMENTS:
-    real(r8), intent(in)  :: temperature            ! temperature [K]
-    real(r8), intent(in)  :: vapor_pressure_deficit ! vapor pressure deficit [Pa]
-    real(r8), intent(out) :: sat_vapor_pressure     ! saturation vapor pressure [Pa]
-    real(r8), intent(out) :: vapor_pressure         ! vapor pressure [Pa]
+    real(r8), intent(in)  :: temperature             ! temperature [K]
+    real(r8), intent(in)  :: RH                      ! RH [%]
+    real(r8), intent(out) :: sat_vapor_pressure      ! saturation vapor pressure [Pa]
+    real(r8), intent(out) :: vapor_pressure          ! vapor pressure [Pa]
     
-    sat_vapor_pressure = sat_vapor_press(temperature - 273.15_r8) ! function uses temperature in Celsius
+    sat_vapor_pressure = sat_vapor_press(temperature - tfrz) ! function uses temperature in Celsius
     
-    vapor_pressure = max(0.0_r8, sat_vapor_pressure - vapor_pressure_deficit)
+    vapor_pressure = (RH/100.0_r8)*sat_vapor_pressure
     
   end subroutine CalcVaporPressure
   
   ! --------------------------------------------------------------------------------------
-  
+
   real(r8) function sat_vapor_press(temperature)
     !
     ! DESCRIPTION:

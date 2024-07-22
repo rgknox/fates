@@ -118,6 +118,8 @@ contains
             this%jmax25top(ft,iage) = 1.67_r8   * vcmax25top(ft,iage)
             this%tpu25top(ft,iage)  = 0.167_r8  * vcmax25top(ft,iage)
             this%kp25top(ft,iage)   = 20000._r8 * vcmax25top(ft,iage)
+
+    
          
          end do
 
