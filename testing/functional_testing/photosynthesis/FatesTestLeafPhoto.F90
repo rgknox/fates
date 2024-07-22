@@ -9,27 +9,38 @@ program FatesTestLeafPhoto
   implicit none
   
   ! LOCALS:
-  type(fates_unit_test_param_reader) :: param_reader           ! param reader instance
-  character(len=:), allocatable      :: param_file             ! input parameter file
-  real(r8),         allocatable      :: veg_tempk(:)           ! vegetation temperature [K]
-  real(r8),         allocatable      :: PAR(:)                 ! PAR [umol/m2/s]
-  real(r8),         allocatable      :: can_air_vpress(:)      ! canopy air vapor pressure [Pa]
-  real(r8),         allocatable      :: leaf_photo_bytemp(:,:) ! net leaf photosynthesis with temperature [umol CO2/m2/s]
-  real(r8),         allocatable      :: leaf_photo_byPAR(:,:)  ! net leaf photosynthesis with PAR [umol CO2/m2/s]
-  real(r8),         allocatable      :: leaf_photo_byVPD(:,:)  ! net leaf photosynthesis with VPD [umol CO2/m2/s]
-  real(r8),         allocatable      :: leaf_photo_byCO2(:,:)  ! net leaf photosynthesis with CO2 concentration [umol CO2/m2/s]
-  real(r8)                           :: stomatal_resistance    ! stomatal resistance [s/m]
-  real(r8)                           :: test_out               ! test output
-  real(r8)                           :: veg_esat               ! saturation vapor pressure at vegetation surface [Pa]
-  real(r8)                           :: veg_air_vpress         ! vapor pressure at vegetation surface [Pa]
-  real(r8)                           :: default_can_air_vpress ! vapor pressure of canopy air [Pa]
-  real(r8)                           :: default_veg_esat       ! default saturation vapor pressure at vegetation surface [Pa]
-  integer                            :: num_temp, num_PAR      ! array sizes
-  integer                            :: num_pft                ! number of PFTs (from parameter file)
-  integer                            :: i                      ! looping index
-  integer                            :: ft                     ! plant functional type index
-  integer                            :: nargs                  ! number of command-line arguments
-  integer                            :: arglen                 ! command-line argument length
+  type(fates_unit_test_param_reader) :: param_reader             ! param reader instance
+  character(len=:), allocatable      :: param_file               ! input parameter file
+  real(r8),         allocatable      :: veg_tempk(:)             ! vegetation temperature [K]
+  real(r8),         allocatable      :: PAR(:)                   ! PAR [umol/m2/s]
+  real(r8),         allocatable      :: RH(:)                    ! relative humidity [%]
+  real(r8),         allocatable      :: co2_pp(:)                ! CO2 partial pressure [Pa]
+  real(r8),         allocatable      :: nscaler(:)               ! scaler for leaf N [0-1]
+  real(r8),         allocatable      :: btran(:)                 ! scaler for BTRAN [0-1]
+  real(r8),         allocatable      :: can_air_vpress_bytemp(:) ! canopy air vapor pressure (by temperature) [Pa]
+  real(r8),         allocatable      :: can_air_vpress_byRH(:)   ! canopy air vapor pressure (by RH) [Pa]
+  real(r8),         allocatable      :: veg_esat_bytemp(:)       ! saturation vapor pressure at vegetation surface - by temperature [Pa]
+  real(r8),         allocatable      :: veg_esat_byRH(:)         ! saturation vapor pressure at vegetation surface - by RH [Pa]
+  real(r8),         allocatable      :: leaf_photo_bytemp(:,:)   ! net leaf photosynthesis with temperature [umol CO2/m2/s]
+  real(r8),         allocatable      :: leaf_photo_byPAR(:,:)    ! net leaf photosynthesis with PAR [umol CO2/m2/s]
+  real(r8),         allocatable      :: leaf_photo_byRH(:,:)     ! net leaf photosynthesis with RH [umol CO2/m2/s]
+  real(r8),         allocatable      :: leaf_photo_byCO2(:,:)    ! net leaf photosynthesis with CO2 concentration [umol CO2/m2/s]
+  real(r8),         allocatable      :: leaf_photo_bynscaler(:,:) ! net leaf photosynthesis with nscaler [umol CO2/m2/s]
+  real(r8),         allocatable      :: leaf_photo_bybtran(:,:)  ! net leaf photosynthesis with BTRAN [umol CO2/m2/s]
+  real(r8)                           :: stomatal_resistance      ! stomatal resistance [s/m]
+  real(r8)                           :: test_out                 ! test output
+  real(r8)                           :: veg_air_vpress           ! vapor pressure at vegetation surface [Pa]
+  real(r8)                           :: default_can_air_vpress   ! default value for vapor pressure of canopy air [Pa]
+  real(r8)                           :: default_veg_esat         ! default saturation vapor pressure at vegetation surface [Pa]
+  real(r8)                           :: veg_temp                 ! vegetation temperature [K]
+  integer                            :: num_temp, num_PAR        ! array sizes
+  integer                            :: num_RH, num_co2          ! array sizes
+  integer                            :: num_nscaler, num_btran   ! array sizes
+  integer                            :: num_pft                  ! number of PFTs (from parameter file)
+  integer                            :: i                        ! looping index
+  integer                            :: ft                       ! plant functional type index
+  integer                            :: nargs                    ! number of command-line arguments
+  integer                            :: arglen                   ! command-line argument length
   
   ! CONSTANTS:
   character(len=*), parameter :: out_file = 'leaf_photo_out.nc' ! output file
@@ -54,18 +65,20 @@ program FatesTestLeafPhoto
   real(r8), parameter :: min_PAR = 0.0_r8    ! minimum PAR to calculate [umol/m2/s]
   real(r8), parameter :: max_PAR = 1500.0_r8 ! maximum PAR to calculate [umol/m2/s]
   real(r8), parameter :: PAR_inc = 5.0_r8    ! PAR increment to use [umol/m2/s]
-  real(r8), parameter :: min_VPD = 0.0_r8    ! minimum VPD to calculate [Pa]
-  real(r8), parameter :: max_VPD = 4000.0_r8 ! maximum VPD to calculate [Pa]
-  real(r8), parameter :: VPD_inc = 5.0_r8    ! VPD increment to use [Pa]
+  real(r8), parameter :: min_RH = 0.0_r8     ! minimum RH to calculate [%]
+  real(r8), parameter :: max_RH = 100.0_r8   ! maximum RH to calculate [%]
+  real(r8), parameter :: RH_inc = 1.0_r8     ! RH increment to use [%]
   real(r8), parameter :: min_co2 = 50.0_r8   ! minimum CO2 concentration to calculate [umol/mol]
   real(r8), parameter :: max_co2 = 600.0_r8  ! maximum CO2 concentration to calculate [umol/mol]
   real(r8), parameter :: co2_inc = 5.0_r8    ! CO2 concentration increment to use [umol/mol]
   
   interface
 
-  subroutine WriteLeafPhotosynthesis(out_file, num_temp, numpft, veg_tempk, can_air_vpress, &
-    leaf_photo_bytemp, leaf_photo_byPAR)  
-
+  subroutine WriteLeafPhotosynthesis(out_file, num_temp, num_pft, num_par, num_RH,       &
+    num_co2, num_nscaler, num_btran, veg_tempk, par, RH, co2, nscaler, btran,             &
+    can_air_vpress_bytemp, veg_esat_bytemp, veg_esat_byRH, can_air_vpress_byRH,          &
+    leaf_photo_bytemp, leaf_photo_byPAR, leaf_photo_byRH, leaf_photo_byCO2,              &
+    leaf_photo_bynscaler, leaf_photo_bybtran)  
     use FatesUnitTestIOMod, only : OpenNCFile, RegisterNCDims, CloseNCFile
     use FatesUnitTestIOMod, only : WriteVar, RegisterVar
     use FatesUnitTestIOMod, only : type_double, type_int
@@ -74,11 +87,28 @@ program FatesTestLeafPhoto
 
     character(len=*), intent(in) :: out_file                
     integer,          intent(in) :: num_temp               
-    integer,          intent(in) :: numpft                  
+    integer,          intent(in) :: num_pft    
+    integer,          intent(in) :: num_par
+    integer,          intent(in) :: num_RH
+    integer,          intent(in) :: num_co2
+    integer,          intent(in) :: num_nscaler     
+    integer,          intent(in) :: num_btran           
     real(r8),         intent(in) :: veg_tempk(:)
-    real(r8),         intent(in) :: can_air_vpress(:)
+    real(r8),         intent(in) :: par(:)
+    real(r8),         intent(in) :: RH(:)
+    real(r8),         intent(in) :: co2(:)
+    real(r8),         intent(in) :: nscaler(:)
+    real(r8),         intent(in) :: btran(:)
+    real(r8),         intent(in) :: can_air_vpress_bytemp(:)
+    real(r8),         intent(in) :: can_air_vpress_byRH(:)
+    real(r8),         intent(in) :: veg_esat_bytemp(:)
+    real(r8),         intent(in) :: veg_esat_byRH(:)
     real(r8),         intent(in) :: leaf_photo_bytemp(:,:)
-    real(r8),         intent(in) :: leaf_photo_byPAR(:,:)          
+    real(r8),         intent(in) :: leaf_photo_byPAR(:,:)   
+    real(r8),         intent(in) :: leaf_photo_byRH(:,:)  
+    real(r8),         intent(in) :: leaf_photo_byco2(:,:)
+    real(r8),         intent(in) :: leaf_photo_bynscaler(:,:) 
+    real(r8),         intent(in) :: leaf_photo_bybtran(:,:)     
   end subroutine WriteLeafPhotosynthesis
   
   subroutine LeafLevelPhoto(can_air_press, can_co2_pp, can_o2_pp, veg_tempk, can_tempk,  &
@@ -130,14 +160,31 @@ end interface
   ! calculate sizes of arrays based on desired min/max/increments
   num_temp = int((max_temp - min_temp)/temp_inc + 1)
   num_PAR = int((max_PAR - min_PAR)/PAR_inc + 1)
+  num_RH = int((max_RH - min_RH)/RH_inc + 1)
+  num_co2 = int((max_co2 - min_co2)/co2_inc + 1)
+  num_nscaler = int((1.0 - 0.0)/0.05 + 1)
+  num_btran = int((1.0 - 0.0)/0.05 + 1)
+  
+  ! number of pfts from parameter file
   num_pft = size(prt_params%wood_density, dim=1)
   
   ! allocate arrays
   allocate(veg_tempk(num_temp))
-  allocate(can_air_vpress(num_temp))
-  allocate(leaf_photo_bytemp(num_temp, numpft))
   allocate(PAR(num_PAR))
-  allocate(leaf_photo_byPAR(num_PAR, numpft))
+  allocate(RH(num_RH))
+  allocate(co2_pp(num_co2))
+  allocate(nscaler(num_nscaler))
+  allocate(btran(num_btran))
+  allocate(can_air_vpress_bytemp(num_temp))
+  allocate(can_air_vpress_byRH(num_RH))
+  allocate(veg_esat_bytemp(num_temp))
+  allocate(veg_esat_byRH(num_RH))
+  allocate(leaf_photo_bytemp(num_temp, num_pft))
+  allocate(leaf_photo_byPAR(num_PAR, num_pft))
+  allocate(leaf_photo_byRH(num_RH, num_pft))
+  allocate(leaf_photo_byco2(num_co2, num_pft))
+  allocate(leaf_photo_bynscaler(num_nscaler, num_pft))
+  allocate(leaf_photo_bybtran(num_btran, num_pft))
   
   ! calculate saturation vapor pressure and vapor pressure for default values
   call CalcVaporPressure(default_veg_tempk, default_RH, default_veg_esat, veg_air_vpress)
@@ -151,11 +198,59 @@ end interface
     ! calculate PAR
     PAR(i) = min_PAR + PAR_inc*(i-1)
     
-    do ft = 1, numpft 
+    do ft = 1, num_pft 
       call LeafLevelPhoto(default_can_air_press, default_can_co2_pp, default_can_o2_pp,  &
-      default_veg_tempk, default_can_tempk, default_can_air_vpress, default_veg_esat,    &
-      par(i), default_leaf_bl_resistance, default_nscaler, default_dayl_fact,            &
-      default_btran, ft, leaf_photo_byPAR(i,ft), stomatal_resistance, test_out)
+        default_veg_tempk, default_can_tempk, default_can_air_vpress, default_veg_esat,  &
+        PAR(i), default_leaf_bl_resistance, default_nscaler, default_dayl_fact,          &
+        default_btran, ft, leaf_photo_byPAR(i,ft), stomatal_resistance, test_out)
+    end do
+  end do
+  
+  
+  !!! CO2 concentration ------------------------------------------------------------------
+
+  ! calculate photosynthesis as we scale CO2 ppm and hold everything else constant
+  do i = 1, num_co2
+    
+    ! calculate PAR
+    co2_pp(i) = ((min_co2 + co2_inc*(i-1))/1.0E6_r8)*default_can_air_press
+    
+    do ft = 1, num_pft 
+      call LeafLevelPhoto(default_can_air_press, co2_pp(i), default_can_o2_pp,           &
+        default_veg_tempk, default_can_tempk, default_can_air_vpress, default_veg_esat,  &
+        default_par, default_leaf_bl_resistance, default_nscaler, default_dayl_fact,     &
+        default_btran, ft, leaf_photo_byCO2(i,ft), stomatal_resistance, test_out)
+    end do
+  end do
+  
+  
+  !!! RH --------------------------------------------------------------------------------
+
+  ! calculate photosynthesis as we scale RH and hold everything else constant
+  do i = 1, num_RH
+    
+    ! calculate PAR
+    RH(i) = min_RH + RH_inc*(i-1)
+    
+    ! if (RH(i) >= 30.0_r8) then 
+    !   veg_temp = default_veg_tempk
+    ! else 
+    !   veg_temp = 35.0_r8 + tfrz
+    ! end if 
+    
+    veg_temp = default_veg_tempk
+    
+    ! calculate saturation vapor pressure and vapor pressure
+    call CalcVaporPressure(veg_temp, RH(i), veg_esat_byRH(i), veg_air_vpress)
+    
+    ! calculate canopy air vapor pressure at this RH
+    can_air_vpress_byRH(i) = (RH(i)/100.0_r8)*veg_esat_byRH(i)
+    
+    do ft = 1, num_pft 
+      call LeafLevelPhoto(default_can_air_press, default_can_co2_pp, default_can_o2_pp,  &
+        veg_temp, default_can_tempk, can_air_vpress_byRH(i), veg_esat_byRH(i),           &
+        default_PAR, default_leaf_bl_resistance, default_nscaler, default_dayl_fact,     &
+        default_btran, ft, leaf_photo_byRH(i,ft), stomatal_resistance, test_out)
     end do
   end do
   
@@ -168,30 +263,75 @@ end interface
     veg_tempk(i) = (min_temp + temp_inc*(i-1)) + tfrz
     
     ! calculate saturation vapor pressure and vapor pressure
-    call CalcVaporPressure(veg_tempk(i), default_RH, veg_esat, veg_air_vpress)
+    call CalcVaporPressure(veg_tempk(i), default_RH, veg_esat_bytemp(i), veg_air_vpress)
     
     ! calculate canopy air vapor pressure so that RH and VPD are maintained
-    can_air_vpress(i) = (default_RH/100.0_r8)*veg_esat
+    can_air_vpress_bytemp(i) = (default_RH/100.0_r8)*veg_esat_bytemp(i)
       
-    do ft = 1, numpft 
+    do ft = 1, num_pft 
       call LeafLevelPhoto(default_can_air_press, default_can_co2_pp, default_can_o2_pp,  &
-      veg_tempk(i), default_can_tempk, can_air_vpress(i), veg_esat, default_par,         &
-      default_leaf_bl_resistance, default_nscaler, default_dayl_fact, default_btran, ft, &
-      leaf_photo_bytemp(i,ft), stomatal_resistance, test_out)
+        veg_tempk(i), default_can_tempk, can_air_vpress_bytemp(i), veg_esat_bytemp(i),   &
+        default_par, default_leaf_bl_resistance, default_nscaler, default_dayl_fact,     &
+        default_btran, ft, leaf_photo_bytemp(i,ft), stomatal_resistance, test_out)
     end do
   end do
   
-  !!! Write output and wrap up -----------------------------------------------------------
+  
+  !!! nscaler ----------------------------------------------------------------------------
+
+  ! calculate photosynthesis as we scale the nscaler and hold everything else constant
+  do i = 1, num_nscaler
     
-  call WriteLeafPhotosynthesis(out_file, num_temp, numpft, veg_tempk, can_air_vpress,    &
-    leaf_photo) 
+    ! calculate nscaler
+    nscaler(i) = 0.0 + 0.05*(i-1)
+    
+    do ft = 1, num_pft 
+      call LeafLevelPhoto(default_can_air_press, default_can_co2_pp, default_can_o2_pp,  &
+        default_veg_tempk, default_can_tempk, default_can_air_vpress, default_veg_esat,  &
+        default_par, default_leaf_bl_resistance, nscaler(i), default_dayl_fact,          &
+        default_btran, ft, leaf_photo_bynscaler(i,ft), stomatal_resistance, test_out)
+    end do
+  end do
+  
+  
+  !!! btran ----------------------------------------------------------------------------
+
+  ! calculate photosynthesis as we scale the BTRAN and hold everything else constant
+  do i = 1, num_btran
+    
+    ! calculate btran
+    btran(i) = 0.0 + 0.05*(i-1)
+    
+    do ft = 1, num_pft 
+      call LeafLevelPhoto(default_can_air_press, default_can_co2_pp, default_can_o2_pp,  &
+        default_veg_tempk, default_can_tempk, default_can_air_vpress, default_veg_esat,  &
+        default_par, default_leaf_bl_resistance, default_nscaler, default_dayl_fact,     &
+        btran(i), ft, leaf_photo_bybtran(i,ft), stomatal_resistance, test_out)
+    end do
+  end do
+  
+  
+  !!! Write output -----------------------------------------------------------------------
+    
+  call WriteLeafPhotosynthesis(out_file, num_temp, num_pft, num_PAR, num_RH, num_co2,    &
+    num_nscaler, num_btran, veg_tempk, par, RH, co2_pp, nscaler, btran,                  &
+    can_air_vpress_bytemp, can_air_vpress_byRH, veg_esat_bytemp, veg_esat_byRH,          &
+    leaf_photo_bytemp, leaf_photo_byPAR, leaf_photo_byRH, leaf_photo_byCO2,              &
+    leaf_photo_bynscaler, leaf_photo_bybtran) 
+    
+    
+  !!! Wrap up ----------------------------------------------------------------------------
 
   ! deallocate arrays
   if (allocated(veg_tempk)) deallocate(veg_tempk)
   if (allocated(PAR)) deallocate(PAR)
-  if (allocated(can_air_vpress)) deallocate(can_air_vpress)
+  if (allocated(RH)) deallocate(RH)
+  if (allocated(co2_pp)) deallocate(co2_pp)
+  if (allocated(can_air_vpress_bytemp)) deallocate(can_air_vpress_bytemp)
   if (allocated(leaf_photo_bytemp)) deallocate(leaf_photo_bytemp)
   if (allocated(leaf_photo_byPAR)) deallocate(leaf_photo_byPAR)
+  if (allocated(leaf_photo_byRH)) deallocate(leaf_photo_byRH)
+  if (allocated(leaf_photo_byco2)) deallocate(leaf_photo_byco2)
   
 end program FatesTestLeafPhoto
 
@@ -277,8 +417,11 @@ end subroutine LeafLevelPhoto
 
 ! ----------------------------------------------------------------------------------------
 
-subroutine WriteLeafPhotosynthesis(out_file, num_temp, numpft, veg_tempk, can_air_vpress, &
-  leaf_photo_bytemp, leaf_photo_byPAR)  
+subroutine WriteLeafPhotosynthesis(out_file, num_temp, num_pft, num_par, num_RH,         &
+  num_co2, num_nscaler, num_btran, veg_tempk, par, RH, co2, nscaler, btran,              &
+  can_air_vpress_bytemp, can_air_vpress_byRH, veg_esat_bytemp, veg_esat_byRH,            &
+  leaf_photo_bytemp, leaf_photo_byPAR, leaf_photo_byRH, leaf_photo_byCO2,                &
+  leaf_photo_bynscaler, leaf_photo_bybtran)
   !
   ! DESCRIPTION:
   ! Writes out data from the leaf photosynthesis test
@@ -295,82 +438,185 @@ subroutine WriteLeafPhotosynthesis(out_file, num_temp, numpft, veg_tempk, can_ai
   ! ARGUMENTS:
   character(len=*), intent(in) :: out_file                 ! output file name
   integer,          intent(in) :: num_temp                 ! size of temperature array
-  integer,          intent(in) :: numpft                   ! number of pfts
+  integer,          intent(in) :: num_pft                  ! number of pfts
+  integer,          intent(in) :: num_par                  ! size of PAR array
+  integer,          intent(in) :: num_RH                   ! size of RH array
+  integer,          intent(in) :: num_co2                  ! size of co2 array
+  integer,          intent(in) :: num_nscaler              ! size of nscaler array
+  integer,          intent(in) :: num_btran                ! size of btran array
   real(r8),         intent(in) :: veg_tempk(:)             ! vegetation temperature [K]
-  real(r8),         intent(in) :: can_air_vpress(:)        ! canopy air vapor pressure [Pa]
+  real(r8),         intent(in) :: par(:)                   ! PAR [umol/m2/s]
+  real(r8),         intent(in) :: RH(:)                    ! relative humidity [%]
+  real(r8),         intent(in) :: co2(:)                   ! CO2 partial pressure [Pa]
+  real(r8),         intent(in) :: nscaler(:)               ! scaler for leaf N
+  real(r8),         intent(in) :: btran(:)                 ! scaler for BTRAN
+  real(r8),         intent(in) :: can_air_vpress_bytemp(:) ! canopy air vapor pressure by temperature [Pa]
+  real(r8),         intent(in) :: can_air_vpress_byRH(:)   ! canopy air vapor pressure by RH [Pa]
+  real(r8),         intent(in) :: veg_esat_bytemp(:)       ! vegetation saturation vapor pressure by temperature [Pa]
+  real(r8),         intent(in) :: veg_esat_byRH(:)         ! vegetation saturation vapor pressure by RH [Pa]
   real(r8),         intent(in) :: leaf_photo_bytemp(:,:)   ! net leaf photosynthesis [umol CO2/m2/s]
   real(r8),         intent(in) :: leaf_photo_byPAR(:,:)    ! net leaf photosynthesis [umol CO2/m2/s]
+  real(r8),         intent(in) :: leaf_photo_byRH(:,:)     ! net leaf photosynthesis [umol CO2/m2/s]
+  real(r8),         intent(in) :: leaf_photo_byCO2(:,:)    ! net leaf photosynthesis [umol CO2/m2/s]
+  real(r8),         intent(in) :: leaf_photo_bynscaler(:,:) ! net leaf photosynthesis [umol CO2/m2/s]
+  real(r8),         intent(in) :: leaf_photo_bybtran(:,:)  ! net leaf photosynthesis [umol CO2/m2/s]
+  
 
   ! LOCALS:
   integer, allocatable :: pft_indices(:) ! array of pft indices to write out
   integer              :: i              ! looping index
   integer              :: ncid           ! netcdf file id
-  character(len=12)    :: dim_names(2)   ! dimension names
-  integer              :: dimIDs(2)      ! dimension IDs
+  character(len=12)    :: dim_names(7)   ! dimension names
+  integer              :: dimIDs(7)      ! dimension IDs
   integer              :: tempID, pftID  ! variable IDs for dimensions
-  integer              :: stomaID
-  integer              :: photoID
-  integer              :: pressID
-  integer              :: testID
+  integer              :: parID, presstempID
+  integer              :: pressRHID, esattempID
+  integer              :: esatRHID, btranID
+  integer              :: nscalerID
+  integer              :: RHID, CO2ID
+  integer              :: phototempID
+  integer              :: photoPARID
+  integer              :: photoRHID
+  integer              :: photoCO2ID
+  integer              :: photonscalerID
+  integer              :: photobtranID
   
   ! create pft indices
-  allocate(pft_indices(numpft))
-  do i = 1, numpft
+  allocate(pft_indices(num_pft))
+  do i = 1, num_pft
     pft_indices(i) = i
   end do
 
   ! dimension names
-  dim_names = [character(len=12) :: 'temperature', 'pft']
+  dim_names = [character(len=12) :: 'temperature', 'par', 'RH', 'CO2', 'nscaler',        &
+    'btran', 'pft']
 
   ! open file
   call OpenNCFile(trim(out_file), ncid, 'readwrite')
 
   ! register dimensions
-  call RegisterNCDims(ncid, dim_names, (/num_temp, numpft/), 2, dimIDs)
+  call RegisterNCDims(ncid, dim_names, (/num_temp, num_par, num_RH, num_co2,             &
+    num_nscaler, num_btran, num_pft/), 7, dimIDs)
 
   ! register temperature
   call RegisterVar(ncid, dim_names(1), dimIDs(1:1), type_double,         &
     [character(len=20)  :: 'units', 'long_name'],                        &
     [character(len=150) :: 'K', 'vegetation temperature'], 2, tempID)
     
-    ! register vapor pressure
-  call RegisterVar(ncid, 'can_air_vpress', dimIDs(1:1), type_double,         &
-    [character(len=20)  :: 'units', 'long_name'],                        &
-    [character(len=150) :: 'Pa', 'vapor pressure'], 2, pressID)
+  ! register par
+  call RegisterVar(ncid, dim_names(2), dimIDs(2:2), type_double,                       &
+    [character(len=20)  :: 'units', 'long_name'],                                      &
+    [character(len=150) :: 'umol m-2 s-1', 'photosynthestically active radiation'], 2, &
+    parID)
+    
+  ! register RH
+    call RegisterVar(ncid, dim_names(3), dimIDs(3:3), type_double, &
+    [character(len=20)  :: 'units', 'long_name'],                  &
+    [character(len=150) :: '%', 'relative humidity'], 2,           &
+    RHID)
+    
+  ! register CO2
+  call RegisterVar(ncid, dim_names(4), dimIDs(4:4), type_double, &
+    [character(len=20)  :: 'units', 'long_name'],                &
+    [character(len=150) :: 'Pa', 'CO2 partial pressure'], 2,     &
+    CO2ID)
+    
+  ! register nscaler
+  call RegisterVar(ncid, dim_names(5), dimIDs(5:5), type_double,      &
+    [character(len=20)  :: 'units', 'long_name'],                  &
+    [character(len=150) :: '', 'scaler for leaf N'], 2, nscalerID)
+    
+  ! register btran
+  call RegisterVar(ncid, dim_names(6), dimIDs(6:6), type_double,      &
+    [character(len=20)  :: 'units', 'long_name'],                  &
+    [character(len=150) :: '', 'scaler for BTRAN'], 2, btranID)
     
   ! register pft
-  call RegisterVar(ncid, dim_names(2), dimIDs(2:2), type_int,         &
-    [character(len=20)  :: 'units', 'long_name'],                     &
+  call RegisterVar(ncid, dim_names(7), dimIDs(7:7), type_int,      &
+    [character(len=20)  :: 'units', 'long_name'],                  &
     [character(len=150) :: '', 'plant functional type'], 2, pftID)
     
-  ! register stomatal resistance
-  call RegisterVar(ncid, 'stomatal_resistance', dimIDs(1:2), type_double,       &
-    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                &
-    [character(len=150) :: 'pft temperature', 's m-1]', 'stomatal resistance'], &
-    3, stomaID)
+  ! register vapor pressure (by temperature)
+  call RegisterVar(ncid, 'can_air_vpress_bytemp', dimIDs(1:1), type_double,         &
+    [character(len=20)  :: 'units', 'long_name'],                                   &
+    [character(len=150) :: 'Pa', 'vapor pressure  - with changing temperature'], 2, &
+    presstempID)
     
-  ! register leaf photosynthesis
-  call RegisterVar(ncid, 'leaf_photo', dimIDs(1:2), type_double,                              &
-    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                              &
-    [character(len=150) :: 'pft temperature', 'umol CO2 m-2 s-1', 'net leaf photosynthesis'], &
-    3, photoID)
+  ! register saturation vapor pressure (by temperature)
+    call RegisterVar(ncid, 'veg_esat_bytemp', dimIDs(1:1), type_double,                        &
+    [character(len=20)  :: 'units', 'long_name'],                                              &
+    [character(len=150) :: 'Pa', 'saturation vapor pressure  - with changing temperature'], 2, &
+    esattempID)
     
-  ! register test output
-    call RegisterVar(ncid, 'test_output', dimIDs(1:2), type_double,                              &
-    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                            &
-    [character(len=150) :: 'pft temperature', '', 'for testing'], &
-    3, testID)
+  ! register leaf photosynthesis (by temperature)
+  call RegisterVar(ncid, 'leaf_photo_bytemp', (/dimIDs(1), dimIDs(7)/), type_double,                                      &
+    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                                                          &
+    [character(len=150) :: 'pft temperature', 'umol CO2 m-2 s-1', 'net leaf photosynthesis - with changing temperature'], &
+    3, phototempID)
     
+  ! register leaf photosynthesis (by PAR)
+    call RegisterVar(ncid, 'leaf_photo_byPAR', (/dimIDs(2), dimIDs(7)/), type_double,                     &
+    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                                          &
+    [character(len=150) :: 'pft par', 'umol CO2 m-2 s-1', 'net leaf photosynthesis - with changing PAR'], &
+    3, photoPARID)
+    
+  ! register leaf photosynthesis (by CO2)
+  call RegisterVar(ncid, 'leaf_photo_byCO2', (/dimIDs(4), dimIDs(7)/), type_double,                       &
+    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                                          &
+    [character(len=150) :: 'pft CO2', 'umol CO2 m-2 s-1', 'net leaf photosynthesis - with changing CO2'], &
+    3, photoCO2ID)
+    
+  ! register vapor pressure (by RH)
+  call RegisterVar(ncid, 'can_air_vpress_byRH', dimIDs(3:3), type_double,    &
+    [character(len=20)  :: 'coordinates', 'units', 'long_name'],             &
+    [character(len=150) :: 'RH', 'Pa', 'vapor pressure - with changing RH'], &
+    3, pressRHID)
+    
+  ! register saturation vapor pressure (by RH)
+    call RegisterVar(ncid, 'veg_esat_byRH', dimIDs(3:3), type_double,                   &
+    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                        &
+    [character(len=150) :: 'RH', 'Pa', 'saturation vapor pressure - with changing RH'], &
+    3, esatRHID)
+  
+  ! register leaf photosynthesis (by RH)
+    call RegisterVar(ncid, 'leaf_photo_byRH', (/dimIDs(3), dimIDs(7)/), type_double,                    &
+    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                                        &
+    [character(len=150) :: 'pft RH', 'umol CO2 m-2 s-1', 'net leaf photosynthesis - with changing RH'], &
+    3, photoRHID)
+    
+  ! register leaf photosynthesis (by nscaler)
+    call RegisterVar(ncid, 'leaf_photo_bynscaler', (/dimIDs(5), dimIDs(7)/), type_double,                       &
+    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                                          &
+    [character(len=150) :: 'pft nscaler', 'umol CO2 m-2 s-1', 'net leaf photosynthesis - with changing nscaler'], &
+    3, photonscalerID)
+    
+  ! register leaf photosynthesis (by btran)
+    call RegisterVar(ncid, 'leaf_photo_bybtran', (/dimIDs(6), dimIDs(7)/), type_double,                       &
+    [character(len=20)  :: 'coordinates', 'units', 'long_name'],                                          &
+    [character(len=150) :: 'pft btran', 'umol CO2 m-2 s-1', 'net leaf photosynthesis - with changing btran'], &
+    3, photobtranID)
+  
   ! finish defining variables
   call EndNCDef(ncid)
 
   ! write out data
   call WriteVar(ncid, tempID, veg_tempk(:))
+  call WriteVar(ncid, parID, par(:))
+  call WriteVar(ncid, RHID, RH(:))
+  call WriteVar(ncid, CO2ID, co2(:))
+  call WriteVar(ncid, nscalerID, nscaler(:))
+  call WriteVar(ncid, btranID, btran(:))
   call WriteVar(ncid, pftID, pft_indices(:))
-  call WriteVar(ncid, pressID, can_air_vpress(:))
-  call WriteVar(ncid, stomaID, stomatal_resistance(:,:))
-  call WriteVar(ncid, photoID, leaf_photo(:,:))
-  call WriteVar(ncid, testID, test_out(:,:))
+  call WriteVar(ncid, presstempID, can_air_vpress_bytemp(:))
+  call WriteVar(ncid, pressRHID, can_air_vpress_byRH(:))
+  call WriteVar(ncid, esattempID, veg_esat_bytemp(:))
+  call WriteVar(ncid, esatRHID, veg_esat_byRH(:))
+  call WriteVar(ncid, phototempID, leaf_photo_bytemp(:,:))
+  call WriteVar(ncid, photoPARID, leaf_photo_byPAR(:,:))
+  call WriteVar(ncid, photoRHID, leaf_photo_byRH(:,:))
+  call WriteVar(ncid, photoCO2ID, leaf_photo_byCO2(:,:))
+  call WriteVar(ncid, photonscalerID, leaf_photo_bynscaler(:,:))
+  call WriteVar(ncid, photobtranID, leaf_photo_bybtran(:,:))
   
   ! close the file
   call CloseNCFile(ncid)
