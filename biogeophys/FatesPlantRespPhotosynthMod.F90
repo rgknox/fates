@@ -1300,6 +1300,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8) :: vpd                  ! water vapor deficit in Medlyn stomatal model (KPa)
   real(r8) :: leaf_area_sun_lsl
   real(r8) :: leaf_area_sha_lsl
+  real(r8) :: par
 
 
   ! Parameters
@@ -1360,8 +1361,10 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   else ! day time (a little bit more complicated ...)
 
      ! Is there leaf area? - (NV can be larger than 0 with only stem area if deciduous)
+      leaf_area_sun_lsl = laisun_lsl*canopy_area_lsl
+      leaf_area_sha_lsl = laisha_lsl*canopy_area_lsl
      
-     if_leafarea: if ( laisun_lsl + laisha_lsl > 0._r8 ) then
+     if_leafarea: if ( leaf_area_sun_lsl + leaf_area_sha_lsl > min_la_to_solve ) then
 
         !Loop aroun shaded and unshaded leaves
         psn_out     = 0._r8    ! psn is accumulated across sun and shaded leaves.
@@ -1375,16 +1378,13 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
            ! Convert from units of par absorbed per unit ground area to par
            ! absorbed per unit leaf area
 
-            leaf_area_sun_lsl = laisun_lsl*canopy_area_lsl
-            leaf_area_sha_lsl = laisha_lsl*canopy_area_lsl
-            
             if (sunsha == 1) then ! sunlit
                qabs = ConvertPar(leaf_area_sun_lsl, parsun_lsl)
             else
                qabs = ConvertPar(leaf_area_sha_lsl, parsha_lsl)               
             end if
             
-            qabs = qabs*wm2_to_umolm2s*photon_to_e*(1.0_r8 - fnps)
+            qabs = qabs*photon_to_e*(1.0_r8 - fnps)
 
            !convert the absorbed par into absorbed par per m2 of leaf,
            ! so it is consistant with the vcmax and lmr numbers.
@@ -1432,16 +1432,15 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                  ! C4: RuBP-limited photosynthesis
                  if(sunsha == 1)then !sunlit
                     !guard against /0's in the night.
-                    if((laisun_lsl * canopy_area_lsl) > 0.0000000001_r8) then
-                       aj = quant_eff(c3c4_path_index) * parsun_lsl * wm2_to_umolm2s
-                       !convert from per cohort to per m2 of leaf)
-                       aj = aj / (laisun_lsl * canopy_area_lsl)
+                    if(leaf_area_sun_lsl > min_la_to_solve) then
+                       par = ConvertPar(leaf_area_sun_lsl, parsun_lsl)
+                       aj = quant_eff(c3c4_path_index)*par
                     else
                        aj = 0._r8
                     end if
                  else
-                    aj = quant_eff(c3c4_path_index) * parsha_lsl * wm2_to_umolm2s
-                    aj = aj / (laisha_lsl * canopy_area_lsl)
+                    par = ConvertPar(leaf_area_sha_lsl, parsha_lsl)
+                    aj = quant_eff(c3c4_path_index)*par
                  end if
 
                  ! C4: PEP carboxylase-limited (CO2-limited)
@@ -2511,8 +2510,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
       real(r8), intent(in) :: par_wm2   ! absorbed PAR [W/m2]
 
       if (par_wm2 > nearzero .and. leaf_area > min_la_to_solve) then
-         par_umolm2s = par_wm2/leaf_area
-         par_umolm2s = par_umolm2s
+         par_umolm2s = (par_wm2/leaf_area)*wm2_to_umolm2s
       else                 
          ! The radiative transfer schemes are imperfect
          ! they can sometimes generate negative values here if par or leaf area is 0.0
