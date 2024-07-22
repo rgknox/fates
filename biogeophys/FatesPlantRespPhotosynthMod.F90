@@ -1306,13 +1306,10 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
   real(r8) :: init_co2_inter_c  ! First guess intercellular co2 specific to C path
   real(r8) :: term                 ! intermediate variable in Medlyn stomatal conductance model
   real(r8) :: vpd                  ! water vapor deficit in Medlyn stomatal model (KPa)
-<<<<<<< HEAD
   real(r8) :: leaf_area_sun_lsl
   real(r8) :: leaf_area_sha_lsl
   real(r8) :: par
 
-=======
->>>>>>> 036fb3fa0dba96fc03dbaa0bac15872dbba6ad58
 
   ! Parameters
   ! ------------------------------------------------------------------------
@@ -1376,11 +1373,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
       leaf_area_sun_lsl = laisun_lsl*canopy_area_lsl
       leaf_area_sha_lsl = laisha_lsl*canopy_area_lsl
      
-<<<<<<< HEAD
      if_leafarea: if ( leaf_area_sun_lsl + leaf_area_sha_lsl > min_la_to_solve ) then
-=======
-     if_leafarea: if (leaf_area_sun + leaf_area_sha > min_la_to_solve) then
->>>>>>> 036fb3fa0dba96fc03dbaa0bac15872dbba6ad58
 
         !Loop aroun shaded and unshaded leaves
         psn_out     = 0._r8    ! psn is accumulated across sun and shaded leaves.
@@ -1393,11 +1386,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
            ! Convert par from W/m2 to umol photons/m**2/s
            ! Convert from units of par absorbed per unit ground area to par
            ! absorbed per unit leaf area
-<<<<<<< HEAD
-
-=======
-            
->>>>>>> 036fb3fa0dba96fc03dbaa0bac15872dbba6ad58
             if (sunsha == 1) then ! sunlit
                qabs = parsun_lsl
             else
@@ -1453,24 +1441,15 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                  ! C4: RuBP-limited photosynthesis
                  if(sunsha == 1)then !sunlit
                     !guard against /0's in the night.
-<<<<<<< HEAD
                     if(leaf_area_sun_lsl > min_la_to_solve) then
                        par = ConvertPar(leaf_area_sun_lsl, parsun_lsl)
                        aj = quant_eff(c3c4_path_index)*par
-=======
-                    if (leaf_area_sun > min_la_to_solve) then
-                       aj = quant_eff(c3c4_path_index)*parsun_lsl
->>>>>>> 036fb3fa0dba96fc03dbaa0bac15872dbba6ad58
                     else
                        aj = 0._r8
                     end if
                  else
-<<<<<<< HEAD
                     par = ConvertPar(leaf_area_sha_lsl, parsha_lsl)
                     aj = quant_eff(c3c4_path_index)*par
-=======
-                    aj = quant_eff(c3c4_path_index)*parsha_lsl
->>>>>>> 036fb3fa0dba96fc03dbaa0bac15872dbba6ad58
                  end if
                
 
