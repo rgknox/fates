@@ -1537,7 +1537,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
 
                  call QuadraticRoots(aquad, bquad, cquad, r1, r2)
                  gs_mol = max(r1,r2)
-
+                 
               else if ( stomatal_model == ballberry_model ) then         !stomatal conductance calculated from Ball et al. (1987)
 
                  aquad = leaf_co2_ppress
