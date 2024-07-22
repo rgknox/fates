@@ -47,7 +47,7 @@ program FatesTestLeafPhoto
   
   ! DEFAULT VALUES ======================================================================
   real(r8), parameter :: default_can_air_press = 101325.0_r8  ! default value for canopy air pressure [Pa]
-  real(r8), parameter :: default_can_co2_pp = 39.5_r8         ! default value for CO2 partial pressure [Pa]
+  real(r8), parameter :: default_can_co2_pp = 38.5035_r8      ! default value for CO2 partial pressure [Pa]
   real(r8), parameter :: default_can_o2_pp = 20900.0_r8       ! default value for O2 partial pressure [Pa]
   real(r8), parameter :: default_can_tempk = 25.0_r8 + tfrz   ! default value for canopy air temperature [K]
   real(r8), parameter :: default_veg_tempk = 25.0_r8 + tfrz   ! default value for vegetation temperature [K]

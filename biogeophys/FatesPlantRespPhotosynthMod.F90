@@ -1368,13 +1368,13 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
      c13disc_z = 0.0_r8    !carbon 13 discrimination in night time carbon flux, note value of 1.0 is used in CLM
 
   else ! day time (a little bit more complicated ...)
-   
-     ! Is there leaf area? - (NV can be larger than 0 with only stem area if deciduous)
-      leaf_area_sun_lsl = laisun_lsl*canopy_area_lsl
-      leaf_area_sha_lsl = laisha_lsl*canopy_area_lsl
-     
-     if_leafarea: if ( leaf_area_sun_lsl + leaf_area_sha_lsl > min_la_to_solve ) then
 
+     ! Is there leaf area? - (NV can be larger than 0 with only stem area if deciduous)
+      !leaf_area_sun_lsl = laisun_lsl*canopy_area_lsl
+      !leaf_area_sha_lsl = laisha_lsl*canopy_area_lsl
+     
+     if_leafarea: if ( leaf_area_sun + leaf_area_sha > min_la_to_solve ) then
+      
         !Loop aroun shaded and unshaded leaves
         psn_out     = 0._r8    ! psn is accumulated across sun and shaded leaves.
         rstoma_out  = 0._r8    ! 1/rs is accumulated across sun and shaded leaves.
@@ -1441,14 +1441,16 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                  ! C4: RuBP-limited photosynthesis
                  if(sunsha == 1)then !sunlit
                     !guard against /0's in the night.
-                    if(leaf_area_sun_lsl > min_la_to_solve) then
-                       par = ConvertPar(leaf_area_sun_lsl, parsun_lsl)
+                    if(leaf_area_sun > min_la_to_solve) then
+                       !par = ConvertPar(leaf_area_sun_lsl, parsun_lsl)
+                        par = parsun_lsl
                        aj = quant_eff(c3c4_path_index)*par
                     else
                        aj = 0._r8
                     end if
                  else
-                    par = ConvertPar(leaf_area_sha_lsl, parsha_lsl)
+                   ! par = ConvertPar(leaf_area_sha_lsl, parsha_lsl)
+                     par = parsha_lsl
                     aj = quant_eff(c3c4_path_index)*par
                  end if
                
@@ -2531,11 +2533,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
       real(r8), intent(in) :: par_wm2   ! absorbed PAR [W/m2]
 
       if (par_wm2 > nearzero .and. leaf_area > min_la_to_solve) then
-<<<<<<< HEAD
-         par_umolm2s = (par_wm2/leaf_area)*wm2_to_umolm2s
-=======
          par_umolm2s = par_wm2/leaf_area*wm2_to_umolm2s
->>>>>>> 036fb3fa0dba96fc03dbaa0bac15872dbba6ad58
       else                 
          ! The radiative transfer schemes are imperfect
          ! they can sometimes generate negative values here if par or leaf area is 0.0
