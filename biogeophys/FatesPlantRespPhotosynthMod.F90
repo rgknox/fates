@@ -1563,6 +1563,8 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
                        gs_mol = max(r1,r2)
                     end if
+
+                    !print*,niter,(gs_mol-(h2o_co2_stoma_diffuse_ratio*(1._r8 + medlyn_slope(ft)/sqrt(vpd))*anet/leaf_co2_ppress*can_press + stomatal_intercept_btran))/gs_mol
                     
                  else if ( stomatal_model == ballberry_model ) then         !stomatal conductance calculated from Ball et al. (1987)
                     
@@ -1579,6 +1581,12 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
                        
                        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
                        gs_mol = max(r1,r2)
+
+                       !print*,niter,(gs_mol-(bb_slope(ft)*anet*(ceair/ veg_esat)/leaf_co2_ppress*can_press + stomatal_intercept_btran))/gs_mol
+                       !if( abs(gs_mol-(bb_slope(ft)*anet*(ceair/ veg_esat)/leaf_co2_ppress*can_press + stomatal_intercept_btran))/gs_mol > 0.1_r8) then
+                       !   stop
+                       !end if
+                       
                     end if
                  end if
 
