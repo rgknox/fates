@@ -1334,7 +1334,7 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
 
   ! quantum efficiency, used only for C4 (mol CO2 / mol photons) (index 0)
   real(r8),parameter,dimension(0:1) :: quant_eff = [0.05_r8,0.0_r8]
-  integer, parameter :: max_iters = 5
+  integer, parameter :: max_iters = 40
 
   ! empirical curvature parameter for ap photosynthesis co-limitation
   real(r8),parameter :: theta_ip = 0.999_r8
@@ -1567,7 +1567,6 @@ subroutine LeafLayerPhotosynthesis(f_sun_lsl,         &  ! in
               if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
                    .or. niter >= max_iters) then
                  loop_continue = .false.
-                 !if (.not. loop_continue) print *, veg_tempk - 273.15
               end if
            end do iter_loop
            

@@ -65,7 +65,7 @@ program FatesTestLeafPhoto
   real(r8), parameter :: min_PAR = 0.0_r8    ! minimum PAR to calculate [umol/m2/s]
   real(r8), parameter :: max_PAR = 1500.0_r8 ! maximum PAR to calculate [umol/m2/s]
   real(r8), parameter :: PAR_inc = 5.0_r8    ! PAR increment to use [umol/m2/s]
-  real(r8), parameter :: min_RH = 0.0_r8     ! minimum RH to calculate [%]
+  real(r8), parameter :: min_RH = 10.0_r8     ! minimum RH to calculate [%]
   real(r8), parameter :: max_RH = 100.0_r8   ! maximum RH to calculate [%]
   real(r8), parameter :: RH_inc = 1.0_r8     ! RH increment to use [%]
   real(r8), parameter :: min_co2 = 50.0_r8   ! minimum CO2 concentration to calculate [umol/mol]
@@ -193,6 +193,8 @@ end interface
   !!! PAR --------------------------------------------------------------------------------
 
   ! calculate photosynthesis as we scale PAR and hold everything else constant
+  print *, '----------------------------------------------------------------'
+  print *, "Exercising leaf photosynthesis for PAR"
   do i = 1, num_PAR
     
     ! calculate PAR
@@ -210,6 +212,8 @@ end interface
   !!! CO2 concentration ------------------------------------------------------------------
 
   ! calculate photosynthesis as we scale CO2 ppm and hold everything else constant
+  print *, '----------------------------------------------------------------'
+  print *, "Exercising leaf photosynthesis for CO2"
   do i = 1, num_co2
     
     ! calculate PAR
@@ -227,16 +231,18 @@ end interface
   !!! RH --------------------------------------------------------------------------------
 
   ! calculate photosynthesis as we scale RH and hold everything else constant
+  print *, '----------------------------------------------------------------'
+  print *, "Exercising leaf photosynthesis for VPD"
   do i = 1, num_RH
     
     ! calculate PAR
     RH(i) = min_RH + RH_inc*(i-1)
     
-    ! if (RH(i) >= 30.0_r8) then 
-    !   veg_temp = default_veg_tempk
-    ! else 
-    !   veg_temp = 35.0_r8 + tfrz
-    ! end if 
+    !if (RH(i) >= 30.0_r8) then 
+    !  veg_temp = default_veg_tempk
+    !else 
+    !  veg_temp = 35.0_r8 + tfrz
+    !end if 
     
     veg_temp = default_veg_tempk
     
@@ -257,6 +263,8 @@ end interface
   !!! Leaf temperature -------------------------------------------------------------------
   
   ! calculate photosynthesis as we scale temperature and hold everything else constant
+  print *, '----------------------------------------------------------------'
+  print *, "Exercising leaf photosynthesis for temperature"
   do i = 1, num_temp
           
     ! calculate temperature
@@ -280,6 +288,8 @@ end interface
   !!! nscaler ----------------------------------------------------------------------------
 
   ! calculate photosynthesis as we scale the nscaler and hold everything else constant
+  print *, '----------------------------------------------------------------'
+  print *, "Exercising leaf photosynthesis for nscaler"
   do i = 1, num_nscaler
     
     ! calculate nscaler
@@ -297,6 +307,8 @@ end interface
   !!! btran ----------------------------------------------------------------------------
 
   ! calculate photosynthesis as we scale the BTRAN and hold everything else constant
+  print *, '----------------------------------------------------------------'
+  print *, "Exercising leaf photosynthesis for BTRAN"
   do i = 1, num_btran
     
     ! calculate btran
