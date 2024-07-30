@@ -145,7 +145,7 @@ end interface
   ! get parameter file from command-line argument
   nargs = command_argument_count()
   if (nargs /= 1) then
-    write(*, '(ai2a)') "Incorrect number of arguments: ", nargs, ". Should be 1."
+    write(*, '(a,i2,a)') "Incorrect number of arguments: ", nargs, ". Should be 1."
     stop
   else
     call get_command_argument(1, length=arglen)

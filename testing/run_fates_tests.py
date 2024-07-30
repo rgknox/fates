@@ -386,13 +386,14 @@ def commandline_args():
 
     parser.add_argument(
       "-t",
-      "--test-list",
       action="store",
       dest="test_dict",
       type=parse_test_list,
       default="all",
       help="Test(s) to run. Comma-separated list of test names, or 'all'\n"
-      "for all tests. If not supplied, will run all tests."
+      "for all tests. If not supplied, will run all tests. Valid test names are:\n"
+      "allometry, quadratic, fire_weather, leaf_gas_exchange, \n"
+      "biophysical_rates, and leaf_photosynthesis."
     )
 
     args = parser.parse_args()
