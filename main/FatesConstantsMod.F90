@@ -322,6 +322,9 @@ integer, parameter, public :: isemi_stress_decid = 2 ! If the PFT is stress (dro
   ! Pascals to megapascals
   real(fates_r8), parameter, public :: mpa_per_pa = 1.e-6_fates_r8
 
+  ! Pascals to kilopascals
+  real(fates_r8), parameter, public :: kpa_per_pa = 1.e-3_fates_r8
+  
   ! Conversion: megapascals per mm H2O suction
   real(fates_r8), parameter, public :: mpa_per_mm_suction = dens_fresh_liquid_water * &
                                        grav_earth * 1.0E-9_fates_r8
