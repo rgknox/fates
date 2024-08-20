@@ -1,7 +1,7 @@
 program FatesBiophysicalRates
   
   use FatesConstantsMod,           only : r8 => fates_r8
-  use FATESPlantRespPhotosynthMod, only : LeafLayerBiophysicalRates
+  use LeafBiophysicsMod, only : LeafLayerBiophysicalRates
   use FatesUnitTestParamReaderMod, only : fates_unit_test_param_reader
   use EDPftvarcon,                 only : EDPftvarcon_inst
   use FatesParameterDerivedMod,    only : param_derived
@@ -92,7 +92,7 @@ program FatesBiophysicalRates
   ! get canopy gas parameters as we scale temperature and hold everything else constant
   do i = 1, num_temp
     do ft = 1, numpft
-      call LeafLayerBiophysicalRates(par, ft, EDPftvarcon_inst%vcmax25top(ft,1),         &
+      call LeafLayerBiophysicalRates(ft, EDPftvarcon_inst%vcmax25top(ft,1),         &
         param_derived%jmax25top(ft,1), param_derived%kp25top(ft,1), default_nscaler,     &
         veg_tempk(i), default_dayl_fact, default_can_air_tempk, default_can_air_tempk,   &
         default_btran, vcmax(i,ft), jmax(i,ft), kp(i,ft))

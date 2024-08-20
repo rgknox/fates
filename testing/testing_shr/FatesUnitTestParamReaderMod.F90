@@ -12,6 +12,7 @@ module FatesUnitTestParamReaderMod
   use PRTParametersMod,           only : prt_params
   use FatesParameterDerivedMod,   only : param_derived
   use FatesSynchronizedParamsMod, only : FatesSynchronizedParamsInst
+  use FatesLeafBiophysParamsMod , only : LeafBiophysRegisterParams, LeafBiophysReceiveParams
   use EDPftvarcon,                only : EDPftvarcon_inst
   use FatesUnitTestIOMod,         only : OpenNCFile, GetDimID, GetDimLen, GetVar, CloseNCFile
   use FatesInterfaceTypesMod,     only : nleafage
@@ -112,35 +113,37 @@ module FatesUnitTestParamReaderMod
      
     ! LOCALS:
     class(fates_parameters_type), allocatable :: fates_params      ! fates parameters (for non-pft parameters)
-    class(fates_parameters_type), allocatable :: fates_pft_params  ! fates parameters (for pft parameters)
+    !class(fates_parameters_type), allocatable :: fates_pft_params  ! fates parameters (for pft parameters)
 
     ! allocate and read in parameters
     allocate(fates_params)
-    allocate(fates_pft_params)
+    !allocate(fates_pft_params)
     call fates_params%Init()
-    call fates_pft_params%Init()
+    !call fates_pft_params%Init()
 
     call EDPftvarcon_inst%Init()
     
     call FatesRegisterParams(fates_params)
     call SpitFireRegisterParams(fates_params) 
     call PRTRegisterParams(fates_params)
+    call LeafBiophysRegisterParams(fates_params)
     call FatesSynchronizedParamsInst%RegisterParams(fates_params)
-    call EDPftvarcon_inst%Register(fates_pft_params)
+    call EDPftvarcon_inst%Register(fates_params)
 
     call this%Read(fates_params)
-    call this%Read(fates_pft_params)
+    !call this%Read(fates_pft_params)
 
     call FatesReceiveParams(fates_params)
     call SpitFireReceiveParams(fates_params)
     call PRTReceiveParams(fates_params)
+    call LeafBiophysReceiveParams(fates_params)
     call FatesSynchronizedParamsInst%ReceiveParams(fates_params)
-    call EDPftvarcon_inst%Receive(fates_pft_params)
+    call EDPftvarcon_inst%Receive(fates_params)
 
     call fates_params%Destroy()
-    call fates_pft_params%Destroy()
+    !call fates_pft_params%Destroy()
     deallocate(fates_params)
-    deallocate(fates_pft_params)
+    !deallocate(fates_pft_params)
 
     ! initialize derived parameters
     nleafage = size(prt_params%leaf_long, dim=2)

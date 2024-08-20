@@ -44,8 +44,8 @@ contains
     ! Register scalars
 
     name = 'fates_daylength_factor_switch'
-    call fates_params%RegisterParameter(name=name, dimension_shape=dimension_shape_1d, &
-         dimension_names=dim_names_scalar, lower_bounds=dim_lower_bound)
+    call fates_params%RegisterParameter(name=name, dimension_shape=dimension_shape_scalar, &
+         dimension_names=dim_names_scalar)
 
     name = 'fates_leaf_theta_cj_c3'
     call fates_params%RegisterParameter(name=name, dimension_shape=dimension_shape_scalar, &
@@ -143,13 +143,6 @@ contains
     character(len=param_string_length) :: name
 
     
-    name = 'fates_leaf_c3psn'
-    call fates_params%RetrieveParameterAllocate(name=name, &
-         data=tmpreal)
-    allocate(lb_params%c3psn(size(tmpreal,dim=1)))
-    call ArrayNint(tmpreal,lb_params%c3psn)
-    deallocate(tmpreal)
-
     name = 'fates_leaf_theta_cj_c3'
     call fates_params%RetrieveParameter(name=name, &
          data=lb_params%theta_cj_c3)
@@ -178,60 +171,69 @@ contains
          data=tmpscalar)
     lb_params%photo_tempsens_model = nint(tmpscalar)
 
+
+    name = 'fates_leaf_c3psn'
+    call fates_params%RetrieveParameterAllocate(name=name, &
+         data=tmpreal)
+    allocate(lb_params%c3psn(size(tmpreal,dim=1)))
+    call ArrayNint(tmpreal,lb_params%c3psn)
+    deallocate(tmpreal)
+
+    
     name = 'fates_leaf_stomatal_slope_medlyn'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%medlyn_slope)
 
     name = 'fates_leaf_stomatal_slope_ballberry'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%bb_slope)
 
     name = 'fates_leaf_stomatal_intercept'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%stomatal_intercept)
 
     name = 'fates_maintresp_leaf_ryan1991_baserate'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%maintresp_leaf_ryan1991_baserate)
 
     name = 'fates_maintresp_leaf_atkin2017_baserate'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%maintresp_leaf_atkin2017_baserate)
 
     name = 'fates_maintresp_reduction_curvature'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%maintresp_reduction_curvature)
 
     name = 'fates_maintresp_reduction_intercept'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%maintresp_reduction_intercept)
 
     name = 'fates_maintresp_reduction_upthresh'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%maintresp_reduction_upthresh)
 
     name = 'fates_leaf_vcmaxha'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%vcmaxha)
 
     name = 'fates_leaf_jmaxha'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%jmaxha)
 
     name = 'fates_leaf_vcmaxhd'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%vcmaxhd)
 
     name = 'fates_leaf_jmaxhd'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%jmaxhd)
 
     name = 'fates_leaf_vcmaxse'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%vcmaxse)
 
     name = 'fates_leaf_jmaxse'
-    call fates_params%RetrieveParameter(name=name, &
+    call fates_params%RetrieveParameterAllocate(name=name, &
          data=lb_params%jmaxse)
 
 

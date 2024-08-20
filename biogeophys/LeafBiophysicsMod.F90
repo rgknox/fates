@@ -21,7 +21,6 @@ module LeafBiophysicsMod
   use shr_log_mod,       only : errMsg => shr_log_errMsg
   use shr_sys_mod,       only : shr_sys_abort
   use FatesConstantsMod, only : r8 => fates_r8
-  use shr_infnan_mod,    only : shr_infnan_isnan
   use FatesGlobals,      only : endrun => fates_endrun
   use FatesGlobals,      only : fates_log
   use FatesGlobals,      only : FatesWarn,N2S,A2S,I2S
@@ -51,6 +50,7 @@ module LeafBiophysicsMod
   public :: LeafLayerMaintenanceRespiration_Atkin_etal_2017
   public :: LeafLayerBiophysicalRates
   public :: LowstorageMainRespReduction
+  public :: GetConstrainedVPress
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -464,10 +464,10 @@ contains
     end if
 
     ! Electron transport rate for C3 plants.
-    ! Convert par from W/m2 to umol photons/m**2/s
-    ! Convert from units of par absorbed per unit ground area to par
-    ! absorbed per unit leaf area
-
+    ! Convert absorbed photon density [umol/m2 leaf /s] to
+    ! that absorbed only by the photocenters (fnps) and also
+    ! convert from photon energy into electron transport rate (photon_to_e)
+    
     par_abs_umol = par_abs*photon_to_e*(1.0_r8 - fnps)
 
 
@@ -1144,6 +1144,7 @@ contains
        jvr = 2.56_r8 - (0.0375_r8*t_home_celsius)-(0.0202_r8*(t_growth_celsius-t_home_celsius))
     case default
        write (fates_log(),*)'error, incorrect leaf photosynthesis temperature acclimation model specified'
+       write (fates_log(),*)'lb_params%photo_tempsens_model: ',lb_params%photo_tempsens_model
        call endrun(msg=errMsg(sourcefile, __LINE__))
     end select
 
@@ -1166,6 +1167,7 @@ contains
        jmax25 = vcmax25*jvr
     case default
        write (fates_log(),*)'error, incorrect leaf photosynthesis temperature acclimation model specified'
+       write (fates_log(),*)'lb_params%photo_tempsens_model:',lb_params%photo_tempsens_model
        call endrun(msg=errMsg(sourcefile, __LINE__))
     end select
     

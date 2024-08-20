@@ -87,6 +87,7 @@ module FATESPlantRespPhotosynthMod
   private
 
   public :: FatesPlantRespPhotosynthDrive ! Called by the HLM-Fates interface
+  public :: GetMolarVeloCF  ! This is called directly by unit tests
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__

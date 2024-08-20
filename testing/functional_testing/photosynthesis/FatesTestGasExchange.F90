@@ -1,7 +1,9 @@
 program FatesTestGasExchange
   
-  use FatesConstantsMod,           only : r8 => fates_r8
-  use FATESPlantRespPhotosynthMod, only : GetCanopyGasParameters
+  use FatesConstantsMod,          only : r8 => fates_r8
+  use LeafBiophysicsMod, only : GetCanopyGasParameters
+  use LeafBiophysicsMod, only : GetConstrainedVPress
+  use FATESPlantRespPhotosynthMod, only: GetMolarVeloCF
   use FatesTestPhotosynthesisMod,  only : CalcVaporPressure
   use FatesConstantsMod,           only : tfrz => t_water_freeze_k_1atm
   
@@ -28,7 +30,10 @@ program FatesTestGasExchange
   real(r8),         parameter :: can_o2_partial_press = 20900.0_r8         ! default value for O2 partial pressure [Pa]
   real(r8),         parameter :: default_veg_tempk = 25.0_r8 + tfrz        ! default value for vegetation temperature [K]
   real(r8),         parameter :: default_can_air_tempk = 25.0_r8 + tfrz    ! default value for canopy air temperature [K]
-  real(r8),         parameter :: leaf_bl_resistance = 42.3_r8              ! default value for leaf boundary layer resistance [umol H2O/m2/s]
+  !real(r8),         parameter :: leaf_bl_resistance = 42.3_r8             ! default value for leaf boundary layer resistance [umol H2O/m2/s]
+  real(r8),         parameter :: default_leaf_bl_cond_vel = 0.8_r8/100._r8 ! Centroid of Figure 4 from Kimura et al. 2019. (greenhouse observations)
+  real(r8),         parameter :: min_leaf_bl_cond_vel = 0.3_r8/100._r8     ! Minimum from Fig 8 of Kimura et al. 2019 (greenhouse observations)
+  real(r8),         parameter :: max_leaf_bl_cond_vel = 3.0_r8/100._r8     ! Maximum from Fig 8 of Kumura et al. 2019 (greenhouse observations)
   real(r8),         parameter :: min_temp = -5.0_r8                        ! minimum temperature to calculate [degC]
   real(r8),         parameter :: max_temp = 50.0_r8                        ! maximum temperature to calculate [degC]
   real(r8),         parameter :: temp_inc = 0.5_r8                         ! temperature increment to use [degC]
@@ -81,13 +86,18 @@ program FatesTestGasExchange
     ! calculate saturation vapor pressure and vapor pressure
     call CalcVaporPressure(veg_tempk(i), default_RH, veg_esat, veg_air_vpress)
     can_air_vpress = (default_RH/100.0_r8)*veg_esat
+
+    constrained_air_vpress(i) = GetConstrainedVPress(can_air_vpress,veg_esat)
     
     ! get canopy gas parameters
     call GetCanopyGasParameters(can_air_press, can_o2_partial_press, veg_tempk(i),       &
-      default_can_air_tempk, can_air_vpress, veg_esat, leaf_bl_resistance, mm_kco2(i),   &
-      mm_ko2(i), co2_compensation_pt(i), cf(i), leaf_bl_conductance(i),                  &
-      constrained_air_vpress(i))
+      default_can_air_tempk, constrained_air_vpress(i), veg_esat, mm_kco2(i),   &
+      mm_ko2(i), co2_compensation_pt(i))
 
+    cf(i) = GetMolarVeloCF(can_air_press,veg_tempk(i))
+    leaf_bl_conductance(i) = default_leaf_bl_cond_vel * cf(i)
+    
+    
   end do
   
   call WriteGasExchangeData(out_file, num_temp, veg_tempk, mm_kco2, mm_ko2,              &
@@ -174,7 +184,7 @@ subroutine WriteGasExchangeData(out_file, num_temp, veg_tempk, mm_kco2, mm_ko2, 
   ! register boundary layer conductance
     call RegisterVar(ncid, 'bl_conductance', dimIDs(1:1), type_double,                            &
     [character(len=20)  :: 'coordinates', 'units', 'long_name'],                                  &
-    [character(len=150) :: 'temperature', 'umol H2O m-2 s-1', 'leaf boundary layer conductance'], &
+    [character(len=150) :: 'temperature', 'umol H2O m-2 s-1', 'molar leaf boundary layer conductance at 0.8 cm/s'], &
     3, blID)
     
  ! register constrained vapor pressure of air
