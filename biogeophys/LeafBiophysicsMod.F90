@@ -224,7 +224,8 @@ contains
 
        ! We assume zero resistance in the leaf boundary layer, and that humidity at
        ! the leaf surface is equal to humidity outside the boundary layer
-       gs = h2o_co2_stoma_diffuse_ratio*(1._r8 + lb_params%medlyn_slope(ft)/sqrt(vpd))*anet/leaf_co2_ppress*can_press + stomatal_intercept_btran
+       gs = h2o_co2_stoma_diffuse_ratio*(1._r8 + lb_params%medlyn_slope(ft)/sqrt(vpd)) * &
+            anet/leaf_co2_ppress*can_press + stomatal_intercept_btran
 
     else
 
@@ -562,9 +563,8 @@ contains
           a_gs = anet_out
        end if
 
-
-       leaf_co2_ppress = can_co2_ppress - h2o_co2_bl_diffuse_ratio/gb * a_gs * can_press 		   
-
+       leaf_co2_ppress = can_co2_ppress - h2o_co2_bl_diffuse_ratio/gb * a_gs * can_press
+       
        ! This does not seem necessary. THere would have to be a massive resistance
        ! between the two, no?
        if(use_mincap_leafco2) leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
@@ -740,6 +740,7 @@ contains
     if (rstoma_out < nearzero ) then
        write (fates_log(),*) 'qsat:', qsat, 'qs:', qs
        write (fates_log(),*) 'LWP :', leaf_psi
+       write (fates_log(),*) 'pft :', ft
        write (fates_log(),*) 'ceair:', ceair, 'veg_esat:', veg_esat            
        write (fates_log(),*) 'rstoma_out:', rstoma_out, 'rb:', rb  
        write (fates_log(),*) 'LWP_star', lwp_star 
@@ -847,9 +848,6 @@ contains
   subroutine GetCanopyGasParameters(can_press, &
        can_o2_partialpress, &
        veg_tempk, &
-       air_tempk, &
-       air_vpress, &
-       veg_esat,   &
        mm_kco2,   &
        mm_ko2,    &
        co2_cpoint)
@@ -867,9 +865,6 @@ contains
     real(r8), intent(in) :: can_press           ! Air pressure within the canopy (Pa)
     real(r8), intent(in) :: can_o2_partialpress ! Partial press of o2 in the canopy (Pa)
     real(r8), intent(in) :: veg_tempk           ! The temperature of the vegetation (K)
-    real(r8), intent(in) :: air_tempk           ! Temperature of canopy air (K)
-    real(r8), intent(in) :: air_vpress          ! Vapor pressure of canopy air (Pa)
-    real(r8), intent(in) :: veg_esat            ! Saturated vapor pressure at veg surf (Pa)
 
     real(r8), intent(out) :: mm_kco2       ! Michaelis-Menten constant for CO2 (Pa)
     real(r8), intent(out) :: mm_ko2        !  Michaelis-Menten constant for O2 (Pa)
@@ -1010,12 +1005,8 @@ contains
     
     
     ! Locals
-    real(r8) :: lmr25   ! leaf layer: leaf maintenance respiration rate at 25C (umol CO2/m**2/s)
     real(r8) :: r_0     ! base respiration rate, PFT-dependent (umol CO2/m**2/s)
     real(r8) :: r_t_ref ! acclimated ref respiration rate (umol CO2/m**2/s)
-    real(r8) :: lmr25top  ! canopy top leaf maint resp rate at 25C for this pft (umol CO2/m**2/s)
-
-
   
     ! parameter values of r_0 as listed in Atkin et al 2017: (umol CO2/m**2/s) 
     ! Broad-leaved trees  1.7560
@@ -1040,7 +1031,8 @@ contains
     r_t_ref = max(0._r8, rdark_scaler * (r_0 + lmr_r_1 * lnc_top + lmr_r_2 * max(0._r8, (tgrowth - tfrz) )) )
 
     if (r_t_ref .eq. 0._r8) then
-       warn_msg = 'Rdark is negative at this temperature and is capped at 0. tgrowth (C): '//trim(N2S(tgrowth-tfrz))//' pft: '//trim(I2S(ft))
+       warn_msg = 'Rdark is negative at this temperature and is capped at 0. tgrowth (C): ' &
+            //trim(N2S(tgrowth-tfrz))//' pft: '//trim(I2S(ft))
        call FatesWarn(warn_msg,index=4)            
     end if
 

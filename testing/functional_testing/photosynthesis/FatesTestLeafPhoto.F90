@@ -401,7 +401,7 @@ subroutine LeafLevelPhoto(can_air_press, can_co2_pp, can_o2_pp, veg_tempk, can_t
   
   ! calculate canopy gas parameters
   call GetCanopyGasParameters(can_air_press, can_o2_pp, veg_tempk, &
-       can_tempk,can_vpress, veg_esat, mm_kco2,mm_ko2,co2_compensation_pt)
+       mm_kco2,mm_ko2,co2_compensation_pt)
 
   
   ! calculate leaf biophysical rates

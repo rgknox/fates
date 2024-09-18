@@ -375,9 +375,6 @@ contains
                   call GetCanopyGasParameters(bc_in(s)%forc_pbot,       & ! in
                        bc_in(s)%oair_pa(ifp),    & ! in
                        bc_in(s)%t_veg_pa(ifp),   & ! in
-                       bc_in(s)%tgcm_pa(ifp),    & ! in
-                       bc_in(s)%eair_pa(ifp),    & ! in
-                       bc_in(s)%esat_tv_pa(ifp), & ! in
                        mm_kco2,                  & ! out
                        mm_ko2,                   & ! out
                        co2_cpoint)

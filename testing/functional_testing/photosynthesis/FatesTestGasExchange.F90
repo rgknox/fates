@@ -91,8 +91,9 @@ program FatesTestGasExchange
     
     ! get canopy gas parameters
     call GetCanopyGasParameters(can_air_press, can_o2_partial_press, veg_tempk(i),       &
-      default_can_air_tempk, constrained_air_vpress(i), veg_esat, mm_kco2(i),   &
-      mm_ko2(i), co2_compensation_pt(i))
+         mm_kco2(i),   &
+         mm_ko2(i),    &
+         co2_compensation_pt(i))
 
     cf(i) = GetMolarVeloCF(can_air_press,veg_tempk(i))
     leaf_bl_conductance(i) = default_leaf_bl_cond_vel * cf(i)

@@ -1,10 +1,17 @@
 module FatesTestPhotosynthesisMod
+
   ! Helper methods for testing the FATES photosynthesis routines
-  
+
   use FatesConstantsMod, only : r8 => fates_r8
   use FatesConstantsMod, only : tfrz => t_water_freeze_k_1atm
+
   
   implicit none
+
+
+  !integer, parameter  :: r8 = selected_real_kind(12) ! 8 byte real
+  !real(r8), parameter :: tfrz = 273.14_r8
+
   
   contains 
   
