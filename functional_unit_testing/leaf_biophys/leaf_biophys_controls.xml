@@ -30,4 +30,9 @@
       <param name='fates_leaf_jmaxse'> 495, 495, 495, 495, 495, 495, 495, 495, 495, 495, 495, 495 </param>
     </pft_dim>
   </f90_params>
+  <py_params>
+    <pft_dim>
+      <param name='fates_leafn_vert_scaler_coeff1'> 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963 </param>
+      <param name='fates_leafn_vert_scaler_coeff2'> 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43</param>
+  </py_params>
 </all>

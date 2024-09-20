@@ -111,7 +111,7 @@ def main(argv):
     for param in scalar_root.iter('param'):
         iret = f90_set_leaf_param_sub(c8(float(param.text.split(',')[0])),ci(0),*ccharnb(param.attrib['name'].strip()))
 
-    # Push pft parameters
+    # Push pft parameters to fortran instantiations
     pft_root = xmlroot.find('f90_params').find('pft_dim')
     for param in pft_root.iter('param'):
         for pft in range(numpft):
@@ -121,7 +121,20 @@ def main(argv):
     if(dump_parameters):
         iret = f90_dump_param_sub()
 
-
+    
+    # Read in non-fortran parameters from the xml file
+    leafn_vert_scaler_coeff1 = []
+    leafn_vert_scaler_coeff2 = []
+    print('Reading non-fortran parameters')
+    py_pft_root = xmlroot.find('py_params').find('pft_dim')
+    for param in py_pft_root.iter('param'):
+        for pft in range(numpft):
+            if (param.attrib['name']=='fates_leafn_vert_scaler_coeff1'):
+                leafn_vert_scaler_coeff1.append(param.text.split(',')[pft])
+            if (param.attrib['name']=='fates_leafn_vert_scaler_coeff2'):
+                leafn_vert_scaler_coeff2.append(param.text.split(',')[pft])
+                                        
+    code.interact(local=dict(globals(), **locals()))
     # Environmental Conditions
     #   Absorbed PAR [w/m2 leaf]
     #   Leaf Temperature [K]
@@ -130,12 +143,12 @@ def main(argv):
     #   Air Vapor Pressure at leaf surface []
 
         
-    kn = decay_coeff_vcmax(currentCohort%vcmax25top, &
-                                                        prt_params%leafn_vert_scaler_coeff1(ft), &
-                                                        prt_params%leafn_vert_scaler_coeff2(ft))
+    #kn = decay_coeff_vcmax(currentCohort%vcmax25top, &
+    #                       prt_params%leafn_vert_scaler_coeff1(ft), &
+    #                       prt_params%leafn_vert_scaler_coeff2(ft))
 
     
-    StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,leaf_co2_ppress,can_press,gb,gs)
+    #StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,leaf_co2_ppress,can_press,gb,gs)
         
 
         

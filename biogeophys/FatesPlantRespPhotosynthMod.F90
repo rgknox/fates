@@ -68,7 +68,6 @@ module FATESPlantRespPhotosynthMod
   use FatesRadiationMemMod, only : ipar
   use FatesTwoStreamUtilsMod, only : FatesGetCohortAbsRad
   use FatesAllometryMod     , only : VegAreaLayer
-  use FatesAllometryMod, only : decay_coeff_vcmax
 
   use LeafBiophysicsMod, only : LeafLayerPhotosynthesis
   use LeafBiophysicsMod, only : LeafHumidityStomaResis
@@ -78,6 +77,7 @@ module FATESPlantRespPhotosynthMod
   use LeafBiophysicsMod, only : LeafLayerBiophysicalRates
   use LeafBiophysicsMod, only : LowstorageMainRespReduction
   use LeafBiophysicsMod, only : rsmax0
+  use LeafBiophysicsMod, only : DecayCoeffVcmax
   use FatesRadiationMemMod, only : idirect
   
   ! CIME Globals
@@ -198,8 +198,6 @@ contains
     real(r8) :: leaf_frac          ! ratio of to leaf biomass to total alive biomass
     real(r8) :: tcsoi              ! Temperature response function for root respiration.
     real(r8) :: tcwood             ! Temperature response function for wood
-    real(r8) :: decay_coeff        ! Decay coefficient for vertical scaling of Atkin respiration
-                                   ! see FatesAllometryMod for details
     real(r8) :: patch_la           ! exposed leaf area (patch scale)
     real(r8) :: live_stem_n        ! Live stem (above-ground sapwood)
                                    ! nitrogen content (kgN/plant)
@@ -278,6 +276,7 @@ contains
     real(r8)               :: gstoma       ! stomatal conductance at leaf bin (sun/shade combined) [m/s]
     real(r8)               :: anet_ll      ! leaf level net assimilation   [umol CO2/m**2/s]
     real(r8)               :: c13disc_ll   ! leaf level c13 assimilation
+    real(r8)               :: hydr_k_lwp   ! inner leaf humidity scaling coefficient [-]
     
     ! -----------------------------------------------------------------------------------
     ! Keeping these two definitions in case they need to be added later
@@ -534,7 +533,7 @@ contains
                                  ! kn = 0.11. Here, derive kn from vcmax25 as in Lloyd et al 
                                  ! (2010) Biogeosciences, 7, 1833-1859
 
-                                 kn = decay_coeff_vcmax(currentCohort%vcmax25top, &
+                                 kn = DecayCoeffVcmax(currentCohort%vcmax25top, &
                                                         prt_params%leafn_vert_scaler_coeff1(ft), &
                                                         prt_params%leafn_vert_scaler_coeff2(ft))
 
@@ -651,7 +650,7 @@ contains
                                     ! this number can be smaller. There is some observational evidence for this being the case
                                     ! in Lamour et al. 2023. 
                                     
-                                    kn = decay_coeff_vcmax(currentCohort%vcmax25top, &
+                                    kn = DecayCoeffVcmax(currentCohort%vcmax25top, &
                                          EDPftvarcon_inst%maintresp_leaf_vert_scaler_coeff1(ft), &
                                          EDPftvarcon_inst%maintresp_leaf_vert_scaler_coeff2(ft))
 
@@ -717,6 +716,12 @@ contains
                                        par_abs   = ConvertPar(leaf_area, par_per_shala)
                                        area_frac = 1._r8 - fsun
                                     end if
+
+                                    if ( (hlm_use_planthydro.eq.itrue .and. EDPftvarcon_inst%hydr_k_lwp(ft)>nearzero) ) then
+                                       hydr_k_lwp = EDPftvarcon_inst%hydr_k_lwp(ft)
+                                    else
+                                       hydr_k_lwp = 1._r8
+                                    end if
                                     
                                     call LeafLayerPhotosynthesis(par_abs,    &  ! in
                                          leaf_area,                          &  ! in
@@ -725,7 +730,6 @@ contains
                                          jmax_z,                             &  ! in
                                          kp_z,                               &  ! in
                                          bc_in(s)%t_veg_pa(ifp),             &  ! in
-                                         bc_in(s)%esat_tv_pa(ifp),           &  ! in
                                          bc_in(s)%forc_pbot,                 &  ! in
                                          bc_in(s)%cair_pa(ifp),              &  ! in
                                          bc_in(s)%oair_pa(ifp),              &  ! in
@@ -737,6 +741,7 @@ contains
                                          co2_cpoint,                         &  ! in
                                          lmr_z(iv,ft,cl),                    &  ! in
                                          leaf_psi,                           &  ! in
+                                         hydr_k_lwp,                         &  ! in
                                          psn_ll,                             &  ! out
                                          gstoma_ll,                          &  ! out
                                          anet_ll,                            &  ! out
@@ -755,8 +760,10 @@ contains
                                  
                                  ! Stomatal resistance of the leaf-layer
                                  if ( (hlm_use_planthydro.eq.itrue .and. EDPftvarcon_inst%hydr_k_lwp(ft)>nearzero) ) then
+
                                     rs_z(iv,ft,cl) = LeafHumidityStomaResis(leaf_psi, EDPftvarcon_inst%hydr_k_lwp(ft), bc_in(s)%t_veg_pa(ifp), &
-                                         bc_in(s)%cair_pa(ifp),bc_in(s)%forc_pbot, bc_in(s)%esat_tv_pa(ifp), bc_in(s)%rb_pa(ifp), gstoma, ft)
+                                         bc_in(s)%cair_pa(ifp),bc_in(s)%forc_pbot, bc_in(s)%rb_pa(ifp), gstoma, ft)
+                                    
                                  else
                                     rs_z(iv,ft,cl)= 1._r8/gstoma
                                  end if

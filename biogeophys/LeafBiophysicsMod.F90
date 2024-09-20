@@ -38,7 +38,8 @@ module LeafBiophysicsMod
   use FatesConstantsMod, only : umol_per_kmol
   use FatesUtilsMod,     only : QuadraticRoots => QuadraticRootsSridharachary
   use FatesConstantsMod, only : rgas => rgas_J_K_kmol
-
+  use FatesConstantsMod, only : g_per_kg
+  
   implicit none
   private
 
@@ -51,6 +52,7 @@ module LeafBiophysicsMod
   public :: LeafLayerBiophysicalRates
   public :: LowstorageMainRespReduction
   public :: GetConstrainedVPress
+  public :: DecayCoeffVcmax
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -72,7 +74,7 @@ module LeafBiophysicsMod
   real(r8),parameter :: gsmin0_20C1A_mol = gsmin0 * 101325.0_r8/(rgas * 293.15 )*umol_per_kmol
 
   ! Set this to true to perform debugging
-  logical,parameter   ::  debug = .false.
+  logical,parameter   ::  debug = .true.
 
   ! Set this to true if you want to assume zero resistance between
   ! leaf surface and boundary layer, which then assumes leaf surface
@@ -189,7 +191,7 @@ contains
 
   subroutine StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,leaf_co2_ppress,can_press,gb,gs)
 
-                                                     ! Input
+    ! Input
     real(r8), intent(in) :: anet                     ! net leaf photosynthesis (umol CO2/m**2/s)
     integer, intent(in)  :: ft                       ! plant functional type index
     real(r8), intent(in) :: veg_esat                 ! saturation vapor pressure at veg_tempk (Pa)
@@ -199,11 +201,13 @@ contains
     real(r8), intent(in) :: stomatal_intercept_btran ! water-stressed minimum stomatal conductance (umol H2O/m**2/s)
     real(r8), intent(in) :: leaf_co2_ppress          ! CO2 partial pressure at leaf surface (Pa)
 
-                                                     ! Output
-    real(r8) :: gs                                   ! leaf stomatal conductance (umol H2O/m**2/s)
+    ! Output
+    real(r8),intent(out) :: gs                       ! leaf stomatal conductance (umol H2O/m**2/s)
+    
 
-                                                     ! locals
-    real(r8) :: vpd                                  ! water vapor deficit in Medlyn stomatal model (KPa)
+    ! locals
+ 
+    real(r8) :: vpd                                  ! water vapor deficit in Medlyn stomatal model [KPa]
     real(r8) :: term                                 ! intermediate term used to simplify equations
     real(r8) :: aquad,bquad,cquad                    ! quadradic solve terms
     real(r8) :: r1,r2                                ! quadradic solve roots
@@ -306,7 +310,6 @@ contains
        jmax,              &  ! in
        co2_rcurve_islope, &  ! in
        veg_tempk,         &  ! in
-       veg_esat,          &  ! in
        can_press,         &  ! in
        can_co2_ppress,    &  ! in
        can_o2_ppress,     &  ! in
@@ -318,6 +321,7 @@ contains
        co2_cpoint,        &  ! in
        lmr,               &  ! in
        leaf_psi,          &  ! in
+       hydr_k_lwp,        &  ! in
        psn_out,           &  ! out
        gs_out,            &  ! out
        anet_out,          &  ! out
@@ -342,7 +346,6 @@ contains
     real(r8), intent(in) :: jmax              ! maximum electron transport rate (umol electrons/m**2/s)
     real(r8), intent(in) :: co2_rcurve_islope ! initial slope of CO2 response curve (C4 plants)
     real(r8), intent(in) :: veg_tempk         ! vegetation temperature
-    real(r8), intent(in) :: veg_esat          ! saturation vapor pressure at veg_tempk (Pa)
     real(r8), intent(in) :: can_press         ! Air pressure near the surface of the leaf (Pa)
     real(r8), intent(in) :: can_co2_ppress    ! Partial pressure of CO2 near the leaf surface (Pa)
     real(r8), intent(in) :: can_o2_ppress     ! Partial pressure of O2 near the leaf surface (Pa)
@@ -395,7 +398,9 @@ contains
     real(r8) :: leaf_co2_ppress   ! CO2 partial pressure at leaf surface (Pa)
     real(r8) :: init_co2_inter_c  ! First guess intercellular co2 specific to C path
     real(r8) :: stomatal_intercept_btran ! water-stressed minimum stomatal conductance (umol H2O/m**2/s)
-    
+    real(r8) :: veg_esat                             ! Saturation vapor pressure at leaf-surface [Pa]
+    real(r8) :: veg_qs                               ! DUMMY, specific humidity at leaf-surface [kg/kg]
+       
     ! Parameters
     ! ------------------------------------------------------------------------
     ! Fraction of light absorbed by non-photosynthetic pigments
@@ -593,6 +598,9 @@ contains
        !
        ! ------------------------------------------------------------------------------------
 
+       ! Determine saturation vapor pressure at the leaf surface, from temp and atm-pressure
+       call QSat(veg_tempk, can_press, veg_qs, veg_esat)
+       
        if ( lb_params%stomatal_model == medlyn_model ) then
           call StomatalCondMedlyn(anet_out,ft,veg_esat,can_vpress,stomatal_intercept_btran, &
                                   leaf_co2_ppress,can_press,gb,gs_out)
@@ -647,12 +655,9 @@ contains
     return
   end subroutine LeafLayerPhotosynthesis
 
-
-
-
   ! =======================================================================================
 
-  function LeafHumidityStomaResis(leaf_psi, k_lwp, veg_tempk, can_vpress, can_press, veg_esat, &
+  function LeafHumidityStomaResis(leaf_psi, k_lwp, veg_tempk, can_vpress, can_press, &
        rb, gstoma, ft) result(rstoma_out)
 
     ! -------------------------------------------------------------------------------------
@@ -687,7 +692,7 @@ contains
     real(r8) :: veg_tempk  ! Leaf temperature     [K]
     real(r8) :: can_vpress ! vapor pressure of air (unconstrained) [Pa]
     real(r8) :: can_press  ! Atmospheric pressure of canopy [Pa]
-    real(r8) :: veg_esat   ! Saturated vapor pressure at veg surf [Pa]
+    
     real(r8) :: rb         ! Leaf Boundary layer resistance [s/m]
     real(r8) :: gstoma     ! Stomatal Conductance of this leaf layer [m/s]
     integer  :: ft         ! Plant Functional Type
@@ -695,9 +700,11 @@ contains
     
     ! Locals
     real(r8) :: ceair      ! vapor pressure of air, constrained [Pa]
-    ! water potential to mesophyll water potential
+                           ! water potential to mesophyll water potential
     real(r8) :: qs         ! Specific humidity [g/kg]
-    real(r8) :: qsat       ! Saturation specific humidity  [g/kg]
+    real(r8) :: veg_esat   ! Saturated vapor pressure at veg surf [Pa]
+    real(r8) :: qsat_alt   ! Saturation specific humidity  [g/kg]
+    real(r8) :: qsat_loc   ! Saturation specific humidity  [g/kg]
     real(r8) :: qsat_adj   ! Adjusted saturation specific humidity  [g/kg]
     real(r8) :: lwp_star   ! leaf water potential scaling coefficient
     ! for inner leaf humidity, 0 means total dehydroted
@@ -711,7 +718,11 @@ contains
     else 
        lwp_star = 1._r8
     end if
+    
+    call QSat(veg_tempk, can_press, qsat_alt, veg_esat)
 
+    qsat_alt = qsat_alt * g_per_kg
+    
     ceair = GetConstrainedVPress(can_vpress,veg_esat)
     
     ! compute specific humidity from vapor pressure
@@ -720,9 +731,16 @@ contains
     ! now adjust inner leaf humidity by LWP_star
 
     qs = molar_mass_ratio_vapdry * ceair / (can_press - (1._r8-molar_mass_ratio_vapdry) * ceair)
-    qsat = molar_mass_ratio_vapdry * veg_esat / (can_press - (1._r8-molar_mass_ratio_vapdry) * veg_esat)
-    qsat_adj = qsat*lwp_star
+    qsat_loc = molar_mass_ratio_vapdry * veg_esat / (can_press - (1._r8-molar_mass_ratio_vapdry) * veg_esat)
+    qsat_adj = qsat_loc*lwp_star
 
+    if(debug .and. (abs(qsat_loc-qsat_alt) > 1.e-2)) then
+       write (fates_log(),*) 'qsat from QSat():', qsat_alt
+       write (fates_log(),*) 'qsat localy :', qsat_loc
+       write (fates_log(),*) 'values of qsat are too different'
+       call endrun(msg=errMsg(sourcefile, __LINE__))  
+    end if
+    
     ! Adjusting gs (compute a virtual gs) that will be passed to host model
 
     if ( qsat_adj < qs ) then
@@ -733,12 +751,12 @@ contains
 
     else
 
-       rstoma_out = (qsat-qs)*( 1/gstoma + rb)/(qsat_adj - qs)-rb
+       rstoma_out = (qsat_loc-qs)*( 1/gstoma + rb)/(qsat_adj - qs)-rb
 
     end if
 
     if (rstoma_out < nearzero ) then
-       write (fates_log(),*) 'qsat:', qsat, 'qs:', qs
+       write (fates_log(),*) 'qsat:', qsat_loc, 'qs:', qs
        write (fates_log(),*) 'LWP :', leaf_psi
        write (fates_log(),*) 'pft :', ft
        write (fates_log(),*) 'ceair:', ceair, 'veg_esat:', veg_esat            
@@ -749,7 +767,71 @@ contains
 
   end function LeafHumidityStomaResis
 
+  ! =====================================================================================
+  
+  function StomatalVaporPressureFromLWP(leaf_psi, k_lwp, veg_tempk, can_press, &
+       rb, gstoma, ft) result(stoma_vpress)
 
+    ! -------------------------------------------------------------------------------------
+    ! This calculates inner leaf humidity as a function of mesophyll water potential 
+    ! Adopted from  Vesala et al., 2017 https://www.frontiersin.org/articles/10.3389/fpls.2017.00054/full
+    !
+    ! Equation 1 in Vesala et al:
+    ! lwp_star = wi/w0 = exp( k_lwp*leaf_psi*molar_mass_water/(rgas * veg_tempk) )
+    !
+    ! Terms:
+    ! leaf_psi: leaf water potential [MPa]
+    ! k_lwp: inner leaf humidity scaling coefficient [-]
+    ! rgas: universal gas constant, [J/K/mol], 8.3144598
+    ! molar_mass_water, molar mass of water, [g/mol]: 18.0
+    !
+    ! Junyan Ding 2021
+    ! Adapted by Ryan Knox to work inside the Medlyn/BB solvers    
+    ! -------------------------------------------------------------------------------------
+
+    ! Input
+    real(r8) :: leaf_psi   ! Leaf water potential [MPa]
+    real(r8) :: k_lwp      ! Scaling coefficient for the ratio of leaf xylem (user parameter)
+    real(r8) :: veg_tempk  ! Leaf temperature     [K]
+    real(r8) :: veg_esat   ! Saturation vapor pressure at leaf surface [Pa]
+
+    ! Output
+    real(r8) :: stoma_esat ! The vapor pressure at the surface of the stomata [Pa]
+
+    
+    real(r8) :: lwp_star   ! leaf water potential scaling coefficient
+
+    ! for inner leaf humidity:
+    !    0 means total dehydrated leaf
+    !    1 means total saturated leaf
+
+    ! Note: if k_lwp is zero, LWP_star will be 1. 
+    
+    if (leaf_psi<0._r8) then
+       lwp_star = exp(k_lwp*leaf_psi*molar_mass_water/(rgas*veg_tempk))
+    else 
+       lwp_star = 1._r8
+    end if
+
+    call QSat(veg_tempk, can_press, qs, es)
+    
+    stoma_qsat = lwp_star * qs
+
+    ! qs = es * 0.622 / (p - 0.378*es)
+    ! qs = 0.622 / (p/es - 0.378)
+    ! qs (p/es - 0.378) = 0.622 
+    ! qs*p/es  = 0.622 + qs*0.378
+    ! 1/es  = (0.622 + qs*0.378)/(qs*p)
+    ! es = (qs*p)/(0.622 + qs*0.378)
+
+    stoma_esat = (stoma_qsat*can_press)/(0.622 + stoma_qsat*0.378)
+
+    
+    
+  end function LeafHumidityStomaResis
+
+
+  
   ! =====================================================================================
 
   function ft1_f(tl, ha) result(ans)
@@ -932,7 +1014,7 @@ contains
 
     use FatesConstantsMod, only : tfrz => t_water_freeze_k_1atm
     use FatesConstantsMod, only : umolC_to_kgC
-    use FatesConstantsMod, only : g_per_kg
+    
 
     ! -----------------------------------------------------------------------
     ! Base maintenance respiration rate for plant tissues maintresp_leaf_ryan1991_baserate
@@ -1073,24 +1155,24 @@ contains
     ! Arguments
     ! ------------------------------------------------------------------------------
 
-    integer,  intent(in) :: ft              ! (plant) Functional Type Index
-    real(r8), intent(in) :: nscaler         ! Scale for leaf nitrogen profile
-    real(r8), intent(in) :: vcmax25top_ft   ! canopy top maximum rate of carboxylation at 25C
-    ! for this pft (umol CO2/m**2/s)
-    real(r8), intent(in) :: jmax25top_ft    ! canopy top maximum electron transport rate at 25C
-    ! for this pft (umol electrons/m**2/s)
+    integer,  intent(in) :: ft                        ! (plant) Functional Type Index
+    real(r8), intent(in) :: nscaler                   ! Scale for leaf nitrogen profile
+    real(r8), intent(in) :: vcmax25top_ft             ! canopy top maximum rate of carboxylation at 25C
+                                                      ! for this pft (umol CO2/m**2/s)
+    real(r8), intent(in) :: jmax25top_ft              ! canopy top maximum electron transport rate at 25C
+                                                      ! for this pft (umol electrons/m**2/s)
     real(r8), intent(in) :: co2_rcurve_islope25top_ft ! initial slope of CO2 response curve
-    ! (C4 plants) at 25C, canopy top, this pft
-    real(r8), intent(in) :: veg_tempk           ! vegetation temperature
-    real(r8), intent(in) :: dayl_factor         ! daylength scaling factor (0-1)
-    real(r8), intent(in) :: t_growth            ! T_growth (short-term running mean temperature) (K)
-    real(r8), intent(in) :: t_home              ! T_home (long-term running mean temperature) (K)
-    real(r8), intent(in) :: btran           ! transpiration wetness factor (0 to 1)
-
-    real(r8), intent(out) :: vcmax             ! maximum rate of carboxylation (umol co2/m**2/s)
-    real(r8), intent(out) :: jmax              ! maximum electron transport rate
-    ! (umol electrons/m**2/s)
-    real(r8), intent(out) :: co2_rcurve_islope ! initial slope of CO2 response curve (C4 plants)
+                                                      ! (C4 plants) at 25C, canopy top, this pft
+    real(r8), intent(in) :: veg_tempk                 ! vegetation temperature
+    real(r8), intent(in) :: dayl_factor               ! daylength scaling factor (0-1)
+    real(r8), intent(in) :: t_growth                  ! T_growth (short-term running mean temperature) (K)
+    real(r8), intent(in) :: t_home                    ! T_home (long-term running mean temperature) (K)
+    real(r8), intent(in) :: btran                     ! transpiration wetness factor (0 to 1)
+    
+    real(r8), intent(out) :: vcmax                    ! maximum rate of carboxylation (umol co2/m**2/s)
+    real(r8), intent(out) :: jmax                     ! maximum electron transport rate
+                                                      ! (umol electrons/m**2/s)
+    real(r8), intent(out) :: co2_rcurve_islope        ! initial slope of CO2 response curve (C4 plants)
 
     ! Locals
     ! -------------------------------------------------------------------------------
@@ -1116,6 +1198,14 @@ contains
     real(r8) :: vcmaxc         ! scaling factor for high temperature inhibition (25 C = 1.0)
     real(r8) :: jmaxc          ! scaling factor for high temperature inhibition (25 C = 1.0)
 
+
+    ! update the daylength factor local variable if the switch is on
+    if ( lb_params%dayl_switch == itrue ) then
+       dayl_factor_local = dayl_factor
+    else
+       dayl_factor_local = 1.0_r8
+    endif
+    
     select case(lb_params%photo_tempsens_model)
     case (photosynth_acclim_model_none) !No temperature acclimation
        vcmaxha = lb_params%vcmaxha(FT)
@@ -1124,6 +1214,7 @@ contains
        jmaxhd  = lb_params%jmaxhd(FT)
        vcmaxse = lb_params%vcmaxse(FT)
        jmaxse  = lb_params%jmaxse(FT)
+       
     case (photosynth_acclim_model_kumarathunge_etal_2019) !Kumarathunge et al. temperature acclimation, Thome=30-year running mean
        t_growth_celsius = t_growth-tfrz
        t_home_celsius = t_home-tfrz
@@ -1134,6 +1225,8 @@ contains
        vcmaxse = (645.13_r8 - (0.38_r8*t_growth_celsius))
        jmaxse = 658.77_r8 - (0.84_r8*t_home_celsius) - 0.52_r8*(t_growth_celsius-t_home_celsius)
        jvr = 2.56_r8 - (0.0375_r8*t_home_celsius)-(0.0202_r8*(t_growth_celsius-t_home_celsius))
+
+       
     case default
        write (fates_log(),*)'error, incorrect leaf photosynthesis temperature acclimation model specified'
        write (fates_log(),*)'lb_params%photo_tempsens_model: ',lb_params%photo_tempsens_model
@@ -1142,16 +1235,10 @@ contains
 
     vcmaxc = fth25_f(vcmaxhd, vcmaxse)
     jmaxc  = fth25_f(jmaxhd, jmaxse)
-
-    ! update the daylength factor local variable if the switch is on
-    if ( lb_params%dayl_switch == itrue ) then
-       dayl_factor_local = dayl_factor
-    else
-       dayl_factor_local = 1.0_r8
-    endif
     
     ! Vcmax25top was already calculated to derive the nscaler function
     vcmax25 = vcmax25top_ft * nscaler * dayl_factor_local
+    
     select case( lb_params%photo_tempsens_model)
     case (photosynth_acclim_model_none)
        jmax25  = jmax25top_ft * nscaler * dayl_factor_local
@@ -1189,6 +1276,43 @@ contains
 
   end subroutine LeafLayerBiophysicalRates
 
+  ! =====================================================================================
+  
+  function DecayCoeffVcmax(vcmax25top,slope_param,intercept_param) result(decay_coeff_vcmax)
+    
+    ! ---------------------------------------------------------------------------------
+    ! This function estimates the decay coefficient used to estimate vertical
+    ! attenuation of properties in the canopy.
+    !
+    ! Decay coefficient (kn) is a function of vcmax25top for each pft.
+    !
+    ! Currently, this decay is applied to vcmax attenuation, SLA (optionally)
+    ! and leaf respiration (optionally w/ Atkin)
+    !
+    ! ---------------------------------------------------------------------------------
+    
+    !ARGUMENTS
+
+    real(r8),intent(in) :: vcmax25top
+    real(r8),intent(in) :: slope_param      ! multiplies vcmax25top
+    real(r8),intent(in) :: intercept_param  ! adds to vcmax25top
+
+    real(r8) :: decay_coeff_vcmax
+    
+    !LOCAL VARIABLES
+    ! -----------------------------------------------------------------------------------
+    
+    ! Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593 used
+    ! kn = 0.11. Here, we derive kn from vcmax25 as in Lloyd et al 
+    ! (2010) Biogeosciences, 7, 1833-1859
+    ! This function is also used to vertically scale leaf maintenance
+    ! respiration.
+    
+    decay_coeff_vcmax = exp(slope_param * vcmax25top - intercept_param)
+    
+    return
+  end function DecayCoeffVcmax
+  
   ! =====================================================================================
 
   subroutine LowstorageMainRespReduction(frac, pft, maintresp_reduction_factor)
@@ -1272,5 +1396,118 @@ contains
     
   end function GetStomatalInterceptBtran
 
+  ! =====================================================================================
+
+  subroutine QSat (T, p, qs, es, qsdT, esdT)
+    !
+    ! !DESCRIPTION:
+    !
+    ! THIS IS AN EXACT CLONE OF QSat routine in QSatMod.F90 from CTSM, tag ctsm5.2.028
+    ! https://github.com/ESCOMP/CTSM/blob/ctsm5.2.028/src/biogeophys/QSatMod.F90
+    ! 
+    ! Computes saturation mixing ratio and (optionally) the change in saturation mixing
+    ! ratio with respect to temperature. Mixing ratio and specific humidity are
+    ! approximately equal and can be treated as the same.
+    ! Reference:  Polynomial approximations from:
+    !             Piotr J. Flatau, et al.,1992:  Polynomial fits to saturation
+    !             vapor pressure.  Journal of Applied Meteorology, 31, 1507-1513.
+    
+    ! !ARGUMENTS:
+    implicit none
+    real(r8), intent(in)  :: T        ! temperature (K)
+    real(r8), intent(in)  :: p        ! surface atmospheric pressure (pa)
+    real(r8), intent(out) :: qs       ! humidity (kg/kg)
+    real(r8), intent(out), optional :: es       ! vapor pressure (pa)
+    real(r8), intent(out), optional :: qsdT     ! d(qs)/d(T)
+    real(r8), intent(out), optional :: esdT     ! d(es)/d(T)
+    !
+    ! !LOCAL VARIABLES:
+    real(r8) :: es_local    ! local version of es (in case es is not present)
+    real(r8) :: esdT_local  ! local version of esdT (in case esdT is not present)
+    real(r8) :: td,vp,vp1,vp2
+
+    ! For water vapor (temperature range 0C-100C)
+    real(r8), parameter :: a0 =  6.11213476_r8
+    real(r8), parameter :: a1 =  0.444007856_r8
+    real(r8), parameter :: a2 =  0.143064234e-01_r8
+    real(r8), parameter :: a3 =  0.264461437e-03_r8
+    real(r8), parameter :: a4 =  0.305903558e-05_r8
+    real(r8), parameter :: a5 =  0.196237241e-07_r8
+    real(r8), parameter :: a6 =  0.892344772e-10_r8
+    real(r8), parameter :: a7 = -0.373208410e-12_r8
+    real(r8), parameter :: a8 =  0.209339997e-15_r8
+    ! For derivative:water vapor
+    real(r8), parameter :: b0 =  0.444017302_r8
+    real(r8), parameter :: b1 =  0.286064092e-01_r8
+    real(r8), parameter :: b2 =  0.794683137e-03_r8
+    real(r8), parameter :: b3 =  0.121211669e-04_r8
+    real(r8), parameter :: b4 =  0.103354611e-06_r8
+    real(r8), parameter :: b5 =  0.404125005e-09_r8
+    real(r8), parameter :: b6 = -0.788037859e-12_r8
+    real(r8), parameter :: b7 = -0.114596802e-13_r8
+    real(r8), parameter :: b8 =  0.381294516e-16_r8
+    ! For ice (temperature range -75C-0C)
+    real(r8), parameter :: c0 =  6.11123516_r8
+    real(r8), parameter :: c1 =  0.503109514_r8
+    real(r8), parameter :: c2 =  0.188369801e-01_r8
+    real(r8), parameter :: c3 =  0.420547422e-03_r8
+    real(r8), parameter :: c4 =  0.614396778e-05_r8
+    real(r8), parameter :: c5 =  0.602780717e-07_r8
+    real(r8), parameter :: c6 =  0.387940929e-09_r8
+    real(r8), parameter :: c7 =  0.149436277e-11_r8
+    real(r8), parameter :: c8 =  0.262655803e-14_r8
+    ! For derivative:ice
+    real(r8), parameter :: d0 =  0.503277922_r8
+    real(r8), parameter :: d1 =  0.377289173e-01_r8
+    real(r8), parameter :: d2 =  0.126801703e-02_r8
+    real(r8), parameter :: d3 =  0.249468427e-04_r8
+    real(r8), parameter :: d4 =  0.313703411e-06_r8
+    real(r8), parameter :: d5 =  0.257180651e-08_r8
+    real(r8), parameter :: d6 =  0.133268878e-10_r8
+    real(r8), parameter :: d7 =  0.394116744e-13_r8
+    real(r8), parameter :: d8 =  0.498070196e-16_r8
+    
+    
+    !-----------------------------------------------------------------------
+
+    td = min(100.0_r8, max(-75.0_r8, T - tfrz ))
+
+    if (td >= 0.0_r8) then
+       es_local = a0 + td*(a1 + td*(a2 + td*(a3 + td*(a4 &
+            + td*(a5 + td*(a6 + td*(a7 + td*a8)))))))
+    else
+       es_local = c0 + td*(c1 + td*(c2 + td*(c3 + td*(c4 &
+            + td*(c5 + td*(c6 + td*(c7 + td*c8)))))))
+    endif
+
+    es_local = es_local * 100._r8            ! pa
+    vp    = 1.0_r8   / (p - 0.378_r8*es_local)
+    vp1   = 0.622_r8 * vp
+    qs    = es_local * vp1             ! kg/kg
+    if (present(es)) then
+       es = es_local
+    end if
+
+    if (present(qsdT) .or. present(esdT)) then
+       if (td >= 0.0_r8) then
+          esdT_local = b0 + td*(b1 + td*(b2 + td*(b3 + td*(b4 &
+               + td*(b5 + td*(b6 + td*(b7 + td*b8)))))))
+       else
+          esdT_local = d0 + td*(d1 + td*(d2 + td*(d3 + td*(d4 &
+               + td*(d5 + td*(d6 + td*(d7 + td*d8)))))))
+       end if
+
+       esdT_local = esdT_local * 100._r8            ! pa/K
+       vp2 = vp1 * vp
+       if (present(qsdT)) then
+          qsdT = esdT_local * vp2 * p         ! 1 / K
+       end if
+       if (present(esdT)) then
+          esdT = esdT_local
+       end if
+    end if
+
+  end subroutine QSat
+  
   
 end module LeafBiophysicsMod
