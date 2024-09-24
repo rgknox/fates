@@ -68,6 +68,13 @@ def GetModSymbol(mod_path,symbol):
         
     return mod_symbol
 
+# ========================================================================
+
+def GetJmaxKp25Top(vcmax25_top):
+    jmax25_top = 1.67   * vcmax25_top
+    kp25_top   = 20000.  * vcmax25_top
+
+    return jmax25_top, kp25_top
 
 # ========================================================================
         
@@ -86,7 +93,17 @@ f90_alloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/
 f90_dealloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','deallocleafparam'))
 f90_dump_param_sub =  getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','DumpParams'))
 f90_set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
+f90_biophysrate_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerBiophysicalRate'))
+f90_biophysrate_sub.argtypes = [POINTER(c_int), \
+                                POINTER(c_double),POINTER(c_double),POINTER(c_double), \
+                                POINTER(c_double),POINTER(c_double),POINTER(c_double), \
+                                POINTER(c_double),POINTER(c_double),POINTER(c_double), \
+                                POINTER(c_double),POINTER(c_double),POINTER(c_double)]
 
+# Example of setting a function return call
+#dftcdpsi_from_psi.restype = c_double
+
+    
 # For debugging
 dump_parameters = False
 
@@ -125,6 +142,7 @@ def main(argv):
     # Read in non-fortran parameters from the xml file
     leafn_vert_scaler_coeff1 = []
     leafn_vert_scaler_coeff2 = []
+    fates_leaf_vcmax25top    = []
     print('Reading non-fortran parameters')
     py_pft_root = xmlroot.find('py_params').find('pft_dim')
     for param in py_pft_root.iter('param'):
@@ -133,8 +151,33 @@ def main(argv):
                 leafn_vert_scaler_coeff1.append(param.text.split(',')[pft])
             if (param.attrib['name']=='fates_leafn_vert_scaler_coeff2'):
                 leafn_vert_scaler_coeff2.append(param.text.split(',')[pft])
-                                        
-    code.interact(local=dict(globals(), **locals()))
+            if (param.attrib['name']=='fates_leaf_vcmax25top'):
+                fates_leaf_vcmax25top.append(param.text.split(',')[pft])
+                
+
+
+    # Call the BiophysicalRates() Routine, which calculates
+    # the actual vmax, jmax and rcurve-islope terms for the
+    # leaf-scale conditions
+    nscaler = 1.0
+    tfrz_1atm = 273.15
+    leaf_tempk = tfrz_1atm + 25.0  # Use 25 to start
+    dayl_factor = 1.0
+    t_growth_kum = -999
+    t_home_kum = -999
+    btran = 1.0
+    
+    
+    for pft in range(numpft):
+
+        jmax25_top,kp25_top =  GetJmaxKp25Top(fates_leaf_vcmax25top[pft])
+        iret = f90_biophysrate_sub(ci(pft+1), c8(vcmax25_top), c8(jmax25_top), c8(kp25_top), \
+                                   c8(nscaler), c8(leaf_tempk), c8(dayl_factor), \
+                                   c8(t_growth_kum),c8(t_home_kum),c8(btran), \
+                                   c8(vcmax), c8(jmax), c8(co2_rcurve_islope))
+                
+        code.interact(local=dict(globals(), **locals()))
+
     # Environmental Conditions
     #   Absorbed PAR [w/m2 leaf]
     #   Leaf Temperature [K]

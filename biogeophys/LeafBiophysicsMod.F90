@@ -53,6 +53,7 @@ module LeafBiophysicsMod
   public :: LowstorageMainRespReduction
   public :: GetConstrainedVPress
   public :: DecayCoeffVcmax
+  public :: StomatalVaporPressureFromLWP
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -320,8 +321,7 @@ contains
        mm_ko2,            &  ! in
        co2_cpoint,        &  ! in
        lmr,               &  ! in
-       leaf_psi,          &  ! in
-       hydr_k_lwp,        &  ! in
+       leaf_psi,          &  ! in   (currently dummy)
        psn_out,           &  ! out
        gs_out,            &  ! out
        anet_out,          &  ! out
@@ -769,12 +769,13 @@ contains
 
   ! =====================================================================================
   
-  function StomatalVaporPressureFromLWP(leaf_psi, k_lwp, veg_tempk, can_press, &
-       rb, gstoma, ft) result(stoma_vpress)
+  function StomatalVaporPressureFromLWP(leaf_psi, k_lwp, veg_tempk, &
+                                        can_press, can_vpress) result(stoma_esat)
 
     ! -------------------------------------------------------------------------------------
     ! This calculates inner leaf humidity as a function of mesophyll water potential 
-    ! Adopted from  Vesala et al., 2017 https://www.frontiersin.org/articles/10.3389/fpls.2017.00054/full
+    ! Adopted from  Vesala et al., 2017
+    ! https://www.frontiersin.org/articles/10.3389/fpls.2017.00054/full
     !
     ! Equation 1 in Vesala et al:
     ! lwp_star = wi/w0 = exp( k_lwp*leaf_psi*molar_mass_water/(rgas * veg_tempk) )
@@ -786,21 +787,26 @@ contains
     ! molar_mass_water, molar mass of water, [g/mol]: 18.0
     !
     ! Junyan Ding 2021
-    ! Adapted by Ryan Knox to work inside the Medlyn/BB solvers    
+    ! Adapted by Ryan Knox to use alternate functions like QSat() or inside
+    ! Medlyn/BB solvers
     ! -------------------------------------------------------------------------------------
 
     ! Input
     real(r8) :: leaf_psi   ! Leaf water potential [MPa]
     real(r8) :: k_lwp      ! Scaling coefficient for the ratio of leaf xylem (user parameter)
     real(r8) :: veg_tempk  ! Leaf temperature     [K]
-    real(r8) :: veg_esat   ! Saturation vapor pressure at leaf surface [Pa]
-
+    real(r8) :: can_press  ! Atmospheric Pressure in the canopy [Pa]
+    real(r8) :: can_vpress ! Actual Vapor Pressure in the canopy [Pa]
+    
     ! Output
     real(r8) :: stoma_esat ! The vapor pressure at the surface of the stomata [Pa]
 
     
     real(r8) :: lwp_star   ! leaf water potential scaling coefficient
+    real(r8) :: qs,es      ! saturation specific humidity [kg/kg] and vapor pressure [Pa]
+    real(r8) :: stoma_qsat ! The specific humidity at the surface of the stomata [kg/kg]
 
+    
     ! for inner leaf humidity:
     !    0 means total dehydrated leaf
     !    1 means total saturated leaf
@@ -814,9 +820,12 @@ contains
     end if
 
     call QSat(veg_tempk, can_press, qs, es)
-    
+
+    ! Calculate the reduced specific humidity based off of the scaled
+    ! down saturated specific humidity at the leaf surface [kg/kg]
     stoma_qsat = lwp_star * qs
 
+    ! Convert humidity to a vapor pressure [kg/kg] -> [Pa]
     ! qs = es * 0.622 / (p - 0.378*es)
     ! qs = 0.622 / (p/es - 0.378)
     ! qs (p/es - 0.378) = 0.622 
@@ -824,11 +833,15 @@ contains
     ! 1/es  = (0.622 + qs*0.378)/(qs*p)
     ! es = (qs*p)/(0.622 + qs*0.378)
 
-    stoma_esat = (stoma_qsat*can_press)/(0.622 + stoma_qsat*0.378)
+    stoma_esat = (stoma_qsat*can_press)/(0.622_r8 + stoma_qsat*0.378_r8)
 
+    ! We don't allow reverse transpiration, prevent the stomatal surface
+    ! vapor pressure from being lower than the actual!
+
+    stoma_esat = max(can_vpress,stoma_esat)
     
     
-  end function LeafHumidityStomaResis
+  end function StomatalVaporPressureFromLWP
 
 
   

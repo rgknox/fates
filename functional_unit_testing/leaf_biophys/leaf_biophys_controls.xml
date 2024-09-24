@@ -34,5 +34,7 @@
     <pft_dim>
       <param name='fates_leafn_vert_scaler_coeff1'> 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963 </param>
       <param name='fates_leafn_vert_scaler_coeff2'> 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43</param>
+      <param name='fates_leaf_vcmax25top'> 50, 62, 39, 61, 58, 58, 62, 54, 54, 78, 78, 78 </param>
+    </pft_dim>
   </py_params>
 </all>
