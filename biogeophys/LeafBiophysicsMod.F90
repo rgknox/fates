@@ -54,6 +54,7 @@ module LeafBiophysicsMod
   public :: GetConstrainedVPress
   public :: DecayCoeffVcmax
   public :: StomatalVaporPressureFromLWP
+  public :: QSat
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -322,10 +323,13 @@ contains
        co2_cpoint,        &  ! in
        lmr,               &  ! in
        leaf_psi,          &  ! in   (currently dummy)
-       psn_out,           &  ! out
+       agross_out,        &  ! out
        gs_out,            &  ! out
        anet_out,          &  ! out
-       c13disc_out)            ! out
+       c13disc_out,       &  ! out
+       ac,                &  ! out
+       aj,                &  ! out
+       ap)                   ! out
 
 
     ! ------------------------------------------------------------------------------------
@@ -358,11 +362,14 @@ contains
     real(r8), intent(in) :: lmr               ! Leaf Maintenance Respiration  (umol CO2/m**2/s)
     real(r8), intent(in) :: leaf_psi          ! Leaf water potential [MPa]
 
-    real(r8), intent(out) :: psn_out          ! carbon assimilated in this leaf layer umolC/m2/s
+    real(r8), intent(out) :: agross_out       ! gross photosynthesis (umolC/m2/s)
     real(r8), intent(out) :: gs_out           ! leaf stomatal conductance (umol H2O/m**2/s)
     real(r8), intent(out) :: anet_out         ! net leaf photosynthesis (umol CO2/m**2/s)
     real(r8), intent(out) :: c13disc_out      ! carbon 13 in newly assimilated carbon
-
+    real(r8), intent(out) :: ac               ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
+    real(r8), intent(out) :: aj               ! RuBP-limited gross photosynthesis (umol CO2/m**2/s)
+    real(r8), intent(out) :: ap               ! product-limited (C3) or CO2-limited
+                                              ! (C4) gross photosynthesis (umol CO2/m**2/s)
     
     ! Important Note on the gas pressures as input arguments.  This photosynthesis scheme will iteratively
     ! solve for the co2 partial pressure at the leaf surface (ie in the stomata). The reference
@@ -380,7 +387,6 @@ contains
     ! ------------------------------------------------------------------------
     real(r8) :: par_abs_umol      ! Absorbed PAR that gets to the photocenters,
                                   ! converted to umol photons/m2/s
-    real(r8) :: agross            ! co-limited gross leaf photosynthesis (umol CO2/m**2/s)
     real(r8) :: a_gs              ! The assimilation (a) for calculating conductance (gs)
                                   ! is either = to anet or agross
     real(r8) :: je                ! electron transport rate (umol electrons/m**2/s)
@@ -390,10 +396,7 @@ contains
     real(r8) :: co2_inter_c_old   ! intercellular leaf CO2 (Pa) (previous iteration)
     logical  :: loop_continue     ! Loop control variable
     integer  :: niter             ! iteration loop index
-    real(r8) :: ac                ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
-    real(r8) :: aj                ! RuBP-limited gross photosynthesis (umol CO2/m**2/s)
-    real(r8) :: ap                ! product-limited (C3) or CO2-limited
-                                  ! (C4) gross photosynthesis (umol CO2/m**2/s)
+ 
     real(r8) :: ai                ! intermediate co-limited photosynthesis (umol CO2/m**2/s)
     real(r8) :: leaf_co2_ppress   ! CO2 partial pressure at leaf surface (Pa)
     real(r8) :: init_co2_inter_c  ! First guess intercellular co2 specific to C path
@@ -435,11 +438,17 @@ contains
     ! this is incredibly small, shouldnt need it, and probably has no effect?
     logical, parameter :: use_mincap_leafco2 = .true.
 
+
+    ! Set diagnostics as un-initialized
+    ac         = -999._r8
+    aj         = -999._r8
+    ap         = -999._r8
+    
     ! Trivial solution - No biomass - no photosynthesis, no conductance, no respiration, no nothin
     ! --------------------------------------------------------------------------------------------
 
     if(  leaf_area < nearzero ) then
-       psn_out   = 0._r8
+       agross_out   = 0._r8
        gs_out    = 0._r8 
        anet_out  = 0._r8
        c13disc_out = 0._r8
@@ -454,9 +463,9 @@ contains
     ! ---------------------------------------------------------------------------------------------
     if (par_abs < nearzero ) then
        anet_out   = -lmr
-       psn_out    = 0._r8
+       agross_out    = 0._r8
        gs_out     = stomatal_intercept_btran
-       c13disc_out  = 0.0_r8  
+       c13disc_out  = 0.0_r8
        return
     end if
 
@@ -521,7 +530,7 @@ contains
           bquad = -(ac + aj)
           cquad = ac * aj
           call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-          agross = min(r1,r2)
+          agross_out = min(r1,r2)
 
        else
 
@@ -547,20 +556,20 @@ contains
           bquad = -(ai + ap)
           cquad = ai * ap
           call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-          agross = min(r1,r2)
+          agross_out = min(r1,r2)
 
        end if
 
        ! Calculate anet, only exit iteration with negative anet when
        ! using anet in calculating gs this is version B  
-       anet_out = agross  - lmr
+       anet_out = agross_out  - lmr
 
        if (  lb_params%stomatal_assim_model == gross_assim_model ) then
           if ( lb_params%stomatal_model == medlyn_model ) then
              write (fates_log(),*) 'Gross Assimilation conductance is incompatible with the Medlyn model'
              call endrun(msg=errMsg(sourcefile, __LINE__))
           end if
-          a_gs = agross
+          a_gs = agross_out
        else
           if (anet_out < 0._r8) then
              loop_continue = .false.
