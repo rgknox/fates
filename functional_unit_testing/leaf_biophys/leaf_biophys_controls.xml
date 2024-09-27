@@ -8,7 +8,7 @@
       <param name='fates_daylength_factor_switch'>1</param>
       <param name='fates_leaf_theta_cj_c3'>0.999</param>
       <param name='fates_leaf_theta_cj_c4'>0.999</param>
-      <param name='fates_leaf_stomatal_model'>1</param>
+      <param name='fates_leaf_stomatal_model'>2</param>
       <param name='fates_leaf_stomatal_assim_model'>1</param>
       <param name='fates_leaf_photo_tempsens_model'>1</param>
     </scalar_dim>
@@ -31,10 +31,15 @@
     </pft_dim>
   </f90_params>
   <py_params>
+    <scalar_dim>
+      <param name='fates_maintresp_leaf_model'> 1 </param>
+    </scalar_dim>
     <pft_dim>
       <param name='fates_leafn_vert_scaler_coeff1'> 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963, 0.00963 </param>
       <param name='fates_leafn_vert_scaler_coeff2'> 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43, 2.43</param>
       <param name='fates_leaf_vcmax25top'> 50, 62, 39, 61, 58, 58, 62, 54, 54, 78, 78, 78 </param>
+      <param name='fates_stoich_nitr'> 0.033, 0.029, 0.04, 0.033, 0.04, 0.04, 0.033, 0.04, 0.04, 0.04, 0.04, 0.04  </param>
+      <param name='fates_leaf_slatop'>  0.012, 0.005, 0.024, 0.009, 0.03, 0.03, 0.012, 0.03, 0.03, 0.03, 0.03, 0.03 </param>
     </pft_dim>
   </py_params>
 </all>

@@ -55,6 +55,10 @@ module LeafBiophysicsMod
   public :: DecayCoeffVcmax
   public :: StomatalVaporPressureFromLWP
   public :: QSat
+  public :: AgrossRubiscoC3
+  public :: AgrossRuBPC3
+  public :: AgrossRuBPC4
+  public :: AgrossPEPC4
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -83,7 +87,7 @@ module LeafBiophysicsMod
   ! humidity is the same as humidity on the other side of the boundary
   ! layer, essentially bypassing the use
   ! of Fick's law while calculating stomatal conductance.
-  logical, parameter :: zero_bl_resist = .true.
+  logical, parameter :: zero_bl_resist = .false.
 
   ! Ratio of H2O/CO2 gas diffusion in stomatal airspace (approximate)
   real(r8),parameter :: h2o_co2_stoma_diffuse_ratio = 1.6_r8
@@ -120,7 +124,15 @@ module LeafBiophysicsMod
   real(r8), parameter, public :: lmr_r_1 = 0.2061_r8     ! (umol CO2/m**2/s / (gN/(m2 leaf))) 
   real(r8), parameter, public :: lmr_r_2 = -0.0402_r8    ! (umol CO2/m**2/s/degree C)
 
-
+  ! Fraction of light absorbed by non-photosynthetic pigments
+  real(r8),parameter :: fnps = 0.15_r8
+  
+  ! term accounting that two photons are needed to fully transport a single 
+  ! electron in photosystem 2
+  real(r8), parameter :: photon_to_e = 0.5_r8
+  
+  ! empirical curvature parameter for electron transport rate
+  real(r8),parameter :: theta_psii = 0.7_r8
   
   ! These are parameter constants read in externally
   ! some are differentiated by PFT, others are not
@@ -214,18 +226,25 @@ contains
     real(r8) :: aquad,bquad,cquad                    ! quadradic solve terms
     real(r8) :: r1,r2                                ! quadradic solve roots
 
+    !print*,"MEDLYN",leaf_co2_ppress
+    
     ! Evaluate trival solution, if there is no positive net assimiolation
     ! the stomatal conductance is the intercept conductance
     if (anet <= nearzero) then
+     !  print*,"SIB:",stomatal_intercept_btran
        gs = stomatal_intercept_btran
        return
     end if
 
+    
+    
     ! stomatal conductance calculated from Medlyn et al. (2011), the numerical &
     ! implementation was adapted from the equations in CLM5.0 [kPa]
 
     vpd =  max((veg_esat - can_vpress), 50._r8) * kpa_per_pa       !addapted from CLM5. Put some constraint on VPD
 
+    
+    
     if(zero_bl_resist) then
 
        ! We assume zero resistance in the leaf boundary layer, and that humidity at
@@ -236,6 +255,9 @@ contains
     else
 
        !when Medlyn stomatal conductance is being used, the unit is KPa. Ignoring the constraint will cause errors when model runs.
+
+       
+       
        term = h2o_co2_stoma_diffuse_ratio * anet / (leaf_co2_ppress / can_press)
        aquad = 1.0_r8
        bquad = -(2.0 * (stomatal_intercept_btran+ term) + (lb_params%medlyn_slope(ft) * term)**2 / &
@@ -243,9 +265,14 @@ contains
        cquad = stomatal_intercept_btran*stomatal_intercept_btran + &
             (2.0*stomatal_intercept_btran + term * &
             (1.0 - lb_params%medlyn_slope(ft)* lb_params%medlyn_slope(ft) / vpd)) * term
-
+       
        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
        gs = max(r1,r2)
+
+       
+       
+       !print*,"LCO2",leaf_co2_ppress,can_press,lb_params%medlyn_slope(ft),stomatal_intercept_btran,vpd,gs,veg_esat,can_vpress
+       
     end if
     
     return
@@ -280,9 +307,10 @@ contains
        gs = stomatal_intercept_btran
        return
     end if
-
+    
     ! Apply a constraint to the vapor pressure
     ceair = GetConstrainedVPress(can_vpress,veg_esat)
+    !print*,can_vpress,veg_esat,ceair
     
     if(zero_bl_resist) then
 
@@ -300,11 +328,102 @@ contains
     end if
 
 
+    !print*,gs
+
     return
   end subroutine StomatalCondBallBerry
 
+  ! =====================================================================================
+  
+  function AgrossRubiscoC3(vcmax,co2_inter_c,can_o2_ppress,co2_cpoint,mm_kco2,mm_ko2) result(ac)
+
+    ! Input
+    real(r8) :: vcmax             ! maximum rate of carboxylation (umol co2/m**2/s)
+    real(r8) :: co2_inter_c       ! intercellular leaf CO2 (Pa)
+    real(r8) :: co2_cpoint        ! CO2 compensation point (Pa)
+    real(r8) :: can_o2_ppress     ! Partial pressure of O2 near the leaf surface (Pa)
+    real(r8) :: mm_kco2           ! Michaelis-Menten constant for CO2 (Pa)
+    real(r8) :: mm_ko2            ! Michaelis-Menten constant for O2 (Pa)
+    
+    ! Output
+    real(r8) :: ac               ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
+    
+    ac = vcmax * max(co2_inter_c-co2_cpoint, 0._r8) / &
+         (co2_inter_c+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
+    
+  end function AgrossRubiscoC3
+  
+  ! =====================================================================================
+
+  function AgrossRuBPC3(par_abs_wm2,jmax,co2_inter_c,co2_cpoint ) result(aj)
+
+    ! Input
+    real(r8) :: par_abs_wm2           ! Absorbed PAR per leaf area [W/m2]
+    real(r8) :: jmax              ! maximum electron transport rate (umol electrons/m**2/s)
+    real(r8) :: co2_inter_c      ! intercellular leaf CO2 (Pa)
+    real(r8) :: co2_cpoint        ! CO2 compensation point (Pa)
+
+    ! Output
+    real(r8) :: aj               ! RuBP-limited gross photosynthesis (umol CO2/m**2/s)
+
+    ! locals
+    real(r8) :: par_abs_umol      ! Absorbed PAR that gets to the photocenters,
+                                  ! converted to umol photons/m2/s
+    real(r8) :: je                ! electron transport rate (umol electrons/m**2/s)
+    real(r8) :: aquad,bquad,cquad ! terms for quadratic equations
+    real(r8) :: r1,r2             ! roots of quadratic equation
+    
+    ! Electron transport rate for C3 plants.
+    ! Convert absorbed photon density [umol/m2 leaf /s] to
+    ! that absorbed only by the photocenters (fnps) and also
+    ! convert from photon energy into electron transport rate (photon_to_e)
+    
+    par_abs_umol = par_abs_wm2*photon_to_e*(1.0_r8 - fnps)
+    
+    ! convert the absorbed par into absorbed par per m2 of leaf,
+    ! so it is consistant with the vcmax and lmr numbers.
+    aquad = theta_psii
+    bquad = -(par_abs_umol + jmax)
+    cquad = par_abs_umol * jmax
+    call QuadraticRoots(aquad, bquad, cquad, r1, r2)
+    je = min(r1,r2)
+    
+    aj = je * max(co2_inter_c-co2_cpoint, 0._r8) / &
+                 (4._r8*co2_inter_c+8._r8*co2_cpoint)
+
+    
+  end function AgrossRuBPC3
+  
   ! =======================================================================================
 
+  function AgrossRuBPC4(par_abs_wm2) result(aj)
+
+    real(r8) :: par_abs_wm2      ! Absorbed PAR per leaf area [W/m2]
+    real(r8) :: aj               ! RuBP-limited gross photosynthesis (umol CO2/m**2/s)
+
+    ! quantum efficiency, used only for C4 (mol CO2 / mol photons)
+    real(r8),parameter :: c4_quant_eff = 0.05_r8
+    
+    aj = c4_quant_eff*par_abs_wm2*photon_to_e*(1.0_r8 - fnps)
+    
+  end function AgrossRuBPC4
+
+  ! =======================================================================================
+
+  function AgrossPEPC4(co2_inter_c,co2_rcurve_islope,can_press) result(ap)
+
+    real(r8) :: co2_inter_c       ! intercellular leaf CO2 (Pa)
+    real(r8) :: co2_rcurve_islope ! initial slope of CO2 response curve (C4 plants)
+    real(r8) :: can_press         ! Air pressure near the surface of the leaf (Pa)
+    real(r8) :: ap                ! product-limited (C3) or CO2-limited
+                                  ! (C4) gross photosynthesis (umol CO2/m**2/s)
+
+    ap = co2_rcurve_islope * max(co2_inter_c, 0._r8) / can_press
+    
+  end function AgrossPEPC4
+
+  ! =======================================================================================
+  
   subroutine LeafLayerPhotosynthesis(par_abs,           &  ! in
        leaf_area,         &  ! in
        ft,                &  ! in
@@ -329,7 +448,8 @@ contains
        c13disc_out,       &  ! out
        ac,                &  ! out
        aj,                &  ! out
-       ap)                   ! out
+       ap,                &  ! out
+       co2_inter_c)                   ! out
 
 
     ! ------------------------------------------------------------------------------------
@@ -370,7 +490,8 @@ contains
     real(r8), intent(out) :: aj               ! RuBP-limited gross photosynthesis (umol CO2/m**2/s)
     real(r8), intent(out) :: ap               ! product-limited (C3) or CO2-limited
                                               ! (C4) gross photosynthesis (umol CO2/m**2/s)
-    
+    real(r8), intent(out) :: co2_inter_c      ! intercellular leaf CO2 (Pa)
+
     ! Important Note on the gas pressures as input arguments.  This photosynthesis scheme will iteratively
     ! solve for the co2 partial pressure at the leaf surface (ie in the stomata). The reference
     ! point for these input values are NOT within that boundary layer that separates the stomata from
@@ -385,14 +506,12 @@ contains
     
     ! Locals
     ! ------------------------------------------------------------------------
-    real(r8) :: par_abs_umol      ! Absorbed PAR that gets to the photocenters,
-                                  ! converted to umol photons/m2/s
+    
     real(r8) :: a_gs              ! The assimilation (a) for calculating conductance (gs)
                                   ! is either = to anet or agross
-    real(r8) :: je                ! electron transport rate (umol electrons/m**2/s)
     real(r8) :: aquad,bquad,cquad ! terms for quadratic equations
     real(r8) :: r1,r2             ! roots of quadratic equation
-    real(r8) :: co2_inter_c       ! intercellular leaf CO2 (Pa)
+    
     real(r8) :: co2_inter_c_old   ! intercellular leaf CO2 (Pa) (previous iteration)
     logical  :: loop_continue     ! Loop control variable
     integer  :: niter             ! iteration loop index
@@ -406,27 +525,20 @@ contains
        
     ! Parameters
     ! ------------------------------------------------------------------------
-    ! Fraction of light absorbed by non-photosynthetic pigments
-    real(r8),parameter :: fnps = 0.15_r8
-
-    ! term accounting that two photons are needed to fully transport a single 
-    ! electron in photosystem 2
-    real(r8), parameter :: photon_to_e = 0.5_r8
+    
 
     ! For plants with no leaves, a miniscule amount of conductance
     ! can happen through the stems, at a partial rate of cuticular conductance
     real(r8),parameter :: stem_cuticle_loss_frac = 0.1_r8
 
-    ! empirical curvature parameter for electron transport rate
-    real(r8),parameter :: theta_psii = 0.7_r8
+   
 
     ! First guess on ratio between intercellular co2 and the atmosphere
     ! an iterator converges on actual
     real(r8),parameter :: init_a2l_co2_c3 = 0.7_r8
     real(r8),parameter :: init_a2l_co2_c4 = 0.4_r8
 
-    ! quantum efficiency, used only for C4 (mol CO2 / mol photons)
-    real(r8),parameter :: c4_quant_eff = 0.05_r8
+   
 
     ! Maximum number of iterations on intercelluar co2 solver until is quits
     integer, parameter :: max_iters = 5
@@ -456,6 +568,7 @@ contains
     end if
 
     ! Find the stomatal conductance intercept
+
     stomatal_intercept_btran = max(gsmin0_20C1A_mol,lb_params%stomatal_intercept(ft)*btran)
     
     ! Less, but still trivial solution - biomass, but no light, no photosynthesis
@@ -478,21 +591,7 @@ contains
        init_co2_inter_c = init_a2l_co2_c4 * can_co2_ppress
     end if
 
-    ! Electron transport rate for C3 plants.
-    ! Convert absorbed photon density [umol/m2 leaf /s] to
-    ! that absorbed only by the photocenters (fnps) and also
-    ! convert from photon energy into electron transport rate (photon_to_e)
     
-    par_abs_umol = par_abs*photon_to_e*(1.0_r8 - fnps)
-
-
-    ! convert the absorbed par into absorbed par per m2 of leaf,
-    ! so it is consistant with the vcmax and lmr numbers.
-    aquad = theta_psii
-    bquad = -(par_abs_umol + jmax)
-    cquad = par_abs_umol * jmax
-    call QuadraticRoots(aquad, bquad, cquad, r1, r2)
-    je = min(r1,r2)
 
 
     ! Perform iterative solution to converge on net assimilation,
@@ -504,6 +603,8 @@ contains
     ! Initialize intercellular co2
     co2_inter_c = init_co2_inter_c
 
+    !print*,"init:", init_co2_inter_c
+    
     niter = 0
     loop_continue = .true.
     iter_loop: do while(loop_continue)
@@ -518,12 +619,10 @@ contains
        if (lb_params%c3psn(ft) == c3_path_index)then
 
           ! C3: Rubisco-limited photosynthesis
-          ac = vcmax * max(co2_inter_c-co2_cpoint, 0._r8) / &
-               (co2_inter_c+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
+          ac = AgrossRubiscoC3(vcmax,co2_inter_c,can_o2_ppress,co2_cpoint,mm_kco2,mm_ko2)
 
           ! C3: RuBP-limited photosynthesis
-          aj = je * max(co2_inter_c-co2_cpoint, 0._r8) / &
-               (4._r8*co2_inter_c+8._r8*co2_cpoint)
+          aj = AgrossRuBPC3(par_abs,jmax,co2_inter_c,co2_cpoint )
 
           ! Gross photosynthesis smoothing calculations. Co-limit ac and aj.
           aquad = lb_params%theta_cj_c3
@@ -538,12 +637,13 @@ contains
           ac = vcmax
 
           ! C4: RuBP-limited photosynthesis
-          aj = c4_quant_eff*par_abs_umol
-
+          aj = AgrossRuBPC4(par_abs)
+            
           ! C4: PEP carboxylase-limited (CO2-limited)
-          ap = co2_rcurve_islope * max(co2_inter_c, 0._r8) / can_press
-
-
+          ap = AgrossPEPC4(co2_inter_c,co2_rcurve_islope,can_press)
+          
+         
+            
           ! Gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
 
           aquad = lb_params%theta_cj_c4
@@ -577,11 +677,15 @@ contains
           a_gs = anet_out
        end if
 
-       leaf_co2_ppress = can_co2_ppress - h2o_co2_bl_diffuse_ratio/gb * a_gs * can_press
+       ! WTH is this?
+       leaf_co2_ppress = can_co2_ppress ! - h2o_co2_bl_diffuse_ratio/gb * a_gs * can_press
+
+       !       print*,"leaf:",leaf_co2_ppress,"can:", can_co2_ppress,gb,a_gs
        
        ! This does not seem necessary. THere would have to be a massive resistance
        ! between the two, no?
-       if(use_mincap_leafco2) leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
+
+       !if(use_mincap_leafco2) leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
 
        ! A note about the use of the quadratic equations for calculating stomatal conductance
        ! ------------------------------------------------------------------------------------
@@ -611,6 +715,7 @@ contains
        call QSat(veg_tempk, can_press, veg_qs, veg_esat)
        
        if ( lb_params%stomatal_model == medlyn_model ) then
+          
           call StomatalCondMedlyn(anet_out,ft,veg_esat,can_vpress,stomatal_intercept_btran, &
                                   leaf_co2_ppress,can_press,gb,gs_out)
        else
@@ -629,6 +734,10 @@ contains
              call endrun(msg=errMsg(sourcefile, __LINE__))
           end if
        end if
+
+
+       !print*,"can_co2_ppress:", can_co2_ppress, co2_inter_c, anet_out, agross_out,ac,aj, gb,gs_out,anet_out * can_press * &
+       !     (h2o_co2_bl_diffuse_ratio*gs_out+h2o_co2_stoma_diffuse_ratio*gb) / (gb*gs_out)
        
        ! Derive new estimate for co2_inter_c
        co2_inter_c = can_co2_ppress - anet_out * can_press * &
