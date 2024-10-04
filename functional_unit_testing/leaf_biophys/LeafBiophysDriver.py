@@ -355,7 +355,7 @@ def CompareKitajimaCond(pft,fates_stoich_nitr,fates_leaf_slatop,fates_maintresp_
     # perhaps storms would be >10cm/s?
     # Convert to molar form using 1 standard atm at 25C
     # Units:  umol/m2/s
-    bl_cond = 100000.*1.2*0.01*f90_velotomolarcf_sub(can_press_1atm,leaf_tempk25)
+    bl_cond = 100000.0*1.2*0.01*f90_velotomolarcf_sub(c8(can_press_1atm),c8(leaf_tempk25))
     
     
     # Leaf Nitrogen Concentration at the top
@@ -560,7 +560,7 @@ def main(argv):
     # perhaps storms would be >10cm/s?
     # Convert to molar form using 1 standard atm at 25C
     # Units:  umol/m2/s
-    bl_cond = 100000.*1.2*0.01*f90_velotomolarcf_sub(can_press_1atm,leaf_tempk25)
+    bl_cond = 100000.*1.2*0.01*f90_velotomolarcf_sub(c8(can_press_1atm),c8(leaf_tempk25))
 
     # Lets look at canopy top
     # kn = DecayCoeffVcmax(currentCohort%vcmax25top, &
