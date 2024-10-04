@@ -1409,44 +1409,7 @@ contains
   
   ! =====================================================================================
   
-  real(r8) function GetMolarVeloCF(press,tempk) result(cf)
 
-    ! ---------------------------------------------------------------------------------
-    !
-    ! "cf" is the conversion factor between molar form and velocity form
-    ! of conductance and resistance. The units on this factor are: [umol/m3]
-    ! This uses the ideal gas law. This routine is necessary because the
-    ! photosynthesis module uses units of moles, while the land-energy
-    ! balance solvers in the host models use units of velocity.
-    !
-    ! i.e.
-    ! [m/s] * [umol/m3] -> [umol/m2/s]
-    !
-    ! Breakdown of the conversion factor: [ umol / m3 ]
-    !
-    ! Rgas [J /K /kmol]
-    ! Air Potential Temperature [ K ]
-    ! Air Pressure      [ Pa ]
-    ! conversion: umol/kmol =  1e9
-    !
-    ! [ Pa * K * kmol umol/kmol  /  J K ] = [ Pa * umol / J ]
-    ! since: 1 Pa = 1 N / m2
-    ! [ Pa * umol / J ] = [ N * umol / J m2 ]
-    ! since: 1 J = 1 N * m
-    ! [ N * umol / J m2 ] = [ N * umol / N m3 ]
-    ! [ umol / m3 ]
-    !
-    ! --------------------------------------------------------------------------------
-
-    ! Arguments
-    real(r8) :: press    ! air pressure at point of interest [Pa]
-    real(r8) :: tempk    ! temperature at point of interest  [K]
-    
-    cf = press/(rgas * tempk )*umol_per_kmol
-    
-  end function GetMolarVeloCF
-
-  ! =====================================================================================
 
   real(r8) function ConvertPar(leaf_area, par_wm2) result(par_umolm2s)
     !

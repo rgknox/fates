@@ -39,8 +39,78 @@ font = {'family' : 'sans-serif',
 
 matplotlib.rc('font', **font)
 
+
+# Global constants to use in all Leaf Biophysics unit testing
+# =======================================================================================
+
+
+# For debugging
+dump_parameters = False
+
+# Plot Control
+do_plot_vjk = True
+
+# Freezing point of water in Kelvin (at standard atmosphere)
+tfrz_1atm = 273.15
+
+# 25 degrees C in Kelvin (used because T25 functions)
+leaf_tempk25 = tfrz_1atm + 25.0
+
+# Daylight limitations can be imposed on Vcmax, a value of
+# 1 means daylight length is at its maximum
+dayl_factor_full = 1.0
+
+# If Kumerathunga respiration is used, it requires moving averages
+# of leaf temperature
+t_growth_kum = -999
+t_home_kum = -999
+
+# Simple conversion, number of micro-moles in a mole
+umol_per_mol = 1.e6
+
+# 1 standard atmosphere in [Pa]
+can_press_1atm = 101325.0
+
+# Atmospheric CO2 partial pressure [Pa] at 400 ppm
+co2_ppress_400ppm = 0.0004*can_press_1atm
+
+# Atmospheric O2 partial pressure [Pa] %29.5 of atmosphere
+o2_ppress_209kppm = 0.2095*can_press_1atm
+
+# 70% of atmospheric CO2 is a reasonablish guess for
+# intercellular CO2 concentration during primary production
+# We can use this to test the gross assimilation routines
+# directly, without having to solve for the equilibrium
+# intercellular CO2
+ci_ppress_static = 0.7*co2_ppress_400ppm
+
+
+# Respiration does affect conductance, which also affects
+# photosynthesis, but for now we use 0
+zero_lmr = 0.0
+
+# Set Leaf water potential to zero for some calcs
+zero_lwp = 0.0
+
+# When there is hydrualic limitation on photosynthesis
+# (via Vcmax reductions), then the btran factor is 1
+btran_nolimit = 1.0
+
+
+# Subroutines
+# =======================================================================================
+
 def GetModSymbol(mod_path,symbol):
 
+    # This routine uses some minor string magic and a system call using
+    # "nm" to list the symbols inside a fortran object.  Symbols are simply
+    # the text strings the define the routines and data structures inside
+    # the compiled objects. When symbols are created inside a compiled object,
+    # different compilers do different things, like force to lower or upper
+    # case, or attach trailing or preceding underscores.  This routine
+    # helps identify the exact symbol name, from the name of the fortran
+    # routine (as it appears in code) that we want to match with.
+    
     subprocess.run(["nm", mod_path],capture_output=True)
     
     list = str(subprocess.run(["nm",mod_path],capture_output=True)).split()
@@ -67,73 +137,7 @@ def GetModSymbol(mod_path,symbol):
         
     return mod_symbol
 
-# Instantiate the F90 modules
-
-f90_const_obj = ctypes.CDLL('bld/FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)
-f90_shr_obj = ctypes.CDLL('bld/WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
-f90_fatesutils_obj = ctypes.CDLL('bld/FatesUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
-f90_leaf_biophys_obj = ctypes.CDLL('bld/LeafBiophysicsMod.o',mode=ctypes.RTLD_GLOBAL)
-f90_leaf_biophys_supp_obj = ctypes.CDLL('bld/LeafBiophysSuppMod.o',mode=ctypes.RTLD_GLOBAL)
-
-# Identify subroutine objects in the helper code LeafBiophysSuppMod
-f90_set_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','setleafparam'))
-f90_alloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','allocleafparam'))
-f90_dealloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','deallocleafparam'))
-f90_dump_param_sub =  getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','DumpParams'))
-f90_set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
-f90_biophysrate_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerBiophysicalRate'))
-f90_leaflayerphoto_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerPhotosynthesis'))
-f90_qsat_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','QSat'))
-f90_cangas_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','GetCanopyGasParameters'))
-f90_lmr_ryan_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Ryan_1991'))
-f90_lmr_atkin_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Atkin_etal_2017'))
-f90_agross_rubiscoc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRubiscoC3'))
-f90_agross_rubpc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC3'))
-f90_agross_rubpc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC4'))
-f90_agross_pepc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossPEPC4'))
-f90_agross_rubiscoc3.restype = c_double
-f90_agross_rubpc3.restype = c_double
-f90_agross_rubpc4.restype = c_double
-f90_agross_pepc4.restype = c_double
-f90_gs_medlyn = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondMedlyn'))
-g90_gs_ballberry = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondBallBerry'))
-
-# For debugging
-dump_parameters = False
-
-# Plot Control
-do_plot_vjk = True
-
-
-
-
-# Call the BiophysicalRates() Routine, which calculates
-# the actual vmax, jmax and rcurve-islope terms for the
-# leaf-scale conditions
-tfrz_1atm = 273.15
-leaf_tempk25 = tfrz_1atm + 25.0  # Use 25 to start
-dayl_factor = 1.0
-t_growth_kum = -999
-t_home_kum = -999
-btran = 1.0
-umol_per_mol = 1.e6
-
-can_press_1atm = 101325.0
-co2_ppress_400ppm = 0.0004*can_press_1atm
-o2_ppress_209kppm = 0.29*can_press_1atm
-btran_nolim = 1.0
-
-ci_ppress_static = 0.7*co2_ppress_400ppm
-
-
-# Respiration does affect conductance, which also affects
-# photosynthesis, but for now we use 0
-zero_lmr = 0.0
-
-# Set Leaf water potential to zero for some calcs
-zero_lwp = 0.0
-
-
+# =======================================================================================
 
 def GetRbFromUDleaf(U_h,dleaf, ):
     
@@ -172,6 +176,9 @@ def GetRbFromUDleaf(U_h,dleaf, ):
     r_b_ms = (1./C_v)*np.sqrt(u_av / d_leaf)
 
 
+    r_b_umolms = r_b_ms*cf
+    
+    return r_b_umolms
     
 # ========================================================================
 
@@ -193,17 +200,6 @@ def GetJmaxKp25Top(vcmax25_top):
 
 # ========================================================================
         
-
-def MolarToVeloCF(press,tempk):
-
-    umol_per_kmol = 1000.0
-    rgas = 8314.4598
-    
-    cf = press/(rgas * tempk )*umol_per_kmol
-
-    return cf
-
-# ========================================================================
 
 def PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn):
 
@@ -358,11 +354,9 @@ def CompareKitajimaCond(pft,fates_stoich_nitr,fates_leaf_slatop,fates_maintresp_
     # reasonable ranges for green houses are 0-3 cm/s
     # perhaps storms would be >10cm/s?
     # Convert to molar form using 1 standard atm at 25C
-    bl_cond = 1000000*1.2*0.01*MolarToVeloCF(can_press_1atm,298.0)
-
+    # Units:  umol/m2/s
+    bl_cond = 100000.*1.2*0.01*f90_velotomolarcf_sub(can_press_1atm,leaf_tempk25)
     
-    # Maybe use this to find reasonable boundary layer conductances?
-
     
     # Leaf Nitrogen Concentration at the top
     lnc_top  = fates_stoich_nitr/fates_leaf_slatop
@@ -413,7 +407,7 @@ def CompareKitajimaCond(pft,fates_stoich_nitr,fates_leaf_slatop,fates_maintresp_
                 for i in range(len(anet_k)):
                     # Photosynthetic rate at light saturation (Amax)
                     iret = f90_gs_medlyn(c8(anet_k[i]),ci(pft+1), c8(veg_esat_vec[it]), c8(vpress), \
-                                         c8(btran_nolim), c8(co2_ppress_400ppm),c8(can_press_1atm), \
+                                         c8(btran_nolimit), c8(co2_ppress_400ppm),c8(can_press_1atm), \
                                          c8(bl_cond),byref(gstoma_f))
                 
                     gs_max_sun_k[it,ir,i,isp] = gstoma_f.value
@@ -435,6 +429,38 @@ def CompareKitajimaCond(pft,fates_stoich_nitr,fates_leaf_slatop,fates_maintresp_
 
 # =======================================================================================
 
+# Instantiate the F90 modules
+
+f90_const_obj = ctypes.CDLL('bld/FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_shr_obj = ctypes.CDLL('bld/WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_fatesutils_obj = ctypes.CDLL('bld/FatesUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_leaf_biophys_obj = ctypes.CDLL('bld/LeafBiophysicsMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_leaf_biophys_supp_obj = ctypes.CDLL('bld/LeafBiophysSuppMod.o',mode=ctypes.RTLD_GLOBAL)
+
+# Identify subroutine objects, so we can call them
+f90_set_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','setleafparam'))
+f90_alloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','allocleafparam'))
+f90_dealloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','deallocleafparam'))
+f90_dump_param_sub =  getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','DumpParams'))
+f90_set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
+f90_biophysrate_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerBiophysicalRate'))
+f90_leaflayerphoto_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerPhotosynthesis'))
+f90_qsat_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','QSat'))
+f90_cangas_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','GetCanopyGasParameters'))
+f90_lmr_ryan_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Ryan_1991'))
+f90_lmr_atkin_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Atkin_etal_2017'))
+f90_agross_rubiscoc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRubiscoC3'))
+f90_agross_rubpc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC3'))
+f90_agross_rubpc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC4'))
+f90_agross_pepc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossPEPC4'))
+f90_agross_rubiscoc3.restype = c_double
+f90_agross_rubpc3.restype = c_double
+f90_agross_rubpc4.restype = c_double
+f90_agross_pepc4.restype = c_double
+f90_gs_medlyn = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondMedlyn'))
+f90_gs_ballberry = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondBallBerry'))
+f90_velotomolarcf_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','VeloToMolarCF'))
+f90_velotomolarcf_sub.restype = c_double
     
 def main(argv):
 
@@ -533,10 +559,8 @@ def main(argv):
     # reasonable ranges for green houses are 0-3 cm/s
     # perhaps storms would be >10cm/s?
     # Convert to molar form using 1 standard atm at 25C
-    bl_cond = 100000.*MolarToVeloCF(can_press_1atm,298.0)*1.2*0.01
-
- 
-
+    # Units:  umol/m2/s
+    bl_cond = 100000.*1.2*0.01*f90_velotomolarcf_sub(can_press_1atm,leaf_tempk25)
 
     # Lets look at canopy top
     # kn = DecayCoeffVcmax(currentCohort%vcmax25top, &
@@ -646,8 +670,8 @@ def main(argv):
             
             iret = f90_biophysrate_sub(ci(pft+1), c8(fates_leaf_vcmax25top[pft]), \
                                        c8(jmax25_top), c8(kp25_top), \
-                                       c8(nscaler), c8(leaf_tempk), c8(dayl_factor), \
-                                       c8(t_growth_kum),c8(t_home_kum),c8(btran), \
+                                       c8(nscaler), c8(leaf_tempk), c8(dayl_factor_full), \
+                                       c8(t_growth_kum),c8(t_home_kum),c8(btran_nolimit), \
                                        byref(vcmax_f), byref(jmax_f), byref(kp_f))
             
             vcmax[it] = vcmax_f.value
@@ -702,7 +726,7 @@ def main(argv):
                                                   c8(can_press_1atm), \
                                                   c8(co2_ppress_400ppm), \
                                                   c8(o2_ppress_209kppm), \
-                                                  c8(btran_nolim), \
+                                                  c8(btran_nolimit), \
                                                   c8(bl_cond), \
                                                   c8(vpress), \
                                                   c8(mm_kco2_vec[it]), \
@@ -726,11 +750,6 @@ def main(argv):
                     aj[it,ir,ip] = aj_f.value
                     ap[it,ir,ip] = ap_f.value
                     co2_interc[it,ir,ip] = co2_interc_f.value
-
-                    #print("par %4.1f Tl  %4.1f P     %7.1f Pco2 %4.1f"%(par_abs,leaf_tempk,can_press_1atm,co2_ppress_400ppm))
-                    #print("          Po2 %6.1f btran %2.1f Gb   %5.1f"%(o2_ppress_209kppm,btran_nolim,bl_cond))
-                    #print("          Ec  %5.1f Kco2  %5.1f Ko2  %5.1f"%(vpress,mm_kco2_vec[it],mm_ko2_vec[it]))
-                    #print("          Pcc %4.1f Rl    %6.2f"%(co2_cpoint_vec[it],lmr[it]))
 
                     
         if(do_plot_vjk):
@@ -809,25 +828,6 @@ def main(argv):
         
         plt.show()
 
-    code.interact(local=dict(globals(), **locals()))
-
-    # Environmental Conditions
-    #   Absorbed PAR [w/m2 leaf]
-    #   Leaf Temperature [K]
-    #   Air Temperature  [K]
-    #   Air Saturation Vapor Pressure at leaf surface []
-    #   Air Vapor Pressure at leaf surface []
-
-        
-    #kn = decay_coeff_vcmax(currentCohort%vcmax25top, &
-    #                       prt_params%leafn_vert_scaler_coeff1(ft), &
-    #                       prt_params%leafn_vert_scaler_coeff2(ft))
-
-    
-    #StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,leaf_co2_ppress,can_press,gb,gs)
-        
-
-        
     
     print('Deallocating parameter space')
     iret = f90_dealloc_leaf_param_sub()

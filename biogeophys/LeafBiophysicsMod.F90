@@ -37,7 +37,8 @@ module LeafBiophysicsMod
   use FatesConstantsMod, only : kpa_per_pa
   use FatesConstantsMod, only : umol_per_kmol
   use FatesUtilsMod,     only : QuadraticRoots => QuadraticRootsSridharachary
-  use FatesConstantsMod, only : rgas => rgas_J_K_kmol
+  use FatesConstantsMod, only : rgas_J_K_kmol
+  use FatesConstantsMod, only : rgas_J_K_mol
   use FatesConstantsMod, only : g_per_kg
   
   implicit none
@@ -61,6 +62,7 @@ module LeafBiophysicsMod
   public :: AgrossPEPC4
   public :: StomatalCondMedlyn
   public :: StomatalCondBallBerry
+  public :: VeloToMolarCF
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -79,7 +81,7 @@ module LeafBiophysicsMod
   ! minimum allowable conductance for numerics purposes at 20C (293.15K)
   ! and 1 standard atmosphere (101325 Pa) [umol/m2/s]
   ! this follows the same math as  FatesPlantRespPhotosynthMod:FetMolarVeloCF()
-  real(r8),parameter :: gsmin0_20C1A_mol = gsmin0 * 101325.0_r8/(rgas * 293.15 )*umol_per_kmol
+  real(r8),parameter :: gsmin0_20C1A_mol = gsmin0 * 101325.0_r8/(rgas_J_K_kmol * 293.15 )*umol_per_kmol
 
   ! Set this to true to perform debugging
   logical,parameter   ::  debug = .true.
@@ -204,7 +206,7 @@ module LeafBiophysicsMod
   ! 7) solve for maintenance respiration of other tissues (other library?)
 
 contains
-
+  
   subroutine StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,can_co2_ppress,can_press,gb,gs)
 
     ! Input
@@ -764,7 +766,7 @@ contains
     ! Terms:
     ! leaf_psi: leaf water potential [MPa]
     ! k_lwp: inner leaf humidity scaling coefficient [-]
-    ! rgas: universal gas constant, [J/K/mol], 8.3144598
+    ! rgas: universal gas constant, [J/K/mol]
     ! molar_mass_water, molar mass of water, [g/mol]: 18.0
     !
     ! Unit conversions:
@@ -808,7 +810,7 @@ contains
     ! If it is zero, LWP_star will be 1. 
     
     if (leaf_psi<0._r8) then
-       lwp_star = exp(k_lwp*leaf_psi*molar_mass_water/(rgas*veg_tempk))
+       lwp_star = exp(k_lwp*leaf_psi*molar_mass_water/(rgas_J_K_mol*veg_tempk))
     else 
        lwp_star = 1._r8
     end if
@@ -908,7 +910,7 @@ contains
     ! Note: if k_lwp is zero, LWP_star will be 1. 
     
     if (leaf_psi<0._r8) then
-       lwp_star = exp(k_lwp*leaf_psi*molar_mass_water/(rgas*veg_tempk))
+       lwp_star = exp(k_lwp*leaf_psi*molar_mass_water/(rgas_J_K_mol*veg_tempk))
     else 
        lwp_star = 1._r8
     end if
@@ -967,7 +969,7 @@ contains
     real(r8) :: ans
     !-------------------------------------------------------------------------------
 
-    ans = exp( ha / (rgas*1.e-3_r8*(tfrz+25._r8)) * (1._r8 - (tfrz+25._r8)/tl) )
+    ans = exp( ha / (rgas_J_K_mol*(tfrz+25._r8)) * (1._r8 - (tfrz+25._r8)/tl) )
 
     return
   end function ft1_f
@@ -999,8 +1001,10 @@ contains
     real(r8) :: ans
     !-------------------------------------------------------------------------------
 
-    ans = scaleFactor / ( 1._r8 + exp( (-hd+se*tl) / (rgas*1.e-3_r8*tl) ) )
+    ans = scaleFactor / ( 1._r8 + exp( (-hd+se*tl) / (rgas_J_K_mol*tl) ) )
 
+    
+    
     return
   end function fth_f
 
@@ -1027,7 +1031,7 @@ contains
     real(r8) :: ans
     !-------------------------------------------------------------------------------
 
-    ans = 1._r8 + exp( (-hd+se*(tfrz+25._r8)) / (rgas*1.e-3_r8*(tfrz+25._r8)) )
+    ans = 1._r8 + exp( (-hd+se*(tfrz+25._r8)) / (rgas_J_K_mol*(tfrz+25._r8)) )
 
     return
   end function fth25_f
@@ -1615,6 +1619,46 @@ contains
     end if
 
   end subroutine QSat
+
+  ! =====================================================================================
   
+  real(r8) function VeloToMolarCF(press,tempk) result(cf)
+
+    ! ---------------------------------------------------------------------------------
+    !
+    ! "cf" is the conversion factor between molar form and velocity form
+    ! of conductance and resistance. The units on this factor are: [umol/m3]
+    ! This uses the ideal gas law. This routine is necessary because the
+    ! photosynthesis module uses units of moles, while the land-energy
+    ! balance solvers in the host models use units of velocity.
+    !
+    ! i.e.
+    ! [m/s] * [umol/m3] -> [umol/m2/s]
+    !
+    ! Breakdown of the conversion factor: [ umol / m3 ]
+    !
+    ! Rgas [J /K /kmol]
+    ! Air Potential Temperature [ K ]
+    ! Air Pressure      [ Pa ]
+    ! conversion: umol/kmol =  1e9
+    !
+    ! [ Pa * K * kmol umol/kmol  /  J K ] = [ Pa * umol / J ]
+    ! since: 1 Pa = 1 N / m2
+    ! [ Pa * umol / J ] = [ N * umol / J m2 ]
+    ! since: 1 J = 1 N * m
+    ! [ N * umol / J m2 ] = [ N * umol / N m3 ]
+    ! [ umol / m3 ]
+    !
+    ! --------------------------------------------------------------------------------
+
+    ! Arguments
+    real(r8) :: press    ! air pressure at point of interest [Pa]
+    real(r8) :: tempk    ! temperature at point of interest  [K]
+    
+    cf = press/(rgas_J_K_kmol * tempk )*umol_per_kmol
+    
+  end function VeloToMolarCF
+
+  ! =====================================================================================
   
 end module LeafBiophysicsMod
