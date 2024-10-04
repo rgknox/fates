@@ -59,6 +59,8 @@ module LeafBiophysicsMod
   public :: AgrossRuBPC3
   public :: AgrossRuBPC4
   public :: AgrossPEPC4
+  public :: StomatalCondMedlyn
+  public :: StomatalCondBallBerry
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -203,7 +205,7 @@ module LeafBiophysicsMod
 
 contains
 
-  subroutine StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,leaf_co2_ppress,can_press,gb,gs)
+  subroutine StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,can_co2_ppress,can_press,gb,gs)
 
     ! Input
     real(r8), intent(in) :: anet                     ! net leaf photosynthesis (umol CO2/m**2/s)
@@ -211,16 +213,17 @@ contains
     real(r8), intent(in) :: veg_esat                 ! saturation vapor pressure at veg_tempk (Pa)
     real(r8), intent(in) :: can_press                ! Air pressure NEAR the surface of the leaf (Pa)
     real(r8), intent(in) :: gb                       ! leaf boundary layer conductance (umol /m**2/s)
-    real(r8), intent(in) :: can_vpress               ! vapor pressure of air (Pa)
+    real(r8), intent(in) :: can_vpress               ! vapor pressure of canopy air (Pa)
     real(r8), intent(in) :: stomatal_intercept_btran ! water-stressed minimum stomatal conductance (umol H2O/m**2/s)
-    real(r8), intent(in) :: leaf_co2_ppress          ! CO2 partial pressure at leaf surface (Pa)
+    real(r8), intent(in) :: can_co2_ppress           ! CO2 partial pressure in canopy air (Pa)
+                                                     ! at the boundary layer interface with the leaf
 
     ! Output
     real(r8),intent(out) :: gs                       ! leaf stomatal conductance (umol H2O/m**2/s)
     
 
     ! locals
- 
+    real(r8) :: leaf_co2_ppress                      ! CO2 conc at the leaf surface, inside the boundary layer [Pa]
     real(r8) :: vpd                                  ! water vapor deficit in Medlyn stomatal model [KPa]
     real(r8) :: term                                 ! intermediate term used to simplify equations
     real(r8) :: aquad,bquad,cquad                    ! quadradic solve terms
@@ -235,15 +238,13 @@ contains
        gs = stomatal_intercept_btran
        return
     end if
-
-    
     
     ! stomatal conductance calculated from Medlyn et al. (2011), the numerical &
     ! implementation was adapted from the equations in CLM5.0 [kPa]
 
     vpd =  max((veg_esat - can_vpress), 50._r8) * kpa_per_pa       !addapted from CLM5. Put some constraint on VPD
 
-    
+    leaf_co2_ppress = can_co2_ppress
     
     if(zero_bl_resist) then
 
@@ -256,7 +257,7 @@ contains
 
        !when Medlyn stomatal conductance is being used, the unit is KPa. Ignoring the constraint will cause errors when model runs.
 
-       
+       leaf_co2_ppress = can_co2_ppress
        
        term = h2o_co2_stoma_diffuse_ratio * anet / (leaf_co2_ppress / can_press)
        aquad = 1.0_r8
@@ -268,10 +269,6 @@ contains
        
        call QuadraticRoots(aquad, bquad, cquad, r1, r2)
        gs = max(r1,r2)
-
-       
-       
-       !print*,"LCO2",leaf_co2_ppress,can_press,lb_params%medlyn_slope(ft),stomatal_intercept_btran,vpd,gs,veg_esat,can_vpress
        
     end if
     
@@ -538,10 +535,12 @@ contains
     real(r8),parameter :: init_a2l_co2_c3 = 0.7_r8
     real(r8),parameter :: init_a2l_co2_c4 = 0.4_r8
 
-   
+    ! When iteratively solving for intercellular co2 concentration, this
+    ! is the maximum tolerable change to accept convergence [Pa]
+    real(r8),parameter :: co2_inter_c_tol = 1._r8
 
     ! Maximum number of iterations on intercelluar co2 solver until is quits
-    integer, parameter :: max_iters = 5
+    integer, parameter :: max_iters = 2
 
     ! empirical curvature parameter for ap photosynthesis co-limitation
     real(r8),parameter :: theta_ip = 0.999_r8
@@ -591,9 +590,6 @@ contains
        init_co2_inter_c = init_a2l_co2_c4 * can_co2_ppress
     end if
 
-    
-
-
     ! Perform iterative solution to converge on net assimilation,
     ! stomatal conductance and intercellular co2 concentration
     ! this is not a gradient method, it merely re-runs calculations
@@ -603,8 +599,6 @@ contains
     ! Initialize intercellular co2
     co2_inter_c = init_co2_inter_c
 
-    !print*,"init:", init_co2_inter_c
-    
     niter = 0
     loop_continue = .true.
     iter_loop: do while(loop_continue)
@@ -641,9 +635,7 @@ contains
             
           ! C4: PEP carboxylase-limited (CO2-limited)
           ap = AgrossPEPC4(co2_inter_c,co2_rcurve_islope,can_press)
-          
-         
-            
+                      
           ! Gross photosynthesis smoothing calculations. First co-limit ac and aj. Then co-limit ap
 
           aquad = lb_params%theta_cj_c4
@@ -677,16 +669,6 @@ contains
           a_gs = anet_out
        end if
 
-       ! WTH is this?
-       leaf_co2_ppress = can_co2_ppress ! - h2o_co2_bl_diffuse_ratio/gb * a_gs * can_press
-
-       !       print*,"leaf:",leaf_co2_ppress,"can:", can_co2_ppress,gb,a_gs
-       
-       ! This does not seem necessary. THere would have to be a massive resistance
-       ! between the two, no?
-
-       !if(use_mincap_leafco2) leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
-
        ! A note about the use of the quadratic equations for calculating stomatal conductance
        ! ------------------------------------------------------------------------------------
        ! These two following models calculate the conductance between the intercellular leaf
@@ -711,11 +693,15 @@ contains
        !
        ! ------------------------------------------------------------------------------------
 
+       leaf_co2_ppress = can_co2_ppress - h2o_co2_bl_diffuse_ratio/gb * anet_out * can_press 		   
+       leaf_co2_ppress = max(leaf_co2_ppress,1.e-06_r8)
+       
+       
        ! Determine saturation vapor pressure at the leaf surface, from temp and atm-pressure
        call QSat(veg_tempk, can_press, veg_qs, veg_esat)
        
        if ( lb_params%stomatal_model == medlyn_model ) then
-          
+
           call StomatalCondMedlyn(anet_out,ft,veg_esat,can_vpress,stomatal_intercept_btran, &
                                   leaf_co2_ppress,can_press,gb,gs_out)
        else
@@ -735,10 +721,6 @@ contains
           end if
        end if
 
-
-       !print*,"can_co2_ppress:", can_co2_ppress, co2_inter_c, anet_out, agross_out,ac,aj, gb,gs_out,anet_out * can_press * &
-       !     (h2o_co2_bl_diffuse_ratio*gs_out+h2o_co2_stoma_diffuse_ratio*gb) / (gb*gs_out)
-       
        ! Derive new estimate for co2_inter_c
        co2_inter_c = can_co2_ppress - anet_out * can_press * &
             (h2o_co2_bl_diffuse_ratio*gs_out+h2o_co2_stoma_diffuse_ratio*gb) / (gb*gs_out)
@@ -748,17 +730,11 @@ contains
        ! convergence criteria of +/- 1 x 10**-6 ppm is met OR if at least ten
        ! iterations (niter=10) are completed
 
-       if ((abs(co2_inter_c-co2_inter_c_old)/can_press*1.e06_r8 <=  2.e-06_r8) &
-            .or. niter >= max_iters) then
+       if( abs(co2_inter_c-co2_inter_c_old) < co2_inter_c_tol .or. niter >= max_iters) then
           loop_continue = .false.
        end if
     end do iter_loop
 
-
-    ! THIS IS UNECESSARY, SOMEONE CONFIRM
-    !co2_inter_c = can_co2_ppress - anet * can_press * &
-    !     (h2o_co2_bl_diffuse_ratio*gs_out+h2o_co2_stoma_diffuse_ratio*gb) / (gb*gs_out)
-    
     ! estimate carbon 13 discrimination in leaf level carbon
     ! flux Liang WEI and Hang ZHOU 2018, based on
     ! Ubierna and Farquhar, 2014 doi:10.1111/pce.12346, using the simplified model:

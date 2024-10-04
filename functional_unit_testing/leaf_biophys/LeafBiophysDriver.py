@@ -39,7 +39,6 @@ font = {'family' : 'sans-serif',
 
 matplotlib.rc('font', **font)
 
-
 def GetModSymbol(mod_path,symbol):
 
     subprocess.run(["nm", mod_path],capture_output=True)
@@ -68,6 +67,112 @@ def GetModSymbol(mod_path,symbol):
         
     return mod_symbol
 
+# Instantiate the F90 modules
+
+f90_const_obj = ctypes.CDLL('bld/FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_shr_obj = ctypes.CDLL('bld/WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_fatesutils_obj = ctypes.CDLL('bld/FatesUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_leaf_biophys_obj = ctypes.CDLL('bld/LeafBiophysicsMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_leaf_biophys_supp_obj = ctypes.CDLL('bld/LeafBiophysSuppMod.o',mode=ctypes.RTLD_GLOBAL)
+
+# Identify subroutine objects in the helper code LeafBiophysSuppMod
+f90_set_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','setleafparam'))
+f90_alloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','allocleafparam'))
+f90_dealloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','deallocleafparam'))
+f90_dump_param_sub =  getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','DumpParams'))
+f90_set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
+f90_biophysrate_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerBiophysicalRate'))
+f90_leaflayerphoto_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerPhotosynthesis'))
+f90_qsat_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','QSat'))
+f90_cangas_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','GetCanopyGasParameters'))
+f90_lmr_ryan_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Ryan_1991'))
+f90_lmr_atkin_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Atkin_etal_2017'))
+f90_agross_rubiscoc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRubiscoC3'))
+f90_agross_rubpc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC3'))
+f90_agross_rubpc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC4'))
+f90_agross_pepc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossPEPC4'))
+f90_agross_rubiscoc3.restype = c_double
+f90_agross_rubpc3.restype = c_double
+f90_agross_rubpc4.restype = c_double
+f90_agross_pepc4.restype = c_double
+f90_gs_medlyn = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondMedlyn'))
+g90_gs_ballberry = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondBallBerry'))
+
+# For debugging
+dump_parameters = False
+
+# Plot Control
+do_plot_vjk = True
+
+
+
+
+# Call the BiophysicalRates() Routine, which calculates
+# the actual vmax, jmax and rcurve-islope terms for the
+# leaf-scale conditions
+tfrz_1atm = 273.15
+leaf_tempk25 = tfrz_1atm + 25.0  # Use 25 to start
+dayl_factor = 1.0
+t_growth_kum = -999
+t_home_kum = -999
+btran = 1.0
+umol_per_mol = 1.e6
+
+can_press_1atm = 101325.0
+co2_ppress_400ppm = 0.0004*can_press_1atm
+o2_ppress_209kppm = 0.29*can_press_1atm
+btran_nolim = 1.0
+
+ci_ppress_static = 0.7*co2_ppress_400ppm
+
+
+# Respiration does affect conductance, which also affects
+# photosynthesis, but for now we use 0
+zero_lmr = 0.0
+
+# Set Leaf water potential to zero for some calcs
+zero_lwp = 0.0
+
+
+
+def GetRbFromUDleaf(U_h,dleaf, ):
+    
+    # ram1(p)  = 1._r8/(ustar(p)*ustar(p)/um(p))
+    # uaf(p) = um(p)*sqrt( 1._r8/(ram1(p)*um(p)) )
+    # cf  = params_inst%cv / (sqrt(uaf(p)) * sqrt(dleaf_patch(p)))
+    # rb(p)  = 1._r8/(cf*uaf(p))
+    
+    # https://escomp.github.io/ctsm-docs/versions/master/html/tech_note/Fluxes/CLM50_Tech_Note_Fluxes.html
+    # From the CTSM Technical Manual 2.5.130-2.5.134:
+    # u* is found iteratively
+    
+    X = np.sqrt(C_s + lamda*C_r) * c*0.5*lamda
+    uh_over_us_old = X*2.0/(c*lamda)
+    
+    del_x = 0.0001
+
+    while True:
+        X =  np.sqrt(C_s + lamda*C_r) * c*0.5*lamda * np.exp(X)
+        uh_over_us = X*2.0/(c*lamda)
+        if(np.abs(uh_over_us-uh_over_us_old)<del_x):
+            break
+        uh_over_us_old = uh_over_us
+
+        
+    u_star = U_h/uh_over_us
+    
+    # From the CTSM Technical Manual 2.5.125:
+    # The leaf boundary layer resistance [s/m]
+    # is a function of the turbulent transfer coefficient (C_v) between
+    # the canopy surface and the canopy air 0.01 [m s^(-0.5)]
+    # The leaf diameter d_leaf [m] and U_av is "the wind speed
+    # incident on the leaves" (which equals the friction velocity u*)
+    #
+    
+    r_b_ms = (1./C_v)*np.sqrt(u_av / d_leaf)
+
+
+    
 # ========================================================================
 
 def GetJmaxKp25Top(vcmax25_top):
@@ -102,44 +207,47 @@ def MolarToVeloCF(press,tempk):
 
 def PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn):
 
-                    
-    fig1, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8.5,7.5))
-
-    ap = ax1.plot(leaf_tempc_vec,vcmax)
     
+    if(leaf_c3psn == 0):
+        fig1, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8.5,7.5))
+    else:
+        fig1, (ax1,ax2) = plt.subplots(1,2,figsize=(8.5,5.5))
+        
+    ax1.plot(leaf_tempc_vec,vcmax)
     ax1.set_ylabel('Vcmax [umol/m2/s]')
     ax1.set_title('PFT: {}'.format(pft+1))
     ax1.grid(True)
 
-    ap = ax2.plot(leaf_tempc_vec,jmax)
+    ax2.plot(leaf_tempc_vec,jmax)
     ax2.set_xlabel('Leaf Temperature [C]')
-    ax2.set_ylabel('jmax [umol/m2/s]')
+    ax2.set_ylabel('Jmax [umol/m2/s]')
     ax2.set_title('PFT: {}'.format(pft+1))
     ax2.grid(True)
 
     if(leaf_c3psn == 0):
-        ap = ax3.semilogy(leaf_tempc_vec,kp)
+        ax3.plot(leaf_tempc_vec,kp)
         ax3.set_xlabel('Leaf Temperature [C]')
         ax3.set_ylabel('Kp (C4 only)')
         ax3.grid(True)
         ax3.set_xlabel('Leaf Temperature [C]')
+        ax4.axis("off")
     else:
         ax1.set_xlabel('Leaf Temperature [C]')
-        ax3.axis("off")
 
-    ax4.axis("off")
+
+   
 
     
-def LinePlotY3dM1(ax,x1,x2,x3,y3d,str_x2,str_x3,name_str,add_labels,x_line):
+def LinePlotY3dM1(ax,x1,x2,x3,y3d,str_x2,str_x3,add_labels):
 
     # Find the indices on the second and third dimensions
     # that are the 10th,50th and 90th percentiles
-    ix2_10 = int(len(x2)*0.1)
+    ix2_10 = int(len(x2)*0.0)
     ix2_50 = int(len(x2)*0.5)
-    ix2_90 = int(len(x2)*0.9)
-    ix3_10 = int(len(x3)*0.1)
+    ix2_90 = int(len(x2)*0.99)
+    ix3_10 = int(len(x3)*0.0)
     ix3_50 = int(len(x3)*0.5)
-    ix3_90 = int(len(x3)*0.9)
+    ix3_90 = int(len(x3)*0.99)
 
 
     ix2 = ix2_10;ix3=ix3_10;
@@ -205,61 +313,129 @@ def LinePlotY3dM1(ax,x1,x2,x3,y3d,str_x2,str_x3,name_str,add_labels,x_line):
     else:
         ap1 = ax.plot(x1,y3d[:,ix2,ix3],linestyle='dashed',color='blue')
         
-    ax.set_ylabel(name_str)
-
-    if x_line is not None:
-        ax.hlines(y=x_line, xmin=np.min(x1), xmax=np.max(x1),linewidth=2, color=[0.3,0.3,0.3])
-
-
+    ax.grid(True)
     
     
-# Instantiate the F90 modules
-
-f90_const_obj = ctypes.CDLL('bld/FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)
-f90_shr_obj = ctypes.CDLL('bld/WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
-f90_fatesutils_obj = ctypes.CDLL('bld/FatesUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
-f90_leaf_biophys_obj = ctypes.CDLL('bld/LeafBiophysicsMod.o',mode=ctypes.RTLD_GLOBAL)
-f90_leaf_biophys_supp_obj = ctypes.CDLL('bld/LeafBiophysSuppMod.o',mode=ctypes.RTLD_GLOBAL)
-
-# Identify subroutine objects in the helper code LeafBiophysSuppMod
-f90_set_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','setleafparam'))
-f90_alloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','allocleafparam'))
-f90_dealloc_leaf_param_sub = getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','deallocleafparam'))
-f90_dump_param_sub =  getattr(f90_leaf_biophys_supp_obj, GetModSymbol('bld/LeafBiophysSuppMod.o','DumpParams'))
-f90_set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
-f90_biophysrate_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerBiophysicalRate'))
-#f90_biophysrate_sub.argtypes = [POINTER(c_int), \
-#                                POINTER(c_double),POINTER(c_double),POINTER(c_double), \
-#                                POINTER(c_double),POINTER(c_double),POINTER(c_double), \
-#                                POINTER(c_double),POINTER(c_double),POINTER(c_double), \
-#                                POINTER(c_double),POINTER(c_double),POINTER(c_double)]
-
-f90_leaflayerphoto_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerPhotosynthesis'))
-f90_qsat_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','QSat'))
-f90_cangas_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','GetCanopyGasParameters'))
-f90_lmr_ryan_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Ryan_1991'))
-f90_lmr_atkin_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Atkin_etal_2017'))
-f90_agross_rubiscoc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRubiscoC3'))
-f90_agross_rubpc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC3'))
-f90_agross_rubpc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC4'))
-f90_agross_pepc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossPEPC4'))
-f90_agross_rubiscoc3.restype = c_double
-f90_agross_rubpc3.restype = c_double
-f90_agross_rubpc4.restype = c_double
-f90_agross_pepc4.restype = c_double
+# =======================================================================================
 
 
-# Example of setting a function return call
-#dftcdpsi_from_psi.restype = c_double
+
+def CompareKitajimaCond(pft,fates_stoich_nitr,fates_leaf_slatop,fates_maintresp_leaf_model):
+    
+    # Compare conductances to the paired Amax conductance
+    # measurements performed by Kitajima et al. 2005
+    # These are for early-late, early and pioneer tropical trees at BCI
+
+    # Photosynthesis (umol m-2 s-1) [early-late, early-late, early, early, pioneer]
+    amax_sun_mean_kitajima = [7.3,10.5,10.8,13.7,25.5]
+    amax_sun_sd_kitajima   = [2.8, 3.1, 3.0,2.2, 3.6]
+    amax_sha_mean_kitajima = [5.3, 8.0, 5.5, 4.5 ]
+    amax_sha_sd_kitajima   = [3.6, 2.5, 2.8, 1.5 ]
+    
+    # Conductance (mol h2o m-2 s-1) [early-late, early-late, early, early, pioneer]
+    gs_sun_mean_kitajima = [0.213,0.505,0.412,0.276,0.8]
+    gs_sun_sd_kitajima   = [0.098,0.283,0.182,0.083,0.345]
+    gs_sha_mean_kitajima = [0.164,0.217,0.264,0.139]
+    gs_sha_sd_kitajima   = [0.128,0.069,0.192,0.084]
+    
+    # Leaf temperature ranges [C]
+    leaf_tempc_min = 15.0
+    leaf_tempc_max = 40.0
+    leaf_tempc_n = 100
+    leaf_tempc_vec = np.linspace(leaf_tempc_min,leaf_tempc_max,num=leaf_tempc_n)
+    
+    # Relative Humidity Ranges
+    rh_max = 0.99
+    rh_min = 0.70
+    rh_n   = 100
+    rh_vec = np.linspace(rh_min,rh_max,num=rh_n)
+
+    gs_max_sun_k = np.zeros([leaf_tempc_n,rh_n,3,5])
+    gs_max_sha_k = np.zeros([leaf_tempc_n,rh_n,3,4])
+    veg_esat_vec = np.zeros([leaf_tempc_n])
+
+    # Generic boundary layer conductance from Kimura et al ~1.2 cm/s
+    # reasonable ranges for green houses are 0-3 cm/s
+    # perhaps storms would be >10cm/s?
+    # Convert to molar form using 1 standard atm at 25C
+    bl_cond = 1000000*1.2*0.01*MolarToVeloCF(can_press_1atm,298.0)
 
     
-# For debugging
-dump_parameters = False
+    # Maybe use this to find reasonable boundary layer conductances?
 
-# Plot Control
-do_plot_vjk = True
+    
+    # Leaf Nitrogen Concentration at the top
+    lnc_top  = fates_stoich_nitr/fates_leaf_slatop
+
+    # Range of Amax's between the 
+    leaf_tempc_vec = np.linspace(leaf_tempc_min,leaf_tempc_max,num=leaf_tempc_n)
+    
+    veg_qs_f = c_double(-9.0)
+    veg_es_f = c_double(-9.0)
+    qsdt_dummy_f = c_double(-9.0)
+    esdt_dummy_f = c_double(-9.0)
+    lmr_f = c_double(-9.0)
+    gstoma_f = c_double(-9.0)
+    
+    rdark_scaler = 1.0
+    nscaler = 1.0
+    
+    for it, leaf_tempc in enumerate(leaf_tempc_vec):
+
+        leaf_tempk = leaf_tempc + tfrz_1atm
+        iret = f90_qsat_sub(c8(leaf_tempk),c8(can_press_1atm), \
+                            byref(veg_qs_f),byref(veg_es_f), \
+                            byref(qsdt_dummy_f),byref(esdt_dummy_f))
+        
+        veg_esat_vec[it] = veg_es_f.value
+        
+        # Leaf Maintenance Respiration (temp and pft dependent)
+        if(fates_maintresp_leaf_model==1):
+            iret = f90_lmr_ryan_sub(c8(lnc_top),c8(nscaler), ci(pft+1), c8(leaf_tempk), byref(lmr_f))
+        elif(fates_maintresp_leaf_model==2):
+            iret = f90_lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler),c8(leaf_tempk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
+        else:
+            print('unknown leaf respiration model')
+            exit(1)
+
+        anet_k = np.zeros([3])
+        
+        # Calculate conductance consistent with Amax in Kitajima
+        for ir, rh in enumerate(rh_vec):
+            vpress = rh * veg_esat_vec[it]
+
+            for isp, amax in enumerate(amax_sun_mean_kitajima):
+
+                anet_k[0] = (amax-amax_sun_sd_kitajima[isp]) - lmr_f.value
+                anet_k[1] = amax - lmr_f.value
+                anet_k[2] = (amax+amax_sun_sd_kitajima[isp]) - lmr_f.value
+
+                for i in range(len(anet_k)):
+                    # Photosynthetic rate at light saturation (Amax)
+                    iret = f90_gs_medlyn(c8(anet_k[i]),ci(pft+1), c8(veg_esat_vec[it]), c8(vpress), \
+                                         c8(btran_nolim), c8(co2_ppress_400ppm),c8(can_press_1atm), \
+                                         c8(bl_cond),byref(gstoma_f))
+                
+                    gs_max_sun_k[it,ir,i,isp] = gstoma_f.value
+
+                
+    fig4,ax1 = plt.subplots(1,1,figsize=(6.5,5.5))
+
+    ap = ax1.hist(gs_max_sun_k.reshape(-1)/umol_per_mol, bins = 30)
+    
+    ax1.set_ylabel('count')
+    ax1.set_xlabel('gs [mol H20 m-2 s-1]')
+    ap = ax1.axvline(x=gs_sun_mean_kitajima[0], linewidth=2, color=[0.3,0.3,0.3])
+    ap = ax1.axvline(x=gs_sun_mean_kitajima[1], linewidth=2, color=[0.3,0.3,0.3])
+    ap = ax1.axvline(x=gs_sun_mean_kitajima[2], linewidth=2, color=[0.3,0.3,0.3])
+    ap = ax1.axvline(x=gs_sun_mean_kitajima[3], linewidth=2, color=[0.3,0.3,0.3])
+    ap = ax1.axvline(x=gs_sun_mean_kitajima[4], linewidth=2, color=[0.3,0.3,0.3])
+    ax1.set_title('Conductance Comparison with Kitajima et. al. 2005')
 
 
+# =======================================================================================
+
+    
 def main(argv):
 
     # Load the xml control file
@@ -321,21 +497,14 @@ def main(argv):
         if (param.attrib['name']=='fates_maintresp_leaf_model'):
             fates_maintresp_leaf_model = int(param.text.split(',')[0])
 
-                
 
+    # Drive conductance with Amax values from Kitajima et al for BTEs
+    # Compare with stomatal conductance from Kitajima et al. 
+    CompareKitajimaCond(0,fates_stoich_nitr[0],fates_leaf_slatop[0],fates_maintresp_leaf_model)
 
-    # Call the BiophysicalRates() Routine, which calculates
-    # the actual vmax, jmax and rcurve-islope terms for the
-    # leaf-scale conditions
-    tfrz_1atm = 273.15
-    leaf_tempk25 = tfrz_1atm + 25.0  # Use 25 to start
-    dayl_factor = 1.0
-    t_growth_kum = -999
-    t_home_kum = -999
-    btran = 1.0
-
+            
     # Leaf temperature ranges [C]
-    leaf_tempc_min = 00.0
+    leaf_tempc_min = -20.0
     leaf_tempc_max = 40.0
     leaf_tempc_n = 100
     leaf_tempc_vec = np.linspace(leaf_tempc_min,leaf_tempc_max,num=leaf_tempc_n)
@@ -356,29 +525,17 @@ def main(argv):
 
     # Relative Humidity Ranges
     rh_max = 0.99
-    rh_min = 0.01
+    rh_min = 0.20
     rh_n   = 100
     rh_vec = np.linspace(rh_min,rh_max,num=rh_n)
-
-    can_press_1atm = 101325.0
-    co2_ppress_400ppm = 0.0004*can_press_1atm
-    o2_ppress_209kppm = 0.29*can_press_1atm
-    btran_nolim = 1.0
-
-    ci_ppress_static = 0.7*co2_ppress_400ppm
     
     # Generic boundary layer conductance from Kimura et al ~1.2 cm/s
     # reasonable ranges for green houses are 0-3 cm/s
     # perhaps storms would be >10cm/s?
     # Convert to molar form using 1 standard atm at 25C
-    bl_cond = MolarToVeloCF(can_press_1atm,298.0)*1.2*0.01
+    bl_cond = 100000.*MolarToVeloCF(can_press_1atm,298.0)*1.2*0.01
 
-    # Respiration does affect conductance, which also affects
-    # photosynthesis, but for now we use 0
-    zero_lmr = 0.0
-
-    # Set Leaf water potential to zero for some calcs
-    zero_lwp = 0.0
+ 
 
 
     # Lets look at canopy top
@@ -422,9 +579,6 @@ def main(argv):
 
     aj2_f = c_double(-9.)
 
-
-    
-
     print('Prepping Canopy Gas Parameters')
     
     for it, leaf_tempc in enumerate(leaf_tempc_vec):
@@ -435,13 +589,8 @@ def main(argv):
                             byref(veg_qs_f),byref(veg_es_f), \
                             byref(qsdt_dummy_f),byref(esdt_dummy_f))
 
-
-        
         
         veg_qsat_vec[it] = veg_qs_f.value
-
-        print(veg_qsat_vec[it], (veg_qs_f.value * can_press_1atm) / (0.622 + veg_qs_f.value), veg_es_f.value)
-        
         veg_esat_vec[it] = veg_es_f.value
         
         iret = f90_cangas_sub(c8(can_press_1atm), \
@@ -455,15 +604,15 @@ def main(argv):
         mm_ko2_vec[it] = mm_ko2_f.value
         co2_cpoint_vec[it] = co2_cpoint_f.value
 
-        
+    
         
 
     print('\n')
     print('Experiment 1: Evaluating Photosynthesis Equations by pft/Tl/RH/PR')
     
-    for pft in range(numpft):
+    for pft in [0,11]: #range(numpft):
 
-        print('Evaluating PFT {}'.format(pft))
+        print('Evaluating PFT {}'.format(pft+1))
         
         jmax25_top,kp25_top =  GetJmaxKp25Top(fates_leaf_vcmax25top[pft])
         vcmax = np.zeros([leaf_tempc_n])
@@ -478,6 +627,8 @@ def main(argv):
         ap     = np.zeros([leaf_tempc_n,rh_n,par_abs_n])
         co2_interc = np.zeros([leaf_tempc_n,rh_n,par_abs_n])
 
+        gs_max_sun_k = np.zeros([leaf_tempc_n,rh_n])
+        
         # When calling component limitations exclusively
         # using an approximation of interstitial co2 as
         # 0.7*canopy_co2
@@ -507,7 +658,7 @@ def main(argv):
                 ap2[it] = 0.0
             else:
                 ap2_f = f90_agross_pepc4(c8(co2_ppress_400ppm),c8(kp[it]),c8(can_press_1atm))
-                ap2[it] = ap2_f.value
+                ap2[it] = ap2_f
                 
             # Leaf Maintenance Respiration (temp and pft dependent)
             if(fates_maintresp_leaf_model==1):
@@ -526,17 +677,16 @@ def main(argv):
                                              c8(co2_cpoint_vec[it]),c8(mm_kco2_vec[it]),c8(mm_ko2_vec[it]))
                 ac2[it] = ac2_f#.value
             else:
-                print('Add c4 for Ac')
-                exit(0)
-                
+                ac2[it] = vcmax[it]
+
+                 
             for ip, par_abs in enumerate(par_abs_vec):
 
                 if(leaf_c3psn[pft] == 1):
                     aj2_f = f90_agross_rubpc3(c8(par_abs),c8(jmax[it]),c8(ci_ppress_static),c8(co2_cpoint_vec[it]))
                     aj2[it,ip] = aj2_f#.value
                 else:
-                    print('Add c4 for Aj')
-                    exit(0)
+                    aj2[it,ip] = f90_agross_rubpc4(c8(par_abs))
                     
                 for ir, rh in enumerate(rh_vec):
 
@@ -584,21 +734,22 @@ def main(argv):
 
                     
         if(do_plot_vjk):
-            PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn)
+            PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn[pft])
 
         
         fig2,ax1 = plt.subplots(1,1,figsize=(6.5,5.5))
 
-        ap = ax1.plot(leaf_tempc_vec,ac2,label='Ac')
+        ax1.plot(leaf_tempc_vec,ac2,label='Ac')
         ix2_10 = int(par_abs_n*0.1)
         ix2_50 = int(par_abs_n*0.5)
         ix2_90 = int(par_abs_n*0.9)
-        ap = ax1.plot(leaf_tempc_vec,aj2[:,ix2_10],color=[0.5,0.5,0.5],linestyle='dotted',label='Aj apar=%4.1f'%(par_abs_vec[ix2_10]))
-        ap = ax1.plot(leaf_tempc_vec,aj2[:,ix2_50],color=[0.5,0.5,0.5],linestyle='dashed',label='Aj apar=%4.1f'%(par_abs_vec[ix2_50]))
-        ap = ax1.plot(leaf_tempc_vec,aj2[:,ix2_90],color=[0.5,0.5,0.5],linestyle='solid',label='Aj apar=%4.1f'%(par_abs_vec[ix2_90]))
-        if(leaf_c3psn[pft] == 0):
-            ap = ax.hlines(y=ap2, xmin=np.min(leaf_tempc_vec), xmax=np.max(leaf_tempc_vec),linewidth=2, color=[0.3,0.3,0.3])
-            
+        ax1.plot(leaf_tempc_vec,aj2[:,ix2_10],color=[0.5,0.5,0.5],linestyle='dotted',label='Aj apar=%4.1f'%(par_abs_vec[ix2_10]))
+        ax1.plot(leaf_tempc_vec,aj2[:,ix2_50],color=[0.5,0.5,0.5],linestyle='dashed',label='Aj apar=%4.1f'%(par_abs_vec[ix2_50]))
+        ax1.plot(leaf_tempc_vec,aj2[:,ix2_90],color=[0.5,0.5,0.5],linestyle='solid',label='Aj apar=%4.1f'%(par_abs_vec[ix2_90]))
+        #if(leaf_c3psn[pft] == 0):
+        #    ax1.axhline(y=ap2,linewidth=2, color=[0.3,0.3,0.3])
+        ax1.plot(leaf_tempc_vec,ap2[:],color='orange',linestyle='solid',label='Ap')
+        
         ax1.set_ylabel('[umol/m2/s]')
         ax1.set_xlabel('Leaf Temperature [C]')
         ax1.set_title('PFT: %3i, Vcmax25: %4.1f, Jmax25: %4.1f, Ci: %4.1f'%(pft+1,fates_leaf_vcmax25top[pft],jmax25_top,ci_ppress_static))
@@ -611,48 +762,51 @@ def main(argv):
         # 10th, 50th and 90th percentiles of both RH and PAR
         # Agross, Anet, Gstoma, Ac, Aj, Ap
         
-        fig3, ((ax1,ax2),(ax3,ax4),(ax5,ax6),(ax7,ax8)) = plt.subplots(4,2,figsize=(8.5,6.5))
+        fig3, ((ax1,ax2),(ax3,ax4),(ax5,ax6),(ax7,ax8)) = plt.subplots(4,2,figsize=(7.,9.))
 
-        LinePlotY3dM1(ax1,leaf_tempc_vec,rh_vec,par_abs_vec,agross,'RH','APAR','Agross [umol/m2/s]',True,None)
-        LinePlotY3dM1(ax2,leaf_tempc_vec,rh_vec,par_abs_vec,gstoma,'RH','APAR','Gs [umol/m2/s]',False,bl_cond)
-        LinePlotY3dM1(ax3,leaf_tempc_vec,rh_vec,par_abs_vec,ac,'RH','APAR','Ac (Rubisco) [umol/m2/s]',False,None)
-        LinePlotY3dM1(ax4,leaf_tempc_vec,rh_vec,par_abs_vec,aj,'RH','APAR','Aj (RuBP) [umol/m2/s]',False,None)
-        LinePlotY3dM1(ax5,leaf_tempc_vec,rh_vec,par_abs_vec,co2_interc,'RH','APAR','CO2 Interc [Pa]',False,None)
+        LinePlotY3dM1(ax1,leaf_tempc_vec,rh_vec,par_abs_vec,agross,'RH','APAR',True)
+        ax1.set_ylabel('Agross \n [umol/m2/s]')
+        ax1.set_xticklabels([])
         
-
+        LinePlotY3dM1(ax2,leaf_tempc_vec,rh_vec,par_abs_vec,gstoma*1.e-6,'RH','APAR',False)
+        ax2.set_ylabel('Gs \n [mol/m2/s]')
+        ax2.yaxis.set_label_position("right")
+        ax2.yaxis.tick_right()
+        ax2.axhline(y=bl_cond*1.e-6,linewidth=2, color=[0.3,0.3,0.3])
+        ax2.set_xticklabels([])
+        
+        LinePlotY3dM1(ax3,leaf_tempc_vec,rh_vec,par_abs_vec,ac,'RH','APAR',False)
+        ax3.set_ylabel('Ac (Rubisco) \n [umol/m2/s]')
+        ax3.set_xticklabels([])
+        
+        LinePlotY3dM1(ax4,leaf_tempc_vec,rh_vec,par_abs_vec,aj,'RH','APAR',False)
+        ax4.set_ylabel('Aj (RuBP) \n [umol/m2/s]')
+        ax4.yaxis.set_label_position("right")
+        ax4.yaxis.tick_right()
+        ax4.set_xticklabels([])
+        
+        LinePlotY3dM1(ax5,leaf_tempc_vec,rh_vec,par_abs_vec,co2_interc,'RH','APAR',False)
+        ax5.set_ylabel('Ci \n [Pa]')
+        ax5.axhline(y=co2_ppress_400ppm,linewidth=2, color=[0.3,0.3,0.3])
+        
         ax6.plot(leaf_tempc_vec, lmr)
-        ax6.set_ylabel('LMR [umol/m2/s]')
+        ax6.set_ylabel('LMR \n [umol/m2/s]')
         ax6.grid(True)
+        ax6.yaxis.set_label_position("right")
+        ax6.yaxis.tick_right()
+        
+        ax5.set_xlabel('Leaf Temperature [C]')
+        ax6.set_xlabel('Leaf Temperature [C]')
 
+        ax7.axis("off")
+        ax8.axis("off")
         
-        #ax6.plot(leaf_tempc_vec,mm_kco2_vec)
         
-        ax8.plot(leaf_tempc_vec,mm_ko2_vec)
-        ax8.set_ylabel('MM Ko2 [Pa]')
-        ax8.grid(True)
-
-
-        
-        ax7.plot(leaf_tempc_vec,co2_cpoint_vec)
-        ax7.set_ylabel('Co2 cpoint [Pa]')
-        ax7.grid(True)
-        
-        #ax6.set_ylabel('Qsat [g/kg]')
-        
-        #@if(
-        #LinePlotY3dM1(ax2,leaf_tempc_vec,rh_vec,par_abs_vec,ac,'RH','APAR','Aj (RuBP) [umol/m2/s]',False,None)
-        
-       
-        
-
-        # PLOT IDEA
-        # CONTOURS OF THE AC/AJ EQUIVALENCY FOR TEMP AND LIGHT FOR DIFFERENT
-        # VCMAXES, DIFFERENT PLOTS FOR DIFFERENT RH AND RBlayer
-
-        #ax6.axis("off")
-
-        fig3.legend(loc='lower right')
         plt.tight_layout()
+        plt.subplots_adjust(wspace=0.02, hspace=0.03)
+        fig3.legend(loc='lower center',labelspacing = 0.2)
+        
+        
         plt.show()
 
     code.interact(local=dict(globals(), **locals()))
