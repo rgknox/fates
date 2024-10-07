@@ -139,51 +139,11 @@ def GetModSymbol(mod_path,symbol):
 
 # =======================================================================================
 
-def GetRbFromUDleaf(U_h,dleaf, ):
-    
-    # ram1(p)  = 1._r8/(ustar(p)*ustar(p)/um(p))
-    # uaf(p) = um(p)*sqrt( 1._r8/(ram1(p)*um(p)) )
-    # cf  = params_inst%cv / (sqrt(uaf(p)) * sqrt(dleaf_patch(p)))
-    # rb(p)  = 1._r8/(cf*uaf(p))
-    
-    # https://escomp.github.io/ctsm-docs/versions/master/html/tech_note/Fluxes/CLM50_Tech_Note_Fluxes.html
-    # From the CTSM Technical Manual 2.5.130-2.5.134:
-    # u* is found iteratively
-    
-    X = np.sqrt(C_s + lamda*C_r) * c*0.5*lamda
-    uh_over_us_old = X*2.0/(c*lamda)
-    
-    del_x = 0.0001
-
-    while True:
-        X =  np.sqrt(C_s + lamda*C_r) * c*0.5*lamda * np.exp(X)
-        uh_over_us = X*2.0/(c*lamda)
-        if(np.abs(uh_over_us-uh_over_us_old)<del_x):
-            break
-        uh_over_us_old = uh_over_us
-
-        
-    u_star = U_h/uh_over_us
-    
-    # From the CTSM Technical Manual 2.5.125:
-    # The leaf boundary layer resistance [s/m]
-    # is a function of the turbulent transfer coefficient (C_v) between
-    # the canopy surface and the canopy air 0.01 [m s^(-0.5)]
-    # The leaf diameter d_leaf [m] and U_av is "the wind speed
-    # incident on the leaves" (which equals the friction velocity u*)
-    #
-    
-    r_b_ms = (1./C_v)*np.sqrt(u_av / d_leaf)
-
-
-    r_b_umolms = r_b_ms*cf
-    
-    return r_b_umolms
-    
-# ========================================================================
-
 def GetJmaxKp25Top(vcmax25_top):
 
+    # Calculate Jmax and Kp at the canopy top at 25C
+    # they scale off of vcmax
+    #
     # jmax25_top:  Canopy top maximum electron transport
     #              rate at 25C (umol electrons/m**2/s)
     #
@@ -198,11 +158,15 @@ def GetJmaxKp25Top(vcmax25_top):
     
     return jmax25_top, kp25_top
 
+
+# Plot support routines
 # ========================================================================
-        
 
 def PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn):
 
+    # Plot out vcmax, jmax and kp as a function of temperature
+    # Assumes canopy top position, and is dependent on the
+    # PFT base rate
     
     if(leaf_c3psn == 0):
         fig1, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8.5,7.5))
@@ -231,11 +195,20 @@ def PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn):
         ax1.set_xlabel('Leaf Temperature [C]')
 
 
-   
+# ========================================================================
 
     
 def LinePlotY3dM1(ax,x1,x2,x3,y3d,str_x2,str_x3,add_labels):
 
+    # This takes a 3d array and plots that array over
+    # the first of its 3 dimensions.  It does this
+    # by evaluating 3 percentiles in each of the other
+    # two dimensions, such as the 0, 50% and 99%, and plotting
+    # the nine different combinations. The plot axis
+    # is passed in, and there is minimal stylizing of the
+    # axis and plot formatting, which is left to be done
+    # outside of this, and in the calling script
+    
     # Find the indices on the second and third dimensions
     # that are the 10th,50th and 90th percentiles
     ix2_10 = int(len(x2)*0.0)
@@ -315,8 +288,7 @@ def LinePlotY3dM1(ax,x1,x2,x3,y3d,str_x2,str_x3,add_labels):
 # =======================================================================================
 
 
-
-def CompareKitajimaCond(pft,fates_stoich_nitr,fates_leaf_slatop,fates_maintresp_leaf_model):
+def CompareKitajimaCond(pft,fates_stoich_nitr,fates_leaf_slatop,leaf_stomatal_intercept,fates_maintresp_leaf_model):
     
     # Compare conductances to the paired Amax conductance
     # measurements performed by Kitajima et al. 2005
@@ -407,7 +379,7 @@ def CompareKitajimaCond(pft,fates_stoich_nitr,fates_leaf_slatop,fates_maintresp_
                 for i in range(len(anet_k)):
                     # Photosynthetic rate at light saturation (Amax)
                     iret = f90_gs_medlyn(c8(anet_k[i]),ci(pft+1), c8(veg_esat_vec[it]), c8(vpress), \
-                                         c8(btran_nolimit), c8(co2_ppress_400ppm),c8(can_press_1atm), \
+                                         c8(btran_nolimit*leaf_stomatal_intercept), c8(co2_ppress_400ppm),c8(can_press_1atm), \
                                          c8(bl_cond),byref(gstoma_f))
                 
                     gs_max_sun_k[it,ir,i,isp] = gstoma_f.value
@@ -453,13 +425,16 @@ f90_agross_rubiscoc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBioph
 f90_agross_rubpc3  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC3'))
 f90_agross_rubpc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossRuBPC4'))
 f90_agross_pepc4  = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','AgrossPEPC4'))
+
+f90_gs_medlyn = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondMedlyn'))
+f90_gs_ballberry = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondBallBerry'))
+f90_velotomolarcf_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','VeloToMolarCF'))
+
+# For functions, define the return value
 f90_agross_rubiscoc3.restype = c_double
 f90_agross_rubpc3.restype = c_double
 f90_agross_rubpc4.restype = c_double
 f90_agross_pepc4.restype = c_double
-f90_gs_medlyn = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondMedlyn'))
-f90_gs_ballberry = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','StomatalCondBallBerry'))
-f90_velotomolarcf_sub = getattr(f90_leaf_biophys_obj,GetModSymbol('bld/LeafBiophysicsMod.o','VeloToMolarCF'))
 f90_velotomolarcf_sub.restype = c_double
     
 def main(argv):
@@ -467,7 +442,6 @@ def main(argv):
     # Load the xml control file
     xmlfile = "leaf_biophys_controls.xml"
     xmlroot = ET.parse(xmlfile).getroot()
-
     
     numpft = int(xmlroot.find('numpft').text.strip())
 
@@ -484,11 +458,14 @@ def main(argv):
     # Push pft parameters to fortran instantiations
     pft_root = xmlroot.find('f90_params').find('pft_dim')
     leaf_c3psn = []
+    leaf_stomatal_intercept = []
     for param in pft_root.iter('param'):
         for pft in range(numpft):
             iret = f90_set_leaf_param_sub(c8(float(param.text.split(',')[pft])),ci(pft+1),*ccharnb(param.attrib['name'].strip()))
             if(param.attrib['name'].strip() == 'fates_leaf_c3psn'):
                 leaf_c3psn.append(int(param.text.split(',')[pft]))
+            if(param.attrib['name'].strip() == 'fates_leaf_stomatal_intercept'):
+                leaf_stomatal_intercept.append(int(param.text.split(',')[pft]))
                 
     # Dump parameters
     if(dump_parameters):
@@ -526,7 +503,7 @@ def main(argv):
 
     # Drive conductance with Amax values from Kitajima et al for BTEs
     # Compare with stomatal conductance from Kitajima et al. 
-    CompareKitajimaCond(0,fates_stoich_nitr[0],fates_leaf_slatop[0],fates_maintresp_leaf_model)
+    CompareKitajimaCond(0,fates_stoich_nitr[0],fates_leaf_slatop[0],leaf_stomatal_intercept[0],fates_maintresp_leaf_model)
 
             
     # Leaf temperature ranges [C]
@@ -576,32 +553,27 @@ def main(argv):
 
     nscaler = 1.0
 
-    
-
-    
     # Initialize fortran return values
     # these are all temps and doubles
-    vcmax_f  = c_double(-9.0)
-    jmax_f   = c_double(-9.0)
-    kp_f     = c_double(-9.0)
-    agross_f = c_double(-9.0)
-    gstoma_f = c_double(-9.0)
-    anet_f   = c_double(-9.0)
-    lmr_f    = c_double(-9.0)
-    c13_f    = c_double(-9.0)
-    ac_f     = c_double(-9.0)
-    aj_f     = c_double(-9.0)
-    ap_f     = c_double(-9.0)
+    vcmax_f      = c_double(-9.0)
+    jmax_f       = c_double(-9.0)
+    kp_f         = c_double(-9.0)
+    agross_f     = c_double(-9.0)
+    gstoma_f     = c_double(-9.0)
+    anet_f       = c_double(-9.0)
+    lmr_f        = c_double(-9.0)
+    c13_f        = c_double(-9.0)
+    ac_f         = c_double(-9.0)
+    aj_f         = c_double(-9.0)
+    ap_f         = c_double(-9.0)
     co2_interc_f = c_double(-9.0)
-    veg_qs_f = c_double(-9.0)
-    veg_es_f = c_double(-9.0)
-    mm_kco2_f = c_double(-9.0)
-    mm_ko2_f  = c_double(-9.0)
+    veg_qs_f     = c_double(-9.0)
+    veg_es_f     = c_double(-9.0)
+    mm_kco2_f    = c_double(-9.0)
+    mm_ko2_f     = c_double(-9.0)
     co2_cpoint_f = c_double(-9.0)
     qsdt_dummy_f = c_double(-9.0)
     esdt_dummy_f = c_double(-9.0)
-
-    aj2_f = c_double(-9.)
 
     print('Prepping Canopy Gas Parameters')
     
@@ -681,8 +653,7 @@ def main(argv):
             if(leaf_c3psn[pft] == 1):
                 ap2[it] = 0.0
             else:
-                ap2_f = f90_agross_pepc4(c8(co2_ppress_400ppm),c8(kp[it]),c8(can_press_1atm))
-                ap2[it] = ap2_f
+                ap2[it] = f90_agross_pepc4(c8(co2_ppress_400ppm),c8(kp[it]),c8(can_press_1atm))
                 
             # Leaf Maintenance Respiration (temp and pft dependent)
             if(fates_maintresp_leaf_model==1):
@@ -697,9 +668,8 @@ def main(argv):
 
             if(leaf_c3psn[pft] == 1):
                 
-                ac2_f = f90_agross_rubiscoc3(c8(vcmax[it]),c8(ci_ppress_static),c8(o2_ppress_209kppm), \
+                ac2[it] = f90_agross_rubiscoc3(c8(vcmax[it]),c8(ci_ppress_static),c8(o2_ppress_209kppm), \
                                              c8(co2_cpoint_vec[it]),c8(mm_kco2_vec[it]),c8(mm_ko2_vec[it]))
-                ac2[it] = ac2_f#.value
             else:
                 ac2[it] = vcmax[it]
 
@@ -707,8 +677,7 @@ def main(argv):
             for ip, par_abs in enumerate(par_abs_vec):
 
                 if(leaf_c3psn[pft] == 1):
-                    aj2_f = f90_agross_rubpc3(c8(par_abs),c8(jmax[it]),c8(ci_ppress_static),c8(co2_cpoint_vec[it]))
-                    aj2[it,ip] = aj2_f#.value
+                    aj2[it,ip] = f90_agross_rubpc3(c8(par_abs),c8(jmax[it]),c8(ci_ppress_static),c8(co2_cpoint_vec[it]))
                 else:
                     aj2[it,ip] = f90_agross_rubpc4(c8(par_abs))
                     
@@ -755,7 +724,11 @@ def main(argv):
         if(do_plot_vjk):
             PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn[pft])
 
-        
+
+        # Plot out component gross assimilation rates
+        # by temperature with constant Ci, and by Ci with
+        # constant temperature
+            
         fig2,ax1 = plt.subplots(1,1,figsize=(6.5,5.5))
 
         ax1.plot(leaf_tempc_vec,ac2,label='Ac')
@@ -774,8 +747,6 @@ def main(argv):
         ax1.set_title('PFT: %3i, Vcmax25: %4.1f, Jmax25: %4.1f, Ci: %4.1f'%(pft+1,fates_leaf_vcmax25top[pft],jmax25_top,ci_ppress_static))
         ax1.grid(True)
         fig2.legend(loc='upper right')
-        
-        # Plot out inputs
 
         # Lets plot metrics by temperature, using the
         # 10th, 50th and 90th percentiles of both RH and PAR

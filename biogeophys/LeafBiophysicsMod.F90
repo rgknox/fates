@@ -207,7 +207,7 @@ module LeafBiophysicsMod
 
 contains
   
-  subroutine StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,can_co2_ppress,can_press,gb,gs)
+  subroutine StomatalCondMedlyn(anet,ft,veg_esat,can_vpress,stomatal_intercept_btran,leaf_co2_ppress,can_press,gb,gs)
 
     ! Input
     real(r8), intent(in) :: anet                     ! net leaf photosynthesis (umol CO2/m**2/s)
@@ -217,7 +217,7 @@ contains
     real(r8), intent(in) :: gb                       ! leaf boundary layer conductance (umol /m**2/s)
     real(r8), intent(in) :: can_vpress               ! vapor pressure of canopy air (Pa)
     real(r8), intent(in) :: stomatal_intercept_btran ! water-stressed minimum stomatal conductance (umol H2O/m**2/s)
-    real(r8), intent(in) :: can_co2_ppress           ! CO2 partial pressure in canopy air (Pa)
+    real(r8), intent(in) :: leaf_co2_ppress          ! CO2 partial pressure at the leaf surface (Pa)
                                                      ! at the boundary layer interface with the leaf
 
     ! Output
@@ -225,14 +225,11 @@ contains
     
 
     ! locals
-    real(r8) :: leaf_co2_ppress                      ! CO2 conc at the leaf surface, inside the boundary layer [Pa]
     real(r8) :: vpd                                  ! water vapor deficit in Medlyn stomatal model [KPa]
     real(r8) :: term                                 ! intermediate term used to simplify equations
     real(r8) :: aquad,bquad,cquad                    ! quadradic solve terms
     real(r8) :: r1,r2                                ! quadradic solve roots
 
-    !print*,"MEDLYN",leaf_co2_ppress
-    
     ! Evaluate trival solution, if there is no positive net assimiolation
     ! the stomatal conductance is the intercept conductance
     if (anet <= nearzero) then
@@ -246,8 +243,6 @@ contains
 
     vpd =  max((veg_esat - can_vpress), 50._r8) * kpa_per_pa       !addapted from CLM5. Put some constraint on VPD
 
-    leaf_co2_ppress = can_co2_ppress
-    
     if(zero_bl_resist) then
 
        ! We assume zero resistance in the leaf boundary layer, and that humidity at
@@ -258,8 +253,6 @@ contains
     else
 
        !when Medlyn stomatal conductance is being used, the unit is KPa. Ignoring the constraint will cause errors when model runs.
-
-       leaf_co2_ppress = can_co2_ppress
        
        term = h2o_co2_stoma_diffuse_ratio * anet / (leaf_co2_ppress / can_press)
        aquad = 1.0_r8
