@@ -47,8 +47,14 @@ matplotlib.rc('font', **font)
 # For debugging
 dump_parameters = False
 
-# Plot Control
-do_plot_vjk = True
+# Should we evaluate vcmax, jmax and kp actual?
+do_evalvjkbytemp = True
+
+# Should we run the comparison against Kitajima's plots?
+do_comparekitajimacond = False
+
+# Should we run the parameter sensitivity experiment
+do_paramsense = True
 
 # Freezing point of water in Kelvin (at standard atmosphere)
 tfrz_1atm = 273.15
@@ -96,7 +102,12 @@ zero_lwp = 0.0
 # (via Vcmax reductions), then the btran factor is 1
 btran_nolimit = 1.0
 
+# Respiration scaler at canopy top
+rdark_scaler_top = 1.0
 
+# Nitrogen scaler at canopy top
+nscaler_top = 1.0
+    
 # Subroutines
 # =======================================================================================
 
@@ -162,38 +173,76 @@ def GetJmaxKp25Top(vcmax25_top):
 # Plot support routines
 # ========================================================================
 
-def PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn):
+def EvalVJKByTemp(numpft,fates_leaf_vcmax25top,leaf_c3psn):
+
+    print('\n')
+    print('Experiment 1: Evaluating Vcmax,Jmax,Kp by Temperature')
 
     # Plot out vcmax, jmax and kp as a function of temperature
     # Assumes canopy top position, and is dependent on the
     # PFT base rate
-    
-    if(leaf_c3psn == 0):
-        fig1, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8.5,7.5))
-    else:
-        fig1, (ax1,ax2) = plt.subplots(1,2,figsize=(8.5,5.5))
         
-    ax1.plot(leaf_tempc_vec,vcmax)
-    ax1.set_ylabel('Vcmax [umol/m2/s]')
-    ax1.set_title('PFT: {}'.format(pft+1))
-    ax1.grid(True)
+    # Leaf temperature ranges [C]
+    leaf_tempc_min = -20.0
+    leaf_tempc_max = 50.0
+    leaf_tempc_n = 100
+    leaf_tempc_vec = np.linspace(leaf_tempc_min,leaf_tempc_max,num=leaf_tempc_n)
 
-    ax2.plot(leaf_tempc_vec,jmax)
-    ax2.set_xlabel('Leaf Temperature [C]')
-    ax2.set_ylabel('Jmax [umol/m2/s]')
-    ax2.set_title('PFT: {}'.format(pft+1))
-    ax2.grid(True)
+    vcmax_f = c_double(-9)
+    jmax_f  = c_double(-9)
+    kp_f    = c_double(-9)
+    
+    for pft in range(numpft):
 
-    if(leaf_c3psn == 0):
-        ax3.plot(leaf_tempc_vec,kp)
-        ax3.set_xlabel('Leaf Temperature [C]')
-        ax3.set_ylabel('Kp (C4 only)')
-        ax3.grid(True)
-        ax3.set_xlabel('Leaf Temperature [C]')
-        ax4.axis("off")
-    else:
-        ax1.set_xlabel('Leaf Temperature [C]')
+        print('Evaluating PFT {}'.format(pft+1))
+        jmax25_top,kp25_top =  GetJmaxKp25Top(fates_leaf_vcmax25top[pft])
+        vcmax = np.zeros([leaf_tempc_n])
+        jmax  = np.zeros([leaf_tempc_n])
+        kp    = np.zeros([leaf_tempc_n])
 
+        for it, leaf_tempc in enumerate(leaf_tempc_vec):
+
+            leaf_tempk = leaf_tempc + tfrz_1atm
+            
+            iret = f90_biophysrate_sub(ci(pft+1), c8(fates_leaf_vcmax25top[pft]), \
+                                       c8(jmax25_top), c8(kp25_top), \
+                                       c8(nscaler_top), c8(leaf_tempk), c8(dayl_factor_full), \
+                                       c8(t_growth_kum),c8(t_home_kum),c8(btran_nolimit), \
+                                       byref(vcmax_f), byref(jmax_f), byref(kp_f))
+            
+            vcmax[it] = vcmax_f.value
+            jmax[it]  = jmax_f.value
+            kp[it]    = kp_f.value
+
+            
+        if(leaf_c3psn[pft] == 0):
+            fig, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8.5,7.5))
+        else:
+            fig, (ax1,ax2) = plt.subplots(1,2,figsize=(8.5,5.5))
+        
+        ax1.plot(leaf_tempc_vec,vcmax)
+        ax1.set_ylabel('Vcmax [umol/m2/s]')
+        ax1.set_title('PFT: {}'.format(pft+1))
+        ax1.grid(True)
+
+        ax2.plot(leaf_tempc_vec,jmax)
+        ax2.set_xlabel('Leaf Temperature [C]')
+        ax2.set_ylabel('Jmax [umol/m2/s]')
+        ax2.set_title('PFT: {}'.format(pft+1))
+        ax2.grid(True)
+
+        if(leaf_c3psn[pft] == 0):
+            ax3.plot(leaf_tempc_vec,kp/umol_per_mol)
+            ax3.set_xlabel('Leaf Temperature [C]')
+            ax3.set_ylabel('Kp [mol/m2/s]')
+            ax3.grid(True)
+            ax3.set_xlabel('Leaf Temperature [C]')
+            ax4.axis("off")
+        else:
+            ax1.set_xlabel('Leaf Temperature [C]')
+
+
+            
 
 # ========================================================================
 
@@ -500,12 +549,19 @@ def main(argv):
         if (param.attrib['name']=='fates_maintresp_leaf_model'):
             fates_maintresp_leaf_model = int(param.text.split(',')[0])
 
-
-    # Drive conductance with Amax values from Kitajima et al for BTEs
-    # Compare with stomatal conductance from Kitajima et al. 
-    CompareKitajimaCond(0,fates_stoich_nitr[0],fates_leaf_slatop[0],leaf_stomatal_intercept[0],fates_maintresp_leaf_model)
-
+    if(do_evalvjkbytemp):
+        EvalVJKByTemp(numpft,fates_leaf_vcmax25top,leaf_c3psn)
             
+    # Drive conductance with Amax values from Kitajima et al for BTEs
+    # Compare with stomatal conductance from Kitajima et al.
+    if(do_comparekitajimacond):
+        CompareKitajimaCond(0,fates_stoich_nitr[0],fates_leaf_slatop[0], \
+                            leaf_stomatal_intercept[0],fates_maintresp_leaf_model)
+
+
+    #if(do_paramsense):
+    #    ParamSense()
+        
     # Leaf temperature ranges [C]
     leaf_tempc_min = -20.0
     leaf_tempc_max = 40.0
@@ -721,8 +777,7 @@ def main(argv):
                     co2_interc[it,ir,ip] = co2_interc_f.value
 
                     
-        if(do_plot_vjk):
-            PlotVJKByTemp(leaf_tempc_vec,vcmax,jmax,kp,pft,leaf_c3psn[pft])
+        
 
 
         # Plot out component gross assimilation rates
