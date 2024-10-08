@@ -1,8 +1,14 @@
-# ustar                  => frictionvel_inst%ustar_patch    friction velocity [m/s]
-# um                     => frictionvel_inst%um_patch       wind speed including the stablity effect [m/s]
-# uaf                    => frictionvel_inst%uaf_patch            canopy air speed [m/s]
+# ustar                  => frictionvel_inst%ustar_patch  friction velocity [m/s]
+# um                     => frictionvel_inst%um_patch     wind speed including the stablity effect [m/s]
+# uaf                    => frictionvel_inst%uaf_patch    canopy air speed [m/s]
 
+# parameters:
+#  z0m
+#  displa
+#  dleaf
 
+zlnd = 0.000775
+ 
 def MolarToVeloCF(press,tempk):
 
     umol_per_kmol = 1000.0
@@ -31,6 +37,8 @@ def GetRbFromUcanDleaf(u_can,dleaf,press,tempk):
     g_b_mol = (1./r_b_ms)/MolarToVeloCF(press,tempk)
     
 
+
+    
 def MoninObukIni( ur, thv, dthv, zldis, z0m, um, obu ):
 
     # Initial values of u* and convective velocity
@@ -64,6 +72,8 @@ def MoninObukIni( ur, thv, dthv, zldis, z0m, um, obu ):
 
     obu=zldis/zeta
     
+
+
     
     
 def UCanFromUstar(u_m,u_star,ram1):

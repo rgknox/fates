@@ -78,6 +78,7 @@ module FATESPlantRespPhotosynthMod
   use LeafBiophysicsMod, only : LowstorageMainRespReduction
   use LeafBiophysicsMod, only : rsmax0
   use LeafBiophysicsMod, only : DecayCoeffVcmax
+  use LeafBiophysicsMod, only : VeloToMolarCF
   use FatesRadiationMemMod, only : idirect
   
   ! CIME Globals
@@ -87,7 +88,6 @@ module FATESPlantRespPhotosynthMod
   private
 
   public :: FatesPlantRespPhotosynthDrive ! Called by the HLM-Fates interface
-  public :: GetMolarVeloCF  ! This is called directly by unit tests
 
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -254,6 +254,7 @@ contains
     real(r8) :: rd_abs_leaf, rb_abs_leaf, r_abs_stem, r_abs_snow, rb_abs, rd_abs
     real(r8) :: fsun
     real(r8) :: par_per_sunla, par_per_shala ! PAR per sunlit and shaded leaf area [W/m2 leaf]
+    real(r8) :: ac_utest, aj_utest, ap_utest, co2_inter_c_utest
     real(r8),dimension(75) :: cohort_vaitop
     real(r8),dimension(75) :: cohort_vaibot
     real(r8),dimension(75) :: cohort_layer_elai
@@ -675,7 +676,7 @@ contains
 
                                  ! Calculate leaf boundary layer conductance in molar form [umol/m2/s]
                                  gb_mol = (1._r8/bc_in(s)%rb_pa(ifp)) * &
-                                      GetMolarVeloCF(bc_in(s)%forc_pbot,bc_in(s)%t_veg_pa(ifp))
+                                      VeloToMolarCF(bc_in(s)%forc_pbot,bc_in(s)%t_veg_pa(ifp))
                                  
                                  gstoma = 0._r8
                                  do_sunsha: do isunsha = 1,2
@@ -741,15 +742,18 @@ contains
                                          co2_cpoint,                         &  ! in
                                          lmr_z(iv,ft,cl),                    &  ! in
                                          leaf_psi,                           &  ! in
-                                         hydr_k_lwp,                         &  ! in
                                          psn_ll,                             &  ! out
                                          gstoma_ll,                          &  ! out
                                          anet_ll,                            &  ! out
-                                         c13disc_ll)                            ! out
+                                         c13disc_ll,                         &  ! out
+                                         ac_utest,                           &  ! out (unit tests)
+                                         aj_utest,                                 &  ! out (unit tests)
+                                         ap_utest,                                 &  ! out (unit tests)
+                                         co2_inter_c_utest)                           ! out (unit tests)
 
                                     ! Average output quantities across sunlit and shaded leaves
                                     ! Convert from molar to velocity (umol /m**2/s) to (m/s)
-                                    gstoma = gstoma + area_frac* (gstoma_ll / GetMolarVeloCF(bc_in(s)%forc_pbot,bc_in(s)%t_veg_pa(ifp)))
+                                    gstoma = gstoma + area_frac* (gstoma_ll / VeloToMolarCF(bc_in(s)%forc_pbot,bc_in(s)%t_veg_pa(ifp)))
                                     
                                     psn_z(cl,ft,iv) = psn_z(cl,ft,iv) + area_frac * psn_ll
                                     anet_av_z(iv,ft,cl) = anet_av_z(iv,ft,cl) + area_frac * anet_ll
