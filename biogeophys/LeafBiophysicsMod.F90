@@ -252,8 +252,6 @@ contains
 
     else
 
-       !when Medlyn stomatal conductance is being used, the unit is KPa. Ignoring the constraint will cause errors when model runs.
-       
        term = h2o_co2_stoma_diffuse_ratio * anet / (leaf_co2_ppress / can_press)
        aquad = 1.0_r8
        bquad = -(2.0 * (stomatal_intercept_btran+ term) + (lb_params%medlyn_slope(ft) * term)**2 / &
