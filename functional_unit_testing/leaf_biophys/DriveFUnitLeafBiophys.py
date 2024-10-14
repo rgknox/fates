@@ -26,15 +26,19 @@ import importlib
 import csv
 import subprocess
 import re
-
 import CtypesLeafBiophys
-
 import ctypes
 from ctypes import *
 from operator import add
 sys.path.append('../shared/py_src')
-
 from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
+
+import torch
+from torch import nn
+from torch.utils.data import DataLoader
+from torchvision import datasets
+from torchvision.transforms import ToTensor
+
 
 font = {'family' : 'sans-serif',
         'weight' : 'normal',
