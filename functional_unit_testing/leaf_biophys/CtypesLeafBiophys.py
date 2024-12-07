@@ -87,3 +87,37 @@ f90_agross_rubpc3.restype = c_double
 f90_agross_rubpc4.restype = c_double
 f90_agross_pepc4.restype = c_double
 f90_velotomolarcf_sub.restype = c_double
+
+# Instantiate the F90 modules
+f90_shr_obj = ctypes.CDLL('bld/WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_mem_obj = ctypes.CDLL('bld/FatesRadiationMemMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_twostr_obj = ctypes.CDLL('bld/TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
+f90_wrap_obj = ctypes.CDLL('bld/RadiationWrapMod.o',mode=ctypes.RTLD_GLOBAL)
+
+
+# Create aliases for the calls and define arguments if it helps with clarity
+alloc_twostream_call =  f90_wrap_obj.__radiationwrapmod_MOD_initallocate
+dealloc_twostream_call = f90_wrap_obj.__radiationwrapmod_MOD_dealloc
+alloc_radparams_call = f90_twostr_obj.__twostreammlpemod_MOD_allocateradparams
+set_radparams_call   = f90_wrap_obj.__radiationwrapmod_MOD_setradparam
+set_radparams_call.argtypes = [POINTER(c_double),POINTER(c_int),POINTER(c_int),c_char_p,c_long]
+
+param_prep_call = f90_twostr_obj.__twostreammlpemod_MOD_radparamprep
+
+setup_canopy_call = f90_wrap_obj.__radiationwrapmod_MOD_setupcanopy
+setup_canopy_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int), \
+                              POINTER(c_double),POINTER(c_double),POINTER(c_double)]
+
+grndsnow_albedo_call = f90_wrap_obj.__radiationwrapmod_MOD_setgroundsnow
+grndsnow_albedo_call.argtypes = [POINTER(c_int),POINTER(c_double),c_char_p,c_long]
+
+canopy_prep_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapcanopyprep
+zenith_prep_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapzenithprep
+solver_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapsolve
+setdown_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapsetdownwelling
+
+getintens_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetintensity
+getabsrad_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetabsrad
+getparams_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetparams
+forceparam_call = f90_wrap_obj.__radiationwrapmod_MOD_wrapforceparams
+forceparam_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int),POINTER(c_double),c_char_p,c_long]
