@@ -50,6 +50,10 @@ def GetModSymbol(mod_path,symbol):
 
 # =======================================================================================
 
+
+# Instantiate DGESV from lapack
+f_dgesv_obj = ctypes.CDLL('bld/dgesvMod.o',mode=ctypes.RTLD_GLOBAL)
+
 # Instantiate the F90 modules
 
 f90_const_obj = ctypes.CDLL('bld/FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)

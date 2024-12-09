@@ -13,6 +13,11 @@ MOD_FLAG="-J"
 rm -f bld/*.o
 rm -f bld/*.mod
 
+# Build dgesv from lapack
+
+${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/dgesvMod.o ../shared/f90_src/lapack-3.10/dgesvMod.f
+
+
 # Build the new file with constants
 
 ${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/FatesConstantsMod.o ../../main/FatesConstantsMod.F90
