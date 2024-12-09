@@ -42,6 +42,8 @@ font = {'family' : 'sans-serif',
 
 matplotlib.rc('font', **font)
 
+plt.rcParams.update({'font.size': 14})
+
 
 # Global constants to use in all Leaf Biophysics unit testing
 # =======================================================================================
@@ -389,7 +391,6 @@ def main(argv):
     mod_dry_aftn  = [ (yr[iyr] == 2013 and (mon[iyr]==2 or mon[iyr]==3)) and afternoon[iyr] for iyr,year in enumerate(yr)]
 
     
-    
     numpts = np.sum(mod_dry_morn)
     
     yr = yr[mod_dry_morn]
@@ -448,23 +449,20 @@ def main(argv):
     # so initialize output vectors with the same size (use r_b or any variable)
 
     #numpts = r_b.size
+
+    # Create a temperature perturbation array
+    npert = 3
+    max_pert = 1.0
+    tveg_pert = np.array(np.linspace(-max_pert,max_pert,npert))
     
     g_b_umol   = np.zeros(numpts)
     qsat       = np.zeros(numpts)
     vpress     = np.zeros(numpts)
-    lmr        = np.zeros(numpts)
-    agross     = np.zeros(numpts)
-    gstoma     = np.zeros(numpts)
-    anet       = np.zeros(numpts)
-    ac         = np.zeros(numpts)
-    aj         = np.zeros(numpts)
-    ap         = np.zeros(numpts)
-    co2_interc = np.zeros(numpts)
-    vcmax      = np.zeros(numpts)
-    jmax       = np.zeros(numpts)
-    kp         = np.zeros(numpts)
+    lmr        = np.zeros([numpts,npert])
+    agross     = np.zeros([numpts,npert])
+    gstoma     = np.zeros([numpts,npert])
+    anet       = np.zeros([numpts,npert])
     rh         = np.zeros(numpts)
-    par_abs    = np.zeros(numpts)
     cosz       = np.zeros(numpts)
 
     jmax25_top,kp25_top =  GetJmaxKp25Top(fates_leaf_vcmax25top[pft])
@@ -540,8 +538,10 @@ def main(argv):
     davai =  (total_lai+total_sai)/float(n_layer)
     dalai =  total_lai/float(n_layer)
     vfrac = 1./float(n_layer)
+
+
     
-    for it, tvegk in enumerate(t_veg):
+    for it, tvegb in enumerate(t_veg):
 
         doy = cdoys[mon[it]-1] + day[it]
         lhour = hod[it]-5.0
@@ -560,131 +560,168 @@ def main(argv):
         iret = setdown_call(ci(visb),c8(Rbeam[it]),c8(Rdiff[it]))
 
 
+        for itp, tvegp in enumerate(tveg_pert):
 
-
+            tvegk = tvegb+tvegp
         
-        g_b_umol[it] = f90_velotomolarcf_sub(c8(can_press[it]),c8(tvegk))/r_b[it]
+            g_b_umol[it] = f90_velotomolarcf_sub(c8(can_press[itp]),c8(t_can[itp]))/r_b[itp]
         
-        # Get Humidity
-        iret = f90_qsat_sub(c8(t_can[it]),c8(can_press[it]), \
-                            byref(qsat_f),byref(esat_f), \
-                            byref(qsdt_f),byref(esdt_f))
+            # Get Humidity
+            iret = f90_qsat_sub(c8(t_can[it]),c8(can_press[it]), \
+                                byref(qsat_f),byref(esat_f), \
+                                byref(qsdt_f),byref(esdt_f))
 
-        #print("humidity done")
-        
-        qsat[it] = qsat_f.value
-        
-        #vpress[it] = can_press[it]/ ( eps/q[it] + 1 - eps)
-        #vpress[it] = can_press[it]*q[it]/eps
-        
-        rh[it] = 100.*vpress[it]/esat_f.value
+            qsat[it] = qsat_f.value
+            rh[it] = 100.*vpress[it]/esat_f.value
 
-        iret = f90_cangas_sub(c8(can_press[it]), \
-                              c8(o2_ppress_209kppm), \
-                              c8(t_can[it]), \
-                              byref(mm_kco2_f), \
-                              byref(mm_ko2_f), \
-                              byref(co2_cpoint_f))
+            iret = f90_cangas_sub(c8(can_press[it]), \
+                                  c8(o2_ppress_209kppm), \
+                                  c8(t_can[it]), \
+                                  byref(mm_kco2_f), \
+                                  byref(mm_ko2_f), \
+                                  byref(co2_cpoint_f))
 
-        #print("mm and co2point done")
+            for il in range(n_layer):
+                iret = getabsrad_call(ci(1),ci(1),ci(visb),c8(avai[il]),c8(avai[il]+davai), \
+                                      byref(cd_rd_abs_leaf),byref(cd_rb_abs_leaf),byref(cd_r_abs_stem), \
+                                      byref(cd_r_abs_snow),byref(cd_leaf_sun_frac))
+                rd_abs_leaf[il] = cd_rd_abs_leaf.value
+                rb_abs_leaf[il] = cd_rb_abs_leaf.value
+                sunfrac[il]     = cd_leaf_sun_frac.value
+                par_abs_umol_m2 = (rd_abs_leaf[il] + rb_abs_leaf[il])*wm2_to_umolm2s/dalai
 
-        for il in range(n_layer):
-            #iret = getintens_call(ci(1),ci(1),ci(visb),c8(avai[il]),byref(cd_r_diff_dn),byref(cd_r_diff_up),byref(cd_r_beam))
-            iret = getabsrad_call(ci(1),ci(1),ci(visb),c8(avai[il]),c8(avai[il]+davai), \
-                                  byref(cd_rd_abs_leaf),byref(cd_rb_abs_leaf),byref(cd_r_abs_stem), \
-                                  byref(cd_r_abs_snow),byref(cd_leaf_sun_frac))
-            rd_abs_leaf[il] = cd_rd_abs_leaf.value
-            rb_abs_leaf[il] = cd_rb_abs_leaf.value
-            sunfrac[il]     = cd_leaf_sun_frac.value
-            par_abs_umol_m2 = (rd_abs_leaf[il] + rb_abs_leaf[il])*wm2_to_umolm2s/dalai
+                # Scale down N and biophysical rates
+                #nscaler = 
+                iret = f90_biophysrate_sub(ci(pft), c8(fates_leaf_vcmax25top[ft]), \
+                                           c8(jmax25_top), c8(kp25_top), \
+                                           c8(nscaler_top), c8(tvegk), c8(dayl_factor_full), \
+                                           c8(t_growth_kum),c8(t_home_kum),c8(btran_nolimit), \
+                                           byref(vcmax_f), byref(jmax_f), byref(kp_f), \
+                                           byref(gs0_f), byref(gs1_f), byref(gs2_f))
 
-            # Scale down N and biophysical rates
-            #nscaler = 
-            iret = f90_biophysrate_sub(ci(pft+1), c8(fates_leaf_vcmax25top[pft]), \
-                                       c8(jmax25_top), c8(kp25_top), \
-                                       c8(nscaler_top), c8(tvegk), c8(dayl_factor_full), \
-                                       c8(t_growth_kum),c8(t_home_kum),c8(btran_nolimit), \
-                                       byref(vcmax_f), byref(jmax_f), byref(kp_f), \
-                                       byref(gs0_f), byref(gs1_f), byref(gs2_f))
-
-            # Leaf Maintenance Respiration (temp and pft dependent)
-            if(fates_maintresp_leaf_model==1):
-                iret = f90_lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(pft+1), c8(tvegk), byref(lmr_f))
-            elif(fates_maintresp_leaf_model==2):
-                iret = f90_lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler),c8(tvegk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
-            else:
-                print('unknown leaf respiration model')
-                exit(1)
+                # Leaf Maintenance Respiration (temp and pft dependent)
+                if(fates_maintresp_leaf_model==1):
+                    iret = f90_lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(pft), c8(tvegk), byref(lmr_f))
+                elif(fates_maintresp_leaf_model==2):
+                    iret = f90_lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler),c8(tvegk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
+                else:
+                    print('unknown leaf respiration model')
+                    exit(1)
 
             
-            iret = f90_leaflayerphoto_sub(c8(par_abs_umol_m2), \
-                                          c8(par_abs_umol_m2),  \
-                                          c8(1.0),     \
-                                          ci(pft+1),   \
-                                          c8(vcmax_f.value),   \
-                                          c8(jmax_f.value),    \
-                                          c8(kp_f.value),      \
-                                          c8(gs0_f.value), \
-                                          c8(gs1_f.value), \
-                                          c8(gs2_f.value), \
-                                          c8(tvegk), \
-                                          c8(can_press[it]), \
-                                          c8(co2_ppress_400ppm), \
-                                          c8(o2_ppress_209kppm), \
-                                          c8(g_b_umol[it]), \
-                                          c8(vpress[it]), \
-                                          c8(mm_kco2_f.value), \
-                                          c8(mm_ko2_f.value), \
-                                          c8(co2_cpoint_f.value), \
-                                          c8(lmr_f.value), \
-                                          c8(0.5), \
-                                          byref(agross_f), \
-                                          byref(gstoma_f), \
-                                          byref(anet_f), \
-                                          byref(c13_f), \
-                                          byref(ac_f), \
-                                          byref(aj_f), \
-                                          byref(ap_f), \
-                                          byref(co2_interc_f), \
-                                          byref(solve_inter_f))
-            
-            agross[it]     = agross[it]+vfrac*agross_f.value
-            gstoma[it]     = gstoma[it]+vfrac*gstoma_f.value
-            anet[it]       = anet[it]+vfrac*anet_f.value
-            ac[it]         = ac[it]+vfrac* ac_f.value
-            aj[it]         = aj[it]+vfrac*aj_f.value
-            ap[it]         = ap[it]+vfrac*ap_f.value
-            co2_interc[it] = co2_interc[it]+vfrac*co2_interc_f.value
-        
-            
-        plot_vert_prof = False
-        if(plot_vert_prof):
-            fig00, axs = plt.subplots(ncols=1,nrows=2,figsize=(5,8))
-            ax1s = axs.reshape(-1)
+                iret = f90_leaflayerphoto_sub(c8(par_abs_umol_m2), \
+                                              c8(par_abs_umol_m2),  \
+                                              c8(1.0),     \
+                                              ci(pft),   \
+                                              c8(vcmax_f.value),   \
+                                              c8(jmax_f.value),    \
+                                              c8(kp_f.value),      \
+                                              c8(gs0_f.value), \
+                                              c8(gs1_f.value), \
+                                              c8(gs2_f.value), \
+                                              c8(tvegk), \
+                                              c8(can_press[it]), \
+                                              c8(co2_ppress_400ppm), \
+                                              c8(o2_ppress_209kppm), \
+                                              c8(g_b_umol[it]), \
+                                              c8(vpress[it]), \
+                                              c8(mm_kco2_f.value), \
+                                              c8(mm_ko2_f.value), \
+                                              c8(co2_cpoint_f.value), \
+                                              c8(lmr_f.value), \
+                                              c8(0.5), \
+                                              byref(agross_f), \
+                                              byref(gstoma_f), \
+                                              byref(anet_f), \
+                                              byref(c13_f), \
+                                              byref(ac_f), \
+                                              byref(aj_f), \
+                                              byref(ap_f), \
+                                              byref(co2_interc_f), \
+                                              byref(solve_inter_f))
 
-            ax = ax1s[0]
-            ax.plot(rd_abs_leaf,avai)
-            ax.set_ylim([0,total_lai+total_sai])
-            ax.invert_yaxis()
-            ax.set_xlabel('[W/m2 ground]')
-            ax.set_title('Absorbed Par')
+                lmr[it,itp]        = lmr[it,itp] + vfrac*lmr_f.value 
+                agross[it,itp]     = agross[it,itp] + vfrac*agross_f.value
+                gstoma[it,itp]     = gstoma[it,itp] + vfrac*gstoma_f.value
+                anet[it,itp]       = anet[it,itp] + vfrac*anet_f.value
+                    
             
-            ax = ax1s[1]
-            ax.plot(np.cumsum(rd_abs_leaf),avai)
-            ax.set_ylim([0,total_lai+total_sai])
-            ax.invert_yaxis()
-            ax.set_xlabel('[W/m2]')
-            ax.set_title('Integrated Absorbed Par')
-            
-            plt.show()
+            plot_vert_prof = False
+            if(plot_vert_prof):
+                fig00, axs = plt.subplots(ncols=1,nrows=2,figsize=(5,8))
+                ax1s = axs.reshape(-1)
 
+                ax = ax1s[0]
+                ax.plot(rd_abs_leaf,avai)
+                ax.set_ylim([0,total_lai+total_sai])
+                ax.invert_yaxis()
+                ax.set_xlabel('[W/m2 ground]')
+                ax.set_title('Absorbed Par')
+                
+                ax = ax1s[1]
+                ax.plot(np.cumsum(rd_abs_leaf),avai)
+                ax.set_ylim([0,total_lai+total_sai])
+                ax.invert_yaxis()
+                ax.set_xlabel('[W/m2]')
+                ax.set_title('Integrated Absorbed Par')
+                
+                plt.show()
 
         
+        
+    fig22,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(7.5,7.5))
 
-        #print("photo done")
+    pert_text = []
+    pert_ls   = [':','-','--']
+    
+    for ip in range(npert):
+        pert_text.append("dTv = {}C".format(tveg_pert[ip]))
         
-        
-        
+    for ip in range(npert):
+        gscale = 0.8*float(ip)/float(npert)
+        hist,bins = np.histogram(anet[:,ip], bins=20) #, range=None, density=None, weights=None)
+        binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
+        ax1.plot(binsc[1:],hist[1:]/numpts, color = [gscale,gscale,gscale],linestyle=pert_ls[ip])
+
+    ax1.set_ylabel('Probability')
+    ax1.set_xlabel('Anet [umol/m2/s]')
+    ax1.grid('on')
+
+    for ip in range(npert):
+        gscale = 0.8*float(ip)/float(npert)
+        hist,bins = np.histogram(agross[:,ip], bins=20) #, range=None, density=None, weights=None)
+        binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
+        ax2.plot(binsc[1:],hist[1:]/numpts, color = [gscale,gscale,gscale],label=pert_text[ip],linestyle=pert_ls[ip])
+    ax2.legend()
+    ax2.set_xlabel('Ag [umol/m2/s]')
+    ax2.grid('on')
+
+    for ip in range(npert):
+        gscale = 0.8*float(ip)/float(npert)
+        hist,bins = np.histogram(gstoma[:,ip]*1.e-6, bins=20) #, range=None, density=None, weights=None)
+        binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
+        ax3.plot(binsc[1:],hist[1:]/numpts, color = [gscale,gscale,gscale],linestyle=pert_ls[ip])
+
+    ax3.set_ylabel('Probability')
+    ax3.set_xlabel('gs [mol/m2/s]')
+    ax3.grid('on')
+
+    for ip in range(npert):
+        gscale = 0.8*float(ip)/float(npert)
+        hist,bins = np.histogram(lmr[:,ip], bins=20) #, range=None, density=None, weights=None)
+        binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
+        ax4.plot(binsc[1:],hist[1:]/numpts, color = [gscale,gscale,gscale],linestyle=pert_ls[ip])
+
+    ax4.set_xlabel('Rl [umol/m2/s]')
+    ax4.grid('on')
+    
+    plt.tight_layout()
+    plt.show()
+    exit(0)
+
+
+
+                
     fig,((ax1,ax2),(ax3,ax4),(ax5,ax6)) = plt.subplots(3,2,figsize=(6.5,8.5))
 
     
