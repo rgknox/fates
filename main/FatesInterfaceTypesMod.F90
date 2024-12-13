@@ -748,7 +748,6 @@ module FatesInterfaceTypesMod
                                                         ! vegetation in the patch is exposed.
                                                         ! [0,1]
 
-     integer, allocatable :: nocomp_pft_label_pa(:) ! in nocomp and SP mode, each patch has a PFT identity. 
 
       ! FATES Hydraulics
 
