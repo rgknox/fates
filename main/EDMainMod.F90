@@ -79,6 +79,7 @@ module EDMainMod
   use FatesConstantsMod        , only : nearzero
   use FatesConstantsMod        , only : m2_per_ha
   use FatesConstantsMod        , only : sec_per_day
+  use FatesConstantsMod        , only : nocomp_bareground
   use FatesPlantHydraulicsMod  , only : do_growthrecruiteffects
   use FatesPlantHydraulicsMod  , only : UpdateSizeDepPlantHydProps
   use FatesPlantHydraulicsMod  , only : UpdateSizeDepPlantHydStates
@@ -204,9 +205,15 @@ contains
 
 
     if (hlm_use_ed_st3.eq.ifalse.and.hlm_use_sp.eq.ifalse) then   ! Bypass if ST3
-       
-       call fire_model(currentSite, bc_in)
-       
+
+       ! Bypass the fire model if we have only 1 patch, and it is a nocomp
+       ! bareground patch. If this is true, then that patch will be in the youngest
+       ! patch's position. Otherwise, the nocomp patch is in the oldest position
+       ! (ie index 1)
+       if(currentSite%youngest_patch%nocomp_pft_label.ne.nocomp_bareground) then
+          call fire_model(currentSite, bc_in)
+       end if
+          
        ! Calculate disturbance and mortality based on previous timestep vegetation.
        ! disturbance_rates calls logging mortality and other mortalities, Yi Xu
        call disturbance_rates(currentSite, bc_in)

@@ -794,7 +794,6 @@ contains
                      regeneration_model)
 
                 ! set pointers for first patch (or only patch, if nocomp is false)
-                newp%patchno = 1
                 newp%younger => null()
                 newp%older   => null()
                 sites(s)%youngest_patch => newp
@@ -874,7 +873,6 @@ contains
 
                          if (is_first_patch) then !is this the first patch?
                             ! set pointers for first patch (or only patch, if nocomp is false)
-                            newp%patchno = 1
                             newp%younger => null()
                             newp%older   => null()
                             sites(s)%youngest_patch => newp
@@ -883,7 +881,6 @@ contains
                          else
                             ! Set pointers for N>1 patches. Note this only happens when nocomp mode is on, or land use is on.
                             ! The new patch is the 'youngest' one, arbitrarily.
-                            newp%patchno = nocomp_pft + (i_lu_state-1) * numpft
                             newp%older     => sites(s)%youngest_patch
                             newp%younger   => null()
                             sites(s)%youngest_patch%younger => newp
