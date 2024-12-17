@@ -42,7 +42,7 @@ module FatesPlantHydraulicsMod
   use FatesConstantsMod, only : cm3_per_m3
   use FatesConstantsMod, only : kg_per_g
   use FatesConstantsMod, only : fates_unset_r8
-
+  use FatesConstantsMod, only : nocomp_bareground
   use EDParamsMod       , only : hydr_kmax_rsurf1
   use EDParamsMod       , only : hydr_kmax_rsurf2
   use EDParamsMod       , only : hydr_psi0
@@ -358,6 +358,7 @@ contains
        cpatch => sites(s)%oldest_patch
        do while(associated(cpatch))
 
+          
           ccohort => cpatch%shortest
           do while(associated(ccohort))
 
@@ -2156,6 +2157,7 @@ subroutine BTranForHLMDiagnosticsFromCohortHydr(nsites,sites,bc_out)
      do while (associated(cpatch))
         ifp=ifp+1
 
+        if_bareground: if(cpatch%nocomp_pft_label.ne.nocomp_bareground)then
         balive_patch = 0._r8
         ccohort=>cpatch%tallest
         do while(associated(ccohort))
@@ -2177,6 +2179,7 @@ subroutine BTranForHLMDiagnosticsFromCohortHydr(nsites,sites,bc_out)
                 ccohort%n / balive_patch
            ccohort => ccohort%shorter
         enddo !cohort
+        end if if_bareground
         cpatch => cpatch%younger
      enddo !end patch loop
   end do

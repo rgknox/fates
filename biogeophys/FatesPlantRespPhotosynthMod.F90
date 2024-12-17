@@ -33,6 +33,7 @@ module FATESPlantRespPhotosynthMod
   use FatesConstantsMod, only : tfrz => t_water_freeze_k_1atm
   use FatesConstantsMod, only : photosynth_acclim_model_none
   use FatesConstantsMod, only : photosynth_acclim_model_kumarathunge_etal_2019
+  use FatesConstantsMod, only : nocomp_bareground
   use FatesInterfaceTypesMod, only : hlm_use_planthydro
   use FatesInterfaceTypesMod, only : hlm_parteh_mode
   use FatesInterfaceTypesMod, only : numpft
@@ -348,6 +349,7 @@ contains
          do while (associated(currentpatch))
 
                ifp   = ifp+1
+               if_bareground:if(currentpatch%nocomp_pft_label.ne.nocomp_bareground)then
                NCL_p = currentPatch%NCL_p
 
                ! Part I. Zero output boundary conditions
@@ -1078,6 +1080,7 @@ contains
 
                end if if_filter2
 
+               end if if_bareground
             currentPatch => currentPatch%younger
          end do
 

@@ -174,6 +174,8 @@ contains
     currentPatch => currentSite%oldest_patch 
     do while(associated(currentPatch))  
 
+       if_bareground:if (currentPatch%nocomp_pft_label .ne. nocomp_bareground) then
+          
        ! calculate live grass [kgC/m2]
        call currentPatch%UpdateLiveGrass()
        
@@ -194,7 +196,7 @@ contains
        ! calculate geometric properties
        call currentPatch%fuel%AverageBulkDensity_NoTrunks(SF_val_FBD)
        call currentPatch%fuel%AverageSAV_NoTrunks(SF_val_SAV)
-            
+       end if if_bareground
        currentPatch => currentPatch%younger
     end do
     
@@ -377,6 +379,8 @@ contains
 
     do while(associated(currentPatch))
 
+         if_bareground: if(currentPatch%nocomp_pft_label .ne. nocomp_bareground)then  
+       
          currentPatch%fuel%frac_burnt(:) = 1.0_r8       
          ! Calculate fraction of litter is burnt for all classes. 
          ! Equation B1 in Thonicke et al. 2010---
@@ -438,6 +442,8 @@ contains
        ! ignore 1000hr fuels. Just interested in fuels affecting ROS   
        currentPatch%TFC_ROS = sum(FC_ground)-FC_ground(tr_sf)  
 
+       end if if_bareground ! nocomp_pft_label check
+       
        currentPatch=>currentPatch%younger;
     enddo !end patch loop
 
@@ -530,7 +536,9 @@ contains
 
     currentPatch => currentSite%oldest_patch;  
     do while(associated(currentPatch))
-
+       
+       if_bareground: if(currentPatch%nocomp_pft_label .ne. nocomp_bareground)then
+       
        !  ---initialize patch parameters to zero---
        currentPatch%FI         = 0._r8
        currentPatch%fire       = 0
@@ -635,7 +643,7 @@ contains
          endif         
           
        endif ! NF ignitions check
-       
+       end if if_bareground
        currentPatch => currentPatch%younger
     enddo !end patch loop
 
@@ -666,6 +674,7 @@ contains
     currentPatch => currentSite%oldest_patch;  
     do while(associated(currentPatch)) 
 
+       if_bareground: if(currentPatch%nocomp_pft_label .ne. nocomp_bareground)then
        tree_ag_biomass = 0.0_r8
        if (currentPatch%fire == 1) then
           currentCohort => currentPatch%tallest;
@@ -698,7 +707,7 @@ contains
           end do
 
        endif !fire
-
+       end if if_bareground
        currentPatch => currentPatch%younger;  
     enddo !end patch loop
 
@@ -721,6 +730,8 @@ contains
 
     do while(associated(currentPatch)) 
 
+       if_bareground: if(currentPatch%nocomp_pft_label .ne. nocomp_bareground)then
+       
        if (currentPatch%fire == 1) then
 
           currentCohort=>currentPatch%tallest
@@ -762,7 +773,7 @@ contains
 
           enddo !end cohort loop
        endif !fire?
-
+       end if if_bareground
        currentPatch => currentPatch%younger;
 
     enddo !end patch loop
@@ -787,7 +798,7 @@ contains
     currentPatch => currentSite%oldest_patch;  
 
     do while(associated(currentPatch)) 
-
+       if_bareground: if(currentPatch%nocomp_pft_label .ne. nocomp_bareground)then
        if (currentPatch%fire == 1) then
           currentCohort => currentPatch%tallest;
           do while(associated(currentCohort))  
@@ -812,7 +823,7 @@ contains
 
           enddo !end cohort loop
        endif !fire?
-
+       end if if_bareground
        currentPatch=>currentPatch%younger;
 
     enddo !end patch loop
@@ -837,7 +848,7 @@ contains
     currentPatch => currentSite%oldest_patch
 
     do while(associated(currentPatch)) 
-
+       if_bareground: if(currentPatch%nocomp_pft_label .ne. nocomp_bareground)then
        if (currentPatch%fire == 1) then 
           currentCohort => currentPatch%tallest
           do while(associated(currentCohort))  
@@ -857,8 +868,8 @@ contains
 
           enddo !end cohort loop
        endif !fire?
+       end if if_bareground
        currentPatch => currentPatch%younger
-
     enddo !end patch loop
 
   end subroutine post_fire_mortality

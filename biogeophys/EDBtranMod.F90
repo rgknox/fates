@@ -22,7 +22,8 @@ module EDBtranMod
   use FatesAllometryMod , only : set_root_fraction
   use shr_log_mod , only      : errMsg => shr_log_errMsg
   use FatesGlobals,      only : endrun => fates_endrun
-
+  use FatesConstantsMod , only : nocomp_bareground
+  
   !
   implicit none
   private
@@ -142,6 +143,8 @@ contains
 
             ifp=ifp+1
 
+            if_bareground: if(cpatch%nocomp_pft_label.ne.nocomp_bareground)then
+               
             ! THIS SHOULD REALLY BE A COHORT LOOP ONCE WE HAVE rootfr_ft FOR COHORTS (RGK)
 
             do ft = 1,numpft
@@ -245,7 +248,7 @@ contains
                enddo
 
             end if
-
+            end if if_bareground
             cpatch => cpatch%younger
          end do
 

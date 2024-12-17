@@ -43,6 +43,7 @@ module FatesInterfaceMod
    use FatesConstantsMod         , only : secondaryland
    use FatesConstantsMod         , only : n_crop_lu_types
    use FatesConstantsMod         , only : n_term_mort_types
+   use FatesConstantsMod         , only : nocomp_bareground
    use FatesGlobals              , only : fates_global_verbose
    use FatesGlobals              , only : fates_log
    use FatesGlobals              , only : endrun => fates_endrun
@@ -2141,6 +2142,7 @@ contains
         cpatch => sites(s)%oldest_patch
         do_patch: do while(associated(cpatch))
            ifp=ifp+1
+           if_bareground: if (cpatch%nocomp_pft_label == nocomp_bareground)then
            call cpatch%tveg24%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
            call cpatch%tveg_lpa%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
            call cpatch%tveg_longterm%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
@@ -2201,7 +2203,7 @@ contains
               ccohort => ccohort%shorter
            end do
 
-
+        end if if_bareground
         cpatch => cpatch%younger
      enddo do_patch
 

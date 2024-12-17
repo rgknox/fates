@@ -40,6 +40,7 @@ module FatesRadiationDriveMod
   use FatesGlobals, only      : endrun => fates_endrun
   use EDPftvarcon,        only : EDPftvarcon_inst
   use FatesNormanRadMod,  only : PatchNormanRadiation
+  use FatesConstantsMod , only : nocomp_bareground
   
   ! CIME globals
   use shr_log_mod       , only : errMsg => shr_log_errMsg
@@ -101,7 +102,8 @@ contains
        do while (associated(currentpatch))
 
           ifp = ifp+1
-
+          if_notbareground: if(currentpatch%nocomp_pft_label.ne.nocomp_bareground)then
+          
           ! Zero diagnostics
           currentPatch%f_sun      (:,:,:) = 0._r8
           currentPatch%fabd_sun_z (:,:,:) = 0._r8
@@ -233,6 +235,7 @@ contains
              end if if_nrad
 
           endif if_zenith_flag
+          end if if_notbareground
           currentPatch => currentPatch%younger
        end do       ! Loop linked-list patches
     enddo           ! Loop Sites
@@ -280,6 +283,8 @@ contains
 
           ifp=ifp+1
 
+          if_notbareground:if(cpatch%nocomp_pft_label.ne.nocomp_bareground)then !only
+          
           ! Initialize diagnostics
           cpatch%ed_parsun_z(:,:,:) = 0._r8
           cpatch%ed_parsha_z(:,:,:) = 0._r8
@@ -476,6 +481,7 @@ contains
 
              end if if_zenithflag
           endif if_norm_twostr
+          end if if_notbareground
           cpatch => cpatch%younger
        enddo
     enddo

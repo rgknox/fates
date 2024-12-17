@@ -13,7 +13,7 @@ module EDAccumulateFluxesMod
   use FatesGlobals, only      : fates_log
   use shr_log_mod , only      : errMsg => shr_log_errMsg
   use FatesConstantsMod , only : r8 => fates_r8
-
+  use FatesConstantsMod , only : nocomp_bareground
 
   implicit none
   private
@@ -70,7 +70,8 @@ contains
        cpatch => sites(s)%oldest_patch
        do while (associated(cpatch))                 
           ifp = ifp+1
-
+          
+          if_bareground:if(cpatch%nocomp_pft_label.ne.nocomp_bareground)then
           if( bc_in(s)%filter_photo_pa(ifp) == 3 ) then
              ccohort => cpatch%shortest
              do while(associated(ccohort))
@@ -102,8 +103,10 @@ contains
                 ccohort => ccohort%taller
              enddo ! while(associated(ccohort))
           end if
+          end if if_bareground
           cpatch => cpatch%younger
        end do  ! while(associated(cpatch))
+       
     end do
     return
 

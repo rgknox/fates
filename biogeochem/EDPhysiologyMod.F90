@@ -35,6 +35,7 @@ module EDPhysiologyMod
   use FatesConstantsMod, only    : g_per_kg
   use FatesConstantsMod, only    : ndays_per_year
   use FatesConstantsMod, only    : nocomp_bareground_land
+  use FatesConstantsMod, only    : nocomp_bareground
   use FatesConstantsMod, only    : is_crop
   use FatesConstantsMod, only    : area_error_2
   use EDPftvarcon      , only    : EDPftvarcon_inst
@@ -3174,6 +3175,8 @@ contains
     catanf(t1) = 11.75_r8 +(29.7_r8 / pi) * atan( pi * 0.031_r8  * ( t1 - 15.4_r8 ))
     catanf_30 = catanf(30._r8)
 
+    if(currentPatch%nocomp_pft_label.ne.nocomp_bareground)then
+    
     ! Use the hlm temp and moisture decomp fractions by default
     if ( use_hlm_soil_scalar ) then
 
@@ -3208,7 +3211,8 @@ contains
        currentPatch%fragmentation_scaler(:) =  min(1.0_r8,max(0.0_r8,t_scalar * w_scalar))
 
     endif ! scalar
-
+    endif ! not bare ground
+    
   end subroutine fragmentation_scaler
 
   ! ============================================================================

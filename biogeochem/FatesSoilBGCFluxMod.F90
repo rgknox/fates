@@ -69,6 +69,7 @@ module FatesSoilBGCFluxMod
   use FatesConstantsMod, only    : sec_per_day
   use FatesConstantsMod, only    : years_per_day
   use FatesConstantsMod, only    : itrue
+  use FatesConstantsMod, only    : nocomp_bareground
   use FatesLitterMod,        only : litter_type
   use FatesLitterMod    , only : ncwd
   use FatesLitterMod    , only : ndcmpy
@@ -293,6 +294,8 @@ contains
 
        fp    = fp + 1
 
+       if_notbare: if(cpatch%nocomp_pft_label .ne. nocomp_bareground)then
+       
        agnpp = 0._r8
        bgnpp = 0._r8
        woody_area = 0._r8
@@ -386,7 +389,7 @@ contains
              bc_out%woody_frac_aere_pa(fp) = woody_area/plant_area
           end if
        end if
-
+       end if if_notbare
        cpatch => cpatch%younger
     end do
     
