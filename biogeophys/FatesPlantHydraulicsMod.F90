@@ -358,7 +358,6 @@ contains
        cpatch => sites(s)%oldest_patch
        do while(associated(cpatch))
 
-          
           ccohort => cpatch%shortest
           do while(associated(ccohort))
 
@@ -2157,7 +2156,6 @@ subroutine BTranForHLMDiagnosticsFromCohortHydr(nsites,sites,bc_out)
      do while (associated(cpatch))
         ifp=ifp+1
 
-        if_bareground: if(cpatch%nocomp_pft_label.ne.nocomp_bareground)then
         balive_patch = 0._r8
         ccohort=>cpatch%tallest
         do while(associated(ccohort))
@@ -2179,7 +2177,6 @@ subroutine BTranForHLMDiagnosticsFromCohortHydr(nsites,sites,bc_out)
                 ccohort%n / balive_patch
            ccohort => ccohort%shorter
         enddo !cohort
-        end if if_bareground
         cpatch => cpatch%younger
      enddo !end patch loop
   end do
@@ -2503,7 +2500,7 @@ subroutine hydraulics_bc ( nsites, sites, bc_in, bc_out, dtime)
      do while (associated(cpatch))
         
         ifp = ifp + 1
-
+        
         ! ----------------------------------------------------------------------------
         ! Objective: Partition the transpiration flux
         ! specfied by the land model to the cohorts. The weighting
@@ -2672,7 +2669,6 @@ subroutine hydraulics_bc ( nsites, sites, bc_in, bc_out, dtime)
 
            ccohort => ccohort%shorter
         enddo co_loop1 !cohort
-        
         cpatch => cpatch%younger
      enddo !patch
 

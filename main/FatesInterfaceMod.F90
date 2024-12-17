@@ -2142,7 +2142,7 @@ contains
         cpatch => sites(s)%oldest_patch
         do_patch: do while(associated(cpatch))
            ifp=ifp+1
-           if_bareground: if (cpatch%nocomp_pft_label == nocomp_bareground)then
+           if_bareground: if (cpatch%nocomp_pft_label .ne. nocomp_bareground)then
            call cpatch%tveg24%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
            call cpatch%tveg_lpa%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
            call cpatch%tveg_longterm%UpdateRMean(bc_in(s)%t_veg_pa(ifp))

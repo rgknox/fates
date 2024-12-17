@@ -236,8 +236,9 @@ contains
 
     do while(associated(currentPatch))
 
-       if_nontrunk_loading: if(currentPatch%fuel%non_trunk_loading > nearzero) then
-                       
+       if_nontrunk_loading: if( (currentPatch%nocomp_pft_label .ne. nocomp_bareground) &
+            .and. (currentPatch%fuel%non_trunk_loading > nearzero) ) then
+
        ! remove mineral content from net fuel load per Thonicke 2010 for ir calculation
        currentPatch%fuel%non_trunk_loading = currentPatch%fuel%non_trunk_loading * (1.0_r8 - SF_val_miner_total) !net of minerals
 

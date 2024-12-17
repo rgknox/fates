@@ -697,7 +697,7 @@ contains
     ! Two primary options, either a Near Bear Ground (NBG) or Inventory based cold-start
     ! ---------------------------------------------------------------------------------------------
 
-    if ( hlm_use_inventory_init.eq.itrue ) then
+    if_inventory: if ( hlm_use_inventory_init.eq.itrue ) then
 
        ! Initialize the site-level crown area spread factor (0-1)
        ! It is likely that closed canopy forest inventories
@@ -725,7 +725,7 @@ contains
           call set_patchno(sites(s))
        enddo
        
-    else
+    else  ! if_inventory
 
        if(hlm_use_nocomp.eq.itrue)then
           num_nocomp_pfts = numpft
@@ -995,8 +995,8 @@ contains
 
           call set_patchno(sites(s))
 
-       enddo sites_loop 
-    end if
+       enddo sites_loop
+    end if if_inventory
 
     ! zero all the patch fire variables for the first timestep
     do s = 1, nsites
