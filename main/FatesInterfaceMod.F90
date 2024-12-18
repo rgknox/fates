@@ -2141,12 +2141,17 @@ contains
         site_npp = 0._r8
         cpatch => sites(s)%oldest_patch
         do_patch: do while(associated(cpatch))
+
            ifp=ifp+1
-           if_bareground: if (cpatch%nocomp_pft_label .ne. nocomp_bareground)then
-           call cpatch%tveg24%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
+
            call cpatch%tveg_lpa%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
            call cpatch%tveg_longterm%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
 
+           !if_bareground: if (cpatch%nocomp_pft_label .ne. nocomp_bareground)then
+           call cpatch%tveg24%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
+           !end if if_bareground
+
+           
            ! Update the seedling layer par running means
            if ( regeneration_model == TRS_regeneration ) then
 
@@ -2191,7 +2196,7 @@ contains
               enddo !end pft loop
 
            end if
-
+           
            ccohort => cpatch%tallest
            do while (associated(ccohort))
               !   call ccohort%tveg_lpa%UpdateRMean(bc_in(s)%t_veg_pa(ifp))
@@ -2203,7 +2208,6 @@ contains
               ccohort => ccohort%shorter
            end do
 
-        end if if_bareground
         cpatch => cpatch%younger
      enddo do_patch
 

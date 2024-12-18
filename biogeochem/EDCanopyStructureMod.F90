@@ -1933,8 +1933,8 @@ contains
           ! use total LAI + SAI to weight the leaft characteristic dimension
           ! Avoid this if running in satellite phenology mode
           ! ----------------------------------------------------------------------------
-
-          if (currentPatch%total_canopy_area > nearzero) then
+          
+          if_totalcanopy_area: if (currentPatch%total_canopy_area > nearzero) then
              currentCohort => currentPatch%shortest
              do while(associated(currentCohort))
                 if (currentCohort%canopy_layer .eq. 1) then
@@ -1975,7 +1975,7 @@ contains
              bc_out(s)%z0m_pa(ifp)    = EDPftvarcon_inst%z0mr(1) * bc_out(s)%htop_pa(ifp)
              bc_out(s)%displa_pa(ifp) = EDPftvarcon_inst%displar(1) * bc_out(s)%htop_pa(ifp)
              bc_out(s)%dleaf_pa(ifp)  = EDPftvarcon_inst%dleaf(1)
-          endif
+          endif if_totalcanopy_area
           ! -----------------------------------------------------------------------------
 
           ! We are assuming here that grass is all located underneath tree canopies.
