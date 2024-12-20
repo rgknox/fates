@@ -67,88 +67,85 @@ def GetModSymbol(mod_path,symbol):
 # =======================================================================================
 
 
-def InstantiateF90Modules(abs_fates_path):
+class f90_modules:
 
-    # abs_fates_path is the absolute path to the fates directory
+    def __init__(self,mod_path):
 
-    mod_path = fates_path+'functional_unit_testing/shared/bld/'
+        # Instantiate DGESV from lapack
+        # ---------------------------------------------------------------------------------------
+
+        self.dgesv_obj = ctypes.CDLL(mod_path+'dgesvMod.o',mode=ctypes.RTLD_GLOBAL)
+
+        
+        # LEAF BIOPHYSICS
+        #----------------------------------------------------------------------------------------
+
+        # Instantiate the F90 modules
+        self.const_obj = ctypes.CDLL(mod_path+'FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.shr_obj = ctypes.CDLL(mod_path+'WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.fatesutils_obj = ctypes.CDLL(mod_path+'FatesUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.leaf_biophys_obj = ctypes.CDLL(mod_path+'LeafBiophysicsMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.leaf_biophys_supp_obj = ctypes.CDLL(mod_path+'LeafBiophysSuppMod.o',mode=ctypes.RTLD_GLOBAL)
+
+        # Identify subroutine objects, so we can call them
+        self.set_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','setleafparam'))
+        self.alloc_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','allocleafparam'))
+        self.dealloc_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','deallocleafparam'))
+        self.dump_param_sub =  getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','DumpParams'))
+        self.biophysrate_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerBiophysicalRate'))
+        self.leaflayerphoto_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerPhotosynthesis'))
+        self.qsat_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','QSat'))
+        self.cangas_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','GetCanopyGasParameters'))
+        self.lmr_ryan_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Ryan_1991'))
+        self.lmr_atkin_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Atkin_etal_2017'))
+        self.gs_medlyn_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','StomatalCondMedlyn'))
+        self.gs_ballberry_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','StomatalCondBallBerry'))
+        self.cifunc_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','CiFunc'))
+        self.cibisection_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','CiBisection'))
+        
+        self.velotomolarcf_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','VeloToMolarCF'))
+        self.agross_rubiscoc3_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRubiscoC3'))
+        self.agross_rubpc3_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC3'))
+        self.agross_rubpc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC4'))
+        self.agross_pepc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossPEPC4'))
     
-    # Instantiate DGESV from lapack
-    # ---------------------------------------------------------------------------------------
-    f_dgesv_obj = ctypes.CDLL(mod_path+'dgesvMod.o',mode=ctypes.RTLD_GLOBAL)
+        # For functions, define the return value
+        self.set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
+        self.agross_rubiscoc3_fun.restype = c_double
+        self.agross_rubpc3_fun.restype = c_double
+        self.agross_rubpc4_fun.restype = c_double
+        self.agross_pepc4_fun.restype = c_double
+        self.velotomolarcf_fun.restype = c_double
 
-
-    # LEAF BIOPHYSICS
-    #----------------------------------------------------------------------------------------
-
-    # Instantiate the F90 modules
-    f90_const_obj = ctypes.CDLL(mod_path+'FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)
-    f90_shr_obj = ctypes.CDLL(mod_path+'WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
-    f90_fatesutils_obj = ctypes.CDLL(mod_path+'FatesUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
-    f90_leaf_biophys_obj = ctypes.CDLL(mod_path+'LeafBiophysicsMod.o',mode=ctypes.RTLD_GLOBAL)
-    f90_leaf_biophys_supp_obj = ctypes.CDLL(mod_path+'LeafBiophysSuppMod.o',mode=ctypes.RTLD_GLOBAL)
-
-    # Identify subroutine objects, so we can call them
-    fsub_set_leaf_param = getattr(f90_leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','setleafparam'))
-    fsub_alloc_leaf_param = getattr(f90_leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','allocleafparam'))
-    fsub_dealloc_leaf_param = getattr(f90_leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','deallocleafparam'))
-    fsub_dump_param =  getattr(f90_leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','DumpParams'))
-    fsub_set_leaf_param.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
-    fsub_biophysrate = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerBiophysicalRate'))
-    fsub_leaflayerphoto = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerPhotosynthesis'))
-    fsub_qsat = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','QSat'))
-    fsub_cangas = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','GetCanopyGasParameters'))
-    fsub_lmr_ryan = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Ryan_1991'))
-    fsub_lmr_atkin = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerMaintenanceRespiration_Atkin_etal_2017'))
-    ffun_agross_rubiscoc3  = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRubiscoC3'))
-    ffun_agross_rubpc3  = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC3'))
-    ffun_agross_rubpc4  = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC4'))
-    ffun_agross_pepc4  = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossPEPC4'))
+        # RADIATION
+        #----------------------------------------------------------------------------------------
     
-    fsub_gs_medlyn = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','StomatalCondMedlyn'))
-    fsub_gs_ballberry = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','StomatalCondBallBerry'))
-    fsub_velotomolarcf = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','VeloToMolarCF'))
-    fsub_cifunc = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','CiFunc'))
-    fsub_cibisection = getattr(f90_leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','CiBisection'))
+        # Instantiate the F90 modules
+        self.shr_obj = ctypes.CDLL(mod_path+'WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.mem_obj = ctypes.CDLL(mod_path+'FatesRadiationMemMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.twostr_obj = ctypes.CDLL(mod_path+'TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.rad_wrap_obj = ctypes.CDLL(mod_path+'RadiationWrapMod.o',mode=ctypes.RTLD_GLOBAL)
+        
+        # Create aliases for the calls and define arguments if it helps with clarity
+        self.alloc_twostream_sub =  getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','initallocate'))
+        self.dealloc_twostream_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','dealloc'))
+        self.alloc_radparams_sub = getattr(self.twostr_obj,GetModSymbol(mod_path+'TwoStreamMLPEMod.o','allocateradparams'))
+        self.set_radparams_sub   = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','setradparam'))
+        self.param_prep_sub = getattr(self.twostr_obj,GetModSymbol(mod_path+'TwoStreamMLPEMod.o','radparamprep'))
+        self.setup_canopy_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','setupcanopy'))
+        self.grndsnow_albedo_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','setgroundsnow'))
+        self.canopy_prep_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapcanopyprep'))
+        self.zenith_prep_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapzenithprep'))
+        self.solver_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapsolve'))
+        self.setdown_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapsetdownwelling'))
+        self.getintens_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapgetintensity'))
+        self.getabsrad_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapgetabsrad'))
+        self.getparams_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapgetparams'))
+        self.forceparam_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapforceparams'))
+                              
+        self.forceparam_sub.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int),POINTER(c_double),c_char_p,c_long]
+        self.setup_canopy_sub.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int), \
+                                          POINTER(c_double),POINTER(c_double),POINTER(c_double)]
+        self.set_radparams_sub.argtypes = [POINTER(c_double),POINTER(c_int),POINTER(c_int),c_char_p,c_long]
+        self.grndsnow_albedo_sub.argtypes = [POINTER(c_int),POINTER(c_double),c_char_p,c_long]
 
-    # For functions, define the return value
-    ffun_agross_rubiscoc3.restype = c_double
-    ffun_agross_rubpc3.restype = c_double
-    ffun_agross_rubpc4.restype = c_double
-    ffun_agross_pepc4.restype = c_double
-    ffun_velotomolarcf.restype = c_double
-
-    # RADIATION
-    #----------------------------------------------------------------------------------------
-    
-    # Instantiate the F90 modules
-    f90_shr_obj = ctypes.CDLL(mod_path+'WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
-    f90_mem_obj = ctypes.CDLL(mod_path+'FatesRadiationMemMod.o',mode=ctypes.RTLD_GLOBAL)
-    f90_twostr_obj = ctypes.CDLL(mod_path+'TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
-    f90_wrap_obj = ctypes.CDLL(mod_path+'RadiationWrapMod.o',mode=ctypes.RTLD_GLOBAL)
-
-    # Create aliases for the calls and define arguments if it helps with clarity
-    fsub_alloc_twostream =  getattr(f90_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','initallocate')
-    fsub_dealloc_twostream = getattr(f90_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','dealloc')
-    fsub_alloc_radparams = getattr(f90_twostr_obj,GetModSymbol(mod_path+'TwoStreamMLPEMod.o','allocateradparams')
-    ffun_set_radparams   = f90_wrap_obj.__radiationwrapmod_MOD_setradparam
-    ffun_set_radparams.argtypes = [POINTER(c_double),POINTER(c_int),POINTER(c_int),c_char_p,c_long]
-
-    fsub_param_prep = f90_twostr_obj.__twostreammlpemod_MOD_radparamprep
-    fsub_setup_canopy = f90_wrap_obj.__radiationwrapmod_MOD_setupcanopy
-    fsub_setup_canopy_call.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int), \
-                                  POINTER(c_double),POINTER(c_double),POINTER(c_double)]
-
-    fsub_grndsnow_albedo = f90_wrap_obj.__radiationwrapmod_MOD_setgroundsnow
-    fsub_grndsnow_albedo.argtypes = [POINTER(c_int),POINTER(c_double),c_char_p,c_long]
-
-    fsub_canopy_prep = f90_wrap_obj.__radiationwrapmod_MOD_wrapcanopyprep
-    fsub_zenith_prep = f90_wrap_obj.__radiationwrapmod_MOD_wrapzenithprep
-    fsub_solver = f90_wrap_obj.__radiationwrapmod_MOD_wrapsolve
-    fsub_setdown = f90_wrap_obj.__radiationwrapmod_MOD_wrapsetdownwelling
-    
-    fsub_getintens = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetintensity
-    fsub_getabsrad = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetabsrad
-    fsub_getparams = f90_wrap_obj.__radiationwrapmod_MOD_wrapgetparams
-    fsub_forceparam = f90_wrap_obj.__radiationwrapmod_MOD_wrapforceparams
-    fsub_forceparam.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int),POINTER(c_double),c_char_p,c_long]
