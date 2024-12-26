@@ -48,9 +48,6 @@ plt.rcParams.update({'font.size': 14})
 # Global constants to use in all Leaf Biophysics unit testing
 # =======================================================================================
 
-do_comparekitajimacond = False
-
-
 # Freezing point of water in Kelvin (at standard atmosphere)
 tfrz_1atm = 273.15
 
