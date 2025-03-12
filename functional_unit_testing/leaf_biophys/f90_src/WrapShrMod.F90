@@ -37,7 +37,13 @@ module FatesGlobals
   use FatesConstantsMod, only : r8 => fates_r8
 
   integer :: stdo_unit = 6
-  
+
+  public :: fates_log
+  public :: fates_endrun
+  public :: N2S
+  public :: FatesWarn
+  public :: I2S
+  public :: A2S
 contains
   
   integer function fates_log()
