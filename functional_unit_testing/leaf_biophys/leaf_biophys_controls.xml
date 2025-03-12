@@ -18,7 +18,7 @@
       <param name='fates_leaf_c3psn'> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0 </param>
       <param name='fates_leaf_stomatal_slope_ballberry'> 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8 </param>
       <param name='fates_leaf_stomatal_slope_medlyn'> 4.1, 2.3, 2.3, 4.1, 4.4, 4.4, 4.7, 4.7, 4.7, 2.2, 5.3, 1.6 </param>
-      <param name='fates_leaf_fnps'> 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15 </param>
+      <param name='fates_leaf_fnps'> 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15 </param>
       <param name='fates_leaf_stomatal_intercept'> 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 40000 </param>
       <param name='fates_maintresp_reduction_curvature'>  0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01 </param>
       <param name='fates_maintresp_reduction_intercept'> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 </param>
