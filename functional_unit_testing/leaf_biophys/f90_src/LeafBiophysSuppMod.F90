@@ -71,6 +71,8 @@ contains
     integer(kind=c_int), intent(in) :: pft
 
     select case(trim(pname))
+    case('fates_electron_transport_model')
+       lb_prams%electron_transport_model = nint(val)
     case('fates_daylength_factor_switch')
        lb_params%dayl_switch = nint(val)
     case('fates_leaf_stomatal_model')
