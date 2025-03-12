@@ -72,7 +72,7 @@ contains
 
     select case(trim(pname))
     case('fates_electron_transport_model')
-       lb_prams%electron_transport_model = nint(val)
+       lb_params%electron_transport_model = nint(val)
     case('fates_daylength_factor_switch')
        lb_params%dayl_switch = nint(val)
     case('fates_leaf_stomatal_model')
@@ -87,6 +87,8 @@ contains
        lb_params%stomatal_btran_model(pft) = nint(val)
     case('fates_leaf_agross_btran_model')
        lb_params%agross_btran_model(pft) = nint(val)
+    case('fates_leaf_fnps')
+       lb_params%fnps(pft) = val
     case('fates_leaf_stomatal_slope_ballberry')
        lb_params%bb_slope(pft) = val
     case('fates_leaf_stomatal_slope_medlyn')
