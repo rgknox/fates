@@ -115,18 +115,6 @@ nscaler_top = 1.0
 # and then afterwards, scale by the magnitude of the downwelling flux
 normalized_boundary = 1
 
-leaf_rhonir = [0.46, 0.41, 0.39, 0.46, 0.41, 0.41, 0.46, 0.41, 0.41, 0.28, 0.28, 0.28 ]
-leaf_rhovis = [0.11, 0.09, 0.08, 0.11, 0.08, 0.08, 0.11, 0.08, 0.08, 0.05, 0.05, 0.05 ]
-leaf_taunir = [0.33, 0.32, 0.42, 0.33, 0.43, 0.43, 0.33, 0.43, 0.43, 0.4,  0.4,  0.4 ]
-leaf_tauvis = [0.06, 0.04, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.05, 0.05, 0.05]
-leaf_xl     = [0.32, 0.01, 0.01, 0.32, 0.2, 0.59, 0.32, 0.59, 0.59, -0.23, -0.23, -0.23]
-leaf_clumping_index = [0.85, 0.85, 0.8, 0.85, 0.85, 0.9, 0.85, 0.9, 0.9, 0.75, 0.75, 0.75]
-stem_rhonir = [0.49, 0.36, 0.36, 0.49, 0.49, 0.49, 0.49, 0.49, 0.49, 0.53, 0.53, 0.53]
-stem_rhovis = [0.21, 0.12, 0.12, 0.21, 0.21, 0.21, 0.21, 0.21, 0.21, 0.31, 0.31, 0.31]
-stem_taunir = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.25, 0.25, 0.25]
-stem_tauvis = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.12, 0.12, 0.12]
-
-
 # Initialize all of the fortran shared objects, and create aliases
 # for the various subroutines and functions
 # =======================================================================================
@@ -286,6 +274,7 @@ def main(argv):
     ground_albedo_beam    = 0.3
     frac_snow             = 0.0
 
+    
     # The number of PFTs we actually simulate (do not change)
     nusepft = 1
     
@@ -367,6 +356,11 @@ def main(argv):
     g_b_umol = np.zeros(ntime)
     ag_limit = np.zeros([n_layer,2])
     ag_sslimit = np.zeros([n_layer,2,2])
+
+
+    aglimit_which = []
+    aglimit_apar  = []
+    aglimit_temp  = []
     
     # Start the main model time loop
     # -----------------------------------------------------------------------------------
@@ -414,7 +408,7 @@ def main(argv):
             rd_abs_leaf[il] = rd_abs_leaf_f.value
             rb_abs_leaf[il] = rb_abs_leaf_f.value
             sunfrac[il]     = leaf_sun_frac_f.value
-            par_abs_umol_m2 = (rd_abs_leaf[il] + rb_abs_leaf[il])*wm2_to_umolm2s/dalai
+            #par_abs_umol_m2 = (rd_abs_leaf[il] + rb_abs_leaf[il])*wm2_to_umolm2s/dalai
 
             # Scale down N and biophysical rates
             #nscaler = 
@@ -468,7 +462,7 @@ def main(argv):
                                                byref(c13_f), \
                                                byref(co2_interc_f), \
                                                byref(solve_inter_f))
-
+                 
                 lmr[it]        = lmr[it] + areafrac*vfrac*lmr_f.value
                 agross[it]     = agross[it] + areafrac*vfrac*agross_f.value
                 gstoma[it]     = gstoma[it] + areafrac*vfrac*gstoma_f.value
@@ -477,18 +471,23 @@ def main(argv):
                 agross_rubisco = f90.agross_rubiscoc3_fun(c8(vcmax_f.value), c8(co2_interc_f.value), \
                                                           c8(o2_ppress_209kppm), c8(co2_cpoint_f.value), \
                                                           c8(mm_kco2_f.value),c8(mm_ko2_f.value) )
-                agross_rubpc3  = f90.agross_rubpc3_fun(c8(par_abs_umol_m2), c8(jmax_f.value), \
+                agross_rubpc3  = f90.agross_rubpc3_fun(c8(par_abs), c8(jmax_f.value), \
                                                        c8(params['fates_leaf_fnps'].data[paft]), \
                                                        c8(co2_interc_f.value),c8(co2_cpoint_f.value))
-            
+                aglimit_apar.append(par_abs)
+                aglimit_temp.append(tvegk)
+                
                 #code.interact(local=dict(globals(), **locals()))
                 if(agross_rubisco<agross_rubpc3):
                     ag_limit[il,0] = ag_limit[il,0] + areafrac
                     ag_sslimit[il,ipar,0] = ag_sslimit[il,ipar,0] + areafrac
+                    aglimit_which.append(1.)
+                                         
                 else:
                     ag_limit[il,1] = ag_limit[il,1] + areafrac
                     ag_sslimit[il,ipar,1] = ag_sslimit[il,ipar,1] + areafrac
-            
+                    aglimit_which.append(0.)
+                    
             plot_vert_prof = False
             if(plot_vert_prof):
                 fig00, axs = plt.subplots(ncols=1,nrows=2,figsize=(5,8))
@@ -512,6 +511,18 @@ def main(argv):
 
         
 
+    fig7,(ax1,ax2) = plt.subplots(2,1,figsize=(5.5,7.5))
+
+    ax1.scatter(aglimit_apar,aglimit_which)
+    ax1.set_ylabel('1 = Rubisco, 0 = RuBP')
+    ax1.set_xlabel('Apar [umol/m2/s]')
+    ax1.grid('on')
+    
+    ax2.scatter(aglimit_temp,aglimit_which)
+    ax2.set_ylabel('1 = Rubisco, 0 = RuBP')
+    ax2.set_xlabel('Temperature [K]')
+    ax2.grid('on')
+           
     fig55, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.5))
 
     ax3.plot(ag_limit[:,1]/(ag_limit[:,0]+ag_limit[:,1]),avai[:])
