@@ -87,7 +87,10 @@ class met_driver:
         if(study_period == 'unfiltered'):
             bfilter = [ True for iyr,year in enumerate(self.data['yr'])]
 
+        if(study_period == 'daytime'):
+            bfilter = [ (self.data['Rtot'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
 
+            
         if(sum(bfilter)<1):
             print('The filtering of met data produced no datapoints')
             exit(2)

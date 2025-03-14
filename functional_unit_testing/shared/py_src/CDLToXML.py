@@ -9,9 +9,10 @@ import code  # For development: code.interact(local=dict(globals(), **locals()))
 import numpy as np
 import sys
 import argparse
+from datetime import date
+import xml.etree.ElementTree as ET
 
-
-debug = False
+debug = True
 
 # This is saved as a dictionary with
 # symbol names as keys
@@ -121,6 +122,7 @@ def main(argv):
 
     parser = argparse.ArgumentParser(description='Parse command line arguments to this script.')
     parser.add_argument('--cdlfile', dest='cdlfile', type=str, help="cdl file path, required.", required=True)
+    parser.add_argument('--xmlfile', dest='xmlfile', type=str, help="xml file path, required.", required=True)
     parser.set_defaults(feature=False)
     parser.add_argument('--verbose', dest='verbose', action='store_true')
    
@@ -129,7 +131,57 @@ def main(argv):
 
     params,dims = CDLParse(args.cdlfile,args.verbose)
 
+    with open(args.xmlfile,"w") as file:
+        file.write('<xml version="1.0" encoding="us-ascii" >\n')
+        file.write('  <history>{} : {}</history>\n'.format(\
+            date.today().strftime("%d/%m/%y"), \
+            'First instantation, copied from: {}.'.format(args.cdlfile)))
+        file.write('  <dimensions>\n')
+        for key, val in dims.items():
+            file.write('    <dim name="{}"> {} </dim>\n'.format(key,val))
+        file.write('  </dimensions>\n')
+        file.write('  <parameters>\n')
+        for key, val in params.items():
+            #print(key,val)
+            #print(val.dim_names)
+            file.write('    <par name="{}">\n'.format(key))
+            file.write('      <dims> {} </dims>\n'.format(', '.join(val.dim_names)))
+            file.write('      <long> {} </long>\n'.format(val.meta['long_name']))
+            file.write('      <units> {} </units>\n'.format(val.meta['units']))
+            data_strs = [str(c) for c in val.data]
+            file.write('      <data> {} </data>\n'.format(', '.join(data_strs)))
+            file.write('    </par>\n')
+        file.write('  </parameters>\n')
+        file.write('</xml>\n')
 
+    # Test the file write
+    if(debug):
+        xmlroot = ET.parse(args.xmlfile).getroot()
+        #code.interact(local=dict(globals(), **locals()))
+
+    
+    # Write out the xml file
+    # Example template
+    # <?xml version="1.0"?>
+    # <all>
+    #  <notes> This is the default FATES parameter file </notes>
+    #  <history> timestamp: note </history>
+    #  <dimensions>
+    #   <dim name='numpft'> 14 </dim>
+    #  </dimensions>
+    #  <parameters>
+    #   <par name='fates_stoich_nitr'
+    #    <d>fates_pft,other</d>
+    #    <l>long description</l>
+    #    <u>units</u>
+    #    <v>1,2,3,4</v>
+    #   </par>
+    #  </parameters>
+    # </all>
+    # 
+    
+
+    
 def CDLParse(file_name,verbose):
 
     fp = open(file_name,"r")
@@ -260,7 +312,7 @@ def CDLParse(file_name,verbose):
             if(il>len(contents)):
                 print('Could not find the data for symbol {}'.format(symbol))
                 exit(2)
-
+            
             if symbol == contents[il].split('=')[0].strip():
 
                 # its possible that the variable line of interest
@@ -313,7 +365,6 @@ def CDLParse(file_name,verbose):
                     
 
     return params,dims
-
 
 if __name__ == "__main__":
     main(sys.argv)
