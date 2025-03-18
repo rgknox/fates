@@ -38,7 +38,7 @@ from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
 from GetCosZ import GetCosZ
 from MetDrivers import met_driver
 
-
+from PushParameters import PushParameters
 from CDLRead import CDLParse
 import CtypesInit
 
@@ -186,54 +186,10 @@ def main(argv):
     iret = f90.set_leaf_param_sub(c8(1),ci(0),*ccharnb('fates_electron_transport_model'))
 
     numpft = dims['fates_pft']
-    
-    # Allocating parameters
-    print('Allocating parameter space for {} pfts'.format(numpft))
-    iret = f90.alloc_leaf_param_sub(ci(numpft))
 
-    # These are photosynthesis PFT parameters that also need to be pushed to the fortran objects
-    f90_photo_pft_params = ['fates_leaf_stomatal_btran_model','fates_leaf_agross_btran_model', \
-                            'fates_leaf_c3psn','fates_leaf_stomatal_slope_ballberry', \
-                            'fates_leaf_stomatal_slope_medlyn','fates_leaf_fnps', \
-                            'fates_leaf_stomatal_intercept','fates_maintresp_reduction_curvature', \
-                            'fates_maintresp_reduction_intercept','fates_maintresp_reduction_upthresh', \
-                            'fates_maintresp_leaf_atkin2017_baserate','fates_maintresp_leaf_ryan1991_baserate', \
-                            'fates_leaf_vcmaxha','fates_leaf_jmaxha', \
-                            'fates_leaf_vcmaxhd','fates_leaf_jmaxhd', \
-                            'fates_leaf_vcmaxse','fates_leaf_jmaxse']
 
-    
-    # Push Parameter File values to the fortran objects, also save some values in local lists
-    leaf_c3psn = []
-    leaf_stomatal_intercept = []
-    for param_name in f90_photo_pft_params:
-        for pft in range(numpft):
-            iret = f90.set_leaf_param_sub(c8(float(params[param_name].data[pft])),ci(pft+1),*ccharnb(param_name))
-            if(param_name == 'fates_leaf_c3psn'):
-                leaf_c3psn.append(int(params[param_name].data[pft]))
-            if(param_name == 'fates_leaf_stomatal_intercept'):
-                leaf_stomatal_intercept.append(int(params[param_name].data[pft]))
-
-    if(len(leaf_c3psn) != numpft):
-        print('Did not find fates_leaf_c3psn')
-        exit(1)
-
-    
-    # Allocate and push radiation parameters
-    # -----------------------------------------------------------------------------------
-    iret = f90.alloc_radparams_sub(ci(numpft),ci(n_bands))
-    for ft in range(numpft):
-        pft = ft+1
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_leaf_rhovis'].data[ft])), c_int(pft),c_int(visb),*ccharnb("rhol"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_leaf_rhonir'].data[ft])), c_int(pft),c_int(nirb),*ccharnb("rhol"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_leaf_tauvis'].data[ft])), c_int(pft),c_int(visb),*ccharnb("taul"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_leaf_taunir'].data[ft])), c_int(pft),c_int(nirb),*ccharnb("taul"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_stem_rhovis'].data[ft])), c_int(pft),c_int(visb),*ccharnb("rhos"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_stem_rhonir'].data[ft])), c_int(pft),c_int(nirb),*ccharnb("rhos"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_stem_tauvis'].data[ft])), c_int(pft),c_int(visb),*ccharnb("taus"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_stem_taunir'].data[ft])), c_int(pft),c_int(nirb),*ccharnb("taus"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_leaf_xl'].data[ft])), c_int(pft), c_int(0),*ccharnb("xl"))
-        iret = f90.set_radparams_sub(c8(float(params['fates_rad_leaf_clumping_index'].data[ft])), c_int(pft),c_int(0),*ccharnb("clumping_index"))
+    # Call this external to push the default parameters to the F90 objects
+    PushParameters(f90,params,dims)
 
 
     # code.interact(local=dict(globals(), **locals()))
@@ -315,18 +271,25 @@ def main(argv):
     iret = f90.canopy_prep_sub(c8(frac_snow))
 
     # number of discrete canopy layers
-    n_layer = 50
-    avai = np.zeros(n_layer)
+    n_layer = 500
+
+    avai = np.zeros(n_layer)  # Accumulated VAI (top of bin)
+    
     rd_abs_leaf = np.zeros(n_layer)
     rb_abs_leaf = np.zeros(n_layer)
+    r_abs_stem  = np.zeros(n_layer)
+    rd_dn = np.zeros(n_layer)
+    rd_up = np.zeros(n_layer)
+    rbeam =  np.zeros(n_layer)
     sunfrac = np.zeros(n_layer)
+    sunfrac_v2 = np.zeros(n_layer)
     for il in range(n_layer):
         avai[il] = (total_lai+total_sai)*float(il)/float(n_layer)
     davai =  (total_lai+total_sai)/float(n_layer)
     dalai =  total_lai/float(n_layer)
     vfrac = 1./float(n_layer)
 
-
+    
     # Initialize variables that are output from the f90 modules
     # these need to be defined as a cytype, and are floating point,
     # integer or strings
@@ -342,8 +305,9 @@ def main(argv):
     albedo_diff_f   = c_double(-9);    canabs_beam_f   = c_double(-9);    canabs_diff_f   = c_double(-9)
     ffbeam_beam_f   = c_double(-9);    ffdiff_beam_f   = c_double(-9);    ffdiff_diff_f   = c_double(-9)
     rd_abs_leaf_f   = c_double(-9);    rb_abs_leaf_f   = c_double(-9);    r_abs_stem_f    = c_double(-9)
-    r_abs_snow_f    = c_double(-9);    leaf_sun_frac_f = c_double(-9)
-
+    r_abs_snow_f    = c_double(-9);    leaf_sun_frac_f = c_double(-9);    r_diff_dn_f     = c_double(-9)
+    rd_abs_f        = c_double(-9);    rb_abs_f        = c_double(-9);    r_diff_up_f     = c_double(-9)
+    r_beam_f        = c_double(-9);    leaf_sun_frac_v2_f = c_double(-9);
     
     # Initialize output arrays
     # -----------------------------------------------------------------------------------
@@ -399,15 +363,33 @@ def main(argv):
                               byref(mm_ko2_f), \
                               byref(co2_cpoint_f))
 
+        par_abs_check = 0
         for il in range(n_layer):
-            
+
+            #print('py: laitop: {}, laibot: {}'.format(avai[il],avai[il]+davai))
             iret = f90.getabsrad_sub(ci(1),ci(1),ci(visb),c8(avai[il]),c8(avai[il]+davai), \
+                                     byref(rd_abs_f),byref(rb_abs_f), \
                                      byref(rd_abs_leaf_f),byref(rb_abs_leaf_f),byref(r_abs_stem_f), \
-                                     byref(r_abs_snow_f),byref(leaf_sun_frac_f))
+                                     byref(r_abs_snow_f),byref(leaf_sun_frac_f),byref(leaf_sun_frac_v2_f))
+
+            #print('python:',rd_abs_leaf_f.value,rb_abs_leaf_f.value,r_abs_stem_f.value)
             
             rd_abs_leaf[il] = rd_abs_leaf_f.value
             rb_abs_leaf[il] = rb_abs_leaf_f.value
-            sunfrac[il]     = leaf_sun_frac_f.value
+            r_abs_stem[il]  = r_abs_stem_f.value
+
+            
+
+            iret = f90.getintens_sub(ci(1), ci(1), ci(visb), c8(avai[il]+0.5*davai), \
+                                     byref(r_diff_dn_f), byref(r_diff_up_f), byref(r_beam_f))
+
+            rd_dn[il] = r_diff_dn_f.value
+            rd_up[il] = r_diff_up_f.value
+            rbeam[il] = r_beam_f.value
+            
+            sunfrac[il] = leaf_sun_frac_f.value
+            sunfrac_v2[il] = leaf_sun_frac_v2_f.value
+            
             #par_abs_umol_m2 = (rd_abs_leaf[il] + rb_abs_leaf[il])*wm2_to_umolm2s/dalai
 
             # Scale down N and biophysical rates
@@ -430,11 +412,22 @@ def main(argv):
 
             for ipar in [0,1]:
                 if(ipar==0):
-                    areafrac = sunfrac[il]
+                    areafrac = sunfrac_v2[il]
                     par_abs  = (rb_abs_leaf[il]/(dalai*areafrac) + rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
+
+                    # Energy conservation check (beam absorbed by leaf)
+                    par_abs_check = par_abs_check + par_abs*sunfrac_v2[il]*dalai
+                    par_abs
+
                 else:
-                    areafrac = 1.-sunfrac[il]
+                    areafrac = 1.-sunfrac_v2[il]
                     par_abs  = (rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
+
+                if(par_abs>4000):
+                    print('high par_abs:',ipar,il,met.data['Rbeam'][it]*wm2_to_umolm2s, \
+                          met.data['Rdiff'][it]*wm2_to_umolm2s,rb_abs_leaf[il]*wm2_to_umolm2s,dalai,areafrac,rd_abs_leaf[il]*wm2_to_umolm2s)
+                    exit(0)
+
                     
                 iret = f90.leaflayerphoto_sub( c8(par_abs),  \
                                                ci(pft),   \
@@ -471,6 +464,7 @@ def main(argv):
                 agross_rubisco = f90.agross_rubiscoc3_fun(c8(vcmax_f.value), c8(co2_interc_f.value), \
                                                           c8(o2_ppress_209kppm), c8(co2_cpoint_f.value), \
                                                           c8(mm_kco2_f.value),c8(mm_ko2_f.value) )
+                
                 agross_rubpc3  = f90.agross_rubpc3_fun(c8(par_abs), c8(jmax_f.value), \
                                                        c8(params['fates_leaf_fnps'].data[paft]), \
                                                        c8(co2_interc_f.value),c8(co2_cpoint_f.value))
@@ -487,28 +481,58 @@ def main(argv):
                     ag_limit[il,1] = ag_limit[il,1] + areafrac
                     ag_sslimit[il,ipar,1] = ag_sslimit[il,ipar,1] + areafrac
                     aglimit_which.append(0.)
-                    
-            plot_vert_prof = False
-            if(plot_vert_prof):
-                fig00, axs = plt.subplots(ncols=1,nrows=2,figsize=(5,8))
-                ax1s = axs.reshape(-1)
 
-                ax = ax1s[0]
-                ax.plot(rd_abs_leaf,avai)
-                ax.set_ylim([0,total_lai+total_sai])
-                ax.invert_yaxis()
-                ax.set_xlabel('[W/m2 ground]')
-                ax.set_title('Absorbed Par')
-                
-                ax = ax1s[1]
-                ax.plot(np.cumsum(rd_abs_leaf),avai)
-                ax.set_ylim([0,total_lai+total_sai])
-                ax.invert_yaxis()
-                ax.set_xlabel('[W/m2]')
-                ax.set_title('Integrated Absorbed Par')
-                
-                plt.show()
+        plot_vert_prof = True
+        if(plot_vert_prof):
+            fig00, axs = plt.subplots(ncols=2,nrows=2,figsize=(7,7))
+            ax1s = axs.reshape(-1)
 
+            ax = ax1s[0]
+            ax.plot(rd_abs_leaf,avai)
+            ax.set_ylim([0,total_lai+total_sai])
+            ax.invert_yaxis()
+            #ax.set_xlabel('[W/m2 ground]')
+            ax.set_title('Absorbed Par')
+            ax.grid('on')
+            
+            ax = ax1s[1]
+            ax.plot(sunfrac,avai,label='v1')
+            ax.plot(sunfrac_v2,avai,label='v2')
+            ax.set_ylim([0,total_lai+total_sai])
+            ax.invert_yaxis()
+            ax.set_xlabel('[/]')
+            ax.set_title('Sunlit Fraction')
+            ax.grid('on')
+            ax.legend()
+            
+            ax = ax1s[2]
+            ax.plot(rd_dn,avai+0.5*davai,label='Rd(dn)')
+            ax.plot(rd_up,avai+0.5*davai,label='Rd(up)')
+            ax.plot(rbeam,avai+0.5*davai,label='Rb')
+            ax.set_ylim([0,total_lai+total_sai])
+            ax.invert_yaxis()
+            ax.set_xlabel('[W/m2]')
+            ax.set_title('Par Flux Rate')
+            ax.legend()
+            ax.grid('on')
+            
+            ax = ax1s[3]
+            ax.axis('off')
+            ax.text(0.25,0.5,'cosz: {} \nRbeam: {} \nRdiff: {}'.format(cosz[it],met.data['Rbeam'][it],met.data['Rdiff'][it]))
+
+            
+            plt.show()
+
+        # Check absorbed PAR
+        #byref(albedo_beam_f),byref(albedo_diff_f), \
+        #               byref(canabs_beam_f),byref(canabs_diff_f), \
+        #               byref(ffbeam_beam_f),byref(ffdiff_beam_f),byref(ffdiff_diff_f))
+         
+        err = met.data['Rbeam'][it]*canabs_beam_f.value + met.data['Rdiff'][it]*canabs_diff_f.value - par_abs_check
+
+        if(err>1.e-4):
+            print(met.data['Rbeam'][it],canabs_beam_f.value,met.data['Rdiff'][it],canabs_diff_f.value,par_abs_check)
+            exit(2)
         
 
     fig7,(ax1,ax2) = plt.subplots(2,1,figsize=(5.5,7.5))
@@ -545,6 +569,16 @@ def main(argv):
     ax2.set_xlabel('Fraction RuBP Limited')
     ax2.set_title('Shaded')
     ax2.grid('on')
+
+    fig23, ax1= plt.subplots(figsize=(7.5,7.5))
+
+    nhbins = 20
+    boff   = 0
+    
+    hist,bins = np.histogram(aglimit_apar, bins=nhbins)
+    binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
+    ax1.plot(binsc[boff:],hist[boff:]/len(aglimit_apar), color = 'k')
+
     
     fig22,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(7.5,7.5))
 

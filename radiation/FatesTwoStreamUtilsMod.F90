@@ -499,9 +499,9 @@ contains
     real(r8),intent(in)  :: vaibot
     real(r8),intent(in)  :: cohort_elai
     real(r8),intent(in)  :: cohort_esai
-    real(r8),intent(out) :: rb_abs
-    real(r8),intent(out) :: rd_abs
-    real(r8),intent(out) :: rb_abs_leaf
+    real(r8),intent(out) :: rb_abs           ! Watts/m2 of ground
+    real(r8),intent(out) :: rd_abs           ! Watts/m2 of ground
+    real(r8),intent(out) :: rb_abs_leaf      ! Watts/m2 of ground
     real(r8),intent(out) :: rd_abs_leaf
     real(r8),intent(out) :: leaf_sun_frac
 

@@ -215,14 +215,26 @@ contains
     return
   end subroutine WrapGetIntensity
 
-  subroutine WrapGetAbsRad(ican,icol,ib,vai_top,vai_bot,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+  subroutine WrapGetAbsRad(ican,icol,ib,vai_top,vai_bot,Rd_abs,Rb_abs,Rd_abs_leaf, &
+       Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,leaf_sun_frac_v2)
 
     integer(c_int) :: ican, icol
     integer(c_int) :: ib
     real(r8)    :: vai_top,vai_bot
-    real(r8)    :: Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,Rb_abs,Rd_abs
+    real(r8)    :: Rd_abs_leaf,R_abs,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,Rb_abs,Rd_abs,leaf_sun_frac_v2
 
-    call twostream%GetAbsRad(ican,icol,ib,vai_top,vai_bot,Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+    !subroutine GetAbsRad(this,ican,icol,ib,
+    !  vai_top,vai_bot, &
+    !  Rb_abs,Rd_abs,
+    !  Rd_abs_leaf,Rb_abs_leaf,
+    !  R_abs_stem,
+    !  R_abs_snow,
+    !  leaf_sun_frac)
+   
+    call twostream%GetAbsRad(ican,icol,ib,vai_top,vai_bot,Rb_abs,Rd_abs,Rd_abs_leaf, &
+         Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,leaf_sun_frac_v2)
+
+    !print*,'FORT: ',Rd_abs_leaf,Rb_abs_leaf,R_abs_stem
     
     return
   end subroutine WrapGetAbsRad
