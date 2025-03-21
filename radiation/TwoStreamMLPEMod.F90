@@ -514,14 +514,29 @@ contains
 
       ! delta_area = Rb0*(exp(-Kb*(vai_top)) - exp(-Kb(vai_bot)))
       ! delta_area = vai*Kb*sunfrac = Rb0*(exp(-Kb*(vai_top)) - exp(-Kb(vai_bot)))
+
+      ! From NCAR Technical NOTE:
+      ! Lsun = (1-e^(-Kb(L+S)))/Kb
+      ! fsun_ave = (1-e^(-Kb(L+S)))/(Kb*L)
+
+      ! fsun = exp(-Kb*V)
+      ! Integrate from 0 to Vbot
+      ! fsun = 
+      
+      !
+      ! From Our Derivation:
+      ! fsun = Rb0*(exp(-scelg%Kb_leaf*lai_top) - exp(-scelg%Kb_leaf*lai_bot))/(dL*Kbleaf/clump)  
       
       if(dlai>nearzero)then
          leaf_sun_frac = max(0.001_r8,min(0.999_r8,scelb%Rbeam0/(dlai*scelg%Kb_leaf/rad_params%clumping_index(ft)) &
-              *(exp(-scelg%Kb_leaf*lai_top) - exp(-scelg%Kb_leaf*lai_bot))))
+              *(exp(-scelg%Kb_leaf*lai_top) - exp(-scelg%Kb_leaf*lai_bot) ) ))
          !leaf_sun_frac = scelb%Rbeam0/(dlai*scelg%Kb_leaf/rad_params%clumping_index(ft)) &
          !     *(exp(-scelg%Kb_leaf*lai_top) - exp(-scelg%Kb_leaf*lai_bot))
 
          !leaf_sun_frac_v2 = scelb%Rbeam0*(exp(-scelg%Kb*vai_top) - exp(-scelg%Kb*vai_bot))/(dvai*scelg%Kb)
+
+         leaf_sun_frac_v2 =  scelb%Rbeam0*(exp(-scelg%Kb*vai_top) - exp(-scelg%Kb*vai_bot))/(dvai*scelg%Kb)
+         
 
       else
          leaf_sun_frac = 0.001_r8
@@ -637,19 +652,19 @@ contains
       ! needed at a flux density of Rbeam_atm
       ! this%band(ib)%Rbeam_atm*(1._r8-rad_params%om_leaf(ib,ft))*leaf_sun_frac_v2*dlai = Rb_abs_leaf
       
-      if(this%band(ib)%Rbeam_atm*dlai>nearzero)then
+      !if(this%band(ib)%Rbeam_atm*dlai>nearzero)then
 
-         leaf_sun_frac_v2 = Rb_abs_leaf/(this%band(ib)%Rbeam_atm*(1._r8-rad_params%om_leaf(ib,ft))*scelg%Kb_leaf*dlai)
+      !leaf_sun_frac_v2 = Rb_abs_leaf/(this%band(ib)%Rbeam_atm*(1._r8-rad_params%om_leaf(ib,ft))*scelg%Kb_leaf*dlai)
          
-         if(leaf_sun_frac_v2>1._r8) then
-            write(log_unit,*)"sunlit fraction > 1?",leaf_sun_frac_v2,Rb_abs_leaf, &
-                 this%band(ib)%Rbeam_atm,1._r8-rad_params%om_leaf(ib,ft),dlai
-            call endrun(msg=errMsg(sourcefile, __LINE__))
-         end if
+      !   if(leaf_sun_frac_v2>1._r8) then
+      !      write(log_unit,*)"sunlit fraction > 1?",leaf_sun_frac_v2,Rb_abs_leaf, &
+      !           this%band(ib)%Rbeam_atm,1._r8-rad_params%om_leaf(ib,ft),dlai
+      !      call endrun(msg=errMsg(sourcefile, __LINE__))
+      !   end if
          
-      else
-         leaf_sun_frac_v2 = 0.5_r8  ! Nominal value, of no consequence
-      end if
+      !else
+      !   leaf_sun_frac_v2 = 0.5_r8  ! Nominal value, of no consequence
+      !end if
 
       
     end associate

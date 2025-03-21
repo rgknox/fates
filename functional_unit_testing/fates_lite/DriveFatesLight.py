@@ -196,7 +196,8 @@ def main(argv):
     # Lets create a synthetic met driver based on nearest neighbor data?
     # ------------------------------------------------------------------------------------
     
-    met = met_driver("/home/rgknox/Downloads/bci_met.txt")
+    #met = met_driver("/home/rgknox/Downloads/bci_met.txt")
+    met = met_driver("bci_met_data/BCI_met_drivers_2003_2016.csv")
     met.FilterTimes('daytime')
 
     
@@ -271,7 +272,7 @@ def main(argv):
     iret = f90.canopy_prep_sub(c8(frac_snow))
 
     # number of discrete canopy layers
-    n_layer = 500
+    n_layer = 10
 
     avai = np.zeros(n_layer)  # Accumulated VAI (top of bin)
     
