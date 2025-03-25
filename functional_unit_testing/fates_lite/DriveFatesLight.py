@@ -35,7 +35,7 @@ sys.path.append('../shared/py_src')
 
 from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
 
-from GetCosZ import GetCosZ
+from MetDrivers import GetCosZ
 from MetDrivers import met_driver
 
 from PushParameters import PushParameters
@@ -201,7 +201,7 @@ def main(argv):
     met.FilterTimes('daytime')
 
     
-    ntime = met.ndata
+    ntimes = met.ndata
 
     # For cosine..
     zone = 12-5
@@ -210,9 +210,22 @@ def main(argv):
     latitude=9.153
     longitude=280.1539-360.0
 
+    for it in range(ntimes):
+        
+        tvegk = met.data['t_veg'][it]
 
+        
+        doy = cdoys[met.data['mon'][it]-1] + met.data['day'][it]
+        lhour = met.data['hod'][it]-5.0
+        if(lhour<0):
+            lhour = lhour-24
+            doy   = doy-1
 
-    
+        met.data['cosz'][it] = GetCosZ(zone,doy,latitude,longitude,lhour)
+
+    # Simple check to see if the cosz follows the diurnal signal
+    #met.EvalCosz()
+        
     # User specifications
     # -----------------------------------------------------------------------------------
     
@@ -231,6 +244,23 @@ def main(argv):
     ground_albedo_beam    = 0.3
     frac_snow             = 0.0
 
+    n_layer = 10 # number of discrete canopy layers
+
+    avai = np.zeros(n_layer)  # Accumulated VAI (top of bin)
+    
+    rd_abs_leaf = np.zeros(n_layer)
+    rb_abs_leaf = np.zeros(n_layer)
+    r_abs_stem  = np.zeros(n_layer)
+    rd_dn = np.zeros(n_layer)
+    rd_up = np.zeros(n_layer)
+    rbeam =  np.zeros(n_layer)
+    sunfrac = np.zeros(n_layer)
+    sunfrac_v2 = np.zeros(n_layer)
+    for il in range(n_layer):
+        avai[il] = (total_lai+total_sai)*float(il)/float(n_layer)
+    davai =  (total_lai+total_sai)/float(n_layer)
+    dalai =  total_lai/float(n_layer)
+    vfrac = 1./float(n_layer)
     
     # The number of PFTs we actually simulate (do not change)
     nusepft = 1
@@ -271,24 +301,7 @@ def main(argv):
     iret = f90.grndsnow_albedo_sub(c_int(nirb),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
     iret = f90.canopy_prep_sub(c8(frac_snow))
 
-    # number of discrete canopy layers
-    n_layer = 10
-
-    avai = np.zeros(n_layer)  # Accumulated VAI (top of bin)
     
-    rd_abs_leaf = np.zeros(n_layer)
-    rb_abs_leaf = np.zeros(n_layer)
-    r_abs_stem  = np.zeros(n_layer)
-    rd_dn = np.zeros(n_layer)
-    rd_up = np.zeros(n_layer)
-    rbeam =  np.zeros(n_layer)
-    sunfrac = np.zeros(n_layer)
-    sunfrac_v2 = np.zeros(n_layer)
-    for il in range(n_layer):
-        avai[il] = (total_lai+total_sai)*float(il)/float(n_layer)
-    davai =  (total_lai+total_sai)/float(n_layer)
-    dalai =  total_lai/float(n_layer)
-    vfrac = 1./float(n_layer)
 
     
     # Initialize variables that are output from the f90 modules
@@ -313,12 +326,12 @@ def main(argv):
     # Initialize output arrays
     # -----------------------------------------------------------------------------------
 
-    cosz = np.zeros(ntime)
-    lmr = np.zeros(ntime)
-    agross = np.zeros(ntime)
-    gstoma = np.zeros(ntime)
-    anet = np.zeros(ntime)
-    g_b_umol = np.zeros(ntime)
+    cosz = np.zeros(ntimes)
+    lmr = np.zeros(ntimes)
+    agross = np.zeros(ntimes)
+    gstoma = np.zeros(ntimes)
+    anet = np.zeros(ntimes)
+    g_b_umol = np.zeros(ntimes)
     ag_limit = np.zeros([n_layer,2])
     ag_sslimit = np.zeros([n_layer,2,2])
 
@@ -330,7 +343,7 @@ def main(argv):
     # Start the main model time loop
     # -----------------------------------------------------------------------------------
     
-    for it in range(ntime):
+    for it in range(ntimes):
         
         tvegk = met.data['t_veg'][it]
         
@@ -342,20 +355,16 @@ def main(argv):
 
         cosz[it] = GetCosZ(zone,doy,latitude,longitude,lhour)
 
-        #print("cosz: {}, Rbeam: {}, Rdiff: {}".format(cosz[it],met.data['Rbeam'][it],met.data['Rdiff'][it]))
+        #print("cosz: {}, visbdn: {}, visddn: {}".format(cosz[it],met.data['visbdn'][it],met.data['visddn'][it]))
         iret = f90.zenith_prep_sub(c8(cosz[it]))
         iret = f90.solver_sub(ci(visb),ci(normalized_boundary),c8(1.0),c8(1.0), \
                        byref(albedo_beam_f),byref(albedo_diff_f), \
                        byref(canabs_beam_f),byref(canabs_diff_f), \
                        byref(ffbeam_beam_f),byref(ffdiff_beam_f),byref(ffdiff_diff_f))
-        iret = f90.setdown_sub(ci(visb),c8(met.data['Rbeam'][it]),c8(met.data['Rdiff'][it]))
+        iret = f90.setdown_sub(ci(visb),c8(met.data['visbdn'][it]),c8(met.data['visddn'][it]))
 
         g_b_umol[it] = f90.velotomolarcf_fun(c8(met.data['can_press'][it]),c8(met.data['t_can'][it]))/met.data['r_b'][it]
         
-        # Get Humidity
-        iret = f90.qsat_sub(c8(met.data['t_can'][it]),c8(met.data['can_press'][it]), \
-                            byref(qsat_f),byref(esat_f), \
-                            byref(qsdt_f),byref(esdt_f))
         
         iret = f90.cangas_sub(c8(met.data['can_press'][it]), \
                               c8(o2_ppress_209kppm), \
@@ -411,26 +420,31 @@ def main(argv):
                 print('unknown leaf respiration model')
                 exit(1)
 
+            par_abs_check = par_abs_check + (r_abs_stem_f.value+r_abs_snow_f.value)
+            #par_abs_check = par_abs_check + (rd_abs_f.value+rb_abs_f.value)
+            
             for ipar in [0,1]:
                 if(ipar==0):
                     areafrac = sunfrac_v2[il]
-                    par_abs  = (rb_abs_leaf[il]/(dalai*areafrac) + rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
-
-                    # Energy conservation check (beam absorbed by leaf)
-                    par_abs_check = par_abs_check + par_abs*sunfrac_v2[il]*dalai
-                    par_abs
-
+                    par_abs_leaf_umol = (rb_abs_leaf[il]/(dalai*areafrac) + rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
+                    
                 else:
                     areafrac = 1.-sunfrac_v2[il]
-                    par_abs  = (rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
+                    par_abs_leaf_umol = (rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
 
-                if(par_abs>4000):
-                    print('high par_abs:',ipar,il,met.data['Rbeam'][it]*wm2_to_umolm2s, \
-                          met.data['Rdiff'][it]*wm2_to_umolm2s,rb_abs_leaf[il]*wm2_to_umolm2s,dalai,areafrac,rd_abs_leaf[il]*wm2_to_umolm2s)
+                # Energy conservation check (diff absorbed by leaf, stem and snow)
+                par_abs_check = par_abs_check + par_abs_leaf_umol*areafrac*dalai/wm2_to_umolm2s
+                
+                    
+                    
+                if(par_abs_leaf_umol>400000):
+                    print('high par_abs_leaf_umol:',ipar,il,met.data['visbdn'][it]*wm2_to_umolm2s, \
+                          met.data['visddn'][it]*wm2_to_umolm2s, \
+                          rb_abs_leaf[il]*wm2_to_umolm2s,dalai,areafrac,rd_abs_leaf[il]*wm2_to_umolm2s)
                     exit(0)
 
                     
-                iret = f90.leaflayerphoto_sub( c8(par_abs),  \
+                iret = f90.leaflayerphoto_sub( c8(par_abs_leaf_umol),  \
                                                ci(pft),   \
                                                c8(vcmax_f.value),   \
                                                c8(jmax_f.value),    \
@@ -442,7 +456,7 @@ def main(argv):
                                                c8(met.data['can_press'][it]), \
                                                c8(co2_ppress_400ppm), \
                                                c8(o2_ppress_209kppm), \
-                                               c8(esat_f.value), \
+                                               c8(met.data['vpress_sat'][it]), \
                                                c8(g_b_umol[it]), \
                                                c8(met.data['vpress'][it]), \
                                                c8(mm_kco2_f.value), \
@@ -466,10 +480,10 @@ def main(argv):
                                                           c8(o2_ppress_209kppm), c8(co2_cpoint_f.value), \
                                                           c8(mm_kco2_f.value),c8(mm_ko2_f.value) )
                 
-                agross_rubpc3  = f90.agross_rubpc3_fun(c8(par_abs), c8(jmax_f.value), \
+                agross_rubpc3  = f90.agross_rubpc3_fun(c8(par_abs_leaf_umol), c8(jmax_f.value), \
                                                        c8(params['fates_leaf_fnps'].data[paft]), \
                                                        c8(co2_interc_f.value),c8(co2_cpoint_f.value))
-                aglimit_apar.append(par_abs)
+                aglimit_apar.append(par_abs_leaf_umol)
                 aglimit_temp.append(tvegk)
                 
                 #code.interact(local=dict(globals(), **locals()))
@@ -483,7 +497,7 @@ def main(argv):
                     ag_sslimit[il,ipar,1] = ag_sslimit[il,ipar,1] + areafrac
                     aglimit_which.append(0.)
 
-        plot_vert_prof = True
+        plot_vert_prof = False
         if(plot_vert_prof):
             fig00, axs = plt.subplots(ncols=2,nrows=2,figsize=(7,7))
             ax1s = axs.reshape(-1)
@@ -519,20 +533,17 @@ def main(argv):
             
             ax = ax1s[3]
             ax.axis('off')
-            ax.text(0.25,0.5,'cosz: {} \nRbeam: {} \nRdiff: {}'.format(cosz[it],met.data['Rbeam'][it],met.data['Rdiff'][it]))
+            ax.text(0.25,0.5,'cosz: {} \nvisbdn: {} \nvisddn: {}'.format(cosz[it],met.data['visbdn'][it],met.data['visddn'][it]))
 
             
             plt.show()
 
         # Check absorbed PAR
-        #byref(albedo_beam_f),byref(albedo_diff_f), \
-        #               byref(canabs_beam_f),byref(canabs_diff_f), \
-        #               byref(ffbeam_beam_f),byref(ffdiff_beam_f),byref(ffdiff_diff_f))
-         
-        err = met.data['Rbeam'][it]*canabs_beam_f.value + met.data['Rdiff'][it]*canabs_diff_f.value - par_abs_check
-
+        # ----------------------------------------------------------------------------------
+        err = met.data['visbdn'][it]*canabs_beam_f.value + met.data['visddn'][it]*canabs_diff_f.value - par_abs_check
         if(err>1.e-4):
-            print(met.data['Rbeam'][it],canabs_beam_f.value,met.data['Rdiff'][it],canabs_diff_f.value,par_abs_check)
+            print('Energy Conservation Check on Absorbed Par FAILED, error: {} [W/m2]\n'.format(err))
+            print(met.data['visbdn'][it],canabs_beam_f.value,met.data['visddn'][it],canabs_diff_f.value,par_abs_check)
             exit(2)
         
 
@@ -588,7 +599,7 @@ def main(argv):
     
     hist,bins = np.histogram(anet[:], bins=nhbins)
     binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
-    ax1.plot(binsc[boff:],hist[boff:]/ntime, color = 'k')
+    ax1.plot(binsc[boff:],hist[boff:]/ntimes, color = 'k')
 
     ax1.set_ylabel('Probability')
     ax1.set_xlabel('Anet [umol/m2/s]')
@@ -596,13 +607,13 @@ def main(argv):
 
     hist,bins = np.histogram(agross[:], bins=nhbins)
     binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
-    ax2.plot(binsc[boff:],hist[boff:]/ntime, color = 'k')
+    ax2.plot(binsc[boff:],hist[boff:]/ntimes, color = 'k')
     ax2.set_xlabel('Ag [umol/m2/s]')
     ax2.grid('on')
 
     hist,bins = np.histogram(gstoma[:]*1.e-6, bins=nhbins)
     binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
-    ax3.plot(binsc[boff:],hist[boff:]/ntime, color = 'k')
+    ax3.plot(binsc[boff:],hist[boff:]/ntimes, color = 'k')
 
     ax3.set_ylabel('Probability')
     ax3.set_xlabel('gs [mol/m2/s]')
@@ -610,7 +621,7 @@ def main(argv):
 
     hist,bins = np.histogram(lmr[:], bins=nhbins)
     binsc =  [0.5*(bins[i+1]+bins[i]) for i in range(len(bins)-1) ]
-    ax4.plot(binsc[boff:],hist[boff:]/ntime, color = 'k')
+    ax4.plot(binsc[boff:],hist[boff:]/ntimes, color = 'k')
 
     ax4.set_xlabel('Rl [umol/m2/s]')
     ax4.grid('on')
