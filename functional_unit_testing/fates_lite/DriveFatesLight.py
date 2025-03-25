@@ -14,7 +14,7 @@ from datetime import datetime
 import argparse
 #from matplotlib.backends.backend_pdf import PdfPages
 import platform
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as et
 import numpy as np
 import matplotlib
 import os
@@ -27,7 +27,8 @@ import csv
 import subprocess
 import re
 import pandas as pd
-import streamlit as st
+import glob
+#import streamlit as st
 import ctypes
 from ctypes import *
 from operator import add
@@ -148,10 +149,22 @@ def GetJmaxKp25Top(vcmax25_top):
     return jmax25_top, kp25_top
 
 
+def GetFromAttrib(noderoot,attr_str):
 
+    foundnode = False
+    for node in noderoot.iter('param'):
+        #print(node.attrib.get('name').strip(),attr_str.strip())
+        if (node.attrib.get('name').strip()==attr_str.strip()):
+            param_val = node.text.strip()
+            foundnode = True
+    if (not foundnode):
+        print('Could not find an xml element')
+        exit(1)
+
+    return param_val
+    
         
 # ========================================================================
-
 
 def main(argv):
 
@@ -162,30 +175,41 @@ def main(argv):
     
     #numpft = int(xmlroot.find('numpft').text.strip())
 
-    cdlfile = "../../parameter_files/fates_params_default.cdl"
+    #cdlfile = "../../parameter_files/fates_params_default.cdl"
+    #print('Loading Base parameters from: {}'.format(cdlfile))
+    #params,dims = CDLParse(cdlfile,verbose=False)
 
-    print('Loading Base parameters from: {}'.format(cdlfile))
-    params,dims = CDLParse(cdlfile,verbose=False)
+    # Load controls
+    xml_param_file = "fateslite_controls.xml"
+    xmlroot = et.parse(xml_param_file).getroot()
 
+    numpft = int(xmlroot.find('numpft').text.strip())
+    
     # Set some of the major module switches (argument to subroutine is float)
     # -----------------------------------------------------------------------------------
-
+    scalar_root = xmlroot.find('f90_params').find('scalar_dim')
+    
     # Daylength factor: 1) scale vcmax and jmax,  0) do not scale
-    iret = f90.set_leaf_param_sub(c8(1),ci(0),*ccharnb('fates_daylength_factor_switch'))
+    daylength_switch = float(GetFromAttrib(scalar_root,'fates_daylength_factor_switch'))
+    iret = f90.set_leaf_param_sub(c8(daylength_switch),ci(0),*ccharnb('fates_daylength_factor_switch'))
 
     # Stomatal Model: 1) Ball-Berry, 2) for Medlyn
-    iret = f90.set_leaf_param_sub(c8(2),ci(0),*ccharnb('fates_leaf_stomatal_model')) 
+    stomatal_switch = float(GetFromAttrib(scalar_root,'fates_leaf_stomatal_model'))
+    iret = f90.set_leaf_param_sub(c8(stomatal_switch),ci(0),*ccharnb('fates_leaf_stomatal_model')) 
 
     # Stomatal assimilation model, ie 1) net or 2) gross will be used to estimate leaf co2 partial pressure
-    iret = f90.set_leaf_param_sub(c8(1),ci(0),*ccharnb('fates_leaf_stomatal_assim_model'))
+    stoma_assim_switch = float(GetFromAttrib(scalar_root,'fates_leaf_stomatal_assim_model'))
+    iret = f90.set_leaf_param_sub(c8(stoma_assim_switch),ci(0),*ccharnb('fates_leaf_stomatal_assim_model'))
 
     # Photosynthesis Temperature acclimation 0) no acclimation, 1) kumarathunge et al 2019
-    iret = f90.set_leaf_param_sub(c8(0),ci(0),*ccharnb('fates_leaf_photo_tempsens_model'))
+    temp_acclim_switch = float(GetFromAttrib(scalar_root,'fates_leaf_photo_tempsens_model'))
+    iret = f90.set_leaf_param_sub(c8(temp_acclim_switch),ci(0),*ccharnb('fates_leaf_photo_tempsens_model'))
 
     # Electron transport model  1) FvCB1980 2) JohnsonBerry2021
+    electron_transp_switch = float(GetFromAttrib(scalar_root,'fates_electron_transport_model'))
     iret = f90.set_leaf_param_sub(c8(1),ci(0),*ccharnb('fates_electron_transport_model'))
 
-    numpft = dims['fates_pft']
+    code.interact(local=dict(globals(), **locals()))
 
 
     # Call this external to push the default parameters to the F90 objects
@@ -195,9 +219,10 @@ def main(argv):
     # code.interact(local=dict(globals(), **locals()))
     # Lets create a synthetic met driver based on nearest neighbor data?
     # ------------------------------------------------------------------------------------
-    
-    #met = met_driver("/home/rgknox/Downloads/bci_met.txt")
-    met = met_driver("bci_met_data/BCI_met_drivers_2003_2016.csv")
+
+    met_driver_csvfile = "bci_met_data/BCI_met_drivers_2003_2016.csv"
+
+    met = met_driver(met_driver_csvfile)
     met.FilterTimes('daytime')
 
     

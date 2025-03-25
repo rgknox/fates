@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<all>
+
+  <!-- Parameters for leaf biophysics unit tests -->
+  <numpft> 1 </numpft>
+  <f90_params> <!-- parameters that are in the f90 structure -->
+    <scalar_dim>
+      <param name='fates_daylength_factor_switch'>1</param>
+      <param name='fates_leaf_stomatal_model'>2</param>
+      <param name='fates_leaf_stomatal_assim_model'>1</param>
+      <param name='fates_leaf_photo_tempsens_model'>0</param>
+      <param name='fates_electron_transport_model'> 1 </param>  <!--FvCB1980 = 1, JohnsonBerry2021 = 2 -->
+      <param name='fates_maintresp_leaf_model'> 1 </param>
+    </scalar_dim>
+    <pft_dim>
+      <!-- These are loaded into F90 structures -->
+      <param name='fates_leaf_stomatal_btran_model'> 2 </param>
+      <param name='fates_leaf_agross_btran_model'> 2 </param>
+      <param name='fates_leaf_c3psn'> 1 </param>
+      <param name='fates_leaf_stomatal_slope_ballberry'> 8 </param>
+      <param name='fates_leaf_stomatal_slope_medlyn'> 4.1 </param>
+      <param name='fates_leaf_fnps'> 0.15 </param>
+      <param name='fates_leaf_stomatal_intercept'> 10000 </param>
+      <param name='fates_maintresp_reduction_curvature'>  0.01 </param>
+      <param name='fates_maintresp_reduction_intercept'> 1 </param>
+      <param name='fates_maintresp_reduction_upthresh'> 1 </param>
+      <param name='fates_maintresp_leaf_atkin2017_baserate'>  1.756 </param>
+      <param name='fates_maintresp_leaf_ryan1991_baserate'> 2.525e-06 </param>
+      <param name='fates_leaf_vcmaxha'> 65330 </param>
+      <param name='fates_leaf_jmaxha'> 43540 </param>
+      <param name='fates_leaf_vcmaxhd'> 149250 </param>
+      <param name='fates_leaf_jmaxhd'> 149250 </param>
+      <param name='fates_leaf_vcmaxse'> 485 </param>
+      <param name='fates_leaf_jmaxse'> 495 </param>
+      <!-- These are loaded into python structures -->
+      <param name='fates_leafn_vert_scaler_coeff1'> 0.00963 </param>
+      <param name='fates_leafn_vert_scaler_coeff2'> 2.43 </param>
+      <param name='fates_leaf_vcmax25top'> 50 </param>
+      <param name='fates_stoich_nitr'> 0.033 </param>
+      <param name='fates_leaf_slatop'>  0.012 </param>
+      <param name='fates_rad_leaf_clumping_index'> 0.85 </param>
+      <param name='fates_rad_leaf_rhonir'> 0.46 </param>
+      <param name='fates_rad_leaf_rhovis'> 0.11 </param>
+      <param name='fates_rad_leaf_taunir'> 0.33 </param>
+      <param name='fates_rad_leaf_tauvis'> 0.06 </param>
+      <param name='fates_rad_leaf_xl'> 0.32 </param>
+      <param name='fates_rad_stem_rhonir'> 0.49 </param>
+      <param name='fates_rad_stem_rhovis'> 0.21 </param>
+      <param name='fates_rad_stem_taunir'> 0.001 </param>
+      <param name='fates_rad_stem_tauvis'> 0.001 </param>
+    </pft_dim>
+  </f90_params>
+</all>

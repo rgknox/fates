@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
-import code  # For development: code.interact(local=dict(globals(), **locals()))
+import code  # For development:
+# code.interact(local=dict(globals(), **locals()))
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from datetime import datetime
+
 
 eval_cosz = True
 
@@ -344,6 +346,11 @@ class met_driver:
         # Not all of these are used. We also convert tod to "hour"od,
         # which is decimal hours
 
+        # perform a graceful check on the file's existance
+        
+        #code.interact(local=dict(globals(), **locals()))
+
+        
         model_read = False
 
         eval_met_forcing = False
@@ -376,7 +383,15 @@ class met_driver:
             # Date_UTC_start,Date_UTC_end,Date_local_start,Date_local_end,SR_W_m2.,
             #                SR_flag,Temp_o_C.,T_Flag,RH_%,RH_flag,RA_mm_d,RA_flag,
             #                BP_hPa,BP_flag,WS_m_s,WS_flag,WD_deg,WD_flag
-            df = pd.read_csv(filepath, delimiter=",")
+            try:
+                df = pd.read_csv(filepath, delimiter=",")
+            except FileNotFoundError:
+                print('\n\n The CSV met file you specified:')
+                print(' "{}"'.format(filepath))
+                print(' could not be found.')
+                print(' Exiting.\n\n')
+                exit(-1)
+                
             self.data = {}
             self.data['can_press'] = np.array(df['BP_hPa'].values*100.)
             npts = len(self.data['can_press'])
