@@ -102,7 +102,8 @@ class f90_modules:
         self.gs_ballberry_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','StomatalCondBallBerry'))
         self.cifunc_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','CiFunc'))
         self.cibisection_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','CiBisection'))
-        
+
+        self.decaycoeffvcmax_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','DecayCoeffVcmax'))
         self.velotomolarcf_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','VeloToMolarCF'))
         self.agross_rubiscoc3_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRubiscoC3'))
         self.agross_rubpc3_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC3'))
@@ -110,6 +111,7 @@ class f90_modules:
         self.agross_pepc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossPEPC4'))
     
         # For functions, define the return value
+        self.decaycoeffvcmax_fun.restype = c_double
         self.set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
         self.agross_rubiscoc3_fun.restype = c_double
         self.agross_rubpc3_fun.restype = c_double

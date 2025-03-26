@@ -40,6 +40,9 @@ from MetDrivers import GetCosZ
 from MetDrivers import met_driver
 
 from PushParameters import PushParameters
+from PushParameters import PushXMLParameters
+from PushParameters import GetParamFromAttrib
+
 from CDLRead import CDLParse
 import CtypesInit
 
@@ -149,19 +152,7 @@ def GetJmaxKp25Top(vcmax25_top):
     return jmax25_top, kp25_top
 
 
-def GetFromAttrib(noderoot,attr_str):
 
-    foundnode = False
-    for node in noderoot.iter('param'):
-        #print(node.attrib.get('name').strip(),attr_str.strip())
-        if (node.attrib.get('name').strip()==attr_str.strip()):
-            param_val = node.text.strip()
-            foundnode = True
-    if (not foundnode):
-        print('Could not find an xml element')
-        exit(1)
-
-    return param_val
     
         
 # ========================================================================
@@ -188,33 +179,32 @@ def main(argv):
     # Set some of the major module switches (argument to subroutine is float)
     # -----------------------------------------------------------------------------------
     scalar_root = xmlroot.find('f90_params').find('scalar_dim')
+    pft_root = xmlroot.find('f90_params').find('pft_dim')
     
     # Daylength factor: 1) scale vcmax and jmax,  0) do not scale
-    daylength_switch = float(GetFromAttrib(scalar_root,'fates_daylength_factor_switch'))
+    daylength_switch = float(GetParamFromAttrib(scalar_root,'fates_daylength_factor_switch')[0])
     iret = f90.set_leaf_param_sub(c8(daylength_switch),ci(0),*ccharnb('fates_daylength_factor_switch'))
 
     # Stomatal Model: 1) Ball-Berry, 2) for Medlyn
-    stomatal_switch = float(GetFromAttrib(scalar_root,'fates_leaf_stomatal_model'))
+    stomatal_switch = float(GetParamFromAttrib(scalar_root,'fates_leaf_stomatal_model')[0])
     iret = f90.set_leaf_param_sub(c8(stomatal_switch),ci(0),*ccharnb('fates_leaf_stomatal_model')) 
 
     # Stomatal assimilation model, ie 1) net or 2) gross will be used to estimate leaf co2 partial pressure
-    stoma_assim_switch = float(GetFromAttrib(scalar_root,'fates_leaf_stomatal_assim_model'))
+    stoma_assim_switch = float(GetParamFromAttrib(scalar_root,'fates_leaf_stomatal_assim_model')[0])
     iret = f90.set_leaf_param_sub(c8(stoma_assim_switch),ci(0),*ccharnb('fates_leaf_stomatal_assim_model'))
 
     # Photosynthesis Temperature acclimation 0) no acclimation, 1) kumarathunge et al 2019
-    temp_acclim_switch = float(GetFromAttrib(scalar_root,'fates_leaf_photo_tempsens_model'))
+    temp_acclim_switch = float(GetParamFromAttrib(scalar_root,'fates_leaf_photo_tempsens_model')[0])
     iret = f90.set_leaf_param_sub(c8(temp_acclim_switch),ci(0),*ccharnb('fates_leaf_photo_tempsens_model'))
 
     # Electron transport model  1) FvCB1980 2) JohnsonBerry2021
-    electron_transp_switch = float(GetFromAttrib(scalar_root,'fates_electron_transport_model'))
+    electron_transp_switch = float(GetParamFromAttrib(scalar_root,'fates_electron_transport_model')[0])
     iret = f90.set_leaf_param_sub(c8(1),ci(0),*ccharnb('fates_electron_transport_model'))
-
-    code.interact(local=dict(globals(), **locals()))
 
 
     # Call this external to push the default parameters to the F90 objects
-    PushParameters(f90,params,dims)
-
+    #PushParameters(f90,params,dims)
+    PushXMLParameters(f90,xmlroot)
 
     # code.interact(local=dict(globals(), **locals()))
     # Lets create a synthetic met driver based on nearest neighbor data?
@@ -258,7 +248,7 @@ def main(argv):
 
     fates_maintresp_leaf_model = 1     # 1=Ryan (1991), 2=Atkin et al (2017)
     
-    paft                  = pft-1 # Python array pft index (starts with 0)
+    ft                  = pft-1 # Python array pft index (starts with 0)
 
     total_lai             = 5.0
     total_sai             = 0.1*total_lai
@@ -296,18 +286,21 @@ def main(argv):
     # so initialize output vectors with the same size (use r_b or any variable)
 
     # params['fates_leaf_vcmax25top'].data.shape = (1, 14) Fist index is "age"
-    vcmax25_top = float(params['fates_leaf_vcmax25top'].data[0,paft])
+    #vcmax25_top = float(params['fates_leaf_vcmax25top'].data[0,ft])
+    vcmax25_top = float(GetParamFromAttrib(pft_root,'fates_leaf_vcmax25top')[ft])
     
     jmax25_top,kp25_top =  GetJmaxKp25Top(vcmax25_top)
 
     # Leaf Nitrogen Concentration at the canopy top (N:C ratio) (n/m2]
     # params['fates_stoich_nitr'].data.shape = (4, 14) First index is organ (leaf)
     # params['fates_stoich_nitr'].meta['units'] = 'gN/gC'
-    leaf_nc_ratio = params['fates_stoich_nitr'].data[0,paft]
+    #leaf_nc_ratio = params['fates_stoich_nitr'].data[0,ft]
+    leaf_nc_ratio = float(GetParamFromAttrib(pft_root,'fates_stoich_nitr')[ft])
 
     #params['fates_leaf_slatop'].meta['units'] = 'm^2/gC'
-    leaf_slatop   = params['fates_leaf_slatop'].data[paft]
-
+    #leaf_slatop   = params['fates_leaf_slatop'].data[ft]
+    leaf_slatop   = float(GetParamFromAttrib(pft_root,'fates_leaf_slatop')[ft])
+    
     # Leaf N Conc at the canopy top [gN/m2]
     lnc_top       = leaf_nc_ratio/leaf_slatop
 
@@ -380,17 +373,24 @@ def main(argv):
 
         cosz[it] = GetCosZ(zone,doy,latitude,longitude,lhour)
 
-        #print("cosz: {}, visbdn: {}, visddn: {}".format(cosz[it],met.data['visbdn'][it],met.data['visddn'][it]))
+        # Update scattering parameters based on zenith angle
+        # optical depth, backscatter
         iret = f90.zenith_prep_sub(c8(cosz[it]))
+
+        # Perform a normalized solve of the scattering environment
         iret = f90.solver_sub(ci(visb),ci(normalized_boundary),c8(1.0),c8(1.0), \
                        byref(albedo_beam_f),byref(albedo_diff_f), \
                        byref(canabs_beam_f),byref(canabs_diff_f), \
                        byref(ffbeam_beam_f),byref(ffdiff_beam_f),byref(ffdiff_diff_f))
+
+        # Scale the normalized solution by the actual upper boundary conditions
         iret = f90.setdown_sub(ci(visb),c8(met.data['visbdn'][it]),c8(met.data['visddn'][it]))
 
+        # Convert leaf boundary layer resistance to its reciprocal, conductance, and then
+        # convert it from velocity units to micromoles/m2/s
         g_b_umol[it] = f90.velotomolarcf_fun(c8(met.data['can_press'][it]),c8(met.data['t_can'][it]))/met.data['r_b'][it]
         
-        
+        # Set canopy gas parameters, such as the MM coefficients and the CO2 compensation point
         iret = f90.cangas_sub(c8(met.data['can_press'][it]), \
                               c8(o2_ppress_209kppm), \
                               c8(tvegk), \
@@ -398,23 +398,33 @@ def main(argv):
                               byref(mm_ko2_f), \
                               byref(co2_cpoint_f))
 
+        
+        # Determine the nitrogen attenuation rate in the canopy
+        # -------------------------------------------------------------------------------
+        # Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593 used
+        # kn = 0.11. Here, derive kn from vcmax25 as in Lloyd et al 
+        # (2010) Biogeosciences, 7, 1833-1859
+
+        kn = f90.decaycoeffvcmax_fun(c8(float(GetParamFromAttrib(pft_root,'fates_leaf_vcmax25top')[ft])), \
+                                     c8(float(GetParamFromAttrib(pft_root,'fates_leafn_vert_scaler_coeff1')[ft])), \
+                                     c8(float(GetParamFromAttrib(pft_root,'fates_leafn_vert_scaler_coeff2')[ft])))
+        
         par_abs_check = 0
         for il in range(n_layer):
 
-            #print('py: laitop: {}, laibot: {}'.format(avai[il],avai[il]+davai))
+            # Query the solver for the absorbed radiation over this interval
             iret = f90.getabsrad_sub(ci(1),ci(1),ci(visb),c8(avai[il]),c8(avai[il]+davai), \
                                      byref(rd_abs_f),byref(rb_abs_f), \
                                      byref(rd_abs_leaf_f),byref(rb_abs_leaf_f),byref(r_abs_stem_f), \
                                      byref(r_abs_snow_f),byref(leaf_sun_frac_f),byref(leaf_sun_frac_v2_f))
 
-            #print('python:',rd_abs_leaf_f.value,rb_abs_leaf_f.value,r_abs_stem_f.value)
-            
             rd_abs_leaf[il] = rd_abs_leaf_f.value
             rb_abs_leaf[il] = rb_abs_leaf_f.value
             r_abs_stem[il]  = r_abs_stem_f.value
-
+            sunfrac[il]     = leaf_sun_frac_f.value
+            sunfrac_v2[il]  = leaf_sun_frac_v2_f.value
             
-
+            # Query the solver for the radiative intensities at the mid-point of this interval
             iret = f90.getintens_sub(ci(1), ci(1), ci(visb), c8(avai[il]+0.5*davai), \
                                      byref(r_diff_dn_f), byref(r_diff_up_f), byref(r_beam_f))
 
@@ -422,8 +432,10 @@ def main(argv):
             rd_up[il] = r_diff_up_f.value
             rbeam[il] = r_beam_f.value
             
-            sunfrac[il] = leaf_sun_frac_f.value
-            sunfrac_v2[il] = leaf_sun_frac_v2_f.value
+            
+
+            # Nitrogen attenuation at this canopy depth
+            nscaler = np.exp(-kn*(avai[il]+0.5*davai)*total_lai/(total_lai+total_sai))
             
             #par_abs_umol_m2 = (rd_abs_leaf[il] + rb_abs_leaf[il])*wm2_to_umolm2s/dalai
 
@@ -506,7 +518,7 @@ def main(argv):
                                                           c8(mm_kco2_f.value),c8(mm_ko2_f.value) )
                 
                 agross_rubpc3  = f90.agross_rubpc3_fun(c8(par_abs_leaf_umol), c8(jmax_f.value), \
-                                                       c8(params['fates_leaf_fnps'].data[paft]), \
+                                                       c8(float(GetParamFromAttrib(pft_root,'fates_leaf_fnps')[ft])), \
                                                        c8(co2_interc_f.value),c8(co2_cpoint_f.value))
                 aglimit_apar.append(par_abs_leaf_umol)
                 aglimit_temp.append(tvegk)
@@ -522,17 +534,16 @@ def main(argv):
                     ag_sslimit[il,ipar,1] = ag_sslimit[il,ipar,1] + areafrac
                     aglimit_which.append(0.)
 
-        plot_vert_prof = False
+        plot_vert_prof = True
         if(plot_vert_prof):
-            fig00, axs = plt.subplots(ncols=2,nrows=2,figsize=(7,7))
+            fig00, axs = plt.subplots(ncols=3,nrows=3,figsize=(7,7))
             ax1s = axs.reshape(-1)
 
             ax = ax1s[0]
             ax.plot(rd_abs_leaf,avai)
             ax.set_ylim([0,total_lai+total_sai])
             ax.invert_yaxis()
-            #ax.set_xlabel('[W/m2 ground]')
-            ax.set_title('Absorbed Par')
+            ax.set_xlabel('Absorbed Par [W/m2]')
             ax.grid('on')
             
             ax = ax1s[1]
@@ -540,8 +551,7 @@ def main(argv):
             ax.plot(sunfrac_v2,avai,label='v2')
             ax.set_ylim([0,total_lai+total_sai])
             ax.invert_yaxis()
-            ax.set_xlabel('[/]')
-            ax.set_title('Sunlit Fraction')
+            ax.set_xlabel('Sunlit Fraction [/]')
             ax.grid('on')
             ax.legend()
             
@@ -551,16 +561,14 @@ def main(argv):
             ax.plot(rbeam,avai+0.5*davai,label='Rb')
             ax.set_ylim([0,total_lai+total_sai])
             ax.invert_yaxis()
-            ax.set_xlabel('[W/m2]')
-            ax.set_title('Par Flux Rate')
+            ax.set_xlabel('Par Flux Rate [W/m2]')
             ax.legend()
             ax.grid('on')
             
             ax = ax1s[3]
             ax.axis('off')
-            ax.text(0.25,0.5,'cosz: {} \nvisbdn: {} \nvisddn: {}'.format(cosz[it],met.data['visbdn'][it],met.data['visddn'][it]))
-
-            
+            #ax.text(0.25,0.5,'cosz: {} \nvisbdn: {5.2f} \nvisddn: {5.2f}'.format(cosz[it],met.data['visbdn'][it],met.data['visddn'][it]))
+            ax.text(0.25,0.5,f"cosz: {cosz[it]:5.2f} \nvisbdn: {met.data['visbdn'][it]:5.2f} \nvisddn: {met.data['visddn'][it]:5.2f}")
             plt.show()
 
         # Check absorbed PAR
