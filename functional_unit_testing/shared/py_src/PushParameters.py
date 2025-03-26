@@ -8,6 +8,25 @@ n_bands = 2
 visb = 1
 nirb = 2
 
+def GetParamList(noderoot,node_name,vtype):
+
+    # Read in a list of values from an xml node
+    # Convert that string list to the datatype specified
+    # and return a list of the new datatype
+    
+    str_list = noderoot.find(node_name).text.strip().split(',')
+    if(vtype=='integer'):
+        val_list = [int(str) for str in str_list]
+    elif(vtype=='float'):
+        val_list = [float(str) for str in str_list]
+    elif(vtype=='string'):
+        val_list = str_list
+    else:
+        print('passed an unknown datatype to GetParamList: {}'.format(vtype))
+        exit(1)
+
+    return val_list
+
 
 def GetParamFromAttrib(noderoot,attr_str):
 

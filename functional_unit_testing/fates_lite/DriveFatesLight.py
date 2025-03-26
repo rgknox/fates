@@ -10,6 +10,7 @@
 import matplotlib as mpl
 #mpl.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from datetime import datetime
 import argparse
 #from matplotlib.backends.backend_pdf import PdfPages
@@ -42,6 +43,7 @@ from MetDrivers import met_driver
 from PushParameters import PushParameters
 from PushParameters import PushXMLParameters
 from PushParameters import GetParamFromAttrib
+from PushParameters import GetParamList
 
 from CDLRead import CDLParse
 import CtypesInit
@@ -201,6 +203,9 @@ def main(argv):
     electron_transp_switch = float(GetParamFromAttrib(scalar_root,'fates_electron_transport_model')[0])
     iret = f90.set_leaf_param_sub(c8(1),ci(0),*ccharnb('fates_electron_transport_model'))
 
+    # Maintenance respiration model # 1=Ryan (1991), 2=Atkin et al (2017)
+    maintresp_leaf_model = float(GetParamFromAttrib(scalar_root,'fates_maintresp_leaf_model')[0])
+
 
     # Call this external to push the default parameters to the F90 objects
     #PushParameters(f90,params,dims)
@@ -241,28 +246,132 @@ def main(argv):
     # Simple check to see if the cosz follows the diurnal signal
     #met.EvalCosz()
         
-    # User specifications
+    # Create a canopy based on input from the control file
     # -----------------------------------------------------------------------------------
+    cstruct_root = xmlroot.find('canopy_structure')
+    cohort_pft  = GetParamList(cstruct_root,'cohort_pft','integer')
+    cohort_area = GetParamList(cstruct_root,'cohort_area_frac','float')
+    cohort_lai  = GetParamList(cstruct_root,'cohort_lai','float')
+    cohort_sai  = GetParamList(cstruct_root,'cohort_sai','float')
+    ncohorts    = len(cohort_pft)
+    site_root   = xmlroot.find('site_structure')
+    ground_vis_albedo = GetParamList(site_root,'ground_vis_albedo','float')
+    ground_nir_albedo = GetParamList(site_root,'ground_nir_albedo','float')
+    frac_snow = GetParamList(site_root,'frac_snow','float')[0]
+    n_layer = GetParamList(site_root,'nlayers','integer')[0] 
+
     
-    pft                   = 1
+    # Lets walk through the list and assign the layer of each
+    cohort_can    = list(range(ncohorts)) # The canopy layer associated with each cohort (0 indexed)
+    cohort_col    = list(range(ncohorts)) # Column index of the cohort                   (0 indexed)
+    layer_ncohort = [0]                   # Number of cohorts (elements) in each layer
+    area_current  = 0
+    ican = 0
+    icol = 0
+    for ico in range(ncohorts):
 
-    fates_maintresp_leaf_model = 1     # 1=Ryan (1991), 2=Atkin et al (2017)
+        if( cohort_area[ico]-1.0 < 0.001 ):
+            cohort_area[ico] = np.min([1.0,cohort_area[ico]])
+        else:
+            print('\n\nYou specified a cohort that takes up more area than 1.0\n')
+            print('Dont do that. Exiting.\n')
+            exit(1)
+
+        if(cohort_area[ico]+area_current>1.0):
+            layer_ncohort.append(0)
+            ican = ican+1
+            area_current  = 0.
+            icol = 0
+        else:
+            area_current = area_current + cohort_area[ico]
+            icol = icol + 1
+                
+        cohort_can[ico]     = ican
+        layer_ncohort[ican] = layer_ncohort[ican]+1
+        cohort_col[ico]     = icol-1
+
+    # Determine the size of the canopy scattering matrix
+    n_can  = len(layer_ncohort)
+    n_col  = np.max(layer_ncohort)
+
+    # Setup the cohort index matrix, the non
+    elem_cohort = np.zeros([n_can,n_col],dtype=int)
+    for ico in range(ncohorts):
+        ican  = cohort_can[ico]
+        icol  = cohort_col[ico]
+        elem_cohort[ican,icol] = ico
+
     
-    ft                  = pft-1 # Python array pft index (starts with 0)
 
-    total_lai             = 5.0
-    total_sai             = 0.1*total_lai
-    n_elem                = 1
-    n_col                 = 1
-    area                  = 1.0   # Assume a completely closed canopy
-    ground_albedo_diff    = 0.3
-    ground_albedo_beam    = 0.3
-    frac_snow             = 0.0
 
-    n_layer = 10 # number of discrete canopy layers
+    # Create a vegetation canopy and initialize scattering elements
+    # -----------------------------------------------------------------------------------
 
+    iret = f90.alloc_twostream_sub(ci(n_can),ci(n_col))
+    iret = f90.param_prep_sub()  # This routine creates parameters that are derived from others
+    for ican in range(n_can):
+        veg_area = 0.0
+        n_veg    = 0
+        for icol in range(n_col):
+            ico = elem_cohort[ican,icol]
+            if(ico>0):
+                veg_area = veg_area+cohort_area[ico]
+                n_veg = n_veg + 1
+                iret = f90.setup_canopy_sub(c_int(ican+1),c_int(icol+1), \
+                                            c_int(cohort_pft[ico]), c_double(cohort_area[ico]), \
+                                            c_double(cohort_lai[ico]), c_double(cohort_sai[ico]))
+            else:
+                air_pft  = 0
+                air_area = (1.-veg_area)/float(n_col-n_veg)
+                air_lai  = 1.0 # notional
+                air_sai  = 1.0 # notional
+                iret = f90.setup_canopy_sub(c_int(ican+1),c_int(icol+1),c_int(air_pft), \
+                                            c_double(air_area),c_double(air_lai),c_double(air_sai))
+
+    # Site level scattering parameters
+    iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_vis_albedo[1]),*ccharnb('albedo_grnd_diff'))
+    iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_vis_albedo[0]),*ccharnb('albedo_grnd_beam'))
+    iret = f90.grndsnow_albedo_sub(c_int(nirb),c_double(ground_nir_albedo[1]),*ccharnb('albedo_grnd_diff'))
+    iret = f90.grndsnow_albedo_sub(c_int(nirb),c_double(ground_nir_albedo[0]),*ccharnb('albedo_grnd_beam'))
+    iret = f90.canopy_prep_sub(c8(frac_snow))
+
+    visualize_elements = True
+    if(visualize_elements):
+        fig10, ax = plt.subplots(ncols=1,nrows=1,figsize=(7,7))
+        maxvai = 0.
+        vai0   = 0.
+        for ican in range(n_can):
+            veg_area = 0.0
+            vai0     = vai0+maxvai
+            maxvai   = 0.0
+            for icol in range(n_col):
+                ico = elem_cohort[ican,icol]
+                vai = cohort_lai[ico]+cohort_sai[ico]
+                # xy, width height
+                rect = patches.Rectangle((veg_area, vai0), cohort_area[ico], \
+                                         vai, linewidth=1, edgecolor='k', facecolor='g')
+                ax.add_patch(rect)
+                ax.text(veg_area+0.5*cohort_area[ico], vai0+0.5*vai, \
+                        'cohort {}'.format(ico+1), horizontalalignment='center', \
+                        verticalalignment='center')
+                maxvai = np.max([maxvai,vai])
+                veg_area = veg_area + cohort_area[ico]
+
+        plot_vai = 1.2*(vai0+maxvai)
+        ax.set_xlabel('Area Fraction [m2/m2]')
+        ax.set_ylabel('Integrated LAI+SAI [m2/m2]')
+        ax.set_ylim([0,plot_vai])
+        ax.set_xlim([0,1])
+        ax.invert_yaxis()
+        plt.show()
+
+
+
+
+    
+    code.interact(local=dict(globals(), **locals()))
+    
     avai = np.zeros(n_layer)  # Accumulated VAI (top of bin)
-    
     rd_abs_leaf = np.zeros(n_layer)
     rb_abs_leaf = np.zeros(n_layer)
     r_abs_stem  = np.zeros(n_layer)
@@ -276,9 +385,6 @@ def main(argv):
     davai =  (total_lai+total_sai)/float(n_layer)
     dalai =  total_lai/float(n_layer)
     vfrac = 1./float(n_layer)
-    
-    # The number of PFTs we actually simulate (do not change)
-    nusepft = 1
     
     # Set some plant trait data
     # -----------------------------------------------------------------------------------
@@ -303,24 +409,7 @@ def main(argv):
     
     # Leaf N Conc at the canopy top [gN/m2]
     lnc_top       = leaf_nc_ratio/leaf_slatop
-
-
     
-    
-    # Create a vegetation canopy and initialize scattering elements
-    # -----------------------------------------------------------------------------------
-
-    iret = f90.alloc_twostream_sub(ci(n_elem),ci(n_col))
-    iret = f90.param_prep_sub(ci(nusepft))
-    iret = f90.setup_canopy_sub(c_int(1),c_int(1),c_int(pft),c_double(area),c_double(total_lai),c_double(total_sai))
-    iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
-    iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
-    iret = f90.grndsnow_albedo_sub(c_int(nirb),c_double(ground_albedo_diff),*ccharnb('albedo_grnd_diff'))
-    iret = f90.grndsnow_albedo_sub(c_int(nirb),c_double(ground_albedo_beam),*ccharnb('albedo_grnd_beam'))
-    iret = f90.canopy_prep_sub(c8(frac_snow))
-
-    
-
     
     # Initialize variables that are output from the f90 modules
     # these need to be defined as a cytype, and are floating point,
@@ -449,17 +538,15 @@ def main(argv):
                                        byref(gs0_f), byref(gs1_f), byref(gs2_f))
 
             # Leaf Maintenance Respiration (temp and pft dependent)
-            if(fates_maintresp_leaf_model==1):
+            if(maintresp_leaf_model==1):
                 iret = f90.lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(pft), c8(tvegk), byref(lmr_f))
-            elif(fates_maintresp_leaf_model==2):
+            elif(maintresp_leaf_model==2):
                 iret = f90.lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler),c8(tvegk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
             else:
                 print('unknown leaf respiration model')
                 exit(1)
 
             par_abs_check = par_abs_check + (r_abs_stem_f.value+r_abs_snow_f.value)
-            #par_abs_check = par_abs_check + (rd_abs_f.value+rb_abs_f.value)
-            
             for ipar in [0,1]:
                 if(ipar==0):
                     areafrac = sunfrac_v2[il]
@@ -523,7 +610,7 @@ def main(argv):
                 aglimit_apar.append(par_abs_leaf_umol)
                 aglimit_temp.append(tvegk)
                 
-                #code.interact(local=dict(globals(), **locals()))
+                
                 if(agross_rubisco<agross_rubpc3):
                     ag_limit[il,0] = ag_limit[il,0] + areafrac
                     ag_sslimit[il,ipar,0] = ag_sslimit[il,ipar,0] + areafrac

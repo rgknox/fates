@@ -3,6 +3,27 @@
 
   <!-- Parameters for leaf biophysics unit tests -->
   <numpft> 1 </numpft>
+  <canopy_structure>
+    <!-- Specify how the canopy is constructed, on a cohort by cohort 
+	 basis. Each cohort must be associated with a pft index, which
+	 can be referenced in the parameter designation section below.
+	 Each cohort takes up a fraction of the canopy area.  If the 
+	 areas sum to less than 1, then the remainder is assumed to be air.  If
+	 the areas are greater than 1, then it is assumed that the cohorts are specified
+	 in height order and the algorithm will create multiple canopy layers -->
+    <cohort_pft> 1,1 </cohort_pft> <!-- can have multiple cohorts of diff pfts -->
+    <cohort_area_frac> 0.4,0.6 </cohort_area_frac> <!-- sums to 1 across pfts -->
+    <cohort_lai> 5.0,4.0 </cohort_lai>
+    <cohort_sai> 0.5,0.4 </cohort_sai>
+  </canopy_structure>
+  <site_structure>
+    <!-- These values describe site-level properties -->
+    <!-- fraction of visible light reflected by beam and diffuse radiation -->
+    <ground_vis_albedo> 0.3, 0.3 </ground_vis_albedo>
+    <ground_nir_albedo> 0.3, 0.3 </ground_nir_albedo> <!-- unused -->
+    <nlayers> 10 </nlayers> <!-- number of leaf layers (equal depth) -->
+    <frac_snow> 0.0 </frac_snow> <!-- fraction of lai covered by snoow -->
+  </site_structure>
   <f90_params> <!-- parameters that are in the f90 structure -->
     <scalar_dim>
       <param name='fates_daylength_factor_switch'>1</param>
@@ -37,7 +58,7 @@
       <param name='fates_leafn_vert_scaler_coeff2'> 2.43 </param>
       <param name='fates_leaf_vcmax25top'> 50 </param>
       <param name='fates_stoich_nitr'> 0.033 </param>
-      <param name='fates_leaf_slatop'>  0.012 </param>
+      <param name='fates_leaf_slatop'>  0.012</param>
       <param name='fates_rad_leaf_clumping_index'> 0.85 </param>
       <param name='fates_rad_leaf_rhonir'> 0.46 </param>
       <param name='fates_rad_leaf_rhovis'> 0.11 </param>
