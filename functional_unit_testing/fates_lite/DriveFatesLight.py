@@ -55,7 +55,7 @@ font = {'family' : 'sans-serif',
 
 matplotlib.rc('font', **font)
 
-plt.rcParams.update({'font.size': 14})
+plt.rcParams.update({'font.size': 12})
 
 
 # Global constants to use in all Leaf Biophysics unit testing
@@ -157,7 +157,13 @@ class elem_diags_type:
         self.vfrac = 1./float(n_layer)
         self.ag_limit = np.zeros([n_layer,2])
         self.ag_sslimit = np.zeros([n_layer,2,2])
+        self.n_zen          = 5          # Number of zenith bins we use for diagnostics
+        self.zen_bins       = np.linspace(0,1.-1/self.n_zen,self.n_zen)
+        self.sunfrac_zen_ll = np.zeros([n_layer,self.n_zen])
+        self.sunfrac2_zen_ll= np.zeros([n_layer,self.n_zen])
+        self.count_zen_ll   = np.zeros([n_layer,self.n_zen])
         return
+
     
     def ZeroDiag(self):
 
@@ -173,7 +179,7 @@ class elem_diags_type:
         self.sunfrac_v2 = np.zeros(n_layer)
         self.ag_limit = np.zeros([n_layer,2])
         self.ag_sslimit = np.zeros([n_layer,2,2])
-
+        
         return
 
 class site_diags_type:
@@ -184,6 +190,7 @@ class site_diags_type:
         self.aglimit_which = []
         self.aglimit_apar  = []
         self.aglimit_temp  = []
+        self.cosz = np.zeros(ntimes)
         self.lmr = np.zeros(ntimes)
         self.agross = np.zeros(ntimes)
         self.gstoma = np.zeros(ntimes)
@@ -241,8 +248,6 @@ def main(argv):
     # Daylength factor: 1) scale vcmax and jmax,  0) do not scale
     daylength_switch = float(GetParamFromAttrib(scalar_root,'fates_daylength_factor_switch')[0])
     iret = f90.set_leaf_param_sub(c8(daylength_switch),ci(0),*ccharnb('fates_daylength_factor_switch'))
-   
-    
 
     # Stomatal Model: 1) Ball-Berry, 2) for Medlyn
     stomatal_switch = float(GetParamFromAttrib(scalar_root,'fates_leaf_stomatal_model')[0])
@@ -265,16 +270,17 @@ def main(argv):
 
 
     # Call this external to push the default parameters to the F90 objects
-    #PushParameters(f90,params,dims)
     PushXMLParameters(f90,xmlroot)
 
     # Set some plant trait data
+    # *Note that the photosynthesis scheme takes vcmax25_top, jmax25_top and kp24_top
+    # as ARGUMENTS and not pft traits... This is because FATES allows vcmax25_top to
+    # change as a function of leaf age, and therefore this is not a parameter constant
+    # at the pft level. In this unit framework we do not factor in leaf age, so
+    # it is essentially a parameter constant
     # -----------------------------------------------------------------------------------
-    # We calculate solutions for every independant output from the FATES model
-    # so initialize output vectors with the same size (use r_b or any variable)
 
-    # params['fates_leaf_vcmax25top'].data.shape = (1, 14) Fist index is "age"
-    #vcmax25_top = float(params['fates_leaf_vcmax25top'].data[0,ft])
+
     vcmax25_top = np.zeros(numpft)
     jmax25_top = np.zeros(numpft)
     kp25_top = np.zeros(numpft)
@@ -282,17 +288,14 @@ def main(argv):
     lnc_top = np.zeros(numpft)
     for ft in range(numpft):
         vcmax25_top[ft] = float(GetParamFromAttrib(pft_root,'fates_leaf_vcmax25top')[ft])
-    
+
+        # Jmax and Kp (co2 curve initial slope) are scaled off of Vcmax
         jmax25_top[ft],kp25_top[ft] =  GetJmaxKp25Top(vcmax25_top[ft])
         
         # Leaf Nitrogen Concentration at the canopy top (N:C ratio) (n/m2]
-        # params['fates_stoich_nitr'].data.shape = (4, 14) First index is organ (leaf)
-        # params['fates_stoich_nitr'].meta['units'] = 'gN/gC'
-        #leaf_nc_ratio = params['fates_stoich_nitr'].data[0,ft]
         leaf_nc_ratio = float(GetParamFromAttrib(pft_root,'fates_stoich_nitr')[ft])
 
-        #params['fates_leaf_slatop'].meta['units'] = 'm^2/gC'
-        #leaf_slatop   = params['fates_leaf_slatop'].data[ft]
+        # Specific leaf area
         leaf_slatop[ft]   = float(GetParamFromAttrib(pft_root,'fates_leaf_slatop')[ft])
     
         # Leaf N Conc at the crown top [gN/m2]
@@ -300,7 +303,6 @@ def main(argv):
 
 
     
-    # code.interact(local=dict(globals(), **locals()))
     # Lets create a synthetic met driver based on nearest neighbor data?
     # ------------------------------------------------------------------------------------
 
@@ -308,7 +310,6 @@ def main(argv):
 
     met = met_driver(met_driver_csvfile)
     met.FilterTimes('daytime')
-
     
     ntimes = met.ndata
 
@@ -333,7 +334,9 @@ def main(argv):
             doy   = doy-1
 
         met.data['cosz'][it] = GetCosZ(zone,doy,latitude,longitude,lhour)
+        
 
+        
 
     # Create a canopy based on input from the control file
     # -----------------------------------------------------------------------------------
@@ -537,8 +540,33 @@ def main(argv):
                                          g_b_umol,maintresp_leaf_model,site_diags,elem_diags[ican][icol])
         
 
-    # Per Element
+    # Time Loop Completed
+    # Perform Diagnostics
+    # ------------------------------------------------------------------------
 
+    # Look at sun-shade fractions on the first element
+    fig22,(ax1,ax2) = plt.subplots(1,2,figsize=(8.0,4.5))
+    sf_mean  = elem_diags[0][0].sunfrac_zen_ll/elem_diags[0][0].count_zen_ll
+    sf_delta = (elem_diags[0][0].sunfrac2_zen_ll-elem_diags[0][0].sunfrac_zen_ll)/elem_diags[0][0].count_zen_ll
+    dzen = elem_diags[0][0].zen_bins[1]-elem_diags[0][0].zen_bins[0]
+    for izen,zen in enumerate(elem_diags[0][0].zen_bins):
+        pzen_l = zen
+        pzen_u = zen+dzen
+        ax1.plot(sf_delta[:,izen],elem_diags[0][0].avai,color=[zen,zen,zen],label=f"{pzen_l:.2f}-{pzen_u:.2f}")
+        ax2.plot(sf_delta[:,izen]/sf_mean[:,izen],elem_diags[0][0].avai,color=[zen,zen,zen])
+
+    ax1.invert_yaxis()
+    ax1.set_ylabel('VAI')
+    ax1.set_xlabel('Difference in \nSun/Shade Fraction')
+    ax1.grid('on')
+    ax1.legend()
+    ax2.invert_yaxis()
+    ax2.set_xlabel('Normalized Difference\n in Sun/Shade Fraction')
+    ax2.grid('on')
+    plt.tight_layout()
+    plt.show()
+
+    # Per Element
     for ican in range(n_can):
             for icol in range(n_col):
                 ico = elem_cohort[ican,icol]

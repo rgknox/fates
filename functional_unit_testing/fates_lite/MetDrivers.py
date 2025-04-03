@@ -258,6 +258,38 @@ class met_driver:
         
         return rb,tveg
 
+    def GetDayLenFactors(self):
+        
+        # Method:
+        # For every data-point find the day length of the current day
+        # 1) Determine doy
+        # 2) filter doys
+        # 3) count number of datapoints on that doy where rad>0
+
+        #self.data['Rtot'][:]
+        #self.data['yr']
+        #self.data['mon']
+        #self.data['day']
+        
+        
+        day_mask = numpy.full((200), False, dtype=bool)
+
+        for i in range(self.ndata):
+            
+            cday = self.data['day'][i]
+            chour = self.data['hour'][i]
+            
+            ii=i
+            found_lower = False
+            while(found_lower):
+                if(ii==0):
+                    break
+                ii=ii-1
+                if(self.data[
+            
+            dayl_factor=min(1._r8,max(0.01_r8,(dayl(g)*dayl(g))/(max_dayl(g)*max_dayl(g))))
+
+    
     def GetVpressSat(self,tcan,rh,can_press):
 
 

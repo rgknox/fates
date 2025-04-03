@@ -88,6 +88,12 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
         elem_diags.r_abs_stem[il]  = r_abs_stem_f.value
         elem_diags.sunfrac[il]     = leaf_sun_frac_f.value
         elem_diags.sunfrac_v2[il]  = leaf_sun_frac_v2_f.value
+
+        izen = np.sum(czbin < met.data['cosz'][it] for czbin in elem_diags.zen_bins)-1
+        
+        elem_diags.sunfrac2_zen_ll[il,izen] = elem_diags.sunfrac2_zen_ll[il,izen] + leaf_sun_frac_v2_f.value
+        elem_diags.sunfrac_zen_ll[il,izen] = elem_diags.sunfrac_zen_ll[il,izen] + leaf_sun_frac_f.value
+        elem_diags.count_zen_ll[il,izen] = elem_diags.count_zen_ll[il,izen] + 1
         
         # Query the solver for the radiative intensities at the mid-point of this interval
         iret = f90.getintens_sub(ci(ican+1), ci(icol+1), ci(visb), c8(avai+0.5*davai), \
@@ -117,7 +123,6 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
         else:
             print('unknown leaf respiration model')
             exit(1)
-
 
             
         par_abs_check = par_abs_check + (r_abs_stem_f.value+r_abs_snow_f.value)
@@ -178,14 +183,14 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
                                                    c8(float(GetParamFromAttrib(pft_root,'fates_leaf_fnps')[ft])), \
                                                    c8(co2_interc_f.value),c8(co2_cpoint_f.value))
 
-            site_diags.aglimit_apar.append(par_abs_leaf_umol)
-            site_diags.aglimit_temp.append(tvegk)
+            #site_diags.aglimit_apar.append(par_abs_leaf_umol)
+            #site_diags.aglimit_temp.append(tvegk)
 
             if(agross_rubisco<agross_rubpc3):
                 elem_diags.ag_limit[il,0] = elem_diags.ag_limit[il,0] + areafrac
                 elem_diags.ag_sslimit[il,ipar,0] = elem_diags.ag_sslimit[il,ipar,0] + areafrac
-                site_diags.aglimit_which.append(1.)
+                #site_diags.aglimit_which.append(1.)
             else:
                 elem_diags.ag_limit[il,1] = elem_diags.ag_limit[il,1] + areafrac
                 elem_diags.ag_sslimit[il,ipar,1] = elem_diags.ag_sslimit[il,ipar,1] + areafrac
-                site_diags.aglimit_which.append(0.)
+                #site_diags.aglimit_which.append(0.)
