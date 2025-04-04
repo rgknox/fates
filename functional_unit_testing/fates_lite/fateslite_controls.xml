@@ -3,6 +3,14 @@
 
   <!-- Parameters for leaf biophysics unit tests -->
   <numpft> 1 </numpft>
+  <!-- Site information:latitude, longitude and time-zone 
+       time zone is for calculating zenith angle off local met time-->
+  <site_info>
+    <lat> 9.153 </lat>     <!-- Deg Latitude -->
+    <lon> 280.1539 </lon>  <!-- Deg Longitude -->
+    <tzone>7</tzone>
+    <dvai> 0.1 </dvai>     <!-- Depth increment of LAI+SAI -->
+  </site_info>
   <canopy_structure>
     <!-- Specify how the canopy is constructed, on a cohort by cohort 
 	 basis. Each cohort must be associated with a pft index, which

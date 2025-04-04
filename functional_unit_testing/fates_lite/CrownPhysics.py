@@ -21,13 +21,15 @@ nirb = 2
 t_growth_kum = -999
 t_home_kum = -999
 
+dayl_factor_full = 1.0
+
 # Conversion factor for radiant energy in [Watts/m2] to
 # photon flux density [umol/m2/s]
 wm2_to_umolm2s = 4.6
 
 def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
                          vcmax25_top,jmax25_top,kp25_top,lnc_top, \
-                         co2_ppress, o2_ppress, btran, dayl_factor, \
+                         co2_ppress, o2_ppress, btran, \
                          g_b_umol,maintresp_leaf_model,site_diags,elem_diags):
 
     # This routine assumes the radiation solve has already been performed for the canopy.
@@ -73,8 +75,8 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
     for il in range(elem_diags.n_layer):
 
         avai =  elem_diags.avai[il]
-        davai =  elem_diags.davai
-        dalai = elem_diags.dalai
+        dvai =  elem_diags.dvai
+        dlai =  elem_diags.dlai
         
         # Query the solver for the absorbed radiation over this interval
         #print('il: {} avai: {}, davai: {}'.format(il,avai,davai))
@@ -110,7 +112,7 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
         # Scale down N and biophysical rates
         iret = f90.biophysrate_sub(ci(pft), c8(vcmax25_top), \
                                    c8(jmax25_top), c8(kp25_top), \
-                                   c8(nscaler), c8(tvegk), c8(dayl_factor), \
+                                   c8(nscaler), c8(tvegk), c8(met.data['dayl_factor'][it]), \
                                    c8(t_growth_kum),c8(t_home_kum),c8(btran), \
                                    byref(vcmax_f), byref(jmax_f), byref(kp_f), \
                                    byref(gs0_f), byref(gs1_f), byref(gs2_f))
@@ -128,20 +130,20 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
         par_abs_check = par_abs_check + (r_abs_stem_f.value+r_abs_snow_f.value)
         for ipar in [0,1]:
             if(ipar==0):
-                areafrac = leaf_sun_frac_v2_f.value
-                par_abs_leaf_umol = (elem_diags.rb_abs_leaf[il]/(dalai*areafrac) + elem_diags.rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
+                lit_area_frac = leaf_sun_frac_v2_f.value
+                par_abs_leaf_umol = (elem_diags.rb_abs_leaf[il]/(dalai*lit_area_frac) + elem_diags.rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
                     
             else:
-                areafrac = 1.- leaf_sun_frac_v2_f.value
+                lit_area_frac = 1.- leaf_sun_frac_v2_f.value
                 par_abs_leaf_umol = (elem_diags.rd_abs_leaf[il]/dalai)*wm2_to_umolm2s
 
             # Energy conservation check (diff absorbed by leaf, stem and snow)
-            par_abs_check = par_abs_check + par_abs_leaf_umol*areafrac*dalai/wm2_to_umolm2s
+            par_abs_check = par_abs_check + par_abs_leaf_umol*lit_area_frac*dalai/wm2_to_umolm2s
                     
             if(par_abs_leaf_umol>400000):
                 print('high par_abs_leaf_umol:',ipar,il,met.data['visbdn'][it]*wm2_to_umolm2s, \
                       met.data['visddn'][it]*wm2_to_umolm2s, \
-                      rb_abs_leaf[il]*wm2_to_umolm2s,dalai,areafrac,rd_abs_leaf[il]*wm2_to_umolm2s)
+                      rb_abs_leaf[il]*wm2_to_umolm2s,dalai,lit_area_frac,rd_abs_leaf[il]*wm2_to_umolm2s)
 
             iret = f90.leaflayerphoto_sub( c8(par_abs_leaf_umol),  \
                                            ci(pft),   \
@@ -169,12 +171,27 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
                                            byref(c13_f), \
                                            byref(co2_interc_f), \
                                            byref(solve_inter_f))
-                 
-            site_diags.lmr[it]        = site_diags.lmr[it] + areafrac*elem_diags.vfrac*lmr_f.value
-            site_diags.agross[it]     = site_diags.agross[it] + areafrac*elem_diags.vfrac*agross_f.value
-            site_diags.gstoma[it]     = site_diags.gstoma[it] + areafrac*elem_diags.vfrac*gstoma_f.value
-            site_diags.anet[it]       = site_diags.anet[it] + areafrac*elem_diags.vfrac*anet_f.value
 
+            # m2 leaf / m2 ground
+            leaf_per_ground = lit_area_frac*elem_diags.dlai*elem_diags.crown_area_frac
+            
+            site_diags.lmr[it]        = site_diags.lmr[it] + leaf_per_ground*lmr_f.value
+            site_diags.agross[it]     = site_diags.agross[it] + leaf_per_ground*agross_f.value
+            site_diags.gstoma[it]     = site_diags.gstoma[it] + leaf_per_ground*gstoma_f.value
+            site_diags.anet[it]       = site_diags.anet[it] + leaf_per_ground*anet_f.value
+            site_diags.r_abs_leaf[it] = site_diags.r_abs_leaf[it] + leaf_per_ground*par_abs_leaf_umol/wm2_to_umolm2s
+
+            if(il==0 and ican==0):
+                site_diags.vcmax_top[it] = site_diags.vcmax_top[it] + vcmax_f.value* lit_area_frac*elem_diags.crown_area_frac
+                site_diags.jmax_top[it] = site_diags.jmax_top[it] + jmax_f.value* lit_area_frac*elem_diags.crown_area_frac
+                site_diags.kp_top[it] = site_diags.kp_top[it] + kp_f.value* lit_area_frac*elem_diags.crown_area_frac
+
+            if(il==elem_diags.n_layer-1):
+                site_diags.vcmax_bot[it] = site_diags.vcmax_bot[it] + vcmax_f.value* lit_area_frac*elem_diags.crown_area_frac
+                site_diags.jmax_bot[it] = site_diags.jmax_bot[it] + jmax_f.value* lit_area_frac*elem_diags.crown_area_frac
+                site_diags.kp_bot[it] = site_diags.kp_bot[it] + kp_f.value* lit_area_frac*elem_diags.crown_area_frac
+
+                
             agross_rubisco = f90.agross_rubiscoc3_fun(c8(vcmax_f.value), c8(co2_interc_f.value), \
                                                       c8(o2_ppress), c8(co2_cpoint_f.value), \
                                                       c8(mm_kco2_f.value),c8(mm_ko2_f.value) )
@@ -183,14 +200,14 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
                                                    c8(float(GetParamFromAttrib(pft_root,'fates_leaf_fnps')[ft])), \
                                                    c8(co2_interc_f.value),c8(co2_cpoint_f.value))
 
-            #site_diags.aglimit_apar.append(par_abs_leaf_umol)
-            #site_diags.aglimit_temp.append(tvegk)
 
             if(agross_rubisco<agross_rubpc3):
-                elem_diags.ag_limit[il,0] = elem_diags.ag_limit[il,0] + areafrac
-                elem_diags.ag_sslimit[il,ipar,0] = elem_diags.ag_sslimit[il,ipar,0] + areafrac
-                #site_diags.aglimit_which.append(1.)
+                elem_diags.ag_limit[il,0] = elem_diags.ag_limit[il,0] + lit_area_frac
+                elem_diags.ag_sslimit[il,ipar,0] = elem_diags.ag_sslimit[il,ipar,0] + lit_area_frac
+
             else:
-                elem_diags.ag_limit[il,1] = elem_diags.ag_limit[il,1] + areafrac
-                elem_diags.ag_sslimit[il,ipar,1] = elem_diags.ag_sslimit[il,ipar,1] + areafrac
-                #site_diags.aglimit_which.append(0.)
+                elem_diags.ag_limit[il,1] = elem_diags.ag_limit[il,1] + lit_area_frac
+                elem_diags.ag_sslimit[il,ipar,1] = elem_diags.ag_sslimit[il,ipar,1] + lit_area_frac
+
+
+    return site_diags,elem_diags

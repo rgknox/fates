@@ -66,9 +66,6 @@ tfrz_1atm = 273.15
 
 # 25 degrees C in Kelvin (used because T25 functions)
 leaf_tempk25 = tfrz_1atm + 25.0
-
-
-
  
 # Simple conversion, number of micro-moles in a mole
 umol_per_mol = 1.e6
@@ -115,8 +112,6 @@ btran_nolimit = 1.0
 # Respiration scaler at canopy top
 rdark_scaler_top = 1.0
 
-# Nitrogen scaler at canopy top
-nscaler_top = 1.0
 
 # This signals that we perform a solution for a unit raditation calculation
 # and then afterwards, scale by the magnitude of the downwelling flux
@@ -128,7 +123,8 @@ normalized_boundary = 1
 
 exec(open("../shared/py_src/CtypesInit.py").read())
 
-n_layer = 10
+
+
 
 # Subroutines
 # =======================================================================================
@@ -136,12 +132,24 @@ n_layer = 10
 # Radiation diagnostics
 class elem_diags_type:
 
-    def __init__(self,total_lai,total_sai,n_layer,ntimes):
+    def __init__(self,lai_above,sai_above,total_lai,total_sai,dvai,crown_area_frac,ntimes):
 
+        # Static diagnostics
+        self.lai_above = lai_above
+        self.sai_above = sai_above
         self.total_lai = total_lai
         self.total_sai = total_sai
-        self.n_layer = n_layer
-        self.avai = np.zeros(n_layer)  # Accumulated VAI (top of bin)
+        self.n_layer = np.ceil((total_lai+total_sai)/dvai)
+        
+        self.avai = np.zeros(self.n_layer)  # Accumulated VAI (top of bin)
+        for il in range(self.n_layer):
+            self.avai[il] = (total_lai+total_sai)*float(il)/float(self.n_layer)
+            
+        self.dlai =  dvai*(total_lai/(total_lai+total_sai))
+        self.vfrac = 1./float(n_layer)
+        self.crown_area_frac = crown_area_frac
+        
+        # Instantaneous diagnostics
         self.rd_abs_leaf = np.zeros(n_layer)
         self.rb_abs_leaf = np.zeros(n_layer)
         self.r_abs_stem  = np.zeros(n_layer)
@@ -150,11 +158,17 @@ class elem_diags_type:
         self.rbeam =  np.zeros(n_layer)
         self.sunfrac = np.zeros(n_layer)
         self.sunfrac_v2 = np.zeros(n_layer)
-        for il in range(n_layer):
-            self.avai[il] = (total_lai+total_sai)*float(il)/float(n_layer)
-        self.davai =  (total_lai+total_sai)/float(n_layer)
-        self.dalai =  total_lai/float(n_layer)
-        self.vfrac = 1./float(n_layer)
+        self.lmr  = np.zeros(n_layer)
+        self.agross = np.zeros(n_layer)
+        self.anet = np.zeros(n_layer)
+        self.gstoma = np.zeros(n_layer)
+        self.co2_interc = np.zeros(n_layer)
+        self.vcmax = np.zeros(n_layer)
+        self.jmax = np.zeros(n_layer)
+        self.kp = np.zeros(n_layer)
+
+
+        # Mean diagnostics
         self.ag_limit = np.zeros([n_layer,2])
         self.ag_sslimit = np.zeros([n_layer,2,2])
         self.n_zen          = 5          # Number of zenith bins we use for diagnostics
@@ -177,24 +191,54 @@ class elem_diags_type:
         self.rbeam =  np.zeros(n_layer)
         self.sunfrac = np.zeros(n_layer)
         self.sunfrac_v2 = np.zeros(n_layer)
-        self.ag_limit = np.zeros([n_layer,2])
-        self.ag_sslimit = np.zeros([n_layer,2,2])
+        self.lmr  = np.zeros(n_layer)
+        self.agross = np.zeros(n_layer)
+        self.anet = np.zeros(n_layer)
+        self.gstoma = np.zeros(n_layer)
+        self.co2_interc = np.zeros(n_layer)
+        self.vcmax = np.zeros(n_layer)
+        self.jmax = np.zeros(n_layer)
+        self.kp = np.zeros(n_layer)
         
         return
 
 class site_diags_type:
 
-    def __init__(self,ntimes):
+    def __init__(self,ntimes,total_vai):
 
-        self.ntimes = ntimes
+        self.ntimes        = ntimes
+        self.n_layer_tot   = ncan*n_layer
         self.aglimit_which = []
         self.aglimit_apar  = []
         self.aglimit_temp  = []
-        self.cosz = np.zeros(ntimes)
-        self.lmr = np.zeros(ntimes)
-        self.agross = np.zeros(ntimes)
-        self.gstoma = np.zeros(ntimes)
-        self.anet = np.zeros(ntimes)
+        self.lmr           = np.zeros(ntimes) # [umol/m2/s ground]
+        self.agross        = np.zeros(ntimes) # [umol/m2/s ground]
+        self.gstoma        = np.zeros(ntimes) # [umol/m2/s ground]
+        self.anet          = np.zeros(ntimes) # [umol/m2/s ground]
+        self.r_abs_leaf    = np.zeros(ntimes) # [W/m2 ground]
+        self.g_b_umol      = np.zeros(ntimes) # [umol/m2/s]
+        self.mm_kco2       = np.zeros(ntimes)
+        self.mm_ko2        = np.zeros(ntimes)
+        self.co2_cpoint    = np.zeros(ntimes) # [Pa CO2]
+        self.gs0           = np.zeros(ntimes) # [0-1]
+        self.gs1           = np.zeros(ntimes) # [0-1]
+        self.gs2           = np.zeros(ntimes) # [0-1]
+        self.solve_iter    = np.zeros(ntimes) # [count]
+        self.co2_interc    = np.zeros(ntimes) # [Pa CO2]
+
+        # Time x canopy layer diagnostics
+
+        
+       
+        # Time x VAI depth diagnostics
+        
+        self.lmr_vl           = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
+        self.agross_vl        = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
+        self.gstoma_vl        = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
+        self.anet_vl          = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
+        self.r_abs_leaf_vl    = np.zeros([ntimes,self.n_layer_tot]) # [W/m2 ground]
+        
+        
         
 def GetJmaxKp25Top(vcmax25_top):
 
@@ -301,45 +345,35 @@ def main(argv):
         # Leaf N Conc at the crown top [gN/m2]
         lnc_top[ft]       = leaf_nc_ratio/leaf_slatop[ft]
 
-
-    
-    # Lets create a synthetic met driver based on nearest neighbor data?
+        
+    # Lets setup the site information and the driver data
+    # location and time-zone are for caluclating zenith angles from
+    # local time info
     # ------------------------------------------------------------------------------------
 
     met_driver_csvfile = "bci_met_data/BCI_met_drivers_2003_2016.csv"
+    site_root = xmlroot.find('site_info')
+    latitude  = GetParamList(site_root,'lat','float')[0]
+    longitude = GetParamList(site_root,'lon','float')[0]
+    tzone     = GetParamList(site_root,'tzone','integer')[0]
 
-    met = met_driver(met_driver_csvfile)
+    if(longitude>180.):
+        longitude = longitude - 360.
+
+    met = met_driver(met_driver_csvfile,latitude,longitude,tzone)
+    
     met.FilterTimes('daytime')
     
     ntimes = met.ndata
 
     site_diags = site_diags_type(ntimes)
+
     
-    # For cosine..
-    zone = 12-5
-    doys = [0,31,28,31,30,31,30,31,31,30,31,30]
-    cdoys = np.cumsum(doys)
-    latitude=9.153
-    longitude=280.1539-360.0
-
-    for it in range(ntimes):
-        
-        tvegk = met.data['t_veg'][it]
-
-        
-        doy = cdoys[met.data['mon'][it]-1] + met.data['day'][it]
-        lhour = met.data['hod'][it]-5.0
-        if(lhour<0):
-            lhour = lhour-24
-            doy   = doy-1
-
-        met.data['cosz'][it] = GetCosZ(zone,doy,latitude,longitude,lhour)
-        
-
-        
-
+    
+    
     # Create a canopy based on input from the control file
     # -----------------------------------------------------------------------------------
+
     
     cstruct_root = xmlroot.find('canopy_structure')
     cohort_pft  = GetParamList(cstruct_root,'cohort_pft','integer')
@@ -399,6 +433,7 @@ def main(argv):
     
 
     # Initialize scattering elements
+    # -----------------------------------------------------------------------------
 
     elem_diags = []
     iret = f90.alloc_twostream_sub(ci(n_can),ci(n_col))
@@ -406,7 +441,6 @@ def main(argv):
     for ican in range(n_can):
         veg_area = 0.0
         n_veg    = 0
-
         elem_diags.append(list())
         for icol in range(n_col):
             ico = elem_cohort[ican,icol]
@@ -418,7 +452,7 @@ def main(argv):
                 iret = f90.setup_canopy_sub(c_int(ican+1),c_int(icol+1), \
                                             c_int(cohort_pft[ico]), c_double(cohort_area[ico]), \
                                             c_double(cohort_lai[ico]), c_double(cohort_sai[ico]))
-                elem_diags[ican].append(elem_diags_type(cohort_lai[ico],cohort_sai[ico],n_layer,ntimes))
+                elem_diags[ican].append(elem_diags_type(cohort_lai[ico],cohort_sai[ico],n_layer, cohort_area[ico], ntimes))
             else:
                 air_pft  = 0
                 air_area = (1.-veg_area)/float(n_col-n_veg)
@@ -434,7 +468,7 @@ def main(argv):
     iret = f90.grndsnow_albedo_sub(c_int(nirb),c_double(ground_nir_albedo[0]),*ccharnb('albedo_grnd_beam'))
     iret = f90.canopy_prep_sub(c8(frac_snow))
 
-    visualize_elements = False
+    visualize_elements = True
     if(visualize_elements):
         fig10, ax = plt.subplots(ncols=1,nrows=1,figsize=(7,7))
         maxvai = 0.
@@ -481,7 +515,6 @@ def main(argv):
 
    
 
-    cosz = np.zeros(ntimes)
     g_b_umol = np.zeros(ntimes)
     
     
@@ -494,18 +527,11 @@ def main(argv):
         pft = 1
         
         tvegk = met.data['t_veg'][it]
+        cosz  = met.data['cosz'][it]
         
-        doy = cdoys[met.data['mon'][it]-1] + met.data['day'][it]
-        lhour = met.data['hod'][it]-5.0
-        if(lhour<0):
-            lhour = lhour-24
-            doy   = doy-1
-
-        cosz[it] = GetCosZ(zone,doy,latitude,longitude,lhour)
-
         # Update scattering parameters based on zenith angle
         # optical depth, backscatter
-        iret = f90.zenith_prep_sub(c8(cosz[it]))
+        iret = f90.zenith_prep_sub(c8(cosz))
 
         # Perform a normalized solve of the scattering environment
         iret = f90.solver_sub(ci(visb),ci(normalized_boundary),c8(1.0),c8(1.0), \
@@ -534,13 +560,14 @@ def main(argv):
             for icol in range(n_col):
                 ico = elem_cohort[ican,icol]
                 if(ico>=0):
-                    CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,cohort_pft[ico], \
+                    site_diags,elem_diags[ican][icol] = \
+                        CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,cohort_pft[ico], \
                                          vcmax25_top[ft],jmax25_top[ft],kp25_top[ft],lnc_top[ft], \
-                                         co2_ppress_400ppm, o2_ppress_209kppm, btran_nolimit, dayl_factor_full, \
+                                         co2_ppress_400ppm, o2_ppress_209kppm, btran_nolimit, \
                                          g_b_umol,maintresp_leaf_model,site_diags,elem_diags[ican][icol])
         
-
-    # Time Loop Completed
+                    
+    
     # Perform Diagnostics
     # ------------------------------------------------------------------------
 
@@ -568,33 +595,33 @@ def main(argv):
 
     # Per Element
     for ican in range(n_can):
-            for icol in range(n_col):
-                ico = elem_cohort[ican,icol]
-                if(ico>=0):
-                    ft = cohort_pft[ico]
-                    fig55, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.5))
+        for icol in range(n_col):
+            ico = elem_cohort[ican,icol]
+            if(ico>=0):
+                ft = cohort_pft[ico]
+                fig55, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.5))
     
-                    ax3.plot(elem_diags[ican][icol].ag_limit[:,1]/(elem_diags[ican][icol].ag_limit[:,0]+elem_diags[ican][icol].ag_limit[:,1]),elem_diags[ican][icol].avai[:])
-                    ax3.invert_yaxis()
-                    ax3.set_ylabel('LAI')
-                    ax3.set_xlabel('Fraction RuBP Limited')
-                    ax3.set_title('All')
-                    ax3.grid('on')
-    
-                    ax1.plot(elem_diags[ican][icol].ag_sslimit[:,0,1]/(elem_diags[ican][icol].ag_sslimit[:,0,0]+elem_diags[ican][icol].ag_sslimit[:,0,1]),elem_diags[ican][icol].avai[:])
-                    ax1.invert_yaxis()
-                    ax1.set_ylabel('LAI')
-                    ax1.set_xlabel('Fraction RuBP Limited')
-                    ax1.set_title('Sunlit')
-                    ax1.grid('on')
+                ax3.plot(elem_diags[ican][icol].ag_limit[:,1] / (elem_diags[ican][icol].ag_limit[:,0]+elem_diags[ican][icol].ag_limit[:,1]),elem_diags[ican][icol].avai[:])
+                ax3.invert_yaxis()
+                ax3.set_ylabel('LAI')
+                ax3.set_xlabel('Fraction RuBP Limited')
+                ax3.set_title('All')
+                ax3.grid('on')
+                
+                ax1.plot(elem_diags[ican][icol].ag_sslimit[:,0,1]/(elem_diags[ican][icol].ag_sslimit[:,0,0]+elem_diags[ican][icol].ag_sslimit[:,0,1]),elem_diags[ican][icol].avai[:])
+                ax1.invert_yaxis()
+                ax1.set_ylabel('LAI')
+                ax1.set_xlabel('Fraction RuBP Limited')
+                ax1.set_title('Sunlit')
+                ax1.grid('on')
                     
-                    ax2.plot(elem_diags[ican][icol].ag_sslimit[:,1,1]/(elem_diags[ican][icol].ag_sslimit[:,1,0]+elem_diags[ican][icol].ag_sslimit[:,1,1]),elem_diags[ican][icol].avai[:])
-                    ax2.invert_yaxis()
-                    ax2.set_ylabel('LAI')
-                    ax2.set_xlabel('Fraction RuBP Limited')
-                    ax2.set_title('Shaded')
-                    ax2.grid('on')
-                    plt.show()
+                ax2.plot(elem_diags[ican][icol].ag_sslimit[:,1,1]/(elem_diags[ican][icol].ag_sslimit[:,1,0]+elem_diags[ican][icol].ag_sslimit[:,1,1]),elem_diags[ican][icol].avai[:])
+                ax2.invert_yaxis()
+                ax2.set_ylabel('LAI')
+                ax2.set_xlabel('Fraction RuBP Limited')
+                ax2.set_title('Shaded')
+                ax2.grid('on')
+                plt.show()
 
                         
     fig7,(ax1,ax2) = plt.subplots(2,1,figsize=(5.5,7.5))

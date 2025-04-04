@@ -270,25 +270,53 @@ class met_driver:
         #self.data['yr']
         #self.data['mon']
         #self.data['day']
+        lowlight = 0.0001
         
+        day_mask = np.full((200), False, dtype=bool)
+        dayl = np.zeros(self.ndata)
+        max_dayl = 0.
         
-        day_mask = numpy.full((200), False, dtype=bool)
+        i = 0
+        while(i<(self.ndata-1)):
 
+            cday = int(self.data['day'][i])
+            nday = cday
+            ii   = i
+
+            print('{} of {}, {} {}'.format(ii,self.ndata-1,cday,nday))
+                  
+            while(nday==cday and ii<(self.ndata-1) ):
+                ii = ii+1
+                nday = int(self.data['day'][ii])
+
+            ntimes = ii-i
+
+            # total radiation vector for the current day
+            rtots = self.data['cosz'][i:ii]
+
+            if(ntimes==24):
+                dayl[i:ii] = 86400.*float(np.sum(rtots>lowlight))/24.
+                max_dayl = np.max([np.max(dayl[i:ii]),max_dayl])
+                if(max_dayl>86399.):
+                    print('light all day?')
+                    code.interact(local=dict(globals(), **locals()))
+            else:
+                dayl[i:ii] = np.nan
+
+            i = ii
+
+        
+        dayl_mean = np.nanmean(dayl)
+        
         for i in range(self.ndata):
-            
-            cday = self.data['day'][i]
-            chour = self.data['hour'][i]
-            
-            ii=i
-            found_lower = False
-            while(found_lower):
-                if(ii==0):
-                    break
-                ii=ii-1
-                if(self.data[
-            
-            dayl_factor=min(1._r8,max(0.01_r8,(dayl(g)*dayl(g))/(max_dayl(g)*max_dayl(g))))
 
+            if np.isnan(dayl[i]):
+                dayl[i] = dayl_mean
+                
+            self.data['dayl_factor'][i] = np.min([1., np.max([0.01, (dayl[i]*dayl[i])/(max_dayl*max_dayl)])])
+
+            
+        #code.interact(local=dict(globals(), **locals()))
     
     def GetVpressSat(self,tcan,rh,can_press):
 
@@ -353,7 +381,7 @@ class met_driver:
             return swvdr,swndr,swvdf,swndf
         
         
-    def __init__(self,filepath):
+    def __init__(self,filepath,lat,lon,tzone):
 
         # This routine simply reads a comma delimited text file.
         # It should have no header, and should contain
@@ -427,6 +455,7 @@ class met_driver:
             self.data = {}
             self.data['can_press'] = np.array(df['BP_hPa'].values*100.)
             npts = len(self.data['can_press'])
+            self.ndata = npts
             self.data['t_can']      = np.array(df['Temp_o_C.'].values+273.14)
             self.data['Rtot']       = np.array(df['SR_W_m2.'].values)
             self.data['u_ref']      = np.array(df['WS_m_s'].values)
@@ -434,6 +463,7 @@ class met_driver:
             self.data['mon']        = np.zeros(npts,dtype=int)
             self.data['day']        = np.zeros(npts,dtype=int)
             self.data['hod']        = np.zeros(npts,dtype=int)
+            self.data['doy']        = np.zeros(npts,dtype=int)
             self.data['r_b']        = np.zeros(npts)
             self.data['t_veg']      = np.zeros(npts)
             self.data['visbdn']     = np.zeros(npts)
@@ -443,6 +473,12 @@ class met_driver:
             self.data['cosz']       = np.zeros(npts)
             self.data['vpress']     = np.zeros(npts)
             self.data['vpress_sat'] = np.zeros(npts)
+            self.data['dayl_factor']= np.zeros(npts)
+            
+            # Days per month, for calculating doy
+            doys = [0,31,28,31,30,31,30,31,31,30,31,30]
+            cdoys = np.cumsum(doys)
+
             for idate in range(npts):
                 yr,mo,dy,hod = self.ProcDateStr(df['Date_local_start'].values[idate], \
                                                 df['Date_local_end'].values[idate])
@@ -450,6 +486,9 @@ class met_driver:
                 self.data['mon'][idate] = mo
                 self.data['day'][idate] = dy
                 self.data['hod'][idate] = hod
+                self.data['doy'][idate] = cdoys[self.data['mon'][idate]-1] + self.data['day'][idate]
+                
+                self.data['cosz'][idate] = GetCosZ(tzone,self.data['doy'][idate],lat,lon,self.data['hod'][idate])
                 self.data['visbdn'][idate],self.data['nirbdn'][idate], \
                     self.data['visddn'][idate],self.data['nirddn'][idate] = self.ModelSWComponents(self.data['Rtot'][idate])
                 self.data['r_b'][idate],self.data['t_veg'][idate] = self.ModelRb(self.data['t_can'][idate], \
@@ -458,7 +497,8 @@ class met_driver:
                                                                                  self.data['u_ref'][idate])
                 self.data['vpress'][idate],self.data['vpress_sat'][idate] = qsat(self.data['t_can'][idate],df['RH_%'].values[idate])
 
-                
+            self.GetDayLenFactors()
+            
             if (eval_met_forcing):
 
                 # Radiation Scattering
@@ -531,19 +571,19 @@ class met_driver:
         # bfilter is short for binary-filter
     
         if(study_period == 'reysanchez_wetssn_morning'):
-            morning = [ (self.data['hod'][iyr] <= 17.25 and self.data['hod'][iyr] > 8) and (self.data['Rtot'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
+            morning = [ (self.data['hod'][iyr] <= 17.25 and self.data['hod'][iyr] > 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter = [ (self.data['yr'][iyr] == 2011 and (self.data['mon'][iyr]==11 or self.data['mon'][iyr]==12)) and morning[iyr] for iyr,year in enumerate(self.data['yr'])]
 
         if(study_period == 'reysanchez_dryssn_morning'):
-            morning = [ (self.data['hod'][iyr] <= 17.25 and self.data['hod'][iyr] > 8) and (self.data['Rtot'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
+            morning = [ (self.data['hod'][iyr] <= 17.25 and self.data['hod'][iyr] > 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter = [ (self.data['yr'][iyr] == 2013 and (self.data['mon'][iyr]==2 or self.data['mon'][iyr]==3)) and morning[iyr] for iyr,year in enumerate(self.data['yr'])]
 
         if(study_period == 'reysanchez_wetssn_afternoon'):
-            afternoon = [ (self.data['hod'][iyr] > 17.25 or self.data['hod'][iyr] < 8) and (self.data['Rtot'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
+            afternoon = [ (self.data['hod'][iyr] > 17.25 or self.data['hod'][iyr] < 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter =  [ (self.data['yr'][iyr] == 2011 and (self.data['mon'][iyr]==11 or self.data['mon'][iyr]==12)) and afternoon[iyr] for iyr,year in enumerate(self.data['yr'])]
 
         if(study_period == 'reysanchez_dryssn_afternoon'):
-            afternoon = [ (self.data['hod'][iyr] > 17.25 or self.data['hod'][iyr] < 8) and (self.data['Rtot'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
+            afternoon = [ (self.data['hod'][iyr] > 17.25 or self.data['hod'][iyr] < 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter = [ (self.data['yr'][iyr] == 2013 and (self.data['mon'][iyr]==2 or self.data['mon'][iyr]==3)) and afternoon[iyr] for iyr,year in enumerate(self.data['yr'])]
         
         if(study_period == 'reysanchez_wetssn'):
@@ -556,16 +596,17 @@ class met_driver:
             bfilter = [ True for iyr,year in enumerate(self.data['yr'])]
 
         if(study_period == 'daytime'):
-            bfilter = [ (self.data['Rtot'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
+            bfilter = [ (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
 
             
         if(sum(bfilter)<1):
             print('The filtering of met data produced no datapoints')
             exit(2)
 
-            
+        #code.interact(local=dict(globals(), **locals()))
         # Loop through all met data entries and filter
         for key, val in self.data.items():
+            print(key)
             self.data[key] = self.data[key][bfilter]
         
         self.ndata = len(self.data['yr'])
