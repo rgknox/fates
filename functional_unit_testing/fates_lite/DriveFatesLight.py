@@ -124,8 +124,6 @@ normalized_boundary = 1
 exec(open("../shared/py_src/CtypesInit.py").read())
 
 
-
-
 # Subroutines
 # =======================================================================================
 
@@ -135,18 +133,18 @@ class elem_diags_type:
     def __init__(self,lai_above,sai_above,total_lai,total_sai,dvai,crown_area_frac,ntimes):
 
         # Static diagnostics
-        self.lai_above = lai_above
-        self.sai_above = sai_above
-        self.total_lai = total_lai
-        self.total_sai = total_sai
-        self.n_layer = np.ceil((total_lai+total_sai)/dvai)
+        self.lai_above = lai_above   # Mean LAI in canopy layers above this one (/m2 ground)
+        self.sai_above = sai_above   # Mean SAI in canopy layers above this one (/m2 ground)
+        self.total_lai = total_lai   # LAI of this element (/m2 crown)
+        self.total_sai = total_sai   # SAI of this element (/m2 crown)
+        self.total_vai = total_lai+total_sai
+        self.n_layer = np.ceil((total_lai+total_sai)/dvai)  # Number of layers we discretize
         
-        self.avai = np.zeros(self.n_layer)  # Accumulated VAI (top of bin)
+        self.avai = np.zeros(self.n_layer)  # Accumulated VAI
         for il in range(self.n_layer):
-            self.avai[il] = (total_lai+total_sai)*float(il)/float(self.n_layer)
+            self.avai[il] = dvai*float(il)
             
-        self.dlai =  dvai*(total_lai/(total_lai+total_sai))
-        self.vfrac = 1./float(n_layer)
+        self.dlai = dvai*(total_lai/self.total_vai)
         self.crown_area_frac = crown_area_frac
         
         # Instantaneous diagnostics
@@ -204,10 +202,14 @@ class elem_diags_type:
 
 class site_diags_type:
 
-    def __init__(self,ntimes,total_vai):
+    def __init__(self,ntimes,dvai,total_vai):
 
         self.ntimes        = ntimes
-        self.n_layer_tot   = ncan*n_layer
+        self.n_layer       = np.ceil(total_vai/dvai)
+        self.avai = np.zeros(self.n_layer)
+        for il in range(self.n_layer):
+            self.avai[il] = dvai*float(il)
+
         self.aglimit_which = []
         self.aglimit_apar  = []
         self.aglimit_temp  = []
@@ -225,10 +227,6 @@ class site_diags_type:
         self.gs2           = np.zeros(ntimes) # [0-1]
         self.solve_iter    = np.zeros(ntimes) # [count]
         self.co2_interc    = np.zeros(ntimes) # [Pa CO2]
-
-        # Time x canopy layer diagnostics
-
-        
        
         # Time x VAI depth diagnostics
         
@@ -237,8 +235,35 @@ class site_diags_type:
         self.gstoma_vl        = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
         self.anet_vl          = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
         self.r_abs_leaf_vl    = np.zeros([ntimes,self.n_layer_tot]) # [W/m2 ground]
+
+
+def GetElemLayerLAIShare(elem_diags,site_diags):
+
+    for il in range(elem_diags.n_layer):
+
+        # These area indices are WRT the element's top
+        # --------------------------------------------
+        avai =  elem_diags.avai[il]
+        dvai =  elem_diags.dvai
+        dlai =  elem_diags.dlai
+        if(il == (elem_diags.n_layer-1)):
+            vai_top =  avai
+            vai_bot =  elem_diags.total_vai
+        else:
+            vai_top =  avai
+            vai_bot =  avai+dvai
+            
+        cvai    = vai_bot - vai_top
+        vai_mid = 0.5*(vai_bot+vai_top)
         
+        # These area indices are WRT the canopy top
+        # -----------------------------------------
+        canopy_vai_mid = elem_diags.lai_above+elem_diags.sai_above+vai_mid
+
+        # Fraction of the site-layer's leaf area  occupied by this element layer's leaves
+        site_lai_frac = lit_frac*elem_diags.crown_area_frac * cvai/site_diags.vai[sil]
         
+    return elem_diags,site_diags
         
 def GetJmaxKp25Top(vcmax25_top):
 
@@ -356,7 +381,8 @@ def main(argv):
     latitude  = GetParamList(site_root,'lat','float')[0]
     longitude = GetParamList(site_root,'lon','float')[0]
     tzone     = GetParamList(site_root,'tzone','integer')[0]
-
+    dvai      = GetParamList(site_root,'dvai','float')[0]
+    
     if(longitude>180.):
         longitude = longitude - 360.
 
@@ -438,21 +464,30 @@ def main(argv):
     elem_diags = []
     iret = f90.alloc_twostream_sub(ci(n_can),ci(n_col))
     iret = f90.param_prep_sub()  # This routine creates parameters that are derived from others
+    lai_above = 0.               # Mean LAI (m2 ground) in canopy above current
+    sai_above = 0.               # Mean SAI (m2 ground) in canopy above current
+    vai_max   = 0.               # Maximum VAI
     for ican in range(n_can):
         veg_area = 0.0
         n_veg    = 0
+        lai_current = 0    # Mean LAI (m2 crown) in current element
+        sai_current = 0    # Mean SAI (m2 crown) in current element
         elem_diags.append(list())
         for icol in range(n_col):
             ico = elem_cohort[ican,icol]
-            print("column: ",ico)
             if(ico>=0):
-                print("adding cohort")
                 veg_area = veg_area+cohort_area[ico]
+                lai_current = lai_current+cohort_area[ico]*cohort_lai[ico]
+                sai_current = sai_current+cohort_area[ico]*cohort_sai[ico]
+                vai_max_layer = np.max([vai_max_layer,cohort_lai[ico]+cohort_sai[ico]])
                 n_veg = n_veg + 1
                 iret = f90.setup_canopy_sub(c_int(ican+1),c_int(icol+1), \
                                             c_int(cohort_pft[ico]), c_double(cohort_area[ico]), \
                                             c_double(cohort_lai[ico]), c_double(cohort_sai[ico]))
-                elem_diags[ican].append(elem_diags_type(cohort_lai[ico],cohort_sai[ico],n_layer, cohort_area[ico], ntimes))
+
+                elem_diags[ican].append(elem_diags_type(lai_above, sai_above, cohort_lai[ico],cohort_sai[ico], \
+                                                        dvai, cohort_area[ico], ntimes))
+                max_vai = np.max([max_vai,lai_above+sai_above+lai_current+sai_current])
             else:
                 air_pft  = 0
                 air_area = (1.-veg_area)/float(n_col-n_veg)
@@ -461,6 +496,11 @@ def main(argv):
                 iret = f90.setup_canopy_sub(c_int(ican+1),c_int(icol+1),c_int(air_pft), \
                                             c_double(air_area),c_double(air_lai),c_double(air_sai))
 
+        # Set the current LAI and SAI to the layer above
+        lai_above = lai_current
+        sai_above = sai_current
+
+        
     # Site level scattering parameters
     iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_vis_albedo[1]),*ccharnb('albedo_grnd_diff'))
     iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_vis_albedo[0]),*ccharnb('albedo_grnd_beam'))
