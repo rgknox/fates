@@ -71,47 +71,23 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
                                  c8(float(GetParamFromAttrib(pft_root,'fates_leafn_vert_scaler_coeff1')[ft])), \
                                  c8(float(GetParamFromAttrib(pft_root,'fates_leafn_vert_scaler_coeff2')[ft])))
 
-    leaf_frac = elem_diags.total_lai/(elem_diags.total_lai+elem_diags.total_sai))
+    leaf_frac = elem_diags.total_lai/(elem_diags.total_lai+elem_diags.total_sai)
 
     izen = np.sum(czbin < met.data['cosz'][it] for czbin in elem_diags.zen_bins)-1
-
-
-
     
     par_abs_check = 0
     for il in range(elem_diags.n_layer):
 
         # These area indices are WRT the element's top
         # --------------------------------------------
-        avai =  elem_diags.avai[il]
-        dvai =  elem_diags.dvai
-        dlai =  elem_diags.dlai
-        if(il == (elem_diags.n_layer-1)):
-            vai_top =  avai
-            vai_bot =  elem_diags.total_vai
-         else:
-            vai_top =  avai
-            vai_bot =  avai+dvai
-
-        cvai    = vai_bot - vai_top
+        vai_top = elem_diags.vai_top[il]
+        vai_bot = elem_diags.vai_bot[il]
+        dlai    = elem_diags.dlai
+        dvai    = vai_bot - vai_top
         vai_mid = 0.5*(vai_bot+vai_top)
-
-        
-        
-        # These area indices are WRT the canopy top
-        # -----------------------------------------
-        canopy_vai_mid = elem_diags.lai_above+elem_diags.sai_above+vai_mid
-
-        # Fraction of the site-layer's leaf area  occupied by this element layer's leaves
-        site_lai_frac = lit_frac*elem_diags.crown_area_frac * cvai/site_diags.vai[sil]
-
-        
-        # Index for the whole-canopy vertical array (0 for first index
-        sil = np.sum(canopy_vai_mid < site_diags.avai)
-
+        sil     = elem_diags.sil[il]
         
         # Query the solver for the absorbed radiation over this interval
-        #print('il: {} avai: {}, davai: {}'.format(il,avai,davai))
         iret = f90.getabsrad_sub(ci(ican+1),ci(icol+1),ci(visb),c8(vai_top),c8(vai_bot), \
                                  byref(rd_abs_f),byref(rb_abs_f), \
                                  byref(rd_abs_leaf_f),byref(rb_abs_leaf_f),byref(r_abs_stem_f), \
@@ -136,7 +112,7 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
         elem_diags.rbeam[il] = r_beam_f.value
 
         # Nitrogen attenuation at this canopy depth
-        nscaler = np.exp(-kn*(canopy_vai_mid)*leaf_frac)
+        nscaler = np.exp(-kn*elem_diags.canopy_lai_mid[il]*leaf_frac)
 
         # Scale down N and biophysical rates
         iret = f90.biophysrate_sub(ci(pft), c8(vcmax25_top), \
@@ -203,37 +179,32 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
                                            byref(co2_interc_f), \
                                            byref(solve_inter_f))
 
-            # m2 leaf / m2 ground
-            leaf_per_ground = lit_frac*elem_diags.dlai*elem_diags.crown_area_frac
+            
+            leaf_per_ground           = lit_frac*dlai*elem_diags.crown_area_frac
             site_diags.lmr[it]        = site_diags.lmr[it] + leaf_per_ground*lmr_f.value
             site_diags.agross[it]     = site_diags.agross[it] + leaf_per_ground*agross_f.value
             site_diags.gstoma[it]     = site_diags.gstoma[it] + leaf_per_ground*gstoma_f.value
             site_diags.anet[it]       = site_diags.anet[it] + leaf_per_ground*anet_f.value
             site_diags.r_abs_leaf[it] = site_diags.r_abs_leaf[it] + leaf_per_ground*par_abs_leaf_umol/wm2_to_umolm2s
 
-            site_vai = site_diags.vai[sil]
-
+            # Fraction of the site-layer's leaf area  occupied by this element layer's leaves
+            if(site_diags.lai_ground[sil]<0.000000001):
+                print(sil,site_diags.lai_ground[sil],il,ican,icol,site_diags.lai_ground[1])
+                exit(0)
             
-
-
-            site_diags.lmr_vl[it,sil] = site_diags.lmr_vl[it,sil] + site_lai_frac*lmr_f.value
+            if(dlai>0.):
+                leaf_site_frac = lit_frac*elem_diags.crown_area_frac*dlai/site_diags.lai_ground[sil]
+            else:
+                leaf_site_frac = 0.
+                
+            site_diags.lmr_vl[it,sil] = site_diags.lmr_vl[it,sil] + leaf_site_frac*lmr_f.value
             
-        self.agross_vl        = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
-        self.gstoma_vl        = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
-        self.anet_vl          = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
-        self.r_abs_leaf_vl
+            site_diags.agross_vl[it,sil] = site_diags.agross_vl[it,sil] + leaf_site_frac*agross_f.value
+            site_diags.gstoma_vl[it,sil] = site_diags.gstoma_vl[it,sil] + leaf_site_frac*gstoma_f.value
+            site_diags.anet_vl[it,sil] = site_diags.anet_vl[it,sil] + leaf_site_frac*anet_f.value
+            site_diags.r_abs_leaf_vl[it,sil] = site_diags.r_abs_leaf_vl[it,sil] + leaf_site_frac*par_abs_leaf_umol/wm2_to_umolm2s
 
-            
-            if(il==0 and ican==0):
-                site_diags.vcmax_top[it] = site_diags.vcmax_top[it] + vcmax_f.value* lit_frac*elem_diags.crown_area_frac
-                site_diags.jmax_top[it] = site_diags.jmax_top[it] + jmax_f.value* lit_frac*elem_diags.crown_area_frac
-                site_diags.kp_top[it] = site_diags.kp_top[it] + kp_f.value* lit_frac*elem_diags.crown_area_frac
-
-            if(il==elem_diags.n_layer-1):
-                site_diags.vcmax_bot[it] = site_diags.vcmax_bot[it] + vcmax_f.value* lit_frac*elem_diags.crown_area_frac
-                site_diags.jmax_bot[it] = site_diags.jmax_bot[it] + jmax_f.value* lit_frac*elem_diags.crown_area_frac
-                site_diags.kp_bot[it] = site_diags.kp_bot[it] + kp_f.value* lit_frac*elem_diags.crown_area_frac
-
+            site_diags.vcmax_vl[it,sil] = site_diags.vcmax_vl[it,sil] + leaf_site_frac*vcmax_f.value
                 
             agross_rubisco = f90.agross_rubiscoc3_fun(c8(vcmax_f.value), c8(co2_interc_f.value), \
                                                       c8(o2_ppress), c8(co2_cpoint_f.value), \
@@ -242,8 +213,10 @@ def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
             agross_rubpc3  = f90.agross_rubpc3_fun(c8(par_abs_leaf_umol), c8(jmax_f.value), \
                                                    c8(float(GetParamFromAttrib(pft_root,'fates_leaf_fnps')[ft])), \
                                                    c8(co2_interc_f.value),c8(co2_cpoint_f.value))
-
-
+            
+            site_diags.agross_rubisco_vl[it,sil] =  site_diags.agross_rubisco_vl[it,sil] + leaf_site_frac*agross_rubisco
+            site_diags.agross_rubpc3_vl[it,sil] =  site_diags.agross_rubpc3_vl[it,sil] + leaf_site_frac*agross_rubpc3
+            
             if(agross_rubisco<agross_rubpc3):
                 elem_diags.ag_limit[il,0] = elem_diags.ag_limit[il,0] + lit_frac
                 elem_diags.ag_sslimit[il,ipar,0] = elem_diags.ag_sslimit[il,ipar,0] + lit_frac

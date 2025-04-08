@@ -130,50 +130,58 @@ exec(open("../shared/py_src/CtypesInit.py").read())
 # Radiation diagnostics
 class elem_diags_type:
 
-    def __init__(self,lai_above,sai_above,total_lai,total_sai,dvai,crown_area_frac,ntimes):
+    def __init__(self,vai_above,lai_above,total_lai,total_sai,dvai,crown_area_frac,ntimes):
 
         # Static diagnostics
+        self.vai_above = vai_above   # Maximum depth integrated VAI above this element 
         self.lai_above = lai_above   # Mean LAI in canopy layers above this one (/m2 ground)
-        self.sai_above = sai_above   # Mean SAI in canopy layers above this one (/m2 ground)
         self.total_lai = total_lai   # LAI of this element (/m2 crown)
         self.total_sai = total_sai   # SAI of this element (/m2 crown)
         self.total_vai = total_lai+total_sai
-        self.n_layer = np.ceil((total_lai+total_sai)/dvai)  # Number of layers we discretize
-        
-        self.avai = np.zeros(self.n_layer)  # Accumulated VAI
-        for il in range(self.n_layer):
-            self.avai[il] = dvai*float(il)
-            
-        self.dlai = dvai*(total_lai/self.total_vai)
+        self.leaf_frac = total_lai/(total_lai+total_sai)
+        self.n_layer = int(np.ceil((total_lai+total_sai)/dvai))  # Number of layers we discretize
+        self.dlai = dvai*self.leaf_frac
         self.crown_area_frac = crown_area_frac
+
+        self.vai_top = np.zeros(self.n_layer)
+        self.vai_bot = np.zeros(self.n_layer)
+        self.canopy_vai_mid = np.zeros(self.n_layer)
+        self.canopy_lai_mid = np.zeros(self.n_layer)
+        self.sil     = np.zeros(self.n_layer,dtype=int)
+        for il in range(self.n_layer):
+            self.vai_top[il] = dvai*float(il)
+            if(il == (self.n_layer-1)):
+                self.vai_bot[il] =  self.total_vai
+            else:
+                self.vai_bot[il] =  self.vai_top[il]+dvai
         
         # Instantaneous diagnostics
-        self.rd_abs_leaf = np.zeros(n_layer)
-        self.rb_abs_leaf = np.zeros(n_layer)
-        self.r_abs_stem  = np.zeros(n_layer)
-        self.rd_dn = np.zeros(n_layer)
-        self.rd_up = np.zeros(n_layer)
-        self.rbeam =  np.zeros(n_layer)
-        self.sunfrac = np.zeros(n_layer)
-        self.sunfrac_v2 = np.zeros(n_layer)
-        self.lmr  = np.zeros(n_layer)
-        self.agross = np.zeros(n_layer)
-        self.anet = np.zeros(n_layer)
-        self.gstoma = np.zeros(n_layer)
-        self.co2_interc = np.zeros(n_layer)
-        self.vcmax = np.zeros(n_layer)
-        self.jmax = np.zeros(n_layer)
-        self.kp = np.zeros(n_layer)
+        self.rd_abs_leaf = np.zeros(self.n_layer)
+        self.rb_abs_leaf = np.zeros(self.n_layer)
+        self.r_abs_stem  = np.zeros(self.n_layer)
+        self.rd_dn = np.zeros(self.n_layer)
+        self.rd_up = np.zeros(self.n_layer)
+        self.rbeam =  np.zeros(self.n_layer)
+        self.sunfrac = np.zeros(self.n_layer)
+        self.sunfrac_v2 = np.zeros(self.n_layer)
+        self.lmr  = np.zeros(self.n_layer)
+        self.agross = np.zeros(self.n_layer)
+        self.anet = np.zeros(self.n_layer)
+        self.gstoma = np.zeros(self.n_layer)
+        self.co2_interc = np.zeros(self.n_layer)
+        self.vcmax = np.zeros(self.n_layer)
+        self.jmax = np.zeros(self.n_layer)
+        self.kp = np.zeros(self.n_layer)
 
 
         # Mean diagnostics
-        self.ag_limit = np.zeros([n_layer,2])
-        self.ag_sslimit = np.zeros([n_layer,2,2])
+        self.ag_limit = np.zeros([self.n_layer,2])
+        self.ag_sslimit = np.zeros([self.n_layer,2,2])
         self.n_zen          = 5          # Number of zenith bins we use for diagnostics
         self.zen_bins       = np.linspace(0,1.-1/self.n_zen,self.n_zen)
-        self.sunfrac_zen_ll = np.zeros([n_layer,self.n_zen])
-        self.sunfrac2_zen_ll= np.zeros([n_layer,self.n_zen])
-        self.count_zen_ll   = np.zeros([n_layer,self.n_zen])
+        self.sunfrac_zen_ll = np.zeros([self.n_layer,self.n_zen])
+        self.sunfrac2_zen_ll= np.zeros([self.n_layer,self.n_zen])
+        self.count_zen_ll   = np.zeros([self.n_layer,self.n_zen])
         return
 
     
@@ -181,22 +189,22 @@ class elem_diags_type:
 
         # Zero out the instantaneous diagnostics that
         # are not indexed by time.
-        self.rd_abs_leaf = np.zeros(n_layer)
-        self.rb_abs_leaf = np.zeros(n_layer)
-        self.r_abs_stem  = np.zeros(n_layer)
-        self.rd_dn = np.zeros(n_layer)
-        self.rd_up = np.zeros(n_layer)
-        self.rbeam =  np.zeros(n_layer)
-        self.sunfrac = np.zeros(n_layer)
-        self.sunfrac_v2 = np.zeros(n_layer)
-        self.lmr  = np.zeros(n_layer)
-        self.agross = np.zeros(n_layer)
-        self.anet = np.zeros(n_layer)
-        self.gstoma = np.zeros(n_layer)
-        self.co2_interc = np.zeros(n_layer)
-        self.vcmax = np.zeros(n_layer)
-        self.jmax = np.zeros(n_layer)
-        self.kp = np.zeros(n_layer)
+        self.rd_abs_leaf = np.zeros(self.n_layer)
+        self.rb_abs_leaf = np.zeros(self.n_layer)
+        self.r_abs_stem  = np.zeros(self.n_layer)
+        self.rd_dn = np.zeros(self.n_layer)
+        self.rd_up = np.zeros(self.n_layer)
+        self.rbeam =  np.zeros(self.n_layer)
+        self.sunfrac = np.zeros(self.n_layer)
+        self.sunfrac_v2 = np.zeros(self.n_layer)
+        self.lmr  = np.zeros(self.n_layer)
+        self.agross = np.zeros(self.n_layer)
+        self.anet = np.zeros(self.n_layer)
+        self.gstoma = np.zeros(self.n_layer)
+        self.co2_interc = np.zeros(self.n_layer)
+        self.vcmax = np.zeros(self.n_layer)
+        self.jmax = np.zeros(self.n_layer)
+        self.kp = np.zeros(self.n_layer)
         
         return
 
@@ -205,11 +213,17 @@ class site_diags_type:
     def __init__(self,ntimes,dvai,total_vai):
 
         self.ntimes        = ntimes
-        self.n_layer       = np.ceil(total_vai/dvai)
-        self.avai = np.zeros(self.n_layer)
+        self.n_layer       = int(np.ceil(total_vai/dvai))
+        self.vai_top       = np.zeros(self.n_layer) # top down integrated 'in-canopy"
+                                                    # vegetation area index (stem+leaf)
+                                                    # m2 vegetation / m2 crowns
+                                                    # assessed at the top of the layer
+        self.lai_ground    = np.zeros(self.n_layer) # total amount of leaf area
+                                                    # in the present layer per ground area
+                                                    # m2 leaf / m2 ground 
         for il in range(self.n_layer):
-            self.avai[il] = dvai*float(il)
-
+            self.vai_top[il] = dvai*float(il)
+            
         self.aglimit_which = []
         self.aglimit_apar  = []
         self.aglimit_temp  = []
@@ -230,41 +244,42 @@ class site_diags_type:
        
         # Time x VAI depth diagnostics
         
-        self.lmr_vl           = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
-        self.agross_vl        = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
-        self.gstoma_vl        = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
-        self.anet_vl          = np.zeros([ntimes,self.n_layer_tot]) # [umol/m2/s ground]
-        self.r_abs_leaf_vl    = np.zeros([ntimes,self.n_layer_tot]) # [W/m2 ground]
-
-
+        self.lmr_vl            = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf /s]
+        self.agross_vl         = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.gstoma_vl         = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.anet_vl           = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.r_abs_leaf_vl     = np.zeros([ntimes,self.n_layer]) # [W/m2 leaf ]
+        self.vcmax_vl          = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.agross_rubisco_vl = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.agross_rubpc3_vl  = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        
 def GetElemLayerLAIShare(elem_diags,site_diags):
 
     for il in range(elem_diags.n_layer):
 
-        # These area indices are WRT the element's top
-        # --------------------------------------------
-        avai =  elem_diags.avai[il]
-        dvai =  elem_diags.dvai
-        dlai =  elem_diags.dlai
-        if(il == (elem_diags.n_layer-1)):
-            vai_top =  avai
-            vai_bot =  elem_diags.total_vai
-        else:
-            vai_top =  avai
-            vai_bot =  avai+dvai
-            
-        cvai    = vai_bot - vai_top
-        vai_mid = 0.5*(vai_bot+vai_top)
+        vai_mid = 0.5*(elem_diags.vai_bot[il]+elem_diags.vai_top[il])
         
         # These area indices are WRT the canopy top
         # -----------------------------------------
-        canopy_vai_mid = elem_diags.lai_above+elem_diags.sai_above+vai_mid
+        canopy_vai_mid = elem_diags.vai_above + vai_mid
+        
+        elem_diags.canopy_vai_mid[il] = canopy_vai_mid
+        elem_diags.canopy_lai_mid[il] = elem_diags.lai_above + vai_mid*elem_diags.leaf_frac
+        
+        # Index for the whole-canopy vertical array (0 for first index)
+        sil = np.sum(site_diags.vai_top < canopy_vai_mid)-1
 
+        elem_diags.sil[il] = sil
+        
         # Fraction of the site-layer's leaf area  occupied by this element layer's leaves
-        site_lai_frac = lit_frac*elem_diags.crown_area_frac * cvai/site_diags.vai[sil]
+        site_diags.lai_ground[sil] = site_diags.lai_ground[sil] + elem_diags.crown_area_frac*elem_diags.dlai
         
     return elem_diags,site_diags
-        
+
+
+
+
+
 def GetJmaxKp25Top(vcmax25_top):
 
     # Calculate Jmax and Kp at the canopy top at 25C
@@ -392,8 +407,6 @@ def main(argv):
     
     ntimes = met.ndata
 
-    site_diags = site_diags_type(ntimes)
-
     
     
     
@@ -455,7 +468,6 @@ def main(argv):
         icol  = cohort_col[ico]
         print("cohort ican: {} icol: {}".format(ican,icol))
         elem_cohort[ican,icol] = ico
-
     
 
     # Initialize scattering elements
@@ -464,30 +476,29 @@ def main(argv):
     elem_diags = []
     iret = f90.alloc_twostream_sub(ci(n_can),ci(n_col))
     iret = f90.param_prep_sub()  # This routine creates parameters that are derived from others
-    lai_above = 0.               # Mean LAI (m2 ground) in canopy above current
-    sai_above = 0.               # Mean SAI (m2 ground) in canopy above current
-    vai_max   = 0.               # Maximum VAI
+    lai_above = 0.               # Mean LAI (m2 ground) in canopy above current (for N decay coeffs)
+    max_vai_above   = 0.               # Maximum VAI in crown (for assigning vertical position)
     for ican in range(n_can):
         veg_area = 0.0
         n_veg    = 0
         lai_current = 0    # Mean LAI (m2 crown) in current element
-        sai_current = 0    # Mean SAI (m2 crown) in current element
+        vai_max_layer = 0.
         elem_diags.append(list())
         for icol in range(n_col):
             ico = elem_cohort[ican,icol]
             if(ico>=0):
-                veg_area = veg_area+cohort_area[ico]
-                lai_current = lai_current+cohort_area[ico]*cohort_lai[ico]
-                sai_current = sai_current+cohort_area[ico]*cohort_sai[ico]
+                veg_area = veg_area + cohort_area[ico]
+                lai_current = lai_current + cohort_area[ico]*cohort_lai[ico]
                 vai_max_layer = np.max([vai_max_layer,cohort_lai[ico]+cohort_sai[ico]])
                 n_veg = n_veg + 1
                 iret = f90.setup_canopy_sub(c_int(ican+1),c_int(icol+1), \
                                             c_int(cohort_pft[ico]), c_double(cohort_area[ico]), \
                                             c_double(cohort_lai[ico]), c_double(cohort_sai[ico]))
-
-                elem_diags[ican].append(elem_diags_type(lai_above, sai_above, cohort_lai[ico],cohort_sai[ico], \
+                
+                elem_diags[ican].append(elem_diags_type(max_vai_above, lai_above, cohort_lai[ico], cohort_sai[ico], \
                                                         dvai, cohort_area[ico], ntimes))
-                max_vai = np.max([max_vai,lai_above+sai_above+lai_current+sai_current])
+
+                
             else:
                 air_pft  = 0
                 air_area = (1.-veg_area)/float(n_col-n_veg)
@@ -497,10 +508,19 @@ def main(argv):
                                             c_double(air_area),c_double(air_lai),c_double(air_sai))
 
         # Set the current LAI and SAI to the layer above
-        lai_above = lai_current
-        sai_above = sai_current
+        max_vai_above = max_vai_above + vai_max_layer
+        lai_above = lai_above + lai_current
 
-        
+
+
+    # Initialize the site-level diagnostics structure
+    site_diags = site_diags_type(ntimes,dvai,max_vai_above)
+    for ican in range(n_can):
+        for icol in range(n_col):
+            ico = elem_cohort[ican,icol]
+            if(ico>=0):
+                elem_diags[ican][icol],site_diags = GetElemLayerLAIShare(elem_diags[ican][icol],site_diags)
+    
     # Site level scattering parameters
     iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_vis_albedo[1]),*ccharnb('albedo_grnd_diff'))
     iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_vis_albedo[0]),*ccharnb('albedo_grnd_beam'))
@@ -508,7 +528,7 @@ def main(argv):
     iret = f90.grndsnow_albedo_sub(c_int(nirb),c_double(ground_nir_albedo[0]),*ccharnb('albedo_grnd_beam'))
     iret = f90.canopy_prep_sub(c8(frac_snow))
 
-    visualize_elements = True
+    visualize_elements = False
     if(visualize_elements):
         fig10, ax = plt.subplots(ncols=1,nrows=1,figsize=(7,7))
         maxvai = 0.
@@ -619,8 +639,8 @@ def main(argv):
     for izen,zen in enumerate(elem_diags[0][0].zen_bins):
         pzen_l = zen
         pzen_u = zen+dzen
-        ax1.plot(sf_delta[:,izen],elem_diags[0][0].avai,color=[zen,zen,zen],label=f"{pzen_l:.2f}-{pzen_u:.2f}")
-        ax2.plot(sf_delta[:,izen]/sf_mean[:,izen],elem_diags[0][0].avai,color=[zen,zen,zen])
+        ax1.plot(sf_delta[:,izen],elem_diags[0][0].vai_top,color=[zen,zen,zen],label=f"{pzen_l:.2f}-{pzen_u:.2f}")
+        ax2.plot(sf_delta[:,izen]/sf_mean[:,izen],elem_diags[0][0].vai_top,color=[zen,zen,zen])
 
     ax1.invert_yaxis()
     ax1.set_ylabel('VAI')
@@ -641,21 +661,21 @@ def main(argv):
                 ft = cohort_pft[ico]
                 fig55, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.5))
     
-                ax3.plot(elem_diags[ican][icol].ag_limit[:,1] / (elem_diags[ican][icol].ag_limit[:,0]+elem_diags[ican][icol].ag_limit[:,1]),elem_diags[ican][icol].avai[:])
+                ax3.plot(elem_diags[ican][icol].ag_limit[:,1] / (elem_diags[ican][icol].ag_limit[:,0]+elem_diags[ican][icol].ag_limit[:,1]),elem_diags[ican][icol].vai_top[:])
                 ax3.invert_yaxis()
                 ax3.set_ylabel('LAI')
                 ax3.set_xlabel('Fraction RuBP Limited')
                 ax3.set_title('All')
                 ax3.grid('on')
                 
-                ax1.plot(elem_diags[ican][icol].ag_sslimit[:,0,1]/(elem_diags[ican][icol].ag_sslimit[:,0,0]+elem_diags[ican][icol].ag_sslimit[:,0,1]),elem_diags[ican][icol].avai[:])
+                ax1.plot(elem_diags[ican][icol].ag_sslimit[:,0,1]/(elem_diags[ican][icol].ag_sslimit[:,0,0]+elem_diags[ican][icol].ag_sslimit[:,0,1]),elem_diags[ican][icol].vai_top[:])
                 ax1.invert_yaxis()
                 ax1.set_ylabel('LAI')
                 ax1.set_xlabel('Fraction RuBP Limited')
                 ax1.set_title('Sunlit')
                 ax1.grid('on')
                     
-                ax2.plot(elem_diags[ican][icol].ag_sslimit[:,1,1]/(elem_diags[ican][icol].ag_sslimit[:,1,0]+elem_diags[ican][icol].ag_sslimit[:,1,1]),elem_diags[ican][icol].avai[:])
+                ax2.plot(elem_diags[ican][icol].ag_sslimit[:,1,1]/(elem_diags[ican][icol].ag_sslimit[:,1,0]+elem_diags[ican][icol].ag_sslimit[:,1,1]),elem_diags[ican][icol].vai_top[:])
                 ax2.invert_yaxis()
                 ax2.set_ylabel('LAI')
                 ax2.set_xlabel('Fraction RuBP Limited')

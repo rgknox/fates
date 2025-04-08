@@ -283,7 +283,7 @@ class met_driver:
             nday = cday
             ii   = i
 
-            print('{} of {}, {} {}'.format(ii,self.ndata-1,cday,nday))
+            #print('{} of {}, {} {}'.format(ii,self.ndata-1,cday,nday))
                   
             while(nday==cday and ii<(self.ndata-1) ):
                 ii = ii+1
@@ -606,7 +606,6 @@ class met_driver:
         #code.interact(local=dict(globals(), **locals()))
         # Loop through all met data entries and filter
         for key, val in self.data.items():
-            print(key)
             self.data[key] = self.data[key][bfilter]
         
         self.ndata = len(self.data['yr'])
