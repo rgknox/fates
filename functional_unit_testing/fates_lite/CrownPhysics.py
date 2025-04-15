@@ -27,7 +27,7 @@ dayl_factor_full = 1.0
 # photon flux density [umol/m2/s]
 wm2_to_umolm2s = 4.6
 
-def CanopyElementPhysics(ican,icol,ico,f90,met,it,xmlroot,pft, \
+def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
                          vcmax25_top,jmax25_top,kp25_top,lnc_top, \
                          co2_ppress, o2_ppress, btran, \
                          g_b_umol,maintresp_leaf_model,site_diags,elem_diags):
