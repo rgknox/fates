@@ -255,7 +255,9 @@ def main(argv):
 
     met = met_driver(met_driver_csvfile,latitude,longitude,tzone)
     
-    met.FilterTimes('daytime')
+    #met.FilterTimes('daytime')
+    #met.FilterTimes('2011-2013')
+    met.FilterTimes('reysanchez_wetssn')
     
     ntimes = met.ndata
 
@@ -294,7 +296,9 @@ def main(argv):
     
     # Start the main model time loop
     # -----------------------------------------------------------------------------------
-    
+
+    pmod = int(ntimes/100)
+    do_time_print = True
     for it in range(ntimes):
 
         ft = 0
@@ -302,6 +306,12 @@ def main(argv):
         
         tvegk = met.data['t_veg'][it]
         cosz  = met.data['cosz'][it]
+
+        if( do_time_print and it>pmod and np.mod(it,pmod) == 0):
+            print('{:04d}-{:02d}-{:02d}, {:.1f}% complete'.format(met.data['yr'][it], \
+                                                      met.data['mon'][it], \
+                                                      met.data['day'][it], \
+                                                      100*float(it)/float(ntimes)))
         
         # Update scattering parameters based on zenith angle
         # optical depth, backscatter
@@ -319,8 +329,6 @@ def main(argv):
         # Convert leaf boundary layer resistance to its reciprocal, conductance, and then
         # convert it from velocity units to micromoles/m2/s
         g_b_umol[it] = f90.velotomolarcf_fun(c8(met.data['can_press'][it]),c8(met.data['t_can'][it]))/met.data['r_b'][it]
-        
-        
     
         # Lets walk through the various canopy elements and perform some
         # physics operations. These elements may be the crowns
@@ -372,7 +380,6 @@ def main(argv):
         for icol in range(n_col):
             pft = elem_diags[ican][icol].pft
             if(pft>0):
-                ft = cohort_pft[ico]
                 fig55, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.5))
     
                 ax3.plot(elem_diags[ican][icol].ag_limit[:,1] / (elem_diags[ican][icol].ag_limit[:,0]+elem_diags[ican][icol].ag_limit[:,1]),elem_diags[ican][icol].vai_top[:])

@@ -598,6 +598,8 @@ class met_driver:
         if(study_period == 'daytime'):
             bfilter = [ (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
 
+        if(study_period == '2011-2013'):
+            bfilter = [ (year>2010 and year<2014) for iyr,year in enumerate(self.data['yr'])]
             
         if(sum(bfilter)<1):
             print('The filtering of met data produced no datapoints')
