@@ -169,23 +169,23 @@ contains
       ! I. Load the inventory list file, do some file handle checks
       ! ------------------------------------------------------------------------------------------
 
-      sitelist_file_unit = shr_file_getUnit()
+      !sitelist_file_unit = shr_file_getUnit()
 
 
-      inquire(file=trim(hlm_inventory_ctrl_file),exist=lexist,opened=lopen)
+      !inquire(file=trim(hlm_inventory_ctrl_file),exist=lexist,opened=lopen)
       if( .not.lexist ) then   ! The inventory file list DNE
          write(fates_log(), *) 'An inventory Initialization was requested.'
          write(fates_log(), *) 'However the inventory file: ',trim(hlm_inventory_ctrl_file),' DNE'
          write(fates_log(), *) 'Aborting'
          call endrun(msg=errMsg(sourcefile, __LINE__))
       end if
-      if( lopen ) then        ! The inventory file should not be open
-         write(fates_log(), *) 'The inventory list file is open but should not be.'
-         write(fates_log(), *) 'Aborting.'
-         call endrun(msg=errMsg(sourcefile, __LINE__))
-      end if
+      !if( lopen ) then        ! The inventory file should not be open
+      !   write(fates_log(), *) 'The inventory list file is open but should not be.'
+      !   write(fates_log(), *) 'Aborting.'
+      !   call endrun(msg=errMsg(sourcefile, __LINE__))
+      !end if
 
-      open(unit=sitelist_file_unit,file=trim(hlm_inventory_ctrl_file),status='OLD',action='READ',form='FORMATTED')
+      open(newunit=sitelist_file_unit,file=trim(hlm_inventory_ctrl_file),action='READ',form='FORMATTED')
       rewind(sitelist_file_unit)
 
       ! There should be at least 1 line
@@ -250,9 +250,9 @@ contains
          ! Lets start withe the PSS
          ! ---------------------------------------------------------------------------------------
 
-         pss_file_unit = shr_file_getUnit()
-         open(unit=pss_file_unit,file=trim(inv_pss_list(invsite)), &
-               status='OLD',action='READ',form='FORMATTED')
+         !pss_file_unit = shr_file_getUnit()
+         open(newunit=pss_file_unit,file=trim(inv_pss_list(invsite)), &
+               action='READ',form='FORMATTED')
          rewind(pss_file_unit)
          read(pss_file_unit,fmt=*) header_str
 
@@ -366,9 +366,9 @@ contains
          
          ! OPEN THE CSS FILE
          ! ---------------------------------------------------------------------------------------
-         css_file_unit = shr_file_getUnit()
-         open(unit=css_file_unit,file=trim(inv_css_list(invsite)), &
-               status='OLD',action='READ',form='FORMATTED')
+         !css_file_unit = shr_file_getUnit()
+         open(newunit=css_file_unit,file=trim(inv_css_list(invsite)), &
+               action='READ',form='FORMATTED')
          rewind(css_file_unit)
          read(css_file_unit,fmt=*) header_str
 
@@ -1191,11 +1191,11 @@ contains
        write(css_name_out,'(A8,I2.2,A1,I5.5,A1,A1,I3.3,A1,I5.5,A1,A4)') &
              'css_out_',ilat_int,'.',ilat_dec,ilat_sign,'_',ilon_int,'.',ilon_dec,ilon_sign,'.txt'
 
-       pss_file_out       = shr_file_getUnit()
-       css_file_out       = shr_file_getUnit()
+       !pss_file_out       = shr_file_getUnit()
+       !css_file_out       = shr_file_getUnit()
 
-       open(unit=pss_file_out,file=trim(pss_name_out), status='UNKNOWN',action='WRITE',form='FORMATTED')
-       open(unit=css_file_out,file=trim(css_name_out), status='UNKNOWN',action='WRITE',form='FORMATTED')
+       open(newunit=pss_file_out,file=trim(pss_name_out), status='UNKNOWN',action='WRITE',form='FORMATTED')
+       open(newunit=css_file_out,file=trim(css_name_out), status='UNKNOWN',action='WRITE',form='FORMATTED')
 
        write(pss_file_out,*) 'time patch trk age area'
        write(css_file_out,*) 'time patch dbh height pft nplant'
