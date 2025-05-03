@@ -468,7 +468,8 @@ contains
     real(r8), intent(out) :: leaf_sun_frac ! Fraction of leaves in the interval exposed
                                            ! to sunlight
     logical, intent(out)  :: call_fail
-    real(r8)              :: dvai,dlai     ! Amount of VAI and LAI in this interval [m2/m2]
+    real(r8)              :: dvai          ! Amount of VAI in this interval [m2/m2]
+    real(r8)              :: leaf_frac     ! Fraction of leaf+stem that is leaf
     real(r8)              :: Rd_net        ! Difference in diffuse radiation at upper and lower boundaries [W/m2]
     real(r8)              :: Rb_net        ! Difference in beam radiation at upper and lower boundaries [W/m2]
     real(r8)              :: vai_max       ! total integrated (leaf+stem) area index of the current element
@@ -495,7 +496,6 @@ contains
          R_abs_stem    = 0._r8
          R_abs_snow    = 0._r8
          leaf_sun_frac = 0._r8
-         leaf_sun_frac_v2 = 0._r8
          return
       end if
       
@@ -503,58 +503,15 @@ contains
       vai_max = scelg%lai +  scelg%sai
 
       dvai = vai_bot - vai_top
+      leaf_frac = scelg%lai/( scelg%lai+ scelg%sai)
+      lai_top = vai_top*leaf_frac
+      lai_bot = vai_bot*leaf_frac
       
-      lai_top = vai_top*scelg%lai/( scelg%lai+ scelg%sai)
-      lai_bot = vai_bot*scelg%lai/( scelg%lai+ scelg%sai)
-      dlai    = dvai *  scelg%lai/( scelg%lai+ scelg%sai)
-
-      !print*,"dvai:",dvai,vai_bot,vai_top,lai_bot,lai_top,dlai
-
-      ! Intensity of the beam approaching the canopy top
-      !Rbeam0top = this%band(ib)%Rbeam_atm   !this%band(ib)%scelb(1,1)%Rbeam0
-
-      !scelb%Rbeam0*( exp(-this%scelg(ican,icol)%Kb*(lai_top+sai_top)) - exp(-this%scelg(ican,icol)%Kb*(lai_bot+sai_bot))
-
-      ! delta_area = Rb0*(exp(-Kb*(vai_top)) - exp(-Kb(vai_bot)))
-      ! delta_area = vai*Kb*sunfrac = Rb0*(exp(-Kb*(vai_top)) - exp(-Kb(vai_bot)))
-
-      ! From NCAR Technical NOTE:
-      ! Lsun = (1-e^(-Kb(L+S)))/Kb
-      ! fsun_ave = (1-e^(-Kb(L+S)))/(Kb*L)
-
-      ! fsun = exp(-Kb*V)
-      ! Integrate from 0 to Vbot
-      ! fsun = 
-      
-      !
-      ! From Our Derivation:
-      ! fsun = Rb0*(exp(-scelg%Kb_leaf*lai_top) - exp(-scelg%Kb_leaf*lai_bot))/(dL*Kbleaf/clump)  
-      
-      if(dlai>nearzero)then
-         leaf_sun_frac = max(0.001_r8,min(0.999_r8,scelb%Rbeam0/(dlai*scelg%Kb_leaf/rad_params%clumping_index(ft)) &
-              *(exp(-scelg%Kb_leaf*lai_top) - exp(-scelg%Kb_leaf*lai_bot) ) ))
-         !leaf_sun_frac = scelb%Rbeam0/(dlai*scelg%Kb_leaf/rad_params%clumping_index(ft)) &
-         !     *(exp(-scelg%Kb_leaf*lai_top) - exp(-scelg%Kb_leaf*lai_bot))
-
-         !leaf_sun_frac_v2 = scelb%Rbeam0*(exp(-scelg%Kb*vai_top) - exp(-scelg%Kb*vai_bot))/(dvai*scelg%Kb)
-
-         leaf_sun_frac_v2 =  scelb%Rbeam0*(exp(-scelg%Kb*vai_top) - exp(-scelg%Kb*vai_bot))/(dvai*scelg%Kb)
-         
-
+      if(dvai>nearzero)then
+         leaf_sun_frac =  max(0.001_r8,min(0.999_r8, &
+              scelb%Rbeam0*(exp(-scelg%Kb*vai_top) - exp(-scelg%Kb*vai_bot))/(dvai*scelg%Kb)))
       else
-         leaf_sun_frac = 0.001_r8
-         !leaf_sun_frac_v2 = 0.001_r8
-      end if
-         
-      !leaf_sun_frac = max(0.001_r8,min(0.999_r8,scelb%Rbeam0/(dvai*scelg%Kb/rad_params%clumping_index(ft)) &
-      !     *(exp(-scelg%Kb*vai_top) - exp(-scelg%Kb*vai_bot))))
-
-      
-      if(debug) then
-         if(leaf_sun_frac>1.0_r8 .or. leaf_sun_frac<0._r8) then
-            write(log_unit,*)"impossible leaf sun fraction"
-            call endrun(msg=errMsg(sourcefile, __LINE__))
-         end if
+         leaf_sun_frac = 0001._r8
       end if
 
       ! We have to disentangle the absorption between leaves and stems, we give them both
@@ -594,12 +551,12 @@ contains
       ! balance on this boundaries over the depth of interest (ie net)
       ! Result is Watts / m2 of the element's area footprint NOT
       ! per m2 of tissue (at least not in this step)
-      
+
       Rb_net = this%GetRb(ican,icol,ib,vai_top)-this%GetRb(ican,icol,ib,vai_bot)
 
       r_dn_top = this%GetRdDn(ican,icol,ib,vai_top)
       r_dn_bot = this%GetRdDn(ican,icol,ib,vai_bot)
-
+      
       if(r_dn_top<-1.e5 .or. r_dn_bot<-1.e5) then
          write(log_unit,*) 'error in diffuse calculations, negative values'
          call_fail = .true.
@@ -609,34 +566,6 @@ contains
       Rd_net = (r_dn_top - r_dn_bot) + &
            (this%GetRdUp(ican,icol,ib,vai_bot) - this%GetRdUp(ican,icol,ib,vai_top))
 
-      ! To get mean sun fraction over this discrete depth, create an energy balance where
-      ! net change in mean beam radiation, equals the radiation intensity of the light shafts
-      ! times the area faction that is intercepted (which is the sun fraction times VAI)
-
-      ! Rbeamtop - Rbeambot = Rbeam0top*(sunfrac*(scelg%Kb_leaf/1.0)*dlai + sunfrac*(1.0/scelg%Kb_leaf)*dsai)
-      ! Rbeamtop - Rbeambot = Rbeam0top*(sunfrac*(scelg%Kb_leaf/1.0)*dlai + sunfrac*(1.0/scelg%Kb_leaf)*dsai)
-      
-      ! Rb_net = Rbeam0top*(sunfrac*(scelg%Kb_leaf/1.0)*dlai + sunfrac*(1.0/scelg%Kb_leaf)*dsai)
-      ! Rb_net = Rbeam0top*(sunfrac*((scelg%Kb_leaf/1.0)*dlai + (1.0/scelg%Kb_leaf)*dsai))
-      ! sunfrac = Rb_net/(Rbeam0top*((scelg%Kb_leaf/1.0)*dlai + (1.0/scelg%Kb_leaf)*dsai)))
-
-      !Rb_net = this%band(ib)%Rbeam_atm * &
-      !     this%band(ib)%scelb(ican,icol)%Rbeam0*(exp(-this%scelg(ican,icol)%Kb*vai_top) - exp(-this%scelg(ican,icol)%Kb*vai_bot))
-
-      ! area_fraction = this%band(ib)%scelb(ican,icol)%Rbeam0*(exp(-this%scelg(ican,icol)%Kb*vai_top) - exp(-this%scelg(ican,icol)%Kb*vai_bot))
-      ! sunlit_fraction*veg_area = area_fraction
-
-      !leaf_sun_frac_v2 = (exp(-this%scelg(ican,icol)%Kb*vai_top) - exp(-this%scelg(ican,icol)%Kb*vai_bot))/dvai
-      
-
-      
-      !if(dlai>nearzero)then
-      !   !leaf_sun_frac_v2 = Rb_net/(Rbeam0top*((scelg%Kb_leaf/1.0)*dlai + (1.0/scelg%Kb_leaf)*(dvai-dlai)))
-      !   leaf_sun_frac_v2 = Rb_net/(Rbeam0top*dvai)
-      !else
-      !   leaf_sun_frac_v2 = 0.001
-      !end if
-      
       ! The net beam radiation includes that which is absorbed, but also,
       ! that which is re-scattered, the re-scattered acts as a source
       ! to the net diffuse balance and adds to the absorbed, and a sink
@@ -644,41 +573,20 @@ contains
 
       Rb_abs = Rb_net * (1._r8-this%band(ib)%scelb(ican,icol)%om)
       Rd_abs = Rd_net +  Rb_net * this%band(ib)%scelb(ican,icol)%om
-      
-      if( abs((Rd_net + Rb_net) - (Rb_abs+Rd_abs))>1.e-5_r8 ) then
-         write(log_unit,*)"Net radiation change should equal absorbed radation",(Rd_net + Rb_net),(Rb_abs+Rd_abs)
-         call endrun(msg=errMsg(sourcefile, __LINE__))
-      end if
-      
+
+
       Rb_abs_leaf = (1._r8-frac_abs_snow)*Rb_abs * beam_wt_leaf / (beam_wt_leaf+beam_wt_stem)
       Rd_abs_leaf = (1._r8-frac_abs_snow)*Rd_abs * diff_wt_leaf / (diff_wt_leaf+diff_wt_stem)
-      
+
       R_abs_snow = (Rb_abs+Rd_abs)*frac_abs_snow
-      
+
       R_abs_stem = (1._r8-frac_abs_snow)* &
            (Rb_abs*beam_wt_stem / (beam_wt_leaf+beam_wt_stem) + &
            Rd_abs*diff_wt_stem / (diff_wt_leaf+diff_wt_stem))
 
 
-      ! Back out the sunlit fraction by equating the beam absorbed radiation the area fraction
-      ! needed at a flux density of Rbeam_atm
-      ! this%band(ib)%Rbeam_atm*(1._r8-rad_params%om_leaf(ib,ft))*leaf_sun_frac_v2*dlai = Rb_abs_leaf
-      
-      !if(this%band(ib)%Rbeam_atm*dlai>nearzero)then
 
-      !leaf_sun_frac_v2 = Rb_abs_leaf/(this%band(ib)%Rbeam_atm*(1._r8-rad_params%om_leaf(ib,ft))*scelg%Kb_leaf*dlai)
-         
-      !   if(leaf_sun_frac_v2>1._r8) then
-      !      write(log_unit,*)"sunlit fraction > 1?",leaf_sun_frac_v2,Rb_abs_leaf, &
-      !           this%band(ib)%Rbeam_atm,1._r8-rad_params%om_leaf(ib,ft),dlai
-      !      call endrun(msg=errMsg(sourcefile, __LINE__))
-      !   end if
-         
-      !else
-      !   leaf_sun_frac_v2 = 0.5_r8  ! Nominal value, of no consequence
-      !end if
 
-      
     end associate
     return
   end subroutine GetAbsRad
