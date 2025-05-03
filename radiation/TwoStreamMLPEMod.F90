@@ -1755,7 +1755,6 @@ contains
                 scelbp => this%band(ib)%scelb(ican,icol)
                 call this%GetAbsRad(ican,icol,ib, 0._r8,scelgp%lai+scelgp%sai, &
                      rb_abs,rd_abs,rd_abs_leaf,rb_abs_leaf,r_abs_stem,r_abs_snow,leaf_sun_frac,call_fail)
-
                 frac_abs_can_beam = frac_abs_can_beam + scelgp%area*(rb_abs+rd_abs)
              end do
           end do
