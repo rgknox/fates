@@ -19,6 +19,8 @@ def GetParamList(noderoot,node_name,vtype):
         val_list = [int(str) for str in str_list]
     elif(vtype=='float'):
         val_list = [float(str) for str in str_list]
+    elif(vtype=='logical'):
+        val_list = [str.lower()=='true' for str in str_list]
     elif(vtype=='string'):
         val_list = str_list
     else:

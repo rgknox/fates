@@ -1,9 +1,14 @@
+import matplotlib as mpl
+#mpl.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import sys
 import ctypes
 import numpy as np
 from ctypes import *
 from operator import add
 sys.path.append('../shared/py_src')
+import code  # For development: code.interact(local=dict(globals(), **locals()))
 
 from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
 from PushParameters import GetParamFromAttrib
@@ -30,7 +35,7 @@ wm2_to_umolm2s = 4.6
 def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
                          vcmax25_top,jmax25_top,kp25_top,lnc_top, \
                          co2_ppress, o2_ppress, btran, \
-                         g_b_umol,maintresp_leaf_model,site_diags,elem_diags):
+                         maintresp_leaf_model,site_diags,elem_diags):
 
     # This routine assumes the radiation solve has already been performed for the canopy.
 
@@ -165,7 +170,7 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
                                            c8(co2_ppress), \
                                            c8(o2_ppress), \
                                            c8(met.data['vpress_sat'][it]), \
-                                           c8(g_b_umol[it]), \
+                                           c8(met.data['g_b_umol'][it]), \
                                            c8(met.data['vpress'][it]), \
                                            c8(mm_kco2_f.value), \
                                            c8(mm_ko2_f.value), \
@@ -225,5 +230,40 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
                 elem_diags.ag_limit[il,1] = elem_diags.ag_limit[il,1] + lit_frac
                 elem_diags.ag_sslimit[il,ipar,1] = elem_diags.ag_sslimit[il,ipar,1] + lit_frac
 
+
+    # Display instantaneous profiles
+    # Complete leaf layer and sun/shade loops first
+    ctrl_root = xmlroot.find('analysis_controls')
+    do_profiles = GetParamList(ctrl_root,'view_element_inst_profs','logical')[0]
+    if(do_profiles):
+        fig_edp1,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.0,6.5))
+        y  = elem_diags.vai_top
+        x  = elem_diags.rd_abs_leaf
+        ax1.plot(x,y)
+        ax1.invert_yaxis()
+        ax1.set_ylabel('VAI')
+        ax1.set_xlabel('Absorbed Rd umol/m2/s')
+        ax1.grid('on')
+        x = elem_diags.rb_abs_leaf
+        ax2.plot(x,y)
+        ax2.invert_yaxis()
+        ax2.set_ylabel('VAI')
+        ax2.set_xlabel('Absorbed Rb umol/m2/s')
+        ax2.grid('on')
+        x = elem_diags.sunfrac_v2
+        ax3.plot(x,y)
+        ax3.invert_yaxis()
+        ax3.set_ylabel('VAI')
+        ax3.set_xlabel('Sunlit Fraction umol/m2/s')
+        ax3.grid('on')
+
+        txt_str = "Time: {:04d}-{:02d}-{:02d}\nCan: {:2d}\nCol: {:2d}\nCos(z) = {:4.3f}\nT_v = {:3.1f}\n".format(met.data['yr'][it],met.data['mon'][it],met.data['day'][it],ican,icol,    met.data['cosz'][it],\
+                                                             met.data['t_veg'][it])
+        ax4.text(0.2,0.2,txt_str)
+        ax4.axis('off')
+        plt.tight_layout()
+        plt.show()                
+        
+                
 
     return site_diags,elem_diags

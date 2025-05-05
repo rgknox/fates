@@ -253,11 +253,13 @@ def main(argv):
     if(longitude>180.):
         longitude = longitude - 360.
 
-    met = met_driver(met_driver_csvfile,latitude,longitude,tzone)
-    
-    #met.FilterTimes('daytime')
-    #met.FilterTimes('2011-2013')
-    met.FilterTimes('reysanchez_wetssn')
+    met = met_driver(met_driver_csvfile,latitude,longitude,tzone,f90)
+    ctrl_root = xmlroot.find('analysis_controls')
+    met.FilterTimes(GetParamList(ctrl_root,'met_filter','string')[0])
+
+    if(GetParamList(ctrl_root,'view_met_forcing','logical')[0]):
+        met.EvalMetForcing()
+
     
     ntimes = met.ndata
 
@@ -286,14 +288,7 @@ def main(argv):
     albedo_diff_f   = c_double(-9);    canabs_beam_f   = c_double(-9);    canabs_diff_f   = c_double(-9)
     ffbeam_beam_f   = c_double(-9);    ffdiff_beam_f   = c_double(-9);    ffdiff_diff_f   = c_double(-9)
     
-    # Initialize output arrays
-    # -----------------------------------------------------------------------------------
 
-   
-
-    g_b_umol = np.zeros(ntimes)
-    
-    
     # Start the main model time loop
     # -----------------------------------------------------------------------------------
 
@@ -325,10 +320,6 @@ def main(argv):
 
         # Scale the normalized solution by the actual upper boundary conditions
         iret = f90.setdown_sub(ci(visb),c8(met.data['visbdn'][it]),c8(met.data['visddn'][it]))
-
-        # Convert leaf boundary layer resistance to its reciprocal, conductance, and then
-        # convert it from velocity units to micromoles/m2/s
-        g_b_umol[it] = f90.velotomolarcf_fun(c8(met.data['can_press'][it]),c8(met.data['t_can'][it]))/met.data['r_b'][it]
     
         # Lets walk through the various canopy elements and perform some
         # physics operations. These elements may be the crowns
@@ -346,10 +337,44 @@ def main(argv):
                         CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
                                          vcmax25_top[ft],jmax25_top[ft],kp25_top[ft],lnc_top[ft], \
                                          co2_ppress_400ppm, o2_ppress_209kppm, btran_nolimit, \
-                                         g_b_umol,maintresp_leaf_model,site_diags,elem_diags[ican][icol])
+                                         maintresp_leaf_model,site_diags,elem_diags[ican][icol])
         
                     
-    
+        # Display instantaneous profiles
+        # Complete leaf layer and sun/shade loops first
+        ctrl_root = xmlroot.find('analysis_controls')
+        do_profiles = GetParamList(ctrl_root,'view_site_inst_profs','logical')[0]
+        if(do_profiles):
+            fig_dp1,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.0,6.5))
+            y  = site_diags.vai_top
+            x  = site_diags.r_abs_leaf_vl[it,:]
+            ax1.plot(x,y)
+            ax1.invert_yaxis()
+            ax1.set_ylabel('VAI')
+            ax1.set_xlabel('Absorbed PAR umol/m2/s')
+            ax1.grid('on')
+            x = site_diags.vcmax_vl[it,:]
+            ax2.plot(x,y)
+            ax2.invert_yaxis()
+            ax2.set_ylabel('VAI')
+            ax2.set_xlabel('Vc,max umol/m2/s')
+            ax2.grid('on')
+            x = site_diags.agross_rubisco_vl[it,:]
+            ax3.plot(x,y)
+            ax3.invert_yaxis()
+            ax3.set_ylabel('VAI')
+            ax3.set_xlabel('Ag (rubisco) umol/m2/s')
+            ax3.grid('on')
+            x = site_diags.agross_rubpc3_vl[it,:]
+            ax4.plot(x,y)
+            ax4.invert_yaxis()
+            ax4.set_ylabel('VAI')
+            ax4.set_xlabel('Ag (RUBP) umol/m2/s')
+            ax4.grid('on')
+            plt.tight_layout()
+            plt.show()
+
+                    
     # Perform Diagnostics
     # ------------------------------------------------------------------------
 

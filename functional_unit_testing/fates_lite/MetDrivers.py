@@ -5,8 +5,15 @@ import code  # For development:
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from datetime import datetime
+import ctypes
+from ctypes import *
+from operator import add
+import sys
+sys.path.append('../shared/py_src')
+from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
 
-
+# Freezing point of water in Kelvin (at standard atmosphere)
+tfrz_1atm = 273.15
 eval_cosz = True
 
 def qsat(tempk,rh100):
@@ -320,10 +327,6 @@ class met_driver:
     
     def GetVpressSat(self,tcan,rh,can_press):
 
-
-        vpress_sat 
-
-
         vpress = rh*0.01*vpress_sat
         
         return vpress,vpress_sat
@@ -381,7 +384,7 @@ class met_driver:
             return swvdr,swndr,swvdf,swndf
         
         
-    def __init__(self,filepath,lat,lon,tzone):
+    def __init__(self,filepath,lat,lon,tzone,f90):
 
         # This routine simply reads a comma delimited text file.
         # It should have no header, and should contain
@@ -412,7 +415,6 @@ class met_driver:
 
         
         model_read = False
-
         eval_met_forcing = False
         
         if(model_read):
@@ -474,6 +476,7 @@ class met_driver:
             self.data['vpress']     = np.zeros(npts)
             self.data['vpress_sat'] = np.zeros(npts)
             self.data['dayl_factor']= np.zeros(npts)
+            self.data['g_b_umol']   = np.zeros(npts)
             
             # Days per month, for calculating doy
             doys = [0,31,28,31,30,31,30,31,31,30,31,30]
@@ -496,48 +499,82 @@ class met_driver:
                                                                                  self.data['hod'][idate],   \
                                                                                  self.data['u_ref'][idate])
                 self.data['vpress'][idate],self.data['vpress_sat'][idate] = qsat(self.data['t_can'][idate],df['RH_%'].values[idate])
+                # Convert leaf boundary layer resistance to its reciprocal, conductance.
+                # Then, convert it from velocity units to micromoles/m2/s
+                self.data['g_b_umol'][idate] = f90.velotomolarcf_fun(c8(self.data['can_press'][idate]), \
+                                                                     c8(self.data['t_can'][idate]))/self.data['r_b'][idate]
 
             self.GetDayLenFactors()
-            
-            if (eval_met_forcing):
 
-                # Radiation Scattering
-                fig01,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.0))
 
-                hods = np.linspace(0,23,24)
+    def EvalMetForcing(self):
+        
 
-                hod_counts = np.zeros(len(hods))
-                visbdn24   = np.zeros(len(hods))
-                visddn24   = np.zeros(len(hods))
-                nirbdn24   = np.zeros(len(hods))
-                nirddn24   = np.zeros(len(hods))
-                for ih,hod in enumerate(self.data['hod']):
-                    ihod = np.argmin(np.abs(hods-hod))
-                    hod_counts[ihod] = hod_counts[ihod] + 1.
-                    visbdn24[ihod] = visbdn24[ihod] + self.data['visbdn'][ih]
-                    visddn24[ihod] = visddn24[ihod] + self.data['visddn'][ih]
-                    nirbdn24[ihod] = nirbdn24[ihod] + self.data['nirbdn'][ih]
-                    nirddn24[ihod] = nirddn24[ihod] + self.data['nirddn'][ih]
+        # Process diurnal averages
+        hods = np.linspace(0,23,24)
+        hod_counts = np.zeros(len(hods))
+        visbdn24   = np.zeros(len(hods))
+        visddn24   = np.zeros(len(hods))
+        nirbdn24   = np.zeros(len(hods))
+        nirddn24   = np.zeros(len(hods))
+        tempc24     = np.zeros(len(hods))
+        vpress24    = np.zeros(len(hods))
+        satvpress24 = np.zeros(len(hods))
+        gbmol24     = np.zeros(len(hods))
+
+        for ih,hod in enumerate(self.data['hod']):
+            ihod = np.argmin(np.abs(hods-hod))
+            hod_counts[ihod] = hod_counts[ihod] + 1.
+            visbdn24[ihod] = visbdn24[ihod] + self.data['visbdn'][ih]
+            visddn24[ihod] = visddn24[ihod] + self.data['visddn'][ih]
+            nirbdn24[ihod] = nirbdn24[ihod] + self.data['nirbdn'][ih]
+            nirddn24[ihod] = nirddn24[ihod] + self.data['nirddn'][ih]
+            tempc24[ihod] = tempc24[ihod] + self.data['t_veg'][ih]-tfrz
+            gbmol24[ihod] = gbmol24[ihod] + self.data['g_b_mol'][ih]
+            vpress24[ihod] = vpress24[ihod] + self.data['vpress'][ih]
+            satvpress24[ihod] = satvpress24[ihod] + self.data['vpress_sat'][ih]
                     
+        # Radiation Scattering
+        fig_met24_1,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.0))
                     
-                ax1.scatter(hods,visbdn24/hod_counts)
-                ax1.grid('on')
-                ax1.set_xlabel('Hour')
-                ax1.set_ylabel('VIS Beam [W/m2]')
-                ax2.scatter(hods,visddn24/hod_counts)
-                ax2.grid('on')
-                ax2.set_xlabel('Hour')
-                ax2.set_ylabel('VIS Diff [W/m2]')
-                ax3.scatter(hods,nirbdn24/hod_counts)
-                ax3.grid('on')
-                ax3.set_xlabel('Hour')
-                ax3.set_ylabel('NIR Beam [W/m2]')
-                ax4.scatter(hods,nirddn24/hod_counts)
-                ax4.grid('on')
-                ax4.set_xlabel('Hour')
-                ax4.set_ylabel('NIR Diff [W/m2]')
+        ax1.scatter(hods,visbdn24/hod_counts)
+        ax1.grid('on')
+        ax1.set_xlabel('Hour')
+        ax1.set_ylabel('VIS Beam [W/m2]')
+        ax2.scatter(hods,visddn24/hod_counts)
+        ax2.grid('on')
+        ax2.set_xlabel('Hour')
+        ax2.set_ylabel('VIS Diff [W/m2]')
+        ax3.scatter(hods,nirbdn24/hod_counts)
+        ax3.grid('on')
+        ax3.set_xlabel('Hour')
+        ax3.set_ylabel('NIR Beam [W/m2]')
+        ax4.scatter(hods,nirddn24/hod_counts)
+        ax4.grid('on')
+        ax4.set_xlabel('Hour')
+        ax4.set_ylabel('NIR Diff [W/m2]')
+                
+        # Temperature, conductance, humidity
+        fig_met24_2,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.0))
+        
+        ax1.scatter(hods,tempc24/hod_counts)
+        ax1.grid('on')
+        ax1.set_xlabel('Hour')
+        ax1.set_ylabel('Veg Temperature [C]')
+        ax2.scatter(hods,visddn24/hod_counts)
+        ax2.grid('on')
+        ax2.set_xlabel('Hour')
+        ax2.set_ylabel('Boundary Layer Conductance [umol/m2/s]')
+        ax3.scatter(hods,nirbdn24/hod_counts)
+        ax3.grid('on')
+        ax3.set_xlabel('Hour')
+        ax3.set_ylabel('Vapor Pressure [Pa]')
+        ax4.scatter(hods,nirddn24/hod_counts)
+        ax4.grid('on')
+        ax4.set_xlabel('Hour')
+        ax4.set_ylabel('Saturation Vapor Pressure [Pa]')
+        plt.show()
 
-                plt.show()
         
     def ProcDateStr(self,date_local_start,date_local_end):
 
@@ -598,8 +635,13 @@ class met_driver:
         if(study_period == 'daytime'):
             bfilter = [ (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
 
-        if(study_period == '2011-2013'):
-            bfilter = [ (year>2010 and year<2014) for iyr,year in enumerate(self.data['yr'])]
+        if(study_period == 'reysanchez_20112013_daytime'):
+            bfilter = [ (self.data['cosz'][iyr]>0. and year>2010 and year<2014) for iyr,year in enumerate(self.data['yr'])]
+        else:
+            print('You must specify a valid filter for the met data')
+            print('Unfiltered or daytime is an easy choice if you have no filtering needs')
+            exit(0)
+
             
         if(sum(bfilter)<1):
             print('The filtering of met data produced no datapoints')
