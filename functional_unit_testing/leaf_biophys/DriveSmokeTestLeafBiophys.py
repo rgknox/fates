@@ -26,12 +26,16 @@ import importlib
 import csv
 import subprocess
 import re
-import CtypesLeafBiophys
 import ctypes
 from ctypes import *
 from operator import add
 sys.path.append('../shared/py_src')
 from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
+import CtypesInit
+from PushParameters import PushParameters
+from PushParameters import PushXMLPhotoParameters
+from PushParameters import GetParamFromAttrib
+from PushParameters import GetParamList
 
 font = {'family' : 'sans-serif',
         'weight' : 'normal',
@@ -102,8 +106,7 @@ nscaler_top = 1.0
 # Create aliases for the ctype Fortran objects
 # =======================================================================================
 
-exec(open("CtypesLeafBiophys.py").read())
-
+exec(open("../shared/py_src/CtypesInit.py").read())
 
 # Subroutines
 # =======================================================================================
@@ -137,6 +140,11 @@ def main(argv):
     parser.add_argument('--smoketest', action='store_true')
     args = parser.parse_args()
 
+    # This class call instanteates all the fortran shared objects
+    # and creates aliases for their functions and subroutines
+    f90 = f90_modules('../shared/bld/')
+
+    
     # Load the xml control file
     # -----------------------------------------------------------------------------------
     xmlroot = et.parse(args.xmlfile).getroot()
@@ -144,25 +152,24 @@ def main(argv):
     # We will allocate 1 token pft to hold data, we will change the values as needed
     numpft = 1
 
-    # Allocating parameters
-    print('Allocating parameter space for {} pfts'.format(numpft))
-    iret = f90_alloc_leaf_param_sub(ci(numpft))
-
-    
-    
     # Push scalar parameters
     print('Pushing parameters from the xml file to the f90 lb_params datastructure')
     scalar_root = xmlroot.find('f90_params').find('scalar_dim')
     for param in scalar_root.iter('param'):
-        iret = f90_set_leaf_param_sub(c8(float(param.text.split(',')[0])),ci(0),*ccharnb(param.attrib['name'].strip()))
+        print('pushing: '+param.attrib['name'].strip())
+        iret = f90.set_leaf_param_sub(c8(float(param.text.split(',')[0])),ci(0),*ccharnb(param.attrib['name'].strip()))
 
+        
+    PushXMLPhotoParameters(f90,xmlroot)
+    
     # Push pft parameters to fortran instantiations
     pft_root = xmlroot.find('f90_params').find('pft_dim')
     leaf_c3psn = []
     leaf_stomatal_intercept = []
     for param in pft_root.iter('param'):
+        print('pushing: '+param.attrib['name'].strip())
         for pft in range(numpft):
-            iret = f90_set_leaf_param_sub(c8(float(param.text.split(',')[pft])),ci(pft+1),*ccharnb(param.attrib['name'].strip()))
+            iret = f90.set_leaf_param_sub(c8(float(param.text.split(',')[pft])),ci(pft+1),*ccharnb(param.attrib['name'].strip()))
             if(param.attrib['name'].strip() == 'fates_leaf_c3psn'):
                 leaf_c3psn.append(int(param.text.split(',')[pft]))
             if(param.attrib['name'].strip() == 'fates_leaf_stomatal_intercept'):
@@ -316,7 +323,7 @@ def main(argv):
     for ism in [1,2]:
 
         # Push the conductance choice to the fortran code
-        iret = f90_set_leaf_param_sub(c8(float( ism  )),ci(0),*ccharnb('fates_leaf_stomatal_model'))
+        iret = f90.set_leaf_param_sub(c8(float( ism  )),ci(0),*ccharnb('fates_leaf_stomatal_model'))
         
         if ism==1:            leaf_stomatal_btran_models = [0,1,2,3]
         else:
@@ -324,15 +331,15 @@ def main(argv):
     
         for isb in leaf_stomatal_btran_models:
 
-            iret = f90_set_leaf_param_sub(c8(float( isb  )),ci(1),*ccharnb('fates_leaf_stomatal_btran_model'))
+            iret = f90.set_leaf_param_sub(c8(float( isb  )),ci(1),*ccharnb('fates_leaf_stomatal_btran_model'))
             
             for iab in leaf_agross_btran_models:
 
-                iret = f90_set_leaf_param_sub(c8(float( iab  )),ci(1),*ccharnb('fates_leaf_agross_btran_model'))
+                iret = f90.set_leaf_param_sub(c8(float( iab  )),ci(1),*ccharnb('fates_leaf_agross_btran_model'))
 
                 for ic3 in [0,1]:
 
-                    iret = f90_set_leaf_param_sub(c8(float( ic3  )),ci(1),*ccharnb('fates_leaf_c3psn'))
+                    iret = f90.set_leaf_param_sub(c8(float( ic3  )),ci(1),*ccharnb('fates_leaf_c3psn'))
 
                     for vcmax25_top in vcmax25t_vec:
                     
@@ -342,11 +349,11 @@ def main(argv):
                         
                             leaf_tempk = leaf_tempc + tfrz_1atm
             
-                            iret = f90_qsat_sub(c8(leaf_tempk),c8(can_press_1atm), \
+                            iret = f90.qsat_sub(c8(leaf_tempk),c8(can_press_1atm), \
                                                 byref(veg_qs_f),byref(veg_es_f), \
                                                 byref(qsdt_dummy_f),byref(esdt_dummy_f))
 
-                            iret = f90_cangas_sub(c8(can_press_1atm), \
+                            iret = f90.cangas_sub(c8(can_press_1atm), \
                                                   c8(o2_ppress_209kppm), \
                                                   c8(leaf_tempk), \
                                                   byref(mm_kco2_f), \
@@ -358,15 +365,15 @@ def main(argv):
 
                             # Leaf Maintenance Respiration (temp and pft dependent)
                             if(fates_maintresp_leaf_model==1):
-                                iret = f90_lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(1), c8(leaf_tempk), byref(lmr_f))
+                                iret = f90.lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(1), c8(leaf_tempk), byref(lmr_f))
                             elif(fates_maintresp_leaf_model==2):
-                                iret = f90_lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler_top),c8(leaf_tempk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
+                                iret = f90.lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler_top),c8(leaf_tempk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
                             else:
                                 print('unknown leaf respiration model')
                                 exit(1)
                                 
                             for btran in btran_vec:
-                                iret = f90_biophysrate_sub(ci(1), \
+                                iret = f90.biophysrate_sub(ci(1), \
                                                            c8(vcmax25_top), c8(jmax25_top), c8(kp25_top), \
                                                            c8(nscaler_top), c8(leaf_tempk), c8(dayl_factor_full), \
                                                            c8(t_growth_kum), c8(t_home_kum), c8(btran), \
@@ -379,7 +386,7 @@ def main(argv):
                                             vpress = rh * veg_es_f.value
                                             ptests = ptests + 1
                                             try:
-                                                iret = f90_leaflayerphoto_sub(c8(par_abs_umol),  \
+                                                iret = f90.leaflayerphoto_sub(c8(par_abs_umol),  \
                                                                               ci(1),   \
                                                                               c8(vcmax_f.value),   \
                                                                               c8(jmax_f.value),    \
@@ -423,7 +430,7 @@ def main(argv):
     print("{} Failures out of {} Encountered; {}% of Tests\n".format(pfails,ptests,float(pfails)/float(ptests)))
 
     print('Deallocating parameter space')
-    iret = f90_dealloc_leaf_param_sub()
+    iret = f90.dealloc_leaf_param_sub()
     
     print('Functional Unit Testing Complete')
     exit(0)

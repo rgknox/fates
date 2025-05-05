@@ -48,7 +48,7 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
     rd_abs_leaf_f   = c_double(-9);    rb_abs_leaf_f   = c_double(-9);    r_abs_stem_f    = c_double(-9)
     r_abs_snow_f    = c_double(-9);    leaf_sun_frac_f = c_double(-9);    r_diff_dn_f     = c_double(-9)
     rd_abs_f        = c_double(-9);    rb_abs_f        = c_double(-9);    r_diff_up_f     = c_double(-9)
-    r_beam_f        = c_double(-9);    leaf_sun_frac_v2_f = c_double(-9);
+    r_beam_f        = c_double(-9);    
 
     vcmax_f         = c_double(-9);    jmax_f          = c_double(-9)
     kp_f            = c_double(-9);    agross_f        = c_double(-9);    gstoma_f        = c_double(-9)
@@ -96,15 +96,13 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
         iret = f90.getabsrad_sub(ci(ican+1),ci(icol+1),ci(visb),c8(vai_top),c8(vai_bot), \
                                  byref(rd_abs_f),byref(rb_abs_f), \
                                  byref(rd_abs_leaf_f),byref(rb_abs_leaf_f),byref(r_abs_stem_f), \
-                                 byref(r_abs_snow_f),byref(leaf_sun_frac_f),byref(leaf_sun_frac_v2_f))
+                                 byref(r_abs_snow_f),byref(leaf_sun_frac_f))
         
         elem_diags.rd_abs_leaf[il] = rd_abs_leaf_f.value
         elem_diags.rb_abs_leaf[il] = rb_abs_leaf_f.value
         elem_diags.r_abs_stem[il]  = r_abs_stem_f.value
         elem_diags.sunfrac[il]     = leaf_sun_frac_f.value
-        elem_diags.sunfrac_v2[il]  = leaf_sun_frac_v2_f.value
         
-        elem_diags.sunfrac2_zen_ll[il,izen] = elem_diags.sunfrac2_zen_ll[il,izen] + leaf_sun_frac_v2_f.value
         elem_diags.sunfrac_zen_ll[il,izen] = elem_diags.sunfrac_zen_ll[il,izen] + leaf_sun_frac_f.value
         elem_diags.count_zen_ll[il,izen] = elem_diags.count_zen_ll[il,izen] + 1
         
@@ -141,12 +139,12 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
         par_abs_check = par_abs_check + (r_abs_stem_f.value+r_abs_snow_f.value)
         for ipar in [0,1]:
             if(ipar==0):
-                lit_frac = leaf_sun_frac_v2_f.value
+                lit_frac = leaf_sun_frac_f.value
                 par_abs_leaf_umol = (elem_diags.rb_abs_leaf[il]/(dlai*lit_frac) + \
                                      elem_diags.rd_abs_leaf[il]/dlai)*wm2_to_umolm2s
                     
             else:
-                lit_frac = 1.- leaf_sun_frac_v2_f.value
+                lit_frac = 1.- leaf_sun_frac_f.value
                 par_abs_leaf_umol = (elem_diags.rd_abs_leaf[il]/dlai)*wm2_to_umolm2s
 
             # Energy conservation check (diff absorbed by leaf, stem and snow)
