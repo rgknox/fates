@@ -45,7 +45,7 @@ def GetParamFromAttrib(noderoot,attr_str):
     return param_val
 
 
-def PushXMLParameters(f90,xmlroot):
+def PushXMLPhotoParameters(f90,xmlroot):
 
     numpft = int(xmlroot.find('numpft').text.strip())
     
@@ -69,11 +69,16 @@ def PushXMLParameters(f90,xmlroot):
     # Push Parameter File values to the fortran objects, also save some values in local lists
     pft_root = xmlroot.find('f90_params').find('pft_dim')
     for param_name in f90_photo_pft_params:
+        print('Pushing parameter: '+param_name)
         for ft in range(numpft):
             param_val = float(GetParamFromAttrib(pft_root,param_name)[ft])
             iret = f90.set_leaf_param_sub(c8(param_val),ci(ft+1),*ccharnb(param_name))
 
             
+def PushXMLRadParameters(f90,xmlroot):
+
+    numpft = int(xmlroot.find('numpft').text.strip())
+    
     # Allocate and push radiation parameters
     # -----------------------------------------------------------------------------------
     iret = f90.alloc_radparams_sub(ci(numpft),ci(n_bands))

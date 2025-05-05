@@ -42,7 +42,8 @@ from MetDrivers import met_driver
 from CrownPhysics import CanopyElementPhysics
  
 from PushParameters import PushParameters
-from PushParameters import PushXMLParameters
+from PushParameters import PushXMLPhotoParameters
+from PushParameters import PushXMLRadParameters
 from PushParameters import GetParamFromAttrib
 from PushParameters import GetParamList
 
@@ -207,8 +208,9 @@ def main(argv):
 
 
     # Call this external to push the default parameters to the F90 objects
-    PushXMLParameters(f90,xmlroot)
-
+    PushXMLPhotoParameters(f90,xmlroot)
+    PushXMLRadParameters(f90,xmlroot)
+    
     # Set some plant trait data
     # *Note that the photosynthesis scheme takes vcmax25_top, jmax25_top and kp24_top
     # as ARGUMENTS and not pft traits... This is because FATES allows vcmax25_top to
