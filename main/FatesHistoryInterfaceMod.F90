@@ -68,7 +68,7 @@ module FatesHistoryInterfaceMod
   use FatesInterfaceTypesMod        , only : nlevcoage
   use FatesInterfaceTypesMod        , only : hlm_use_nocomp
   use FatesInterfaceTypesMod        , only : hlm_use_fixed_biogeog
-  use FatesRadiationMemMod          , only : ivis,inir
+  use FatesRadiationMemMod          , only : ivis,inir,ipar
   use FatesInterfaceTypesMod        , only : hlm_hist_level_hifrq,hlm_hist_level_dynam
   use FatesIOVariableKindMod, only : site_r8, site_soil_r8, site_size_pft_r8
   use FatesIOVariableKindMod, only : site_size_r8, site_pft_r8, site_age_r8
@@ -5151,6 +5151,7 @@ contains
     integer  :: lb1,ub1,lb2,ub2  ! IO array bounds for the calling thread
     integer  :: ivar             ! index of IO variable object vector
     integer  :: ft               ! functional type index
+    integer  :: ifp              ! patch's hlm index
     real(r8) :: n_density   ! individual of cohort per m2.
     real(r8) :: n_perm2     ! individuals per m2 for the whole column
     real(r8) :: patch_area_by_age(nlevage)  ! patch area in each bin for normalizing purposes
@@ -5240,6 +5241,10 @@ contains
          cpatch => sites(s)%oldest_patch
          do while(associated(cpatch))
 
+            ifp = cpatch%patchno
+
+            if_bareground: if(cpatch%nocomp_pft_label.ne.nocomp_bareground)then
+               
             patch_area_by_age(cpatch%age_class)  = &
                  patch_area_by_age(cpatch%age_class) + cpatch%area
 
@@ -5442,7 +5447,7 @@ contains
                   end do do_canlev1
                end do do_pft1
             end if if_zenith1
-
+            end if if_bareground
             cpatch => cpatch%younger
          end do !patch loop
 

@@ -127,8 +127,8 @@ contains
              currentPatch%fabi_sha_z (:,:,:) = 0._r8
              currentPatch%fabd       (:)     = 0._r8
              currentPatch%fabi       (:)     = 0._r8
-             currentPatch%nrmlzd_parprof_pft_dir_z(:,:,:,:) = 0._r8
-             currentPatch%nrmlzd_parprof_pft_dif_z(:,:,:,:) = 0._r8
+             currentPatch%nrmlzd_parprof_pft_dir_z(:,:,:) = 0._r8
+             currentPatch%nrmlzd_parprof_pft_dif_z(:,:,:) = 0._r8
              currentPatch%gnd_alb_dif(1:num_swb) = bc_in(s)%albgr_dif_rb(1:num_swb)
              currentPatch%gnd_alb_dir(1:num_swb) = bc_in(s)%albgr_dir_rb(1:num_swb)
              currentPatch%fcansno                = bc_in(s)%fcansno_pa(ifp)
