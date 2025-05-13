@@ -83,8 +83,11 @@ contains
     integer :: nsites                              ! number of sites
     integer :: ifp                                 ! patch loop counter
     integer :: ib                                  ! radiation broad band counter
+    integer :: iv                                  ! leaf layer index
     integer :: cl, icol, ft                        ! indices for canopy layer,
                                                    ! rad column and functional type
+    real(r8)                     :: vai,area_frac ! veg area index, area fraction
+    real(r8)                     :: vai_top       ! integrated vai top-down at layer
     type(fates_patch_type), pointer :: currentPatch   ! patch pointer
 
     !-----------------------------------------------------------------------
@@ -198,14 +201,15 @@ contains
                      do_cl: do cl = 1,twostr%n_lyr
                         do_icol: do icol = 1,twostr%n_col(cl)
                            ft = twostr%scelg(cl,icol)%pft
-                           nv = minloc(dlower_vai, DIM=1, MASK=(dlower_vai>vai))
+                           vai = twostr%scelg(cl,icol)%lai+twostr%scelg(cl,icol)%sai
                            area_frac = twostr%scelg(cl,icol)%area
-                           ! WAIT FOR THE BIN INDEXING PR TO GO IN ...
-                           do iv = 1, nv
+                           do iv = 1, GetNVegLayers(vai)
                               vai_top = dlower_vai(iv)
-                              cpatch%nrmlzd_parprof_pft_dir_z(cl,ft,iv) = cpatch%nrmlzd_parprof_pft_dir_z(cl,ft,iv) + &
+                              currentpatch%nrmlzd_parprof_pft_dir_z(cl,ft,iv) = &
+                                   currentpatch%nrmlzd_parprof_pft_dir_z(cl,ft,iv) + &
                                    area_frac*twostr%GetRb(cl,icol,ivis,vai_top)
-                              cpatch%nrmlzd_parprof_pft_dif_z(cl,ft,iv) = cpatch%nrmlzd_parprof_pft_dif_z(cl,ft,iv) + &
+                              currentpatch%nrmlzd_parprof_pft_dif_z(cl,ft,iv) = &
+                                   currentpatch%nrmlzd_parprof_pft_dif_z(cl,ft,iv) + &
                                    area_frac*twostr%GetRdDn(cl,icol,ivis,vai_top) + &
                                    area_frac*twostr%GetRdUp(cl,icol,ivis,vai_top)
                            end do
@@ -374,9 +378,7 @@ contains
                            if_notair: if (ft>0) then
                               area_frac = twostr%scelg(cl,icol)%area
                               vai = twostr%scelg(cl,icol)%sai+twostr%scelg(cl,icol)%lai
-
                               nv = GetNVegLayers(vai)
-
                               do iv = 1, nv
                                  
                                  vai_top = dlower_vai(iv)

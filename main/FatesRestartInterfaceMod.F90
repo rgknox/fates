@@ -50,11 +50,12 @@ module FatesRestartInterfaceMod
   use EDTypesMod,              only : area
   use EDTypesMod,              only : set_patchno
   use EDParamsMod,             only : nlevleaf
+  use EDParamsMod            , only : dinc_vai,dlower_vai,GetNVegLayers
   use PRTGenericMod,           only : prt_global
   use PRTGenericMod,           only : num_elements
   use FatesRunningMeanMod,     only : rmean_type
   use FatesRunningMeanMod,     only : ema_lpa
-  use FatesRadiationMemMod,    only : num_swb,norman_solver,twostr_solver
+  use FatesRadiationMemMod,    only : num_swb,norman_solver,twostr_solver,ivis
   use TwoStreamMLPEMod,        only : normalized_upper_boundary
   use FatesConstantsMod,       only : n_term_mort_types
   use FatesConstantsMod,       only : n_landuse_cats
@@ -3830,7 +3831,11 @@ contains
      integer                      :: s             ! site counter
      integer                      :: ib            ! radiation band counter
      integer                      :: ifp           ! patch counter
-
+     integer                      :: ft,nv         ! functional type, number of veg layers
+     integer                      :: cl,icol,iv    ! can layer, column and veg layer indices
+     real(r8)                     :: vai,area_frac ! veg area index, area fraction
+     real(r8)                     :: vai_top       ! integrated vai top-down at layer
+     
      ! We need dummy variables for the solver, we don't want to update
      ! the output boundary conditions since the HLM remembers it
      real(r8) ,pointer :: albd_parb(:,:)
@@ -3851,15 +3856,6 @@ contains
      
      do_sites: do s = 1, nsites
 
-        ! The HLM should remember the albedos, do not try to mess with them
-        !bc_out(s)%albd_parb(:,:) = 0._r8  ! output HLM  Assume soil absorbs 100%
-        !bc_out(s)%albi_parb(:,:) = 0._r8  ! output HLM  Assume soil absorbs 100%
-        !bc_out(s)%fabi_parb(:,:) = 0._r8  ! output HLM  Assume canopy absorbs 0%
-        !bc_out(s)%fabd_parb(:,:) = 0._r8  ! output HLM  Assume canopy absorbs 0%
-        !bc_out(s)%ftdd_parb(:,:) = 1._r8  ! output HLM  Canopy transmits 100%
-        !bc_out(s)%ftid_parb(:,:) = 1._r8  ! output HLM  Canopy transmits 100%
-        !bc_out(s)%ftii_parb(:,:) = 1._r8  ! output HLM  Canopy transmits 100%
-        
         currentpatch => sites(s)%oldest_patch
         while_patch: do while (associated(currentpatch))
 
@@ -3874,8 +3870,8 @@ contains
            currentPatch%fabi       (:)     = 0._r8
 
            ! zero diagnostic radiation profiles
-           currentPatch%nrmlzd_parprof_pft_dir_z(:,:,:,:) = 0._r8
-           currentPatch%nrmlzd_parprof_pft_dif_z(:,:,:,:) = 0._r8
+           currentPatch%nrmlzd_parprof_pft_dir_z(:,:,:) = 0._r8
+           currentPatch%nrmlzd_parprof_pft_dif_z(:,:,:) = 0._r8
            currentPatch%rad_error(:) = hlm_hio_ignore_val
 
            if_notbareground: if(currentPatch%nocomp_pft_label.ne.nocomp_bareground) then
@@ -3927,6 +3923,28 @@ contains
                            ftii_parb(ifp,ib))
                       
                    end do
+
+                   ! Fill in the diagnostic arrays for normalized radiation profiles
+                   do_cl: do cl = 1,twostr%n_lyr
+                        do_icol: do icol = 1,twostr%n_col(cl)
+                           ft = twostr%scelg(cl,icol)%pft
+                           vai = twostr%scelg(cl,icol)%lai+twostr%scelg(cl,icol)%sai
+                           nv = GetNVegLayers(vai)
+                           area_frac = twostr%scelg(cl,icol)%area
+                           do iv = 1, nv
+                              vai_top = dlower_vai(iv)
+                              currentpatch%nrmlzd_parprof_pft_dir_z(cl,ft,iv) = &
+                                   currentpatch%nrmlzd_parprof_pft_dir_z(cl,ft,iv) + &
+                                   area_frac*twostr%GetRb(cl,icol,ivis,vai_top)
+                              currentpatch%nrmlzd_parprof_pft_dif_z(cl,ft,iv) = &
+                                   currentpatch%nrmlzd_parprof_pft_dif_z(cl,ft,iv) + &
+                                   area_frac*twostr%GetRdDn(cl,icol,ivis,vai_top) + &
+                                   area_frac*twostr%GetRdUp(cl,icol,ivis,vai_top)
+                           end do
+			end do do_icol
+                     end do do_cl
+
+                   
                  end associate
               end select
 
