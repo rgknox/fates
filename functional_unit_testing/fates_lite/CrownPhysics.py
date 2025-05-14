@@ -135,7 +135,9 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
             print('unknown leaf respiration model')
             exit(1)
 
-            
+        site_diags.sunfrac_vl[it,sil] = site_diags.sunfrac_vl[it,sil] + \
+            elem_diags.crown_area_frac*dlai/site_diags.lai_ground[sil]*1. #leaf_sun_frac_f.value CHECK TO SEE IF SUMS TO 1
+        
         par_abs_check = par_abs_check + (r_abs_stem_f.value+r_abs_snow_f.value)
         for ipar in [0,1]:
             if(ipar==0):
@@ -206,7 +208,6 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
             site_diags.gstoma_vl[it,sil] = site_diags.gstoma_vl[it,sil] + leaf_site_frac*gstoma_f.value
             site_diags.anet_vl[it,sil] = site_diags.anet_vl[it,sil] + leaf_site_frac*anet_f.value
             site_diags.r_abs_leaf_vl[it,sil] = site_diags.r_abs_leaf_vl[it,sil] + leaf_site_frac*par_abs_leaf_umol/wm2_to_umolm2s
-
             site_diags.vcmax_vl[it,sil] = site_diags.vcmax_vl[it,sil] + leaf_site_frac*vcmax_f.value
                 
             agross_rubisco = f90.agross_rubiscoc3_fun(c8(vcmax_f.value), c8(co2_interc_f.value), \

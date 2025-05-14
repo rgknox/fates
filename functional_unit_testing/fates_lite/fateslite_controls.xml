@@ -13,10 +13,10 @@
   </site_info>
   <analysis_controls>
     <visualize_elements> False </visualize_elements>
-    <view_element_inst_profs> True </view_element_inst_profs>
+    <view_element_inst_profs> False </view_element_inst_profs>
     <view_site_inst_profs> False </view_site_inst_profs>
     <met_filter> reysanchez_20112013_daytime </met_filter>
-    <view_met_forcing> True </view_met_forcing>
+    <view_met_forcing> False </view_met_forcing>
   </analysis_controls>
   <canopy_structure>
     <!-- Specify how the canopy is constructed, on a cohort by cohort 

@@ -80,13 +80,14 @@ def PushXMLPhotoParameters(f90,xmlroot):
 def PushXMLRadParameters(f90,xmlroot):
 
     numpft = int(xmlroot.find('numpft').text.strip())
+    pft_root = xmlroot.find('f90_params').find('pft_dim')
     
     # Allocate and push radiation parameters
     # -----------------------------------------------------------------------------------
     iret = f90.alloc_radparams_sub(ci(numpft),ci(n_bands))
     for ft in range(numpft):
         pft = ft+1
-        #code.interact(local=dict(globals(), **locals()))
+
         param_val = float(GetParamFromAttrib(pft_root,'fates_rad_leaf_rhovis')[ft])
         
         iret = f90.set_radparams_sub(c8(float(GetParamFromAttrib(pft_root,'fates_rad_leaf_rhovis')[ft]) ), c_int(pft),c_int(visb),*ccharnb("rhol"))
