@@ -4,8 +4,6 @@ import os
 import sys
 import getopt
 import code  # For development: code.interact(local=dict(globals(), **locals()))
-from PushParameters import PushParameters
-from PushParameters import PushXMLParameters
 from PushParameters import GetParamFromAttrib
 from PushParameters import GetParamList
 from ctypes import *
@@ -136,7 +134,7 @@ class site_diags_type:
         self.vcmax_vl          = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
         self.agross_rubisco_vl = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
         self.agross_rubpc3_vl  = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
-        
+        self.sunfrac_vl        = np.zeros([ntimes,self.n_layer])
 
         
 def GetElemLayerLAIShare(elem_diags,site_diags):

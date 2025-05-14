@@ -23,9 +23,6 @@ def qsat(tempk,rh100):
     # Reference:  Polynomial approximations from:
     #             Piotr J. Flatau, et al.,1992:  Polynomial fits to saturation
     #             vapor pressure.  Journal of Applied Meteorology, 31, 1507-1513.
-    
-    tfrz = 273.14
-    
     # For water vapor (temperature range 0C-100C)
     a0 =  6.11213476
     a1 =  0.444007856
@@ -67,7 +64,7 @@ def qsat(tempk,rh100):
     d7 =  0.394116744e-13
     d8 =  0.498070196e-16
 
-    td = np.min([100.0, np.max([-75.0, tempk - tfrz] )])
+    td = np.min([100.0, np.max([-75.0, tempk - tfrz_1atm] )])
 
     if (td >= 0.0):
         vpress_sat = 100.*(a0 + td*(a1 + td*(a2 + td*(a3 + td*(a4 + td*(a5 + td*(a6 + td*(a7 + td*a8))))))))
@@ -529,8 +526,8 @@ class met_driver:
             visddn24[ihod] = visddn24[ihod] + self.data['visddn'][ih]
             nirbdn24[ihod] = nirbdn24[ihod] + self.data['nirbdn'][ih]
             nirddn24[ihod] = nirddn24[ihod] + self.data['nirddn'][ih]
-            tempc24[ihod] = tempc24[ihod] + self.data['t_veg'][ih]-tfrz
-            gbmol24[ihod] = gbmol24[ihod] + self.data['g_b_mol'][ih]
+            tempc24[ihod] = tempc24[ihod] + self.data['t_veg'][ih]-tfrz_1atm
+            gbmol24[ihod] = gbmol24[ihod] + self.data['g_b_umol'][ih]
             vpress24[ihod] = vpress24[ihod] + self.data['vpress'][ih]
             satvpress24[ihod] = satvpress24[ihod] + self.data['vpress_sat'][ih]
                     
@@ -606,42 +603,45 @@ class met_driver:
         # Sunrise: 11:17
         
         # bfilter is short for binary-filter
-    
+
+        study_period = study_period.lower()
+        
         if(study_period == 'reysanchez_wetssn_morning'):
             morning = [ (self.data['hod'][iyr] <= 17.25 and self.data['hod'][iyr] > 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter = [ (self.data['yr'][iyr] == 2011 and (self.data['mon'][iyr]==11 or self.data['mon'][iyr]==12)) and morning[iyr] for iyr,year in enumerate(self.data['yr'])]
 
-        if(study_period == 'reysanchez_dryssn_morning'):
+        elif(study_period == 'reysanchez_dryssn_morning'):
             morning = [ (self.data['hod'][iyr] <= 17.25 and self.data['hod'][iyr] > 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter = [ (self.data['yr'][iyr] == 2013 and (self.data['mon'][iyr]==2 or self.data['mon'][iyr]==3)) and morning[iyr] for iyr,year in enumerate(self.data['yr'])]
 
-        if(study_period == 'reysanchez_wetssn_afternoon'):
+        elif(study_period == 'reysanchez_wetssn_afternoon'):
             afternoon = [ (self.data['hod'][iyr] > 17.25 or self.data['hod'][iyr] < 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter =  [ (self.data['yr'][iyr] == 2011 and (self.data['mon'][iyr]==11 or self.data['mon'][iyr]==12)) and afternoon[iyr] for iyr,year in enumerate(self.data['yr'])]
 
-        if(study_period == 'reysanchez_dryssn_afternoon'):
+        elif(study_period == 'reysanchez_dryssn_afternoon'):
             afternoon = [ (self.data['hod'][iyr] > 17.25 or self.data['hod'][iyr] < 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter = [ (self.data['yr'][iyr] == 2013 and (self.data['mon'][iyr]==2 or self.data['mon'][iyr]==3)) and afternoon[iyr] for iyr,year in enumerate(self.data['yr'])]
         
-        if(study_period == 'reysanchez_wetssn'):
+        elif(study_period == 'reysanchez_wetssn'):
             bfilter = [ (self.data['yr'][iyr] == 2011 and (self.data['mon'][iyr]==11 or self.data['mon'][iyr]==12)) for iyr,year in enumerate(self.data['yr'])]
 
-        if(study_period == 'reysanchez_dryssn'):
+        elif(study_period == 'reysanchez_dryssn'):
             bfilter  = [ (self.data['yr'][iyr] == 2013 and (self.data['mon'][iyr]==2 or self.data['mon'][iyr]==3)) for iyr,year in enumerate(self.data['yr'])]
 
-        if(study_period == 'unfiltered'):
+        elif(study_period == 'unfiltered'):
             bfilter = [ True for iyr,year in enumerate(self.data['yr'])]
 
-        if(study_period == 'daytime'):
+        elif(study_period == 'daytime'):
             bfilter = [ (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
 
-        if(study_period == 'reysanchez_20112013_daytime'):
+        elif(study_period == 'reysanchez_20112013_daytime'):
             bfilter = [ (self.data['cosz'][iyr]>0. and year>2010 and year<2014) for iyr,year in enumerate(self.data['yr'])]
+
         else:
             print('You must specify a valid filter for the met data')
             print('Unfiltered or daytime is an easy choice if you have no filtering needs')
-            exit(0)
-
+            print(study_period)
+            exit(2)
             
         if(sum(bfilter)<1):
             print('The filtering of met data produced no datapoints')
@@ -653,3 +653,46 @@ class met_driver:
             self.data[key] = self.data[key][bfilter]
         
         self.ndata = len(self.data['yr'])
+
+        # Determine the number of datapoints for normalizing
+        # hourly and monthly data
+        self.ndata_mo = np.zeros([12])
+        self.ndata_hr = np.zeros([24])
+
+        for it in range(self.ndata):
+            hr = int(self.data['hod'][it])
+            mo = int(self.data['mon'][it])-1
+            self.ndata_mo[mo] = self.ndata_mo[mo] + 1.0
+            self.ndata_hr[hr] = self.ndata_hr[hr] + 1.0
+
+
+    def GetDiurnalMean(self,invar):
+
+        inshape = invar.shape
+        if inshape[0] != self.ndata:
+            print("All time-variant diagnostic data")
+            print("should have time in the first dimension")
+            exit(2)
+        
+        outvar_dims = invar.shape
+        outvar = np.zeros([24,outvar_dims[1:])
+
+        if (len(inshape)==1):
+            for it in range(self.ndata):
+                hod = self.data['hod'][it]
+                outvar[hod] = outvar[hod] + invar[it]/self.ndata_hr[hod]
+                
+        elif (len(inshape)==2):
+            for it in range(self.ndata):
+                hod = self.data['hod'][it]
+                outvar[hod,:] = outvar[hod,:] + invar[it,:]/self.ndata_hr[hod]
+            
+        elif (len(inshape)==3):
+            for it in range(self.ndata):
+                hod = self.data['hod'][it]
+                outvar[hod,:,:] = outvar[hod,:,:] + invar[it,:,:]/self.ndata_hr[hod]
+        else:
+            print('undefined variable shape')
+            exit(2)
+
+        return outvar

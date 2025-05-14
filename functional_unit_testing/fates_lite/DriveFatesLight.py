@@ -34,13 +34,13 @@ import ctypes
 from ctypes import *
 from operator import add
 sys.path.append('../shared/py_src')
-
+sys.path.append('../leaf_biophys')
 from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
 from SetupCanopy import SetupCanopyDiags
 from MetDrivers import GetCosZ
 from MetDrivers import met_driver
 from CrownPhysics import CanopyElementPhysics
- 
+from SuppLeafPhysics import GetJmaxKp25Top
 from PushParameters import PushParameters
 from PushParameters import PushXMLPhotoParameters
 from PushParameters import PushXMLRadParameters
@@ -125,33 +125,13 @@ normalized_boundary = 1
 exec(open("../shared/py_src/CtypesInit.py").read())
 
 
+
+
 # Subroutines
 # =======================================================================================
 
 
 
-
-
-
-
-def GetJmaxKp25Top(vcmax25_top):
-
-    # Calculate Jmax and Kp at the canopy top at 25C
-    # they scale off of vcmax
-    #
-    # jmax25_top:  Canopy top maximum electron transport
-    #              rate at 25C (umol electrons/m**2/s)
-    #
-    # kp25top      Canopy top initial slope of CO2 response
-    #              curve (C4 plants) at 25C
-    
-    jmax25_top = 1.67   * vcmax25_top
-    kp25_top   = 20000.  * vcmax25_top
-    
-    # q10 response of product limited psn.
-    # co2_rcurve_islope = co2_rcurve_islope25 * 2._r8**((veg_tempk-(tfrz+25._r8))/10._r8)
-    
-    return jmax25_top, kp25_top
 
 
 
@@ -382,68 +362,14 @@ def main(argv):
 
     # Look at sun-shade fractions on the first element
     fig22,(ax1,ax2) = plt.subplots(1,2,figsize=(8.0,4.5))
-    sf_mean  = elem_diags[0][0].sunfrac_zen_ll/elem_diags[0][0].count_zen_ll
-    sf_delta = (elem_diags[0][0].sunfrac2_zen_ll-elem_diags[0][0].sunfrac_zen_ll)/elem_diags[0][0].count_zen_ll
-    dzen = elem_diags[0][0].zen_bins[1]-elem_diags[0][0].zen_bins[0]
-    for izen,zen in enumerate(elem_diags[0][0].zen_bins):
-        pzen_l = zen
-        pzen_u = zen+dzen
-        ax1.plot(sf_delta[:,izen],elem_diags[0][0].vai_top,color=[zen,zen,zen],label=f"{pzen_l:.2f}-{pzen_u:.2f}")
-        ax2.plot(sf_delta[:,izen]/sf_mean[:,izen],elem_diags[0][0].vai_top,color=[zen,zen,zen])
 
+    sunfrac_24_vl = met.GetDiurnalMean(site_diags.sunfrac_vl)
+    y  = site_diags.vai_top
+    ax1.plot(sunfrac_24_vl,y)
     ax1.invert_yaxis()
     ax1.set_ylabel('VAI')
-    ax1.set_xlabel('Difference in \nSun/Shade Fraction')
+    ax1.set_xlabel('Mean Sunlit Fraction')
     ax1.grid('on')
-    ax1.legend()
-    ax2.invert_yaxis()
-    ax2.set_xlabel('Normalized Difference\n in Sun/Shade Fraction')
-    ax2.grid('on')
-    plt.tight_layout()
-    plt.show()
-
-    # Per Element
-    for ican in range(n_can):
-        for icol in range(n_col):
-            pft = elem_diags[ican][icol].pft
-            if(pft>0):
-                fig55, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.5,6.5))
-    
-                ax3.plot(elem_diags[ican][icol].ag_limit[:,1] / (elem_diags[ican][icol].ag_limit[:,0]+elem_diags[ican][icol].ag_limit[:,1]),elem_diags[ican][icol].vai_top[:])
-                ax3.invert_yaxis()
-                ax3.set_ylabel('LAI')
-                ax3.set_xlabel('Fraction RuBP Limited')
-                ax3.set_title('All')
-                ax3.grid('on')
-                
-                ax1.plot(elem_diags[ican][icol].ag_sslimit[:,0,1]/(elem_diags[ican][icol].ag_sslimit[:,0,0]+elem_diags[ican][icol].ag_sslimit[:,0,1]),elem_diags[ican][icol].vai_top[:])
-                ax1.invert_yaxis()
-                ax1.set_ylabel('LAI')
-                ax1.set_xlabel('Fraction RuBP Limited')
-                ax1.set_title('Sunlit')
-                ax1.grid('on')
-                    
-                ax2.plot(elem_diags[ican][icol].ag_sslimit[:,1,1]/(elem_diags[ican][icol].ag_sslimit[:,1,0]+elem_diags[ican][icol].ag_sslimit[:,1,1]),elem_diags[ican][icol].vai_top[:])
-                ax2.invert_yaxis()
-                ax2.set_ylabel('LAI')
-                ax2.set_xlabel('Fraction RuBP Limited')
-                ax2.set_title('Shaded')
-                ax2.grid('on')
-                plt.show()
-
-                        
-    fig7,(ax1,ax2) = plt.subplots(2,1,figsize=(5.5,7.5))
-
-    ax1.scatter(site_diags.aglimit_apar,site_diags.aglimit_which)
-    ax1.set_ylabel('1 = Rubisco, 0 = RuBP')
-    ax1.set_xlabel('Apar [umol/m2/s]')
-    ax1.grid('on')
-    
-    ax2.scatter(site_diags.aglimit_temp,site_diags.aglimit_which)
-    ax2.set_ylabel('1 = Rubisco, 0 = RuBP')
-    ax2.set_xlabel('Temperature [K]')
-    ax2.grid('on')
-           
     
 
     fig23, ax1= plt.subplots(figsize=(7.5,7.5))
