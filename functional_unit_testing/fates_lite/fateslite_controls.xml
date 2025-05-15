@@ -15,7 +15,8 @@
     <visualize_elements> False </visualize_elements>
     <view_element_inst_profs> False </view_element_inst_profs>
     <view_site_inst_profs> False </view_site_inst_profs>
-    <met_filter> reysanchez_20112013_daytime </met_filter>
+    <!-- <met_filter> reysanchez_20112013_daytime </met_filter> -->
+    <met_filter> 10days_daytime </met_filter>
     <view_met_forcing> False </view_met_forcing>
   </analysis_controls>
   <canopy_structure>
@@ -29,7 +30,7 @@
     <cohort_pft> 1,1 </cohort_pft> <!-- can have multiple cohorts of diff pfts -->
     <cohort_area_frac> 0.4,0.6 </cohort_area_frac> <!-- sums to 1 across pfts -->
     <cohort_lai> 5.0,4.0 </cohort_lai>
-/    <cohort_sai> 0.5,0.4 </cohort_sai>
+    <cohort_sai> 0.5,0.4 </cohort_sai>
   </canopy_structure>
   <site_structure>
     <!-- These values describe site-level properties -->
@@ -41,10 +42,10 @@
   </site_structure>
   <f90_params> <!-- parameters that are in the f90 structure -->
     <scalar_dim>
-      <param name='fates_daylength_factor_switch'>1</param>
-      <param name='fates_leaf_stomatal_model'>2</param>
-      <param name='fates_leaf_stomatal_assim_model'>1</param>
-      <param name='fates_leaf_photo_tempsens_model'>0</param>
+      <param name='fates_daylength_factor_switch'> 1 </param>
+      <param name='fates_leaf_stomatal_model'> 2 </param>
+      <param name='fates_leaf_stomatal_assim_model'> 1 </param>
+      <param name='fates_leaf_photo_tempsens_model'> 0 </param>
       <param name='fates_electron_transport_model'> 1 </param>  <!--FvCB1980 = 1, JohnsonBerry2021 = 2 -->
       <param name='fates_maintresp_leaf_model'> 1 </param>
     </scalar_dim>

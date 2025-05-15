@@ -79,16 +79,6 @@ device = "cpu"
 # Global constants to use in all Leaf Biophysics unit testing
 # =======================================================================================
 
-
-# For debugging
-dump_parameters = False
-
-# Should we evaluate vcmax, jmax and kp actual?
-do_evalvjkbytemp = False
-
-# Do an analysis on convergence
-do_test_citol = False
-
 # Freezing point of water in Kelvin (at standard atmosphere)
 tfrz_1atm = 273.15
 
@@ -116,17 +106,6 @@ co2_ppress_400ppm = 0.0004*can_press_1atm
 
 # Atmospheric O2 partial pressure [Pa] %29.5 of atmosphere
 o2_ppress_209kppm = 0.2095*can_press_1atm
-
-# 70% of atmospheric CO2 is a reasonablish guess for
-# intercellular CO2 concentration during primary production
-# We can use this to test the gross assimilation routines
-# directly, without having to solve for the equilibrium
-# intercellular CO2
-ci_ppress_static = 0.7*co2_ppress_400ppm
-
-# When there is hydrualic limitation on photosynthesis
-# (via Vcmax reductions), then the btran factor is 1
-btran_nolimit = 1.0
 
 # Respiration scaler at canopy top
 rdark_scaler_top = 1.0

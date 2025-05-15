@@ -637,6 +637,10 @@ class met_driver:
         elif(study_period == 'reysanchez_20112013_daytime'):
             bfilter = [ (self.data['cosz'][iyr]>0. and year>2010 and year<2014) for iyr,year in enumerate(self.data['yr'])]
 
+        elif(study_period == '10days_daytime'):
+            bfilter = [ (self.data['cosz'][iyr]>0. and iyr<240) for iyr,year in enumerate(self.data['yr'])]
+
+            
         else:
             print('You must specify a valid filter for the met data')
             print('Unfiltered or daytime is an easy choice if you have no filtering needs')
@@ -674,8 +678,11 @@ class met_driver:
             print("should have time in the first dimension")
             exit(2)
         
-        outvar_dims = invar.shape
-        outvar = np.zeros([24,outvar_dims[1:])
+        outvar_shape = [24]
+        for i in range(1,len(inshape)):
+            outvar_shape.append(inshape[i])
+        
+        outvar = np.zeros(outvar_shape)
 
         if (len(inshape)==1):
             for it in range(self.ndata):
@@ -691,6 +698,40 @@ class met_driver:
             for it in range(self.ndata):
                 hod = self.data['hod'][it]
                 outvar[hod,:,:] = outvar[hod,:,:] + invar[it,:,:]/self.ndata_hr[hod]
+        else:
+            print('undefined variable shape')
+            exit(2)
+
+        return outvar
+
+    def GetMonthlyMean(self,invar):
+
+        inshape = invar.shape
+        if inshape[0] != self.ndata:
+            print("All time-variant diagnostic data")
+            print("should have time in the first dimension")
+            exit(2)
+        
+        outvar_shape = [12]
+        for i in range(1,len(inshape)):
+            outvar_shape.append(inshape[i])
+        
+        outvar = np.zeros(outvar_shape)
+
+        if (len(inshape)==1):
+            for it in range(self.ndata):
+                mon = self.data['mon'][it]
+                outvar[mon] = outvar[mon] + invar[it]/self.ndata_mo[mon]
+                
+        elif (len(inshape)==2):
+            for it in range(self.ndata):
+                mon = self.data['mon'][it]
+                outvar[mon,:] = outvar[mon,:] + invar[it,:]/self.ndata_mo[mon]
+            
+        elif (len(inshape)==3):
+            for it in range(self.ndata):
+                mon = self.data['mon'][it]
+                outvar[mon,:,:] = outvar[mon,:,:] + invar[it,:,:]/self.ndata_mo[mon]
         else:
             print('undefined variable shape')
             exit(2)

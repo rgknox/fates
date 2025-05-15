@@ -11,6 +11,7 @@ import matplotlib as mpl
 #mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib import colormaps
 from datetime import datetime
 import argparse
 #from matplotlib.backends.backend_pdf import PdfPages
@@ -58,6 +59,7 @@ matplotlib.rc('font', **font)
 
 plt.rcParams.update({'font.size': 12})
 
+plt.set_cmap('Dark2')
 
 # Global constants to use in all Leaf Biophysics unit testing
 # =======================================================================================
@@ -311,6 +313,11 @@ def main(argv):
         # 2) perform photosynthesis and
         # 3) maintenance respiration
         # -------------------------------------------------------------------------------
+
+        #for elem in site_diags.elem_veg:
+        #    ican = elem[0]
+        #    icol = elem[1]
+            
         for ican in range(n_can):
             for icol in range(n_col):
                 pft = elem_diags[ican][icol].pft
@@ -347,7 +354,7 @@ def main(argv):
             ax3.set_ylabel('VAI')
             ax3.set_xlabel('Ag (rubisco) umol/m2/s')
             ax3.grid('on')
-            x = site_diags.agross_rubpc3_vl[it,:]
+            x = site_diags.agross_rubp_vl[it,:]
             ax4.plot(x,y)
             ax4.invert_yaxis()
             ax4.set_ylabel('VAI')
@@ -361,17 +368,75 @@ def main(argv):
     # ------------------------------------------------------------------------
 
     # Look at sun-shade fractions on the first element
-    fig22,(ax1,ax2) = plt.subplots(1,2,figsize=(8.0,4.5))
+    fig22,((ax1,ax2,ax3),(ax4,ax5,ax6)) = plt.subplots(2,3,figsize=(8.5,6.5))
 
+    cmap = mpl.colormaps['Dark2']
+    n_colors = 5
+    colors = cmap(np.linspace(0, 1, n_colors))
+    #code.interact(local=dict(globals(), **locals()))
+    
+    cosz_24 = met.GetDiurnalMean(met.data['cosz'])
+    vai  = site_diags.vai_top
+
+    icc=0
     sunfrac_24_vl = met.GetDiurnalMean(site_diags.sunfrac_vl)
-    y  = site_diags.vai_top
-    ax1.plot(sunfrac_24_vl,y)
+
+    ics = []
+    for ic,cosz in enumerate(cosz_24):
+        if(cosz>0.01 and (ic % 3 == 0)):
+            ics.append(ic)
+            
+    for icc,ic in enumerate(ics):
+        ax1.plot(sunfrac_24_vl[ic,:],vai,label=f'{ic}:00',color=colors[icc])
     ax1.invert_yaxis()
-    ax1.set_ylabel('VAI')
+    ax1.set_ylabel('VAI [m2/m2]')
     ax1.set_xlabel('Mean Sunlit Fraction')
     ax1.grid('on')
-    
+    ax1.legend()
 
+    r_abs_leaf_24_vl = met.GetDiurnalMean(site_diags.r_abs_leaf_vl)
+    for icc,ic in enumerate(ics):
+        ax2.plot(r_abs_leaf_24_vl[ic,:],vai,color=colors[icc])
+    ax2.invert_yaxis()
+    ax2.set_xlabel('Absorbed Vis [W/m2]')
+    ax2.grid('on')
+    
+    ag_rubisco_24_vl =  met.GetDiurnalMean(site_diags.ag_rubisco_vl)
+    ag_rubp_24_vl =  met.GetDiurnalMean(site_diags.ag_rubp_vl)
+    for icc,ic in enumerate(ics):
+        ax3.plot(ag_rubisco_24_vl[ic,:],vai,color=colors[icc])
+    for icc,ic in enumerate(ics):
+        ax3.plot(ag_rubp_24_vl[ic,:],vai,color=colors[icc],linestyle = '--')
+    ax3.invert_yaxis()
+    ax3.set_xlabel('Ag (Rubisco & RuBP)\n   [umol/m2/s]')
+    ax3.grid('on')
+
+    co2_interc_24_vl =  met.GetDiurnalMean(site_diags.co2_interc_vl)
+    for icc,ic in enumerate(ics):
+        ax4.plot(co2_interc_24_vl[ic,:],vai,color=colors[icc])
+    ax4.invert_yaxis()
+    ax4.set_xlabel('co2_c [Pa]')
+    ax4.grid('on')
+    ax4.set_ylabel('VAI [m2/m2]')
+    
+    vcmax_24_vl = met.GetDiurnalMean(site_diags.vcmax_vl)
+    for icc,ic in enumerate(ics):
+        ax5.plot(vcmax_24_vl[ic,:],vai,color=colors[icc])
+    ax5.invert_yaxis()
+    ax5.set_xlabel('Vcmax [umol/m2/s]')
+    ax5.grid('on')
+    
+    lmr_24_vl = met.GetDiurnalMean(site_diags.lmr_vl)
+    for icc,ic in enumerate(ics):
+        ax6.plot(lmr_24_vl[ic,:],vai,color=colors[icc])
+    ax6.invert_yaxis()
+    ax6.set_xlabel('Rleaf [umol/m2/s]')
+    ax6.grid('on')
+
+    plt.tight_layout()
+    plt.show()
+
+    
     fig23, ax1= plt.subplots(figsize=(7.5,7.5))
 
     nhbins = 20

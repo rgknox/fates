@@ -57,15 +57,6 @@ class elem_diags_type:
         self.jmax = np.zeros(self.n_layer)
         self.kp = np.zeros(self.n_layer)
 
-
-        # Mean diagnostics
-        self.ag_limit = np.zeros([self.n_layer,2])
-        self.ag_sslimit = np.zeros([self.n_layer,2,2])
-        self.n_zen          = 5          # Number of zenith bins we use for diagnostics
-        self.zen_bins       = np.linspace(0,1.-1/self.n_zen,self.n_zen)
-        self.sunfrac_zen_ll = np.zeros([self.n_layer,self.n_zen])
-        self.sunfrac2_zen_ll= np.zeros([self.n_layer,self.n_zen])
-        self.count_zen_ll   = np.zeros([self.n_layer,self.n_zen])
         return
     
     def ZeroDiag(self):
@@ -90,6 +81,59 @@ class elem_diags_type:
         self.kp = np.zeros(self.n_layer)
         return
 
+    def Update(self, il, lit_frac, r_diff_dn, r_diff_up, r_beam, \
+               rd_abs_leaf, rb_abs_leaf, r_abs_stem, leaf_sun_frac, \
+               lmr, agross, gstoma, co2_interc):
+
+        # This is called once per layer "il" and once per sun-shade call, thus lit_frac is
+        # a weighting fraction that sums to unity.
+        
+        self.rd_dn[il]       = self.rd_dn[il] + r_diff_dn*lit_frac
+        self.rd_up[il]       = self.rd_up[il] + r_diff_up*lit_frac
+        self.rbeam[il]       = self.rbeam[il] + r_beam*lit_frac
+        self.rd_abs_leaf[il] = self.rd_abs_leaf[il] + rd_abs_leaf*lit_frac
+        self.rb_abs_leaf[il] = self.rb_abs_leaf[il] + rb_abs_leaf*lit_frac
+        self.r_abs_stem[il]  = self.r_abs_stem[il] + r_abs_stem*lit_frac
+        self.sunfrac[il]     = self.sunfrac[il] + leaf_sun_frac*lit_frac
+        self.lmr[il]         = self.lmr[il] + lmr*lit_frac
+        self.agross[il]      = self.agross[il] + agross*lit_frac
+        self.anet[il]        = self.anet[il] + (agross-lmr)*lit_frac
+        self.gstoma[il]      = self.gstoma[il] + gstoma*lit_frac
+        self.co2_interc[il]  = self.co2_interc[il] + co2_interc*lit_frac
+        return
+
+    def PlotInstProfiles(self):
+        
+        fig_edp1,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(6.0,6.5))
+        y  = self.vai_top
+        x  = self.rd_abs_leaf
+        ax1.plot(x,y)
+        ax1.invert_yaxis()
+        ax1.set_ylabel('VAI')
+        ax1.set_xlabel('Absorbed Rd umol/m2/s')
+        ax1.grid('on')
+        x = self.rb_abs_leaf
+        ax2.plot(x,y)
+        ax2.invert_yaxis()
+        ax2.set_ylabel('VAI')
+        ax2.set_xlabel('Absorbed Rb umol/m2/s')
+        ax2.grid('on')
+        x = self.sunfrac_v2
+        ax3.plot(x,y)
+        ax3.invert_yaxis()
+        ax3.set_ylabel('VAI')
+        ax3.set_xlabel('Sunlit Fraction umol/m2/s')
+        ax3.grid('on')
+
+        txt_str = "Time: {:04d}-{:02d}-{:02d}\nCan: {:2d}\nCol: {:2d}\nCos(z) = {:4.3f}\nT_v = {:3.1f}\n".format(met.data['yr'][it],met.data['mon'][it],met.data['day'][it],ican,icol,met.data['cosz'][it],\
+                                                             met.data['t_veg'][it])
+        ax4.text(0.2,0.2,txt_str)
+        ax4.axis('off')
+        plt.tight_layout()
+        plt.show()                
+
+
+    
 class site_diags_type:
 
     def __init__(self,ntimes,dvai,total_vai):
@@ -126,16 +170,18 @@ class site_diags_type:
        
         # Time x VAI depth diagnostics
         
-        self.lmr_vl            = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf /s]
-        self.agross_vl         = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
-        self.gstoma_vl         = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
-        self.anet_vl           = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
-        self.r_abs_leaf_vl     = np.zeros([ntimes,self.n_layer]) # [W/m2 leaf ]
-        self.vcmax_vl          = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
-        self.agross_rubisco_vl = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
-        self.agross_rubpc3_vl  = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
-        self.sunfrac_vl        = np.zeros([ntimes,self.n_layer])
+        self.lmr_vl        = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf /s]
+        self.agross_vl     = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.gstoma_vl     = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.anet_vl       = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.r_abs_leaf_vl = np.zeros([ntimes,self.n_layer]) # [W/m2 leaf ]
+        self.vcmax_vl      = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.ag_rubisco_vl = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.ag_rubp_vl    = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
+        self.sunfrac_vl    = np.zeros([ntimes,self.n_layer])
+        self.co2_interc_vl = np.zeros([ntimes,self.n_layer])
 
+                    
         
 def GetElemLayerLAIShare(elem_diags,site_diags):
 
@@ -159,6 +205,9 @@ def GetElemLayerLAIShare(elem_diags,site_diags):
         site_diags.lai_ground[sil] = site_diags.lai_ground[sil] + elem_diags.crown_area_frac*elem_diags.dlai
         
     return elem_diags,site_diags
+
+
+
 
 
 
@@ -269,12 +318,13 @@ def SetupCanopyDiags(xmlroot,ntimes,dvai,f90):
 
     # Initialize the site-level diagnostics structure
     site_diags = site_diags_type(ntimes,dvai,max_vai_above)
+    site_diags.elem_veg = []
     for ican in range(n_can):
         for icol in range(n_col):
             ico = elem_cohort[ican,icol]
             if(ico>=0):
                 elem_diags[ican][icol],site_diags = GetElemLayerLAIShare(elem_diags[ican][icol],site_diags)
-    
+                site_diags.elem_veg.append([ican,icol])
     
 
     visualize_elements = False
