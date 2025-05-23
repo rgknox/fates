@@ -63,6 +63,21 @@ contains
     deallocate(lb_params%jmaxse)
     
   end subroutine DeallocLeafParam
+
+  ! =====================================================================================
+
+  function IsLeafParamAllocated() result(is_allocated)
+    
+    logical :: is_allocated 
+
+    ! use c3psn to test allocated/deallocated status
+    if(allocated(lb_params%c3psn))then
+       is_allocated = .true.
+    else
+       is_allocated = .false.
+    end if
+       
+  end function IsLeafParamAllocated
   
   ! =====================================================================================
   

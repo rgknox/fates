@@ -92,6 +92,9 @@ class f90_modules:
         self.alloc_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','allocleafparam'))
         self.dealloc_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','deallocleafparam'))
         self.dump_param_sub =  getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','DumpParams'))
+        self.isalloc_leaf_param_fun =  getattr(self.leaf_biophys_supp_obj,GetModSymbol(mod_path+'LeafBiophysSuppMod.o','IsLeafParamAllocated'))
+        self.isalloc_leaf_param_fun.restype = c_bool
+        
         self.biophysrate_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerBiophysicalRate'))
         self.leaflayerphoto_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','LeafLayerPhotosynthesis'))
         self.qsat_sub = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','QSat'))
@@ -109,7 +112,7 @@ class f90_modules:
         self.agross_rubpc3_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC3'))
         self.agross_rubpc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC4'))
         self.agross_pepc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossPEPC4'))
-
+       
         self.ft1_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','ft1_f'))
         self.fth_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','fth_f'))
         self.fth25_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','fth25_f'))

@@ -194,8 +194,8 @@ def main(argv):
     # Maintenance respiration model # 1=Ryan (1991), 2=Atkin et al (2017)
     maintresp_leaf_model = float(GetParamFromAttrib(scalar_root,'fates_maintresp_leaf_model')[0])
 
-   
-    
+    code.interact(local=dict(globals(), **locals()))
+    print(f90.isalloc_leaf_param_fun())
 
     # Call this external to push the default parameters to the F90 objects
     PushXMLPhotoParameters(f90,xmlroot)
