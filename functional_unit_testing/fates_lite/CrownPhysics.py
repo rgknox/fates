@@ -71,7 +71,7 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
     # Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593 used
     # kn = 0.11. Here, derive kn from vcmax25 as in Lloyd et al 
     # (2010) Biogeosciences, 7, 1833-1859
-    pft_root = xmlroot.find('f90_params').find('pft_dim')
+    pft_root = xmlroot.find('params').find('pft_dim')
     kn = f90.decaycoeffvcmax_fun(c8(vcmax25_top), \
                                  c8(float(GetParamFromAttrib(pft_root,'fates_leafn_vert_scaler_coeff1')[ft])), \
                                  c8(float(GetParamFromAttrib(pft_root,'fates_leafn_vert_scaler_coeff2')[ft])))
@@ -223,9 +223,16 @@ def CanopyElementPhysics(ican,icol,f90,met,it,xmlroot,pft, \
             site_diags.ag_rubp_vl[it,sil]    = site_diags.ag_rubp_vl[it,sil] + leaf_site_frac*agross_rubp
             site_diags.co2_interc_vl[it,sil] = site_diags.co2_interc_vl[it,sil] + leaf_site_frac*co2_interc_f.value
 
-            
-            
-
+            ssleaf_site_frac =  dlai*elem_diags.crown_area_frac/site_diags.lai_ground[sil]
+            if(ipar==0):
+                site_diags.r_abs_leaf_sunl[it,sil] = site_diags.r_abs_leaf_sunl[it,sil] + ssleaf_site_frac * par_abs_leaf_umol/wm2_to_umolm2s
+                site_diags.ag_rubisco_sunl[it,sil] = site_diags.ag_rubisco_sunl[it,sil] + ssleaf_site_frac * agross_rubisco
+                site_diags.ag_rubp_sunl[it,sil]    = site_diags.ag_rubp_sunl[it,sil] + ssleaf_site_frac * agross_rubp
+            else:
+                site_diags.r_abs_leaf_shal[it,sil] = site_diags.r_abs_leaf_shal[it,sil] + ssleaf_site_frac * par_abs_leaf_umol/wm2_to_umolm2s
+                site_diags.ag_rubisco_shal[it,sil] = site_diags.ag_rubisco_shal[it,sil] + ssleaf_site_frac * agross_rubisco
+                site_diags.ag_rubp_shal[it,sil]    = site_diags.ag_rubp_shal[it,sil] + ssleaf_site_frac * agross_rubp
+                
     # Display instantaneous profiles
     # Complete leaf layer and sun/shade loops first
     do_profiles = GetParamList(xmlroot.find('analysis_controls'),'view_element_inst_profs','logical')[0]
