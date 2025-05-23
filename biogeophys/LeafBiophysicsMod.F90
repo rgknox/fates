@@ -64,6 +64,7 @@ module LeafBiophysicsMod
   public :: CiMinMax
   public :: CiFunc
   public :: CiBisection
+  public :: ft1_f,fth_f,fth25_f
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -431,7 +432,7 @@ contains
     real(r8) :: mm_ko2            ! Michaelis-Menten constant for O2 (Pa)
     
     ! Output
-    real(r8) :: ac               ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
+    real(r8) :: ac                ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
     
     ac = vcmax * max(ci-co2_cpoint, 0._r8) / &
          (ci+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
@@ -474,6 +475,10 @@ contains
     end if
     
     je = min(r1,r2)
+
+    !print*,"Jpar,Jmax,Je:",jpar,jmax,je
+
+
     
   end function GetJe_FvCB
 

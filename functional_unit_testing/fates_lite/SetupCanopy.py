@@ -181,7 +181,13 @@ class site_diags_type:
         self.sunfrac_vl    = np.zeros([ntimes,self.n_layer])
         self.co2_interc_vl = np.zeros([ntimes,self.n_layer])
 
-                    
+        self.r_abs_leaf_sunl = np.zeros([ntimes,self.n_layer])
+        self.ag_rubisco_sunl = np.zeros([ntimes,self.n_layer])
+        self.ag_rubp_sunl    = np.zeros([ntimes,self.n_layer])
+        self.r_abs_leaf_shal = np.zeros([ntimes,self.n_layer])
+        self.ag_rubisco_shal = np.zeros([ntimes,self.n_layer])
+        self.ag_rubp_shal    = np.zeros([ntimes,self.n_layer])
+
         
 def GetElemLayerLAIShare(elem_diags,site_diags):
 
@@ -225,11 +231,10 @@ def SetupCanopyDiags(xmlroot,ntimes,dvai,f90):
     cohort_lai  = GetParamList(cstruct_root,'cohort_lai','float')
     cohort_sai  = GetParamList(cstruct_root,'cohort_sai','float')
     ncohorts    = len(cohort_pft)
-    site_root   = xmlroot.find('site_structure')
-    ground_vis_albedo = GetParamList(site_root,'ground_vis_albedo','float')
-    ground_nir_albedo = GetParamList(site_root,'ground_nir_albedo','float')
-    frac_snow = GetParamList(site_root,'frac_snow','float')[0]
-    n_layer = GetParamList(site_root,'nlayers','integer')[0] 
+    ground_vis_albedo = GetParamList(cstruct_root,'ground_vis_albedo','float')
+    ground_nir_albedo = GetParamList(cstruct_root,'ground_nir_albedo','float')
+    frac_snow = GetParamList(cstruct_root,'frac_snow','float')[0]
+    n_layer = GetParamList(cstruct_root,'nlayers','integer')[0] 
 
     
     # Lets walk through the list and assign the layer of each

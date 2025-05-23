@@ -15,8 +15,8 @@
     <visualize_elements> False </visualize_elements>
     <view_element_inst_profs> False </view_element_inst_profs>
     <view_site_inst_profs> False </view_site_inst_profs>
-    <!-- <met_filter> reysanchez_20112013_daytime </met_filter> -->
-    <met_filter> 10days_daytime </met_filter>
+    <met_filter> reysanchez_20112013_daytime </met_filter> 
+    <!--<met_filter> 10days_daytime </met_filter> -->
     <view_met_forcing> False </view_met_forcing>
   </analysis_controls>
   <canopy_structure>
@@ -27,20 +27,19 @@
 	 areas sum to less than 1, then the remainder is assumed to be air.  If
 	 the areas are greater than 1, then it is assumed that the cohorts are specified
 	 in height order and the algorithm will create multiple canopy layers -->
-    <cohort_pft> 1,1 </cohort_pft> <!-- can have multiple cohorts of diff pfts -->
-    <cohort_area_frac> 0.4,0.6 </cohort_area_frac> <!-- sums to 1 across pfts -->
-    <cohort_lai> 5.0,4.0 </cohort_lai>
-    <cohort_sai> 0.5,0.4 </cohort_sai>
-  </canopy_structure>
-  <site_structure>
+    <cohort_pft> 1 </cohort_pft> <!-- can have multiple cohorts of diff pfts -->
+    <cohort_area_frac> 1.0 </cohort_area_frac> <!-- sums to 1 across pfts -->
+    <cohort_lai> 5.0 </cohort_lai>
+    <cohort_sai> 0.5 </cohort_sai>
     <!-- These values describe site-level properties -->
     <!-- fraction of visible light reflected by beam and diffuse radiation -->
     <ground_vis_albedo> 0.3, 0.3 </ground_vis_albedo>
     <ground_nir_albedo> 0.3, 0.3 </ground_nir_albedo> <!-- unused -->
-    <nlayers> 10 </nlayers> <!-- number of leaf layers (equal depth) -->
+    <nlayers> 50 </nlayers> <!-- number of leaf layers (equal depth) -->
     <frac_snow> 0.0 </frac_snow> <!-- fraction of lai covered by snoow -->
-  </site_structure>
-  <f90_params> <!-- parameters that are in the f90 structure -->
+    <btran_avg> 1.0 </btran_avg> <!-- There is no soil model, so a constant btran is applied -->
+  </canopy_structure>
+  <params>
     <scalar_dim>
       <param name='fates_daylength_factor_switch'> 1 </param>
       <param name='fates_leaf_stomatal_model'> 2 </param>
@@ -72,7 +71,7 @@
       <!-- These are loaded into python structures -->
       <param name='fates_leafn_vert_scaler_coeff1'> 0.00963 </param>
       <param name='fates_leafn_vert_scaler_coeff2'> 2.43 </param>
-      <param name='fates_leaf_vcmax25top'> 50 </param>
+      <param name='fates_leaf_vcmax25top'> 30 </param>
       <param name='fates_stoich_nitr'> 0.033 </param>
       <param name='fates_leaf_slatop'>  0.012</param>
       <param name='fates_rad_leaf_clumping_index'> 0.85 </param>
@@ -86,5 +85,5 @@
       <param name='fates_rad_stem_taunir'> 0.001 </param>
       <param name='fates_rad_stem_tauvis'> 0.001 </param>
     </pft_dim>
-  </f90_params>
+  </params>
 </all>
