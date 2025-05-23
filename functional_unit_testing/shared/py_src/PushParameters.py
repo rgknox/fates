@@ -69,7 +69,7 @@ def PushXMLPhotoParameters(f90,xmlroot):
 
     
     # Push Parameter File values to the fortran objects, also save some values in local lists
-    pft_root = xmlroot.find('f90_params').find('pft_dim')
+    pft_root = xmlroot.find('params').find('pft_dim')
     for param_name in f90_photo_pft_params:
         print('Pushing parameter: '+param_name)
         for ft in range(numpft):
@@ -80,7 +80,7 @@ def PushXMLPhotoParameters(f90,xmlroot):
 def PushXMLRadParameters(f90,xmlroot):
 
     numpft = int(xmlroot.find('numpft').text.strip())
-    pft_root = xmlroot.find('f90_params').find('pft_dim')
+    pft_root = xmlroot.find('params').find('pft_dim')
     
     # Allocate and push radiation parameters
     # -----------------------------------------------------------------------------------

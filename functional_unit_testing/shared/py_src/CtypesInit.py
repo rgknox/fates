@@ -109,7 +109,11 @@ class f90_modules:
         self.agross_rubpc3_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC3'))
         self.agross_rubpc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC4'))
         self.agross_pepc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossPEPC4'))
-    
+
+        self.ft1_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','ft1_f'))
+        self.fth_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','fth_f'))
+        self.fth25_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','fth25_f'))
+        
         # For functions, define the return value
         self.decaycoeffvcmax_fun.restype = c_double
         self.set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
@@ -118,6 +122,9 @@ class f90_modules:
         self.agross_rubpc4_fun.restype = c_double
         self.agross_pepc4_fun.restype = c_double
         self.velotomolarcf_fun.restype = c_double
+        self.ft1_fun.restype = c_double
+        self.fth_fun.restype = c_double
+        self.fth25_fun.restype = c_double
 
         # RADIATION
         #----------------------------------------------------------------------------------------
