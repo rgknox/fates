@@ -39,7 +39,7 @@
     <frac_snow> 0.0 </frac_snow> <!-- fraction of lai covered by snoow -->
     <btran_avg> 1.0 </btran_avg> <!-- There is no soil model, so a constant btran is applied -->
   </canopy_structure>
-  <params>
+  <f90_params>
     <scalar_dim>
       <param name='fates_daylength_factor_switch'> 1 </param>
       <param name='fates_leaf_stomatal_model'> 2 </param>
@@ -85,5 +85,5 @@
       <param name='fates_rad_stem_taunir'> 0.001 </param>
       <param name='fates_rad_stem_tauvis'> 0.001 </param>
     </pft_dim>
-  </params>
+  </f90_params>
 </all>

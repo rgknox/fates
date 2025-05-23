@@ -168,8 +168,8 @@ def main(argv):
     
     # Set some of the major module switches (argument to subroutine is float)
     # -----------------------------------------------------------------------------------
-    scalar_root = xmlroot.find('params').find('scalar_dim')
-    pft_root = xmlroot.find('params').find('pft_dim')
+    scalar_root = xmlroot.find('f90_params').find('scalar_dim')
+    pft_root = xmlroot.find('f90_params').find('pft_dim')
     
     # Daylength factor: 1) scale vcmax and jmax,  0) do not scale
     daylength_switch = float(GetParamFromAttrib(scalar_root,'fates_daylength_factor_switch')[0])
@@ -358,7 +358,7 @@ def main(argv):
             # Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593 used
             # kn = 0.11. Here, derive kn from vcmax25 as in Lloyd et al 
             # (2010) Biogeosciences, 7, 1833-1859
-            pft_root = xmlroot.find('params').find('pft_dim')
+            pft_root = xmlroot.find('f90_params').find('pft_dim')
             kn = f90.decaycoeffvcmax_fun(c8(vcmax25_top), \
                                          c8(float(GetParamFromAttrib(pft_root,'fates_leafn_vert_scaler_coeff1')[ft])), \
                                          c8(float(GetParamFromAttrib(pft_root,'fates_leafn_vert_scaler_coeff2')[ft])))
