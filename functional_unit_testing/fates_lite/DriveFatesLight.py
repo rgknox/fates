@@ -46,6 +46,8 @@ from PushParameters import PushXMLPhotoParameters
 from PushParameters import PushXMLRadParameters
 from PushParameters import GetParamFromAttrib
 from PushParameters import GetParamList
+from PushParameters import XMLToDic
+from PushParameters import GetStrVecFromTag
 
 from CDLRead import CDLParse
 import CtypesInit
@@ -194,10 +196,14 @@ def main(argv):
     # Maintenance respiration model # 1=Ryan (1991), 2=Atkin et al (2017)
     maintresp_leaf_model = float(GetParamFromAttrib(scalar_root,'fates_maintresp_leaf_model')[0])
 
-    code.interact(local=dict(globals(), **locals()))
-    print(f90.isalloc_leaf_param_fun())
-
+    
     # Call this external to push the default parameters to the F90 objects
+
+    # Testing an alternative read method. This populates
+    # a dictionary for the parameters
+    #scalar_params,pft_params = XMLToDic(xmlroot)
+    #lat = GetStrVecFromTag(xmlroot,'lat')
+    
     PushXMLPhotoParameters(f90,xmlroot)
     PushXMLRadParameters(f90,xmlroot)
     
@@ -293,6 +299,7 @@ def main(argv):
         pft = 1
         
         tvegk = met.data['t_veg'][it]
+
         cosz  = met.data['cosz'][it]
 
         if( do_time_print and it>pmod and np.mod(it,pmod) == 0):

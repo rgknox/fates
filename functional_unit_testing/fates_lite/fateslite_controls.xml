@@ -65,7 +65,7 @@
       <param name='fates_leaf_vcmaxha'> 65330 </param>
       <param name='fates_leaf_jmaxha'> 43540 </param>
       <param name='fates_leaf_vcmaxhd'> 149250 </param>
-      <param name='fates_leaf_jmaxhd'> 149250 </param>
+      <param name='fates_leaf_jmaxhd'> 152040 </param>
       <param name='fates_leaf_vcmaxse'> 485 </param>
       <param name='fates_leaf_jmaxse'> 495 </param>
       <!-- These are loaded into python structures -->

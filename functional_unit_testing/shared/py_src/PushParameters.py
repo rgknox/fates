@@ -30,6 +30,24 @@ def GetParamList(noderoot,node_name,vtype):
     return val_list
 
 
+def GetStrVecFromTag(xmlroot,tag_str):
+
+    # Return a the text in a tag as
+    # a string vector. Searches whole tree
+    # from the root provided, recursively
+    
+    srch_tag = './/'+tag_str.strip()
+    element = xmlroot.findall(srch_tag)
+    if(len(element)<1):
+        print(f"Had trouble with finding tag: {tag_str}")
+        exit(1)
+    elif(len(element)>1):
+        print(f"GetStrVecFromTag expects to find only one instance")
+        print(f"of the tag specified, we found {len(element)}")
+    else:
+        return element[0].text.strip().split(',')
+
+
 def GetParamFromAttrib(noderoot,attr_str):
 
     # This returns a list of text strings
@@ -47,6 +65,27 @@ def GetParamFromAttrib(noderoot,attr_str):
     return param_val
 
 
+def XMLToDic(xmlroot):
+
+    scalar_params = {}
+    pft_params = {}
+    
+    pft_root = xmlroot.find('f90_params').find('pft_dim')
+    for element in pft_root.iter():
+        if "name" in element.attrib:
+            param_vec = [float(txt) for txt in element.text.strip().split(',')]
+            pft_params[element.attrib["name"]] = param_vec
+            #print(element.attrib["name"],param_vec)
+            
+    scalar_root = xmlroot.find('f90_params').find('scalar_dim')
+    for element in scalar_root.iter():
+        if "name" in element.attrib:
+            print(element.attrib["name"], element.text)
+            scalar_params[element.attrib["name"]] = float(element.text)
+            
+    return scalar_params, pft_params
+            
+        
 def PushXMLPhotoParameters(f90,xmlroot):
 
     numpft = int(xmlroot.find('numpft').text.strip())
