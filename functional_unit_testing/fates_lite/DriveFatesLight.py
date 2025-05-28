@@ -48,6 +48,8 @@ from PushParameters import GetParamFromAttrib
 from PushParameters import GetParamList
 from PushParameters import XMLToDic
 from PushParameters import GetStrVecFromTag
+from PushParameters import PushDictPhotoParameters
+from PushParameters import PushDictRadParameters
 
 from CDLRead import CDLParse
 import CtypesInit
@@ -201,11 +203,13 @@ def main(argv):
 
     # Testing an alternative read method. This populates
     # a dictionary for the parameters
-    #scalar_params,pft_params = XMLToDic(xmlroot)
+    scalar_params,pft_params = XMLToDic(xmlroot)
     #lat = GetStrVecFromTag(xmlroot,'lat')
+    PushDictPhotoParameters(f90,scalar_params,pft_params)
+    PushDictRadParameters(f90,pft_params)
     
-    PushXMLPhotoParameters(f90,xmlroot)
-    PushXMLRadParameters(f90,xmlroot)
+    # PushXMLPhotoParameters(f90,xmlroot)
+    # PushXMLRadParameters(f90,xmlroot)
     
     # Set some plant trait data
     # *Note that the photosynthesis scheme takes vcmax25_top, jmax25_top and kp24_top
@@ -620,6 +624,8 @@ def main(argv):
     ax4.set_xlabel('co2_c [Pa]')
     ax4.grid('on')
     ax4.set_ylabel('VAI [m2/m2]')
+    ax4.axvline(x=co2_ppress_400ppm, color='k', linestyle='solid') 
+
     
     vcmax_24_vl = met.GetDiurnalMean(site_diags.vcmax_vl)
     for icc,ic in enumerate(ics):
