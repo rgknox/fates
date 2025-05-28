@@ -65,7 +65,7 @@ def GetParamFromAttrib(noderoot,attr_str):
     return param_val
 
 
-def XMLToDic(xmlroot):
+def XMLToDic(xmlroot, verbose: bool):
 
     scalar_params = {}
     pft_params = {}
@@ -75,19 +75,21 @@ def XMLToDic(xmlroot):
         if "name" in element.attrib:
             param_vec = [float(txt) for txt in element.text.strip().split(',')]
             pft_params[element.attrib["name"]] = param_vec
-            #print(element.attrib["name"],param_vec)
+            if(verbose):
+                print(element.attrib["name"],param_vec)
             
     scalar_root = xmlroot.find('f90_params').find('scalar_dim')
     for element in scalar_root.iter():
         if "name" in element.attrib:
-            print(element.attrib["name"], element.text)
+            if (verbose):
+                print(element.attrib["name"], element.text)
             scalar_params[element.attrib["name"]] = float(element.text)
             
     return scalar_params, pft_params
             
         
 
-def PushDictPhotoParameters(f90,scalar_params,pft_params):
+def PushDictPhotoParameters(f90,scalar_params,pft_params, verbose: bool):
 
     # Push dictionary entries of photosynthesis parameters to the 
     
@@ -110,7 +112,9 @@ def PushDictPhotoParameters(f90,scalar_params,pft_params):
 
     numpft = len(pft_params["fates_leaf_c3psn"])
     
-    print('Allocating parameter space for {} pfts'.format(numpft))
+    if verbose:
+        print('Allocating parameter space for {} pfts'.format(numpft))
+        
     iret = f90.alloc_leaf_param_sub(ci(numpft))
     
     # These are photosynthesis PFT parameters that also need to be pushed to the fortran objects
@@ -125,12 +129,13 @@ def PushDictPhotoParameters(f90,scalar_params,pft_params):
                             'fates_leaf_vcmaxse','fates_leaf_jmaxse']
     
     for param_name in f90_photo_pft_params:
-        print('Pushing parameter: '+param_name)
+        if verbose:
+            print('Pushing parameter: '+param_name)
         for ft in range(numpft):
             param_val = pft_params[param_name.strip()][ft]
             iret = f90.set_leaf_param_sub(c8(param_val),ci(ft+1),*ccharnb(param_name))
 
-def PushDictRadParameters(f90,pft_params):
+def PushDictRadParameters(f90,pft_params, verbose: bool):
 
     # Note these pft_params dictionary entries all have floats in their arrays
     

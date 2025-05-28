@@ -203,10 +203,10 @@ def main(argv):
 
     # Testing an alternative read method. This populates
     # a dictionary for the parameters
-    scalar_params,pft_params = XMLToDic(xmlroot)
+    scalar_params,pft_params = XMLToDic(xmlroot,verbose=False)
     #lat = GetStrVecFromTag(xmlroot,'lat')
-    PushDictPhotoParameters(f90,scalar_params,pft_params)
-    PushDictRadParameters(f90,pft_params)
+    PushDictPhotoParameters(f90,scalar_params,pft_params,verbose=False)
+    PushDictRadParameters(f90,pft_params,verbose=False)
     
     # PushXMLPhotoParameters(f90,xmlroot)
     # PushXMLRadParameters(f90,xmlroot)
