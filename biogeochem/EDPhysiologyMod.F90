@@ -137,7 +137,7 @@ module EDPhysiologyMod
   use PRTLossFluxesMod, only  : PRTDamageLosses
   use PRTGenericMod, only     : StorageNutrientTarget
   use DamageMainMod, only     : damage_time
-  use DamageMainMod, only     : GetCrownReduction
+  use FatesAllometryMod, only     : GetCrownReduction
   use DamageMainMod, only     : GetDamageFrac
   use SFParamsMod, only       : SF_val_CWD_frac
   use FatesParameterDerivedMod, only : param_derived

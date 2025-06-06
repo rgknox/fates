@@ -28,7 +28,10 @@ ${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/LeafBiophysSuppMod.o  ../leaf_bi
 ${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/FatesRadiationMemMod.o ../../radiation/FatesRadiationMemMod.F90
 ${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/TwoStreamMLPEMod.o  ../../radiation/TwoStreamMLPEMod.F90
 ${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/RadiationWrapMod.o ../radiation/f90_src/RadiationWrapMod.F90
-
+${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/PRTParametersMod.o ../../parteh/PRTParametersMod.F90
+${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/EDParamsDerivedSupp.o f90_src/EDParamsDerivedSuppMod.F90
+${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/AllometrySuppMod.o ../allometry/f90_src/AllometrySuppMod.F90
+${FC} ${F_OPTS} -I bld/ ${MOD_FLAG} bld/ -o bld/FatesAllometryMod.o ../../biogeochem/FatesAllometryMod.F90
 
 
 

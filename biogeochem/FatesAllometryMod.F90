@@ -98,8 +98,7 @@ module FatesAllometryMod
   use FatesGlobals     , only : fates_log
   use FatesGlobals     , only : endrun => fates_endrun
   use FatesGlobals     , only : FatesWarn,N2S,A2S,I2S
-  use EDParamsMod      , only : nlevleaf,dinc_vai,dlower_vai
-  use DamageMainMod    , only : GetCrownReduction
+  use EDParamsMod      , only : dinc_vai,dlower_vai,ED_val_history_damage_bin_edges
   use LeafBiophysicsMod, only : DecayCoeffVcmax
   
   implicit none
@@ -128,7 +127,7 @@ module FatesAllometryMod
 
   public :: tree_lai_sai       ! LAI and SAI calculations must work together, thus they
                                ! should never be called separately
-
+  public :: GetCrownReduction
   logical         , parameter :: verbose_logging = .false.
   character(len=*), parameter :: sourcefile = __FILE__
 
@@ -374,7 +373,6 @@ contains
   
   subroutine bagw_allom(d,ipft,crowndamage, elongf_stem, bagw,dbagwdd)
 
-    use DamageMainMod, only : GetCrownReduction
     use FatesParameterDerivedMod, only : param_derived
     
     real(r8),intent(in)    :: d       ! plant diameter [cm]
@@ -586,8 +584,6 @@ contains
     ! this routine is not name-spaced with allom_
     ! -------------------------------------------------------------------------
 
-    use DamageMainMod      , only : GetCrownReduction
-    
     real(r8),intent(in)    :: d             ! plant diameter [cm]
     integer(i4),intent(in) :: ipft          ! PFT index
     integer(i4),intent(in) :: crowndamage   ! crown damage class [1: undamaged, >1: damaged]
@@ -987,7 +983,6 @@ contains
 
   subroutine bsap_allom(d,ipft,crowndamage,canopy_trim,elongf_stem, sapw_area,bsap,dbsapdd)
 
-    use DamageMainMod , only : GetCrownReduction
     use FatesParameterDerivedMod, only : param_derived
     
     real(r8),intent(in)           :: d           ! plant diameter [cm]
@@ -3243,6 +3238,24 @@ contains
 
     return
   end subroutine VegAreaLayer
+
+  !-------------------------------------------------------    
+  
+  subroutine GetCrownReduction(crowndamage, crown_reduction)
+
+    !------------------------------------------------------------------
+    ! This subroutine takes the crown damage class of a cohort (integer)
+    ! and returns the fraction of the crown that is lost.                                                                  
+    !-------------------------------------------------------------------       
+
+    integer(i4), intent(in)   :: crowndamage        ! crown damage class of the cohort
+    real(r8),    intent(out)  :: crown_reduction    ! fraction of crown lost from damage
+
+    crown_reduction = ED_val_history_damage_bin_edges(crowndamage)/100.0_r8
+    
+    return
+  end subroutine GetCrownReduction
+
   
   ! =========================================================================
   

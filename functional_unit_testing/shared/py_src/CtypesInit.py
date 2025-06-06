@@ -161,3 +161,44 @@ class f90_modules:
         self.set_radparams_sub.argtypes = [POINTER(c_double),POINTER(c_int),POINTER(c_int),c_char_p,c_long]
         self.grndsnow_albedo_sub.argtypes = [POINTER(c_int),POINTER(c_double),c_char_p,c_long]
 
+        # Allometry (parameters via parteh)
+
+        # Instantiate objects
+        self.prt_parameters_obj = ctypes.CDLL(mod_path+'PRTParametersMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.paramsderived_obj = ctypes.CDLL(mod_path+'EDParamsDerivedSupp.o',mode=ctypes.RTLD_GLOBAL)
+        self.allometrysupp_obj = ctypes.CDLL(mod_path+'AllometrySuppMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.allometry_obj = ctypes.CDLL(mod_path+'FatesAllometryMod.o',mode=ctypes.RTLD_GLOBAL)
+
+        # Alias routines
+        self.forceparam_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapforceparams'))
+
+        self.alloc_derived_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','AllocDerivedParam'))
+        self.isderivedalloced_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','IsDerivedParamAllocated'))
+        self.setderived_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','SetDerivedParam'))
+        self.allocate_dincvai_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','AllocateDincVai'))
+        self.set_dincvai_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','SetDincVai'))
+
+        self.alloc_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','AllocAllomParam'))
+        self.dealloc_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','DeallocAllomParam'))
+        self.isallom_alloced_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','IsAllomParamAllocated'))
+        self.set_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','SetAllomParam'))
+
+        self.h2d_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','h2d_allom'))
+        self.h_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','h_allom'))
+        self.bagw_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bagw_allom'))
+        self.blmax_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','blmax_allom'))
+        self.bleaf_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bleaf'))
+        self.storage_fraction_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','storage_fraction_of_target'))
+        self.bsap_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bsap_allom'))
+        self.bbgw_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bbgw_allom'))
+        self.bdead_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bdead_allom'))
+        self.carea_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','carea_allom'))
+        self.bstore_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bstore_allom'))
+        self.ForceDBH_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','ForceDBH'))
+        self.CrownDepth_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','CrownDepth'))
+        self.set_root_fraction_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','set_root_fraction'))
+        self.leafc_from_treelai_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','leafc_from_treelai'))
+        self.tree_lai_sai_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','leafc_from_treelai'))
+        self.VegAreaLayer_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','VegAreaLayer'))
+        self.tree_lai_sai_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','tree_lai_sai'))
+

@@ -119,7 +119,7 @@ contains
     use FatesAllometryMod, only : bleaf, bstore_allom
     use FatesAllometryMod, only : storage_fraction_of_target
     use FatesAllometryMod, only : set_root_fraction
-    use DamageMainMod, only : GetCrownReduction
+    use FatesAllometryMod, only : GetCrownReduction
     use FatesInterfaceTypesMod, only : hlm_use_tree_damage
 
     ! ARGUMENTS:
