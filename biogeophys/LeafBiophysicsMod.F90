@@ -1923,7 +1923,10 @@ contains
        vcmaxse = lb_params%vcmaxse(FT)
        jmaxse  = lb_params%jmaxse(FT)
        
-    case (photosynth_acclim_model_kumarathunge_etal_2019) !Kumarathunge et al. temperature acclimation, Thome=30-year running mean
+    case (photosynth_acclim_model_kumarathunge_etal_2019)
+       ! Kumarathunge et al. temperature acclimation
+       ! Thome = 30-year running mean
+       ! Tgrowth = defined as the mean air temperature for the 30 d before measurement (calculation)
        t_growth_celsius = t_growth-tfrz
        t_home_celsius = t_home-tfrz
        vcmaxha = (42.6_r8 + (1.14_r8*t_growth_celsius))*1e3_r8 !J/mol

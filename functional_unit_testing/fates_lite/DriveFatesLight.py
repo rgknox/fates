@@ -103,17 +103,17 @@ absolute_boundary = 2
 can_press_1atm = 101325.0
 
 # Atmospheric CO2 partial pressure [Pa] at 400 ppm
-co2_ppress_400ppm = 0.0004*can_press_1atm
+#co2_ppress_400ppm = 0.0004*can_press_1atm
 
 # Atmospheric O2 partial pressure [Pa] %29.5 of atmosphere
-o2_ppress_209kppm = 0.2095*can_press_1atm
+#o2_ppress_209kppm = 0.2095*can_press_1atm
 
 # 70% of atmospheric CO2 is a reasonablish guess for
 # intercellular CO2 concentration during primary production
 # We can use this to test the gross assimilation routines
 # directly, without having to solve for the equilibrium
 # intercellular CO2
-ci_ppress_static = 0.7*co2_ppress_400ppm
+#ci_ppress_static = 0.7*co2_ppress_400ppm
 
 # When there is hydrualic limitation on photosynthesis
 # (via Vcmax reductions), then the btran factor is 1
@@ -303,6 +303,9 @@ def main(argv):
         pft = 1
         
         tvegk = met.data['t_veg'][it]
+        co2_ppress_400ppm = 0.0004*met.data['can_press'][it]
+        o2_ppress_209kppm = 0.2095*met.data['can_press'][it]
+
 
         cosz  = met.data['cosz'][it]
 
@@ -406,7 +409,8 @@ def main(argv):
                 iret = f90.biophysrate_sub(ci(pft), c8(vcmax25_top), \
                                            c8(jmax25_top), c8(kp25_top), \
                                            c8(nscaler), c8(tvegk), c8(met.data['dayl_factor'][it]), \
-                                           c8(t_growth_kum),c8(t_home_kum),c8(btran_avg), \
+                                           c8(met.data['t_grow'][it]),c8(met.data['t_home'][it]), \
+                                           c8(btran_avg), \
                                            byref(vcmax_f), byref(jmax_f), byref(kp_f), \
                                            byref(gs0_f), byref(gs1_f), byref(gs2_f))
 
@@ -624,7 +628,7 @@ def main(argv):
     ax4.set_xlabel('co2_c [Pa]')
     ax4.grid('on')
     ax4.set_ylabel('VAI [m2/m2]')
-    ax4.axvline(x=co2_ppress_400ppm, color='k', linestyle='solid') 
+    #ax4.axvline(x=co2_ppress_400ppm, color='k', linestyle='solid') 
 
     
     vcmax_24_vl = met.GetDiurnalMean(site_diags.vcmax_vl)
@@ -643,22 +647,44 @@ def main(argv):
     ax6.grid('on')
 
 
-    #rabs_leaf_24_sunl = met.GetDiurnalMean(site_diags.r_abs_leaf_sunl)
-    #for icc,ic in enumerate(ics):
-    #    ax2.plot(rabs_leaf_24_sunl[ic,:],vai,color=colors[icc])
-    #ax2.invert_yaxis()
-    #ax2.set_xlabel('Rabs (sunlit) [umol/m2/s]')
-    #ax2.grid('on')
 
-    #ag_rubisco_24_sunl = met.GetDiurnalMean(site_diags.ag_rubisco_sunl)
-    #ag_rubp_24_sunl = met.GetDiurnalMean(site_diags.ag_rubp_sunl)
-    #for icc,ic in enumerate(ics):
-    #    ax3.plot(ag_rubisco_24_sunl[ic,:],vai,color=colors[icc])
-    #for icc,ic in enumerate(ics):
-    #    ax3.plot(ag_rubp_24_sunl[ic,:],vai,color=colors[icc],linestyle = '--')
-    #ax3.invert_yaxis()
-    #ax3.set_xlabel('Sunlit Ag (Rubisco & RuBP)\n   [umol/m2/s]')
-    #ax3.grid('on')
+    # Look at Ag and Rabs on sunlit versus shaded leaves
+    
+    fig23,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8.5,6.5))
+
+    rabs_leaf_24_sunl = met.GetDiurnalMean(site_diags.r_abs_leaf_sunl)
+    rabs_leaf_24_shal = met.GetDiurnalMean(site_diags.r_abs_leaf_shal)
+
+    ag_rubisco_24_sunl = met.GetDiurnalMean(site_diags.ag_rubisco_sunl)
+    ag_rubisco_24_shal = met.GetDiurnalMean(site_diags.ag_rubisco_shal)
+    ag_rubp_24_sunl = met.GetDiurnalMean(site_diags.ag_rubp_sunl)
+    ag_rubp_24_shal = met.GetDiurnalMean(site_diags.ag_rubp_shal)
+
+    for icc,ic in enumerate(ics):
+        ax1.plot(rabs_leaf_24_sunl[ic,:],vai,color=colors[icc])
+    ax1.invert_yaxis()
+    ax1.set_xlabel('Rabs (sunlit) [umol/m2/s]')
+    ax1.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax2.plot(rabs_leaf_24_shal[ic,:],vai,color=colors[icc])
+    ax2.invert_yaxis()
+    ax2.set_xlabel('Rabs (shaded) [umol/m2/s]')
+    ax2.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax3.plot(ag_rubisco_24_sunl[ic,:],vai,color=colors[icc])
+        ax3.plot(ag_rubp_24_sunl[ic,:],vai,color=colors[icc],linestyle = '--')
+    ax3.invert_yaxis()
+    ax3.set_xlabel('Ag (sunlit) [umol/m2/s]')
+    ax3.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax4.plot(ag_rubisco_24_shal[ic,:],vai,color=colors[icc])
+        ax4.plot(ag_rubp_24_shal[ic,:],vai,color=colors[icc],linestyle = '--')
+    ax4.invert_yaxis()
+    ax4.set_xlabel('Ag (shaded) [umol/m2/s]')
+    ax4.grid('on')
     
     
     plt.tight_layout()
