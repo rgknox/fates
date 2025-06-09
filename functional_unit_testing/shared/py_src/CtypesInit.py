@@ -191,6 +191,7 @@ class f90_modules:
         self.storage_fraction_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','storage_fraction_of_target'))
         self.bsap_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bsap_allom'))
         self.bbgw_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bbgw_allom'))
+        self.bfineroot_sub  = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bfineroot'))
         self.bdead_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bdead_allom'))
         self.carea_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','carea_allom'))
         self.bstore_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bstore_allom'))
