@@ -15,8 +15,8 @@
     <visualize_elements> False </visualize_elements>
     <view_element_inst_profs> False </view_element_inst_profs>
     <view_site_inst_profs> False </view_site_inst_profs>
-    <met_filter> reysanchez_20112013_daytime </met_filter> 
-    <!--<met_filter> 10days_daytime </met_filter> -->
+    <met_filter> reysanchez_20112013_daytime </met_filter>
+    <met_filter> 10days_daytime </met_filter>
     <view_met_forcing> False </view_met_forcing>
   </analysis_controls>
   <canopy_structure>
@@ -37,7 +37,8 @@
     <ground_nir_albedo> 0.3, 0.3 </ground_nir_albedo> <!-- unused -->
     <nlayers> 50 </nlayers> <!-- number of leaf layers (equal depth) -->
     <frac_snow> 0.0 </frac_snow> <!-- fraction of lai covered by snoow -->
-    <btran_avg> 1.0 </btran_avg> <!-- There is no soil model, so a constant btran is applied -->
+    <btran_avg> 0.8 </btran_avg> <!-- There is no soil model, so a constant btran is applied -->
+    <btran_std> 0.1 </btran_std>
   </canopy_structure>
   <f90_params>
     <scalar_dim>
@@ -45,7 +46,7 @@
       <param name='fates_leaf_stomatal_model'> 2 </param>
       <param name='fates_leaf_stomatal_assim_model'> 1 </param>
       <param name='fates_leaf_photo_tempsens_model'> 1 </param>
-      <param name='fates_electron_transport_model'> 2 </param>  <!--FvCB1980 = 1, JohnsonBerry2021 = 2 -->
+      <param name='fates_electron_transport_model'> 1 </param>  <!--FvCB1980 = 1, JohnsonBerry2021 = 2 -->
       <param name='fates_maintresp_leaf_model'> 1 </param>
     </scalar_dim>
     <pft_dim>

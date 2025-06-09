@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib import colormaps
 from datetime import datetime
+from scipy.stats import norm
 import argparse
 #from matplotlib.backends.backend_pdf import PdfPages
 import platform
@@ -142,9 +143,29 @@ exec(open("../shared/py_src/CtypesInit.py").read())
 # Subroutines
 # =======================================================================================
 
+def BtranGaussConstr(btran_avg,btran_std,n_pts):
 
+    # Generate a sample of btrans on a gaussian
+    # distribution. For samples that exceed
+    # possible values, resample from a uniform
 
+    btran = np.zeros(n_pts)
+    
+    # Random uniform between +- 2std
+    #bmin = np.max([0.0,btran_avg-3*btran_std])
+    #bmax = np.min([1.0,btran_avg+3*btran_std])
 
+    for i in range(n_pts):
+        btran_unf = np.random.normal(loc=btran_avg, scale=btran_std,size=1)[0]
+        #code.interact(local=dict(globals(), **locals()))
+        btran[i] = np.max([0.,np.min([1.0,btran_unf])])
+        
+        #if (btran_unf > 1.0) or (btran_unf < 0):
+        #    btran[i] = bmin + np.random.random()*(bmax-bmin)
+        #else:
+        #    btran[i] = btran_unf
+
+    return btran
 
 
 
@@ -153,6 +174,17 @@ exec(open("../shared/py_src/CtypesInit.py").read())
 
 def main(argv):
 
+    #fig = plt.figure(layout=None, facecolor='lightblue',figsize=(8.5,4.5))
+    #gs = fig.add_gridspec(nrows=1, ncols=2, left=0.10, right=0.9,
+    #                      hspace=0.2, wspace=0.0)
+    #ax0 = fig.add_subplot(gs[0])
+    #ax0.axis('on')
+    #ax1 = fig.add_subplot(gs[1])
+    #ax1.set_yticklabels([])
+    #code.interact(local=dict(globals(), **locals()))
+    #fig.suptitle('Manual gridspec')
+    #plt.show()
+    
     # This class call instanteates all the fortran shared objects
     # and creates aliases for their functions and subroutines
     f90 = f90_modules('../shared/bld/')
@@ -273,6 +305,16 @@ def main(argv):
     frac_snow = GetParamList(can_root,'frac_snow','float')[0]
     n_layer = GetParamList(can_root,'nlayers','integer')[0]
     btran_avg = GetParamList(can_root,'btran_avg','float')[0]
+    btran_std = GetParamList(can_root,'btran_std','float')[0]
+    btran = BtranGaussConstr(btran_avg,btran_std,ntimes)
+    
+    #fig = plt.figure(figsize=(8.5,4.5))
+    #hist,bins = np.histogram(btran, bins=100)
+    #plt.plot(bins[1:],hist)
+    #plt.show()
+    
+    
+    
     
     # Site level scattering parameters
     iret = f90.grndsnow_albedo_sub(c_int(visb),c_double(ground_vis_albedo[1]),*ccharnb('albedo_grnd_diff'))
@@ -405,12 +447,14 @@ def main(argv):
                 leaf_frac = elem_diags[ican][icol].total_lai/(elem_diags[ican][icol].total_lai+elem_diags[ican][icol].total_sai)
                 nscaler = np.exp(-kn*elem_diags[ican][icol].canopy_lai_mid[il])
 
+                
+                
                 # Scale down N and biophysical rates
                 iret = f90.biophysrate_sub(ci(pft), c8(vcmax25_top), \
                                            c8(jmax25_top), c8(kp25_top), \
                                            c8(nscaler), c8(tvegk), c8(met.data['dayl_factor'][it]), \
                                            c8(met.data['t_grow'][it]),c8(met.data['t_home'][it]), \
-                                           c8(btran_avg), \
+                                           c8(btran[it]), \
                                            byref(vcmax_f), byref(jmax_f), byref(kp_f), \
                                            byref(gs0_f), byref(gs1_f), byref(gs2_f))
 
@@ -646,8 +690,32 @@ def main(argv):
     ax6.set_xlabel('Rleaf [umol/m2/s]')
     ax6.grid('on')
 
+    # For Nate and Chonggang
+    fig = plt.figure(layout=None,figsize=(8.5,4.5))
+    gs = fig.add_gridspec(nrows=1, ncols=2, left=0.10, right=0.9,
+                          hspace=0.2, wspace=0.0)
+    ax0 = fig.add_subplot(gs[0])
+    ax1 = fig.add_subplot(gs[1])
+    #fig.suptitle('Manual gridspec')
 
-
+    vpd_kpa = 0.001*(met.data['vpress_sat']-met.data['vpress'])
+    
+    ax0.scatter(vpd_kpa,site_diags.gstoma*mol_per_umol,facecolor='none',linewidth=1,edgecolor='k')
+    ax0.axis('on')
+    ax0.set_ylabel('Stomatal Conductance [mol/m2/s]')
+    ax0.set_xlabel('VPD [kPa]')
+    ax0.grid('on')
+    ax1.scatter(met.data['t_veg']-tfrz_1atm,site_diags.gstoma*mol_per_umol,facecolor=None)
+    ax1.set_xlabel('Tveg [C]')
+    ax1.set_yticklabels([])
+    ax1.grid('on')
+    # Remove the first axis text label so it
+    # does not overlap with the first subplot
+    xlabs = ax1.get_xticklabels()
+    xlabs[0].set_text('')
+    ax1.set_xticklabels(xlabs)
+    plt.show()
+    
     # Look at Ag and Rabs on sunlit versus shaded leaves
     
     fig23,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8.5,6.5))
