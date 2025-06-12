@@ -116,10 +116,6 @@ can_press_1atm = 101325.0
 # intercellular CO2
 #ci_ppress_static = 0.7*co2_ppress_400ppm
 
-# When there is hydrualic limitation on photosynthesis
-# (via Vcmax reductions), then the btran factor is 1
-btran_nolimit = 1.0
-
 # Respiration scaler at canopy top
 rdark_scaler_top = 1.0
 
@@ -150,14 +146,23 @@ def BtranGaussConstr(btran_avg,btran_std,n_pts):
     # possible values, resample from a uniform
 
     btran = np.zeros(n_pts)
+    btran_grp = np.zeros(n_pts,dtype=int)
     
     # Random uniform between +- 2std
     #bmin = np.max([0.0,btran_avg-3*btran_std])
     #bmax = np.min([1.0,btran_avg+3*btran_std])
 
+    # 
+    hydr_thresh = [0,0.333,0.666]
+
+    
     for i in range(n_pts):
-        btran_unf = np.random.normal(loc=btran_avg, scale=btran_std,size=1)[0]
+        #btran_unf = np.random.normal(loc=btran_avg, scale=btran_std,size=1)[0]
         #code.interact(local=dict(globals(), **locals()))
+
+        randx = np.random.uniform(0, 1, 1)[0]
+        btran_grp[i] = int(np.sum(randx > hydr_thresh)) - 1
+        btran_unf = norm.ppf(randx, loc=btran_avg, scale=btran_std)
         btran[i] = np.max([0.,np.min([1.0,btran_unf])])
         
         #if (btran_unf > 1.0) or (btran_unf < 0):
@@ -165,7 +170,7 @@ def BtranGaussConstr(btran_avg,btran_std,n_pts):
         #else:
         #    btran[i] = btran_unf
 
-    return btran
+    return btran,btran_grp
 
 
 
@@ -306,7 +311,7 @@ def main(argv):
     n_layer = GetParamList(can_root,'nlayers','integer')[0]
     btran_avg = GetParamList(can_root,'btran_avg','float')[0]
     btran_std = GetParamList(can_root,'btran_std','float')[0]
-    btran = BtranGaussConstr(btran_avg,btran_std,ntimes)
+    btran,btran_grp = BtranGaussConstr(btran_avg,btran_std,ntimes)
     
     #fig = plt.figure(figsize=(8.5,4.5))
     #hist,bins = np.histogram(btran, bins=100)
@@ -699,13 +704,24 @@ def main(argv):
     #fig.suptitle('Manual gridspec')
 
     vpd_kpa = 0.001*(met.data['vpress_sat']-met.data['vpress'])
+    #code.interact(local=dict(globals(), **locals()))
+    grp0=(btran_grp==0) #dry
+    grp1=(btran_grp==1) #intermediate
+    grp2=(btran_grp==2) #wet
     
-    ax0.scatter(vpd_kpa,site_diags.gstoma*mol_per_umol,facecolor='none',linewidth=1,edgecolor='k')
+    ax0.scatter(vpd_kpa[grp0],site_diags.gstoma[grp0]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='r',label='dry')
+    ax0.scatter(vpd_kpa[grp1],site_diags.gstoma[grp1]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='b',label='intermediate')
+    ax0.scatter(vpd_kpa[grp2],site_diags.gstoma[grp2]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='g',label='wet')
+    
     ax0.axis('on')
     ax0.set_ylabel('Stomatal Conductance [mol/m2/s]')
     ax0.set_xlabel('VPD [kPa]')
     ax0.grid('on')
-    ax1.scatter(met.data['t_veg']-tfrz_1atm,site_diags.gstoma*mol_per_umol,facecolor=None)
+    ax0.legend()
+    ax1.scatter(met.data['t_veg'][grp0]-tfrz_1atm,site_diags.gstoma[grp0]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='r',label='dry')
+    ax1.scatter(met.data['t_veg'][grp1]-tfrz_1atm,site_diags.gstoma[grp1]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='b',label='intermediate')
+    ax1.scatter(met.data['t_veg'][grp2]-tfrz_1atm,site_diags.gstoma[grp2]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='g',label='wet')
+    
     ax1.set_xlabel('Tveg [C]')
     ax1.set_yticklabels([])
     ax1.grid('on')
