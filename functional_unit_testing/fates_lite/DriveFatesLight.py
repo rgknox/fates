@@ -57,7 +57,7 @@ import CtypesInit
 
 font = {'family' : 'sans-serif',
         'weight' : 'normal',
-        'size'   : 11}
+        'size'   : 12}
 
 matplotlib.rc('font', **font)
 
@@ -77,6 +77,7 @@ leaf_tempk25 = tfrz_1atm + 25.0
 # Simple conversion, number of micro-moles in a mole
 umol_per_mol = 1.e6
 mol_per_umol = 1.e-6
+mmol_per_umol = 1.e-3
 
 # Radiation constants, number of broadbands, and their indices (visible and NIR)
 n_bands = 2
@@ -139,7 +140,7 @@ exec(open("../shared/py_src/CtypesInit.py").read())
 # Subroutines
 # =======================================================================================
 
-def BtranGaussConstr(btran_avg,btran_std,n_pts):
+def BtranGaussConstr(met,btran_avg,btran_std,n_pts):
 
     # Generate a sample of btrans on a gaussian
     # distribution. For samples that exceed
@@ -149,20 +150,32 @@ def BtranGaussConstr(btran_avg,btran_std,n_pts):
     btran_grp = np.zeros(n_pts,dtype=int)
     
     # Random uniform between +- 2std
-    #bmin = np.max([0.0,btran_avg-3*btran_std])
-    #bmax = np.min([1.0,btran_avg+3*btran_std])
+    # bmin = np.max([0.0,btran_avg-3*btran_std])
+    # bmax = np.min([1.0,btran_avg+3*btran_std])
 
     # 
     hydr_thresh = [0,0.333,0.666]
-
     
     for i in range(n_pts):
         #btran_unf = np.random.normal(loc=btran_avg, scale=btran_std,size=1)[0]
         #code.interact(local=dict(globals(), **locals()))
-
+        #grp0=(btran_grp==0) #dry
+        #grp1=(btran_grp==1) #intermediate
+        #grp2=(btran_grp==2) #wet
         randx = np.random.uniform(0, 1, 1)[0]
-        btran_grp[i] = int(np.sum(randx > hydr_thresh)) - 1
-        btran_unf = norm.ppf(randx, loc=btran_avg, scale=btran_std)
+        if(met.data['mon'][i]==2):
+            btran_grp[i] = 0
+            btran_unf = norm.ppf(randx, loc=0.65, scale=0.05)
+        elif(met.data['mon'][i]==11):
+            btran_grp[i] = 2
+            btran_unf = norm.ppf(randx, loc=0.95, scale=0.05)
+        else:
+            btran_grp[i] = 1
+            btran_unf = norm.ppf(randx, loc=0.80, scale=0.05)
+        
+        #btran_grp[i] = int(np.sum(randx > hydr_thresh)) - 1
+        #btran_unf = norm.ppf(randx, loc=btran_avg, scale=btran_std)
+
         btran[i] = np.max([0.,np.min([1.0,btran_unf])])
         
         #if (btran_unf > 1.0) or (btran_unf < 0):
@@ -173,8 +186,39 @@ def BtranGaussConstr(btran_avg,btran_std,n_pts):
     return btran,btran_grp
 
 
+def UpdateDerivedParams(pft_root,numpft):
 
+    # Set some plant trait data
+    # *Note that the photosynthesis scheme takes vcmax25_top, jmax25_top and kp24_top
+    # as ARGUMENTS and not pft traits... This is because FATES allows vcmax25_top to
+    # change as a function of leaf age, and therefore this is not a parameter constant
+    # at the pft level. In this unit framework we do not factor in leaf age, so
+    # it is essentially a parameter constant
+    # -----------------------------------------------------------------------------------
+
+    vcmax25_top = np.zeros(numpft)
+    jmax25_top = np.zeros(numpft)
+    kp25_top = np.zeros(numpft)
+    leaf_slatop = np.zeros(numpft)
+    lnc_top = np.zeros(numpft)
+    for ft in range(numpft):
+        vcmax25_top[ft] = float(GetParamFromAttrib(pft_root,'fates_leaf_vcmax25top')[ft])
+
+        # Jmax and Kp (co2 curve initial slope) are scaled off of Vcmax
+        jmax25_top[ft],kp25_top[ft] =  GetJmaxKp25Top(vcmax25_top[ft])
         
+        # Leaf Nitrogen Concentration at the canopy top (N:C ratio) (n/m2]
+        leaf_nc_ratio = float(GetParamFromAttrib(pft_root,'fates_stoich_nitr')[ft])
+
+        # Specific leaf area
+        leaf_slatop[ft]   = float(GetParamFromAttrib(pft_root,'fates_leaf_slatop')[ft])
+    
+        # Leaf N Conc at the crown top [gN/m2]
+        lnc_top[ft]       = leaf_nc_ratio/leaf_slatop[ft]
+
+    return vcmax25_top,jmax25_top,leaf_slatop,lnc_top
+        
+
 # ========================================================================
 
 def main(argv):
@@ -240,41 +284,15 @@ def main(argv):
 
     # Testing an alternative read method. This populates
     # a dictionary for the parameters
-    scalar_params,pft_params = XMLToDic(xmlroot,verbose=False)
+    scalar_params,pft_params,pft_var_params = XMLToDic(xmlroot,verbose=False)
     #lat = GetStrVecFromTag(xmlroot,'lat')
     PushDictPhotoParameters(f90,scalar_params,pft_params,verbose=False)
     PushDictRadParameters(f90,pft_params,verbose=False)
-    
+
     # PushXMLPhotoParameters(f90,xmlroot)
     # PushXMLRadParameters(f90,xmlroot)
     
-    # Set some plant trait data
-    # *Note that the photosynthesis scheme takes vcmax25_top, jmax25_top and kp24_top
-    # as ARGUMENTS and not pft traits... This is because FATES allows vcmax25_top to
-    # change as a function of leaf age, and therefore this is not a parameter constant
-    # at the pft level. In this unit framework we do not factor in leaf age, so
-    # it is essentially a parameter constant
-    # -----------------------------------------------------------------------------------
 
-    vcmax25_top = np.zeros(numpft)
-    jmax25_top = np.zeros(numpft)
-    kp25_top = np.zeros(numpft)
-    leaf_slatop = np.zeros(numpft)
-    lnc_top = np.zeros(numpft)
-    for ft in range(numpft):
-        vcmax25_top[ft] = float(GetParamFromAttrib(pft_root,'fates_leaf_vcmax25top')[ft])
-
-        # Jmax and Kp (co2 curve initial slope) are scaled off of Vcmax
-        jmax25_top[ft],kp25_top[ft] =  GetJmaxKp25Top(vcmax25_top[ft])
-        
-        # Leaf Nitrogen Concentration at the canopy top (N:C ratio) (n/m2]
-        leaf_nc_ratio = float(GetParamFromAttrib(pft_root,'fates_stoich_nitr')[ft])
-
-        # Specific leaf area
-        leaf_slatop[ft]   = float(GetParamFromAttrib(pft_root,'fates_leaf_slatop')[ft])
-    
-        # Leaf N Conc at the crown top [gN/m2]
-        lnc_top[ft]       = leaf_nc_ratio/leaf_slatop[ft]
 
         
     # Lets setup the site information and the driver data
@@ -299,6 +317,8 @@ def main(argv):
     if(GetParamList(ctrl_root,'view_met_forcing','logical')[0]):
         met.EvalMetForcing()
 
+    #code.interact(local=dict(globals(), **locals()))
+    med_gb_umol = np.median(met.data['g_b_umol'])
     
     ntimes = met.ndata
 
@@ -311,7 +331,7 @@ def main(argv):
     n_layer = GetParamList(can_root,'nlayers','integer')[0]
     btran_avg = GetParamList(can_root,'btran_avg','float')[0]
     btran_std = GetParamList(can_root,'btran_std','float')[0]
-    btran,btran_grp = BtranGaussConstr(btran_avg,btran_std,ntimes)
+    btran,btran_grp = BtranGaussConstr(met,btran_avg,btran_std,ntimes)
     
     #fig = plt.figure(figsize=(8.5,4.5))
     #hist,bins = np.histogram(btran, bins=100)
@@ -337,8 +357,26 @@ def main(argv):
     albedo_beam_f   = c_double(-9)
     albedo_diff_f   = c_double(-9);    canabs_beam_f   = c_double(-9);    canabs_diff_f   = c_double(-9)
     ffbeam_beam_f   = c_double(-9);    ffdiff_beam_f   = c_double(-9);    ffdiff_diff_f   = c_double(-9)
-    
 
+
+
+    for ip in range(n_stoch_samp):
+
+        for key,val in pft_var_params:
+
+            # Find matching key in pft_params, which gives the mean
+            
+            param_mean = pft_params[key]
+            param_std  = val
+            randx      = np.random.uniform(0, 1, 1)[0]
+            param_unf  = norm.ppf(randx, loc=float(param_mean), scale=float(param_std))
+            
+
+        
+        vcmax25_top,jmax25_top,leaf_slatop,lnc_top =  UpdateDerivedParams(pft_root,numpft)
+
+
+    
     # Start the main model time loop
     # -----------------------------------------------------------------------------------
 
@@ -352,7 +390,6 @@ def main(argv):
         tvegk = met.data['t_veg'][it]
         co2_ppress_400ppm = 0.0004*met.data['can_press'][it]
         o2_ppress_209kppm = 0.2095*met.data['can_press'][it]
-
 
         cosz  = met.data['cosz'][it]
 
@@ -566,7 +603,7 @@ def main(argv):
                     site_diags.ag_rubisco_vl[it,sil] = site_diags.ag_rubisco_vl[it,sil] + leaf_site_frac*agross_rubisco
                     site_diags.ag_rubp_vl[it,sil]    = site_diags.ag_rubp_vl[it,sil] + leaf_site_frac*agross_rubp
                     site_diags.co2_interc_vl[it,sil] = site_diags.co2_interc_vl[it,sil] + leaf_site_frac*co2_interc_f.value
-                
+
                     ssleaf_site_frac =  dlai*elem_diags[ican][icol].crown_area_frac/site_diags.lai_ground[sil]
                     if(ipar==0):
                         site_diags.r_abs_leaf_sunl[it,sil] = site_diags.r_abs_leaf_sunl[it,sil] + ssleaf_site_frac * par_abs_leaf_umol/wm2_to_umolm2s
@@ -695,41 +732,91 @@ def main(argv):
     ax6.set_xlabel('Rleaf [umol/m2/s]')
     ax6.grid('on')
 
-    # For Nate and Chonggang
-    fig = plt.figure(layout=None,figsize=(8.5,4.5))
-    gs = fig.add_gridspec(nrows=1, ncols=2, left=0.10, right=0.9,
-                          hspace=0.2, wspace=0.0)
-    ax0 = fig.add_subplot(gs[0])
-    ax1 = fig.add_subplot(gs[1])
-    #fig.suptitle('Manual gridspec')
 
+    
+    # For Nate and Chonggang
+    # 
+    #fig = plt.figure(layout=None,figsize=(8.5,4.5))
+    #gs = fig.add_gridspec(nrows=1, ncols=3, left=0.10, right=0.9,
+    #                      hspace=0.2, wspace=0.1)
+    
+    fig,(ax0,ax1,ax2) = plt.subplots(1,3,figsize=(11.5,5.5))
+    #ax0 = fig.add_subplot(gs[0])
+    #ax1 = fig.add_subplot(gs[1])
+    #ax2 = fig.add_subplot(gs[2])
+    #fig.suptitle('Manual gridspec')
+    props = dict(boxstyle='round', facecolor='white', alpha=0.7)
     vpd_kpa = 0.001*(met.data['vpress_sat']-met.data['vpress'])
+
+    gtot = 1./(1./site_diags.gstoma + 1./met.data['g_b_umol'])
+    
+    transp = gtot * vpd_kpa / (0.001*met.data['can_press'])
+
+    coeffs_gs_vpd = np.polyfit(vpd_kpa,site_diags.gstoma*mol_per_umol, 2)
+    coeffs_tr_gs  = np.polyfit(site_diags.gstoma*mol_per_umol,transp*mmol_per_umol, 3)
+    coeffs_tr_vpd = np.polyfit(vpd_kpa,transp*mmol_per_umol,2)
+    
     #code.interact(local=dict(globals(), **locals()))
     grp0=(btran_grp==0) #dry
     grp1=(btran_grp==1) #intermediate
     grp2=(btran_grp==2) #wet
+
+    
     
     ax0.scatter(vpd_kpa[grp0],site_diags.gstoma[grp0]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='r',label='dry')
     ax0.scatter(vpd_kpa[grp1],site_diags.gstoma[grp1]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='b',label='intermediate')
     ax0.scatter(vpd_kpa[grp2],site_diags.gstoma[grp2]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='g',label='wet')
+
+    xpoly = np.linspace(np.min(vpd_kpa),np.max(vpd_kpa),100)
+    ypoly = coeffs_gs_vpd[2] + coeffs_gs_vpd[1]*xpoly + coeffs_gs_vpd[0]*xpoly**2.0
+    ax0.plot(xpoly,ypoly,color='k')
+    ax0.text(1.3,0.3,f"y = {coeffs_gs_vpd[0]:.2f} +\n  {coeffs_gs_vpd[1]:.2f}x +\n  {coeffs_gs_vpd[2]:.2f}x^2",bbox=props) 
     
     ax0.axis('on')
     ax0.set_ylabel('Stomatal Conductance [mol/m2/s]')
     ax0.set_xlabel('VPD [kPa]')
     ax0.grid('on')
     ax0.legend()
-    ax1.scatter(met.data['t_veg'][grp0]-tfrz_1atm,site_diags.gstoma[grp0]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='r',label='dry')
-    ax1.scatter(met.data['t_veg'][grp1]-tfrz_1atm,site_diags.gstoma[grp1]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='b',label='intermediate')
-    ax1.scatter(met.data['t_veg'][grp2]-tfrz_1atm,site_diags.gstoma[grp2]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='g',label='wet')
+
     
-    ax1.set_xlabel('Tveg [C]')
-    ax1.set_yticklabels([])
+    #b) transpiration vs stomatal conductance
+    ax1.scatter(site_diags.gstoma[grp0]*mol_per_umol,transp[grp0]*mmol_per_umol,facecolor='none',linewidth=0.5,edgecolor='r',label='dry')
+    ax1.scatter(site_diags.gstoma[grp1]*mol_per_umol,transp[grp1]*mmol_per_umol,facecolor='none',linewidth=0.5,edgecolor='b',label='intermediate')
+    ax1.scatter(site_diags.gstoma[grp2]*mol_per_umol,transp[grp2]*mmol_per_umol,facecolor='none',linewidth=0.5,edgecolor='g',label='wet')
     ax1.grid('on')
+    ax1.set_xlabel('Stomatal Conductance [mol/m2/s]')
+    ax1.set_ylabel('Transpiration [mmol/m2/s]')
+    #xpoly = np.linspace(np.min(site_diags.gstoma*mol_per_umol),np.max(site_diags.gstoma*mol_per_umol),100)
+    #ypoly = coeffs_tr_gs[3] + coeffs_tr_gs[2]*xpoly + coeffs_tr_gs[0]*xpoly**3.0 + coeffs_tr_gs[1]*xpoly**2.0
+    #ax1.plot(xpoly,ypoly,color='k')
+    #ax1.text(1.0,3.0,f"y = {coeffs_tr_gs[0]:.2f} +\n  {coeffs_tr_gs[1]:.2f}x +\n  {coeffs_tr_gs[2]:.2f}x^2")
+    
+    # c) transpiration and VPD?
+
+    ax2.scatter(vpd_kpa[grp0],transp[grp0]*mmol_per_umol,facecolor='none',linewidth=0.5,edgecolor='r',label='dry')
+    ax2.scatter(vpd_kpa[grp1],transp[grp1]*mmol_per_umol,facecolor='none',linewidth=0.5,edgecolor='b',label='intermediate')
+    ax2.scatter(vpd_kpa[grp2],transp[grp2]*mmol_per_umol,facecolor='none',linewidth=0.5,edgecolor='g',label='wet')
+    ax2.grid('on')
+    ax2.set_xlabel('VPD [kPa]')
+    ax2.set_ylabel('Transpiration [mmol/m2/s]')
+    xpoly = np.linspace(np.min(vpd_kpa),np.max(vpd_kpa),100)
+    ypoly = coeffs_tr_vpd[2] + coeffs_tr_vpd[1]*xpoly + coeffs_tr_vpd[0]*xpoly**2.0
+    ax2.plot(xpoly,ypoly,color='k')
+    ax2.text(0.0,3.3,f"y = {coeffs_tr_vpd[0]:.2f} +\n  {coeffs_tr_vpd[1]:.2f}x +\n  {coeffs_tr_vpd[2]:.2f}x^2",bbox=props)
+    
+    plt.tight_layout()
+    
+    #ax1.scatter(met.data['t_veg'][grp0]-tfrz_1atm,site_diags.gstoma[grp0]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='r',label='dry')
+    #ax1.scatter(met.data['t_veg'][grp1]-tfrz_1atm,site_diags.gstoma[grp1]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='b',label='intermediate')
+    #ax1.scatter(met.data['t_veg'][grp2]-tfrz_1atm,site_diags.gstoma[grp2]*mol_per_umol,facecolor='none',linewidth=0.5,edgecolor='g',label='wet')
+    #ax1.set_xlabel('Tveg [C]')
+    #ax1.set_yticklabels([])
+    #ax1.grid('on')
     # Remove the first axis text label so it
     # does not overlap with the first subplot
-    xlabs = ax1.get_xticklabels()
-    xlabs[0].set_text('')
-    ax1.set_xticklabels(xlabs)
+    #xlabs = ax1.get_xticklabels()
+    #xlabs[0].set_text('')
+    #ax1.set_xticklabels(xlabs)
     plt.show()
     
     # Look at Ag and Rabs on sunlit versus shaded leaves

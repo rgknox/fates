@@ -15,6 +15,8 @@ from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
 # Freezing point of water in Kelvin (at standard atmosphere)
 tfrz_1atm = 273.15
 eval_cosz = True
+const_g_b_umol = 1.e6
+
 
 def simple_linear_regression(x, y):
 
@@ -489,6 +491,9 @@ class met_driver:
         eval_met_forcing = False
         
         if(model_read):
+
+            filepath = '/home/rgknox/Models/CTSM/src/fates/functional_unit_testing/fates_lite/bci_met_data/bci_met.csv'
+            
             df = pd.read_csv(filepath, delimiter=",", header=None)
             self.data = {}
             self.data['yr'] = np.array(df[0].values)
@@ -506,6 +511,20 @@ class met_driver:
             self.data['u_ref'] = np.array(df[5].values)
             self.data['forc_t'] = np.array(df[11].values)
             self.ndata = len(self.data['yr'])
+            self.data['g_b_umol'] = np.zeros(self.ndata)
+
+            # [m/s] * [umol/m3] -> [umol/m2/s]
+            for i in range(self.ndata):
+                self.data['g_b_umol'][i] = f90.velotomolarcf_fun(c8(self.data['can_press'][i]), \
+                                                                 c8(self.data['t_can'][i]))/self.data['r_b'][i]
+            
+            fig = plt.figure(figsize=(8.5,4.5))
+            hist,bins = np.histogram(self.data['g_b_umol'], bins=100)
+            plt.xlabel('gb [umol/m2/s]')
+            plt.plot(bins[1:],hist)
+            plt.show()
+            code.interact(local=dict(globals(), **locals()))
+
             
             #self.ModelRb()
             self.TrainModelRb()
@@ -577,8 +596,10 @@ class met_driver:
                 
                 # Convert leaf boundary layer resistance to its reciprocal, conductance.
                 # Then, convert it from velocity units to micromoles/m2/s
-                self.data['g_b_umol'][idate] = f90.velotomolarcf_fun(c8(self.data['can_press'][idate]), \
-                                                                     c8(self.data['t_can'][idate]))/self.data['r_b'][idate]
+                #self.data['g_b_umol'][idate] = f90.velotomolarcf_fun(c8(self.data['can_press'][idate]), \
+                #                                                     c8(self.data['t_can'][idate]))/self.data['r_b'][idate]
+
+                self.data['g_b_umol'][idate] = const_g_b_umol
             self.KumaraTHomeGrow()
             self.GetDayLenFactors()
 
@@ -713,12 +734,19 @@ class met_driver:
         #            Feb 1 2013:  17:32:58 GMT
         #            Mar 31 2013: 17:23:33 GMT
         # Sunrise: 11:17
-        
+        #
         # bfilter is short for binary-filter
-
-        study_period = study_period.lower()
+        #
+        # bci wet season: May-Dec - Use Nov
+        #     int       : Apr/May - Use Apr
+        #     dry season: Jan-Mar - Use Feb
         
-        if(study_period == 'reysanchez_wetssn_morning'):
+        study_period = study_period.lower()
+        if(study_period == 'mizanur_ms'):
+            midday  = [ (self.data['hod'][iyr] <= 13.25 and self.data['hod'][iyr] > 10.45) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
+            bfilter = [ ((self.data['mon'][iyr]==11 or self.data['mon'][iyr]==4 or self.data['mon'][iyr]==2 ) and midday[iyr]) for iyr,year in enumerate(self.data['yr'])]
+        
+        elif(study_period == 'reysanchez_wetssn_morning'):
             morning = [ (self.data['hod'][iyr] <= 17.25 and self.data['hod'][iyr] > 8) and (self.data['cosz'][iyr]>0.) for iyr,year in enumerate(self.data['yr'])]
             bfilter = [ (self.data['yr'][iyr] == 2011 and (self.data['mon'][iyr]==11 or self.data['mon'][iyr]==12)) and morning[iyr] for iyr,year in enumerate(self.data['yr'])]
 

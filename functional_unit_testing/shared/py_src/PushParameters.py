@@ -69,6 +69,7 @@ def XMLToDic(xmlroot, verbose: bool):
 
     scalar_params = {}
     pft_params = {}
+    pft_var_params = {}
     
     pft_root = xmlroot.find('f90_params').find('pft_dim')
     for element in pft_root.iter():
@@ -77,15 +78,25 @@ def XMLToDic(xmlroot, verbose: bool):
             pft_params[element.attrib["name"]] = param_vec
             if(verbose):
                 print(element.attrib["name"],param_vec)
-            
+
+    pft_var_root = xmlroot.find('f90_params').find('pft_dim_var')
+    for element in pft_var_root.iter():
+        if "name" in element.attrib:
+            if(verbose):
+                print(element.attrib["name"], element.text)
+            param_vec = [float(txt) for txt in element.text.strip().split(',')]
+            pft_var_params[element.atrib["name"]] = param_vec
+                
     scalar_root = xmlroot.find('f90_params').find('scalar_dim')
     for element in scalar_root.iter():
         if "name" in element.attrib:
             if (verbose):
                 print(element.attrib["name"], element.text)
             scalar_params[element.attrib["name"]] = float(element.text)
-            
-    return scalar_params, pft_params
+
+
+    
+    return scalar_params, pft_params, pft_var_params
             
         
 

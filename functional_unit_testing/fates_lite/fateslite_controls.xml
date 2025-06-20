@@ -15,8 +15,9 @@
     <visualize_elements> False </visualize_elements>
     <view_element_inst_profs> False </view_element_inst_profs>
     <view_site_inst_profs> False </view_site_inst_profs>
-    <met_filter> reysanchez_20112013_daytime </met_filter>
-    <met_filter> 10days_daytime </met_filter>
+    <!-- <met_filter> reysanchez_20112013_daytime </met_filter> -->
+    <!-- <met_filter> 10days_daytime </met_filter> -->
+    <met_filter> mizanur_ms </met_filter>
     <view_met_forcing> False </view_met_forcing>
   </analysis_controls>
   <canopy_structure>
@@ -39,16 +40,22 @@
     <frac_snow> 0.0 </frac_snow> <!-- fraction of lai covered by snoow -->
     <btran_avg> 0.8 </btran_avg> <!-- There is no soil model, so a constant btran is applied -->
     <btran_std> 0.1 </btran_std>
+    <n_stochastic_samples> 10 </n_stochastic_samples>
   </canopy_structure>
   <f90_params>
     <scalar_dim>
       <param name='fates_daylength_factor_switch'> 1 </param>
-      <param name='fates_leaf_stomatal_model'> 2 </param>
+      <param name='fates_leaf_stomatal_model'> 1 </param>
       <param name='fates_leaf_stomatal_assim_model'> 1 </param>
-      <param name='fates_leaf_photo_tempsens_model'> 1 </param>
+      <param name='fates_leaf_photo_tempsens_model'>1 </param>
       <param name='fates_electron_transport_model'> 1 </param>  <!--FvCB1980 = 1, JohnsonBerry2021 = 2 -->
       <param name='fates_maintresp_leaf_model'> 1 </param>
     </scalar_dim>
+    <pft_dim_var>
+      <!-- These parameters are defined by an a priori gaussian 
+           standard deviation instead of a mean alone -->
+      <param name='fates_leaf_vcmax25top' > 10 </param>
+    </pft_dim_var>
     <pft_dim>
       <!-- These are loaded into F90 structures -->
       <param name='fates_leaf_stomatal_btran_model'> 2 </param>
@@ -72,7 +79,7 @@
       <!-- These are loaded into python structures -->
       <param name='fates_leafn_vert_scaler_coeff1'> 0.00963 </param>
       <param name='fates_leafn_vert_scaler_coeff2'> 2.43 </param>
-      <param name='fates_leaf_vcmax25top'> 30 </param>
+      <param name='fates_leaf_vcmax25top'> 50 </param>
       <param name='fates_stoich_nitr'> 0.033 </param>
       <param name='fates_leaf_slatop'>  0.012</param>
       <param name='fates_rad_leaf_clumping_index'> 0.85 </param>
