@@ -178,6 +178,10 @@ contains
     !
     do while (associated(currentPatch)) ! Patch loop
 
+       call terminate_cohorts(currentSite, currentPatch, 1,13,bc_in)
+       call terminate_cohorts(currentSite, currentPatch, 2,13,bc_in)
+
+       
        ! ------------------------------------------------------------------------------
        ! Perform numerical checks on some cohort and patch structures
        ! ------------------------------------------------------------------------------
@@ -206,10 +210,6 @@ contains
           ! the layers below.
           ! ---------------------------------------------------------------------------
 
-          ! Its possible that before we even enter this scheme
-          ! some cohort numbers are very low.  Terminate them.
-          call terminate_cohorts(currentSite, currentPatch, 1, 12, bc_in)
-
           ! Calculate how many layers we have in this canopy
           ! This also checks the understory to see if its crown
           ! area is large enough to warrant a temporary sub-understory layer
@@ -219,15 +219,7 @@ contains
              call DemoteFromLayer(currentSite, currentPatch, i_lyr, bc_in)
           end do
 
-          ! After demotions, we may then again have cohorts that are very very
-          ! very sparse, remove them
-          call terminate_cohorts(currentSite, currentPatch, 1,13,bc_in)
-
           call fuse_cohorts(currentSite, currentPatch, bc_in)
-
-          ! Remove cohorts for various other reasons
-          call terminate_cohorts(currentSite, currentPatch, 2,13,bc_in)
-
 
           ! ---------------------------------------------------------------------------------------
           ! Promotion Phase: Identify if any upper-layers are underful and layers below them
@@ -244,13 +236,7 @@ contains
                 call PromoteIntoLayer(currentSite, currentPatch, i_lyr)
              end do
 
-             ! Remove cohorts that are incredibly sparse
-             call terminate_cohorts(currentSite, currentPatch, 1,14,bc_in)
-
              call fuse_cohorts(currentSite, currentPatch, bc_in)
-
-             ! Remove cohorts for various other reasons
-             call terminate_cohorts(currentSite, currentPatch, 2,14,bc_in)
 
           end if
 
@@ -264,10 +250,15 @@ contains
           area_not_balanced = .false.
           do i_lyr = 1,z
              call CanopyLayerArea(currentPatch,currentSite%spread,i_lyr,arealayer(i_lyr))
-             if( ((arealayer(i_lyr)-currentPatch%area)/currentPatch%area > area_check_rel_precision) .or. &
-                  ((arealayer(i_lyr)-currentPatch%area) > area_check_precision )  ) then
-                area_not_balanced = .true.
-             endif
+             if(i_lyr==z)then
+                if((arealayer(i_lyr)-currentPatch%area) > area_check_precision  ) then
+                   area_not_balanced = .true.
+                endif
+             else
+                if(abs(arealayer(i_lyr)-currentPatch%area) > area_check_precision  ) then
+                   area_not_balanced = .true.
+                endif
+             end if
           enddo
 
           ! ---------------------------------------------------------------------------------------
