@@ -166,8 +166,9 @@ module FatesCohortMod
     real(r8) :: tpu25top                  ! triose phosphate utilization rate at canopy top and 25degC [umol CO2/m2/s]
     real(r8) :: kp25top                   ! initial slope of CO2 response curve (C4 plants) at 25C
 
-    real(r8) :: ts_net_uptake(nlevleaf)   ! net uptake of leaf layers [kgC/m2/timestep]
-    real(r8) :: year_net_uptake(nlevleaf) ! net uptake of leaf layers [kgC/m2/year]
+    real(r8) :: ts_net_uptake(nlevleaf)     ! Net (Ag-Rl) uptake of leaf layers
+    real(r8) :: daily_net_uptake(nlevleaf)   ! net uptake of leaf layers [kgC/m2/day]
+    real(r8) :: yearly_net_uptake(nlevleaf)  ! net uptake of leaf layers [kgC/m2/year]
 
     ! used for CNP
     integer  :: cnp_limiter               ! which element is limiting growth [0 = none, 1 = C, 2 = N, 3 = P]

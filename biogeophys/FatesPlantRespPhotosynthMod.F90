@@ -518,9 +518,11 @@ contains
                                     lai_canopy_above  = sum(currentPatch%canopy_layer_tlai(1:cl-1))
                                     
                                     if(iv == currentCohort%nv) then
-                                       cumulative_lai = lai_canopy_above + leaf_veg_frac * (dlower_vai(iv)+0.5_r8*(currentCohort%treelai+currentCohort%treesai-dlower_vai(iv)))
+                                       cumulative_lai = lai_canopy_above + leaf_veg_frac * &
+                                            (dlower_vai(iv)+0.5_r8*(currentCohort%treelai+currentCohort%treesai-dlower_vai(iv)))
                                     else
-                                       cumulative_lai = lai_canopy_above + leaf_veg_frac * (dlower_vai(iv)+0.5_r8*dinc_vai(iv))
+                                       cumulative_lai = lai_canopy_above + leaf_veg_frac * &
+                                            (dlower_vai(iv)+0.5_r8*dinc_vai(iv))
                                     end if
 
                                     leaf_psi = currentCohort%co_hydr%psi_ag(1)
@@ -917,42 +919,14 @@ contains
                         ! Damaged aboveground portion
                         sapw_c_agw = sapw_c - sapw_c_bgw                         
 
-
                         select case(hlm_parteh_mode)
                         case (prt_carbon_allom_hyp)
-
-                           live_stem_n = sapw_c_agw * prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ))
-
-                           live_croot_n = sapw_c_bgw * prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ))
-
-                           fnrt_n = fnrt_c * prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ))
-
+                           sapw_nc = prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ))
+                           fnrt_nc = prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ))
                         case(prt_cnp_flex_allom_hyp)
 
-                           live_stem_n = prt_params%allom_agb_frac(currentCohort%pft) * &
-                                currentCohort%prt%GetState(sapw_organ, nitrogen_element)
-
-                           live_croot_n = (1.0_r8-prt_params%allom_agb_frac(currentCohort%pft)) * &
-                                currentCohort%prt%GetState(sapw_organ, nitrogen_element)
-
-
-                           fnrt_n = currentCohort%prt%GetState(fnrt_organ, nitrogen_element)
-
-                           if (hlm_use_tree_damage .eq. itrue) then
-
-                              sapw_n = currentCohort%prt%GetState(sapw_organ, nitrogen_element)
-
-                              sapw_n_undamaged = sapw_n / &
-                                   (1.0_r8 - (agb_frac * branch_frac * crown_reduction))
-
-                              sapw_n_bgw = sapw_n_undamaged * (1.0_r8 - agb_frac)
-                              sapw_n_agw = sapw_n - sapw_n_bgw
-
-                              live_croot_n = sapw_n_bgw
-
-                              live_stem_n = sapw_n_agw
-
-                           end if
+                           fnrt_nc = currentCohort%prt%GetState(fnrt_organ, nitrogen_element)/fnrt_c
+                           sapw_nc = currentCohort%prt%GetState(sapw_organ, nitrogen_element)/sapw_c
 
                            ! If one wants to break coupling with dynamic N conentrations,
                            ! use the stoichiometry parameter
@@ -963,12 +937,12 @@ contains
                            !               sapw_c * prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ))
                            ! fnrt_n = fnrt_c * prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ))
 
-
-                        case default
-
-
                         end select
 
+                        fnrt_n = fnrt_nc * fnrt_c
+                        live_stem_n = sapw_nc * sapw_c_agw
+                        live_croot_n = sapw_nc * sapw_c_bgw
+                        
                         !------------------------------------------------------------------------------
                         ! Calculate Whole Plant Respiration
                         ! (this doesn't really need to be in this iteration at all, surely?)
@@ -983,15 +957,17 @@ contains
                         if ( int(woody(ft)) == itrue) then
                            tcwood = q10_mr**((bc_in(s)%t_veg_pa(ifp)-tfrz - 20.0_r8)/10.0_r8)
                            ! kgC/s = kgN * kgC/kgN/s
-                           currentCohort%livestem_mr  = live_stem_n * maintresp_nonleaf_baserate * tcwood * maintresp_reduction_factor
+                           currentCohort%livestem_mr  = live_stem_n * maintresp_nonleaf_baserate * &
+                                tcwood * maintresp_reduction_factor
                         else
                            currentCohort%livestem_mr  = 0._r8
                         end if
 
 
                         ! Fine Root MR  (kgC/plant/s)
-                        ! and calculate the N fixation rate as a function of the fixation-specific root respiration
-                        ! for now use dev_arbitrary_pft as scaling term between 0 and 1 as additional increment of root respiration used for N fixation
+                        ! and calculate the N fixation rate as a function of the fixation-specific
+                        ! root respiration for now use dev_arbitrary_pft as scaling term between 0
+                        ! and 1 as additional increment of root respiration used for N fixation
                         ! ------------------------------------------------------------------
                         currentCohort%froot_mr = 0._r8
                         currentCohort%sym_nfix_tstep = 0._r8
@@ -999,14 +975,18 @@ contains
                         ! n_fixation is integrated over the course of the day
                         ! this variable is zeroed at the end of the FATES dynamics sequence
 
+                        zmean_tcsoi = 0.
                         do j = 1,bc_in(s)%nlevsoil
                            tcsoi  = q10_mr**((bc_in(s)%t_soisno_sl(j)-tfrz - 20.0_r8)/10.0_r8)
+                           zmean_tcsoi = zmean_tcsoi + tcsoi * rootfr_ft(ft,j)
+                           fnrt_mr_layer = fnrt_n * maintresp_nonleaf_baserate * tcsoi * &
+                                rootfr_ft(ft,j) * maintresp_reduction_factor
 
-                           fnrt_mr_layer = fnrt_n * maintresp_nonleaf_baserate * tcsoi * rootfr_ft(ft,j) * maintresp_reduction_factor
+                           ! calculate the cost of carbon for N fixation in each soil layer and
+                           ! calculate N fixation rate based on that [kgC / kgN]
 
-                           ! calculate the cost of carbon for N fixation in each soil layer and calculate N fixation rate based on that [kgC / kgN]
-
-                           call RootLayerNFixation(bc_in(s)%t_soisno_sl(j),ft,dtime,fnrt_mr_layer,fnrt_mr_nfix_layer,nfix_layer)
+                           call RootLayerNFixation(bc_in(s)%t_soisno_sl(j),ft,dtime,fnrt_mr_layer, &
+                                fnrt_mr_nfix_layer,nfix_layer)
 
                            currentCohort%froot_mr = currentCohort%froot_mr + fnrt_mr_nfix_layer + fnrt_mr_layer 
 
@@ -1018,13 +998,9 @@ contains
                         ! Coarse Root MR (kgC/plant/s) (below ground sapwood)
                         ! ------------------------------------------------------------------
                         if ( int(woody(ft)) == itrue) then
-                           currentCohort%livecroot_mr = 0._r8
-                           do j = 1,bc_in(s)%nlevsoil
-                              ! Soil temperature used to adjust base rate of MR
-                              tcsoi  = q10_mr**((bc_in(s)%t_soisno_sl(j)-tfrz - 20.0_r8)/10.0_r8)
-                              currentCohort%livecroot_mr = currentCohort%livecroot_mr + &
-                                   live_croot_n * maintresp_nonleaf_baserate * tcsoi * &
-                                   rootfr_ft(ft,j) * maintresp_reduction_factor
+                           ! Soil temperature used to adjust base rate of MR
+                           currentCohort%livecroot_mr = live_croot_n * maintresp_nonleaf_baserate * &
+                                zmean_tcsoi * maintresp_reduction_factor
                            enddo
                         else
                            currentCohort%livecroot_mr = 0._r8
@@ -1064,6 +1040,65 @@ contains
                         ! in this patch. Normalize by canopy area outside the loop
                         patch_la = patch_la + cohort_eleaf_area
 
+
+                        ! Apply respiration to net uptake diagnostics used for trimming
+                        ! =============================================================
+                        
+                        do iv = 1,nv
+
+                           ! Surrogate trim: imaginging what the trim value would be
+                           ! if the canopy only extended down to the current layer
+
+                           if(iv == currentCohort%nv) then
+                              veg_frac = 1.0_r8
+                           else
+                              veg_frac = (dlower_vai(iv)+dinc_vai(iv))/(currentCohort%treelai+currentCohort%treesai)
+                           end if
+                           
+                           surrogate_trim = currentCohort%canopy_trim*real(iv)/real(nv)
+                           call bfineroot(currentCohort%dbh, currentCohort%pft, &
+                                          surrogate_trim,currentCohort%l2fr, &
+                                          currentCohort%effnrt_coh,fnrt_c,dfnrtc_dd)
+                           fnrt_n = fnrt_nc * fnrt_c
+                           
+                           fnrt_mr_layer = fnrt_n * maintresp_nonleaf_baserate * zmean_tcsoi * maintresp_reduction_factor
+
+                           call bsap_allom(currentCohort%dbh,currentCohort%pft, &
+                                currentCohort%crowndamage, surrogate_trim, &
+                                currentCohort%efstem_coh,at_sap,sapw_c,dsapwc_dd)
+                           
+                           agb_frac = prt_params%allom_agb_frac(currentCohort%pft)
+                           branch_frac = param_derived%branch_frac(currentCohort%pft)
+                           sapw_c_undamaged = sapw_c / (1.0_r8 - (agb_frac * branch_frac * crown_reduction))
+                           
+                           ! Undamaged below ground portion
+                           sapw_c_bgw = sapw_c_undamaged * (1.0_r8 - agb_frac)
+                           
+                           ! Damaged aboveground portion
+                           sapw_c_agw = sapw_c - sapw_c_bgw
+                           
+                           live_stem_n = sapw_nc * sapw_c_agw
+                           live_croot_n = sapw_nc * sapw_c_bgw
+
+                           ! Live stem MR (kgC/plant/s) (above ground sapwood)
+                           ! ------------------------------------------------------------------
+                           if ( int(woody(ft)) == itrue) then
+                              tcwood = q10_mr**((bc_in(s)%t_veg_pa(ifp)-tfrz - 20.0_r8)/10.0_r8)
+                              ! kgC/s = kgN * kgC/kgN/s
+                              live_stem_mr  = live_stem_n * maintresp_nonleaf_baserate * tcwood * maintresp_reduction_factor
+                              live_croot_mr = live_croot_n * maintresp_nonleaf_baserate * zmean_tcsoi * maintresp_reduction_factor
+
+                           else
+                              live_stem_mr = 0._r8
+                              live_croot_mr = 0._r8
+                           end if
+
+
+                           
+                           
+                           
+                        end do
+                        
                         currentCohort => currentCohort%shorter
                      enddo do_cohort_drive
 

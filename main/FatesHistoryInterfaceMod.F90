@@ -740,7 +740,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_parsha_z_si_cnlf
   integer :: ih_laisun_z_si_cnlf
   integer :: ih_laisha_z_si_cnlf
-  integer :: ih_ts_net_uptake_si_cnlf
+  integer :: ih_daily_net_uptake_si_cnlf
   integer :: ih_crownarea_clll
   integer :: ih_parprof_dir_si_cnlf
   integer :: ih_parprof_dif_si_cnlf
@@ -3260,7 +3260,8 @@ contains
            hio_cwd_ag_out_si_cwdsc              => this%hvars(ih_cwd_ag_out_si_cwdsc)%r82d, &
            hio_cwd_bg_out_si_cwdsc              => this%hvars(ih_cwd_bg_out_si_cwdsc)%r82d, &
            hio_crownarea_si_cnlf                => this%hvars(ih_crownarea_si_cnlf)%r82d, &
-           hio_crownarea_cl                     => this%hvars(ih_crownarea_cl)%r82d)
+           hio_crownarea_cl                     => this%hvars(ih_crownarea_cl)%r82d, &
+           hio_daily_net_uptake_si_cnlf           => this%hvars(ih_daily_net_uptake_si_cnlf)%r82d)
 
         ! Break up associates for NAG compilers
         associate( hio_site_dstatus_si_pft              => this%hvars(ih_site_dstatus_si_pft)%r82d, &
@@ -4576,6 +4577,14 @@ contains
 
                       end if
 
+                      ! canopy leaf carbon balance
+                      ican = ccohort%canopy_layer
+                      do ileaf=1,ccohort%nv
+                         cnlf_indx = ileaf + (ican-1) * nlevleaf
+                         hio_daily_net_uptake_si_cnlf(io_si, cnlf_indx) = hio_daily_net_uptake_si_cnlf(io_si, cnlf_indx) + &
+                              ccohort%daily_net_uptake(ileaf) * dt_tstep_inv * ccohort%c_area * area_inv
+                      end do
+                      
                       ccohort => ccohort%shorter
                    end do ! end cohort loop
 
@@ -5301,7 +5310,6 @@ contains
          hio_gpp_si_landuse                  => this%hvars(ih_gpp_si_landuse)%r82d, &
          hio_parsun_z_si_cnlf                => this%hvars(ih_parsun_z_si_cnlf)%r82d, &
          hio_parsha_z_si_cnlf                => this%hvars(ih_parsha_z_si_cnlf)%r82d, &
-         hio_ts_net_uptake_si_cnlf           => this%hvars(ih_ts_net_uptake_si_cnlf)%r82d, &
          hio_parsun_z_si_cnlfpft             => this%hvars(ih_parsun_z_si_cnlfpft)%r82d, &
          hio_parsha_z_si_cnlfpft             => this%hvars(ih_parsha_z_si_cnlfpft)%r82d, &
          hio_laisun_z_si_cnlf                => this%hvars(ih_laisun_z_si_cnlf)%r82d, &
@@ -5427,13 +5435,7 @@ contains
                   end associate
                endif
 
-               !!! canopy leaf carbon balance
-               ican = ccohort%canopy_layer
-               do ileaf=1,ccohort%nv
-                  cnlf_indx = ileaf + (ican-1) * nlevleaf
-                  hio_ts_net_uptake_si_cnlf(io_si, cnlf_indx) = hio_ts_net_uptake_si_cnlf(io_si, cnlf_indx) + &
-                       ccohort%ts_net_uptake(ileaf) * dt_tstep_inv * ccohort%c_area * area_inv
-               end do
+               
 
                ccohort => ccohort%taller
             enddo ! cohort loop
@@ -9149,8 +9151,8 @@ contains
                units='kg m-2 s-1',                                                   &
                long='net carbon uptake in kg carbon per m2 per second by each canopy and leaf layer per unit ground area (i.e. divide by CROWNAREA_CLLL to make per leaf area)', &
                use_default='inactive', avgflag='A', vtype=site_cnlf_r8,              &
-               hlms='CLM:ALM', upfreq=group_hifr_complx, ivar=ivar, initialize=initialize_variables, &
-               index = ih_ts_net_uptake_si_cnlf)
+               hlms='CLM:ALM', upfreq=group_dyn_complx, ivar=ivar, initialize=initialize_variables, &
+               index = ih_daily_net_uptake_si_cnlf)
 
           call this%set_history_var(vname='FATES_CROWNFRAC_CLLLPF', units='m2 m-2', &
                long='area fraction of the canopy footprint occupied by each canopy-leaf-pft layer', &
