@@ -358,15 +358,6 @@ contains
             endif
          endif
 
-         ! Outside the maximum canopy layer
-         if (currentCohort%canopy_layer > nclmax ) then
-           terminate = itrue
-           termination_type = i_term_mort_type_canlev
-           if ( debug ) then
-             write(fates_log(),*) 'terminating cohorts 2', currentCohort%canopy_layer,currentCohort%pft,call_index
-           endif
-         endif
-
          ! live biomass pools are terminally depleted
          if ( ( sapw_c+leaf_c+fnrt_c ) < 1e-10_r8  .or.  &
                store_c  < 1e-10_r8) then
@@ -387,9 +378,17 @@ contains
                     struct_c,sapw_c,leaf_c,fnrt_c,store_c,currentCohort%pft,call_index
             endif
 
-        endif
+         endif
       endif    !  if (.not.currentCohort%isnew .and. level == 2) then
 
+      if (.not.currentCohort%isnew .and. level == 3) then
+         ! Outside the maximum canopy layer
+         if (currentCohort%canopy_layer > nclmax ) then
+            terminate = itrue
+            termination_type = i_term_mort_type_canlev
+         endif
+      end if
+      
       if (terminate == itrue) then
          call terminate_cohort(currentSite, currentPatch, currentCohort, bc_in, termination_type)
          deallocate(currentCohort, stat=istat, errmsg=smsg)

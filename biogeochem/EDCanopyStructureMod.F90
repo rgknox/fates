@@ -301,6 +301,10 @@ contains
 
        ! Save number of canopy layers to the patch structure
        
+       call terminate_cohorts(currentSite, currentPatch, 3,13,bc_in)
+       
+       z = NumPotentialCanopyLayers(currentPatch,currentSite%spread,include_substory=.false.)
+       
        if(z > nclmax) then
           write(fates_log(),*) 'Termination should have ensured number of canopy layers was not larger than nclmax'
           write(fates_log(),*) 'Predicted: ',z
