@@ -381,7 +381,7 @@ contains
          endif
       endif    !  if (.not.currentCohort%isnew .and. level == 2) then
 
-      if (.not.currentCohort%isnew .and. level == 3) then
+      if (level == 3) then
          ! Outside the maximum canopy layer
          if (currentCohort%canopy_layer > nclmax ) then
             terminate = itrue
