@@ -187,7 +187,8 @@ class site_diags_type:
         self.r_abs_leaf_shal = np.zeros([ntimes,self.n_layer])
         self.ag_rubisco_shal = np.zeros([ntimes,self.n_layer])
         self.ag_rubp_shal    = np.zeros([ntimes,self.n_layer])
-
+        self.ci_shal         = np.zeros([ntimes,self.n_layer])
+        self.ci_sunl         = np.zeros([ntimes,self.n_layer])
         
 def GetElemLayerLAIShare(elem_diags,site_diags):
 
