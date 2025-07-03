@@ -216,7 +216,7 @@ def UpdateDerivedParams(pft_root,numpft):
         # Leaf N Conc at the crown top [gN/m2]
         lnc_top[ft]       = leaf_nc_ratio/leaf_slatop[ft]
 
-    return vcmax25_top,jmax25_top,leaf_slatop,lnc_top
+    return vcmax25_top,jmax25_top,kp25_top,leaf_slatop,lnc_top
         
 
 # ========================================================================
@@ -360,20 +360,21 @@ def main(argv):
 
 
 
-    for ip in range(n_stoch_samp):
-
-        for key,val in pft_var_params:
-
-            # Find matching key in pft_params, which gives the mean
-            
-            param_mean = pft_params[key]
-            param_std  = val
-            randx      = np.random.uniform(0, 1, 1)[0]
-            param_unf  = norm.ppf(randx, loc=float(param_mean), scale=float(param_std))
-            
-
-        
-        vcmax25_top,jmax25_top,leaf_slatop,lnc_top =  UpdateDerivedParams(pft_root,numpft)
+    #for ip in range(n_stoch_samp):
+    #
+    #    for key,val in pft_var_params:
+    #
+    #        # Find matching key in pft_params, which gives the mean
+    #        
+    #        param_mean = pft_params[key]
+    #        param_std  = val
+    #        randx      = np.random.uniform(0, 1, 1)[0]
+    #        param_unf  = norm.ppf(randx, loc=float(param_mean), scale=float(param_std))
+    #        
+    #
+    #
+    
+    vcmax25_top,jmax25_top,kp25_top,leaf_slatop,lnc_top =  UpdateDerivedParams(pft_root,numpft)
 
 
     
@@ -832,12 +833,11 @@ def main(argv):
     # Integrated fraction of absorbed PAR ifapar..
     ifapar_vl = np.zeros_like(site_diags.r_abs_veg_vl)
     for it in range(ntimes):
-        ifapar_vl[it,:] = np.cumsum(site_diags.r_abs_veg_vl[it,:] + site_diags.r_abs_veg_vl[it,:],dim=1) / \
-            (met.data['visbdn'][it]+met.data['visddn'][it])
+        ifapar_vl[it,:] = np.cumsum(site_diags.r_abs_veg_vl[it,:])/(met.data['visbdn'][it]+met.data['visddn'][it])
     
     ifapar_24 = met.GetDiurnalMean(ifapar_vl)
 
-    fig88,ax1 = plt.subplots(1,1,figsize(5.5,5.5))
+    fig88,ax1 = plt.subplots(1,1,figsize=(5.5,5.5))
     for icc,ic in enumerate(ics):
         ax1.plot(ifapar_24[ic,:],vai,color=colors[icc],label=f'{ic}:00')
     ax1.invert_yaxis()
