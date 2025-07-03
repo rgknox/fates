@@ -175,6 +175,7 @@ class site_diags_type:
         self.gstoma_vl     = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
         self.anet_vl       = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
         self.r_abs_leaf_vl = np.zeros([ntimes,self.n_layer]) # [W/m2 leaf ]
+        self.r_abs_veg_vl  = np.zeros([ntimes,self.n_layer])
         self.vcmax_vl      = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
         self.ag_rubisco_vl = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]
         self.ag_rubp_vl    = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf/s ]

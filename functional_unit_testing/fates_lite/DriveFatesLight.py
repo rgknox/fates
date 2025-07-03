@@ -599,6 +599,8 @@ def main(argv):
                     site_diags.gstoma_vl[it,sil]     = site_diags.gstoma_vl[it,sil] + leaf_site_frac*gstoma_f.value
                     site_diags.anet_vl[it,sil]       = site_diags.anet_vl[it,sil] + leaf_site_frac*anet_f.value
                     site_diags.r_abs_leaf_vl[it,sil] = site_diags.r_abs_leaf_vl[it,sil] + leaf_site_frac*par_abs_leaf_umol/wm2_to_umolm2s
+
+                    
                     site_diags.vcmax_vl[it,sil]      = site_diags.vcmax_vl[it,sil] + leaf_site_frac*vcmax_f.value
                     site_diags.ag_rubisco_vl[it,sil] = site_diags.ag_rubisco_vl[it,sil] + leaf_site_frac*agross_rubisco
                     site_diags.ag_rubp_vl[it,sil]    = site_diags.ag_rubp_vl[it,sil] + leaf_site_frac*agross_rubp
@@ -606,11 +608,17 @@ def main(argv):
 
                     ssleaf_site_frac =  dlai*elem_diags[ican][icol].crown_area_frac/site_diags.lai_ground[sil]
                     if(ipar==0):
+
+                        site_diags.r_abs_veg_vl[it,sil] = site_diags.r_abs_veg_vl[it,sil] + rb_abs_f.value
+                        
                         site_diags.r_abs_leaf_sunl[it,sil] = site_diags.r_abs_leaf_sunl[it,sil] + ssleaf_site_frac * par_abs_leaf_umol
                         site_diags.ag_rubisco_sunl[it,sil] = site_diags.ag_rubisco_sunl[it,sil] + ssleaf_site_frac * agross_rubisco
                         site_diags.ci_sunl[it,sil]         = site_diags.ci_sunl[it,sil] + ssleaf_site_frac * co2_interc_f.value
                         site_diags.ag_rubp_sunl[it,sil]    = site_diags.ag_rubp_sunl[it,sil] + ssleaf_site_frac * agross_rubp
                     else:
+
+                        site_diags.r_abs_veg_vl[it,sil] = site_diags.r_abs_veg_vl[it,sil] + rd_abs_f.value
+                        
                         site_diags.r_abs_leaf_shal[it,sil] = site_diags.r_abs_leaf_shal[it,sil] + ssleaf_site_frac * par_abs_leaf_umol
                         site_diags.ag_rubisco_shal[it,sil] = site_diags.ag_rubisco_shal[it,sil] + ssleaf_site_frac * agross_rubisco
                         site_diags.ag_rubp_shal[it,sil]    = site_diags.ag_rubp_shal[it,sil] + ssleaf_site_frac * agross_rubp
@@ -820,6 +828,24 @@ def main(argv):
     #xlabs[0].set_text('')
     #ax1.set_xticklabels(xlabs)
     plt.show()
+
+    # Integrated fraction of absorbed PAR ifapar..
+    ifapar_vl = np.zeros_like(site_diags.r_abs_veg_vl)
+    for it in range(ntimes):
+        ifapar_vl[it,:] = np.cumsum(site_diags.r_abs_veg_vl[it,:] + site_diags.r_abs_veg_vl[it,:],dim=1) / \
+            (met.data['visbdn'][it]+met.data['visddn'][it])
+    
+    ifapar_24 = met.GetDiurnalMean(ifapar_vl)
+
+    fig88,ax1 = plt.subplots(1,1,figsize(5.5,5.5))
+    for icc,ic in enumerate(ics):
+        ax1.plot(ifapar_24[ic,:],vai,color=colors[icc],label=f'{ic}:00')
+    ax1.invert_yaxis()
+    ax1.set_xlabel('FAPAR (integrated) [w/m2/s]')
+    ax1.set_ylabel('Integrated VAI [m2/m2]')
+    ax1.grid('on')
+    
+
     
     # Look at Ag and Rabs on sunlit versus shaded leaves
     
@@ -834,6 +860,8 @@ def main(argv):
     ag_rubp_24_sunl = met.GetDiurnalMean(site_diags.ag_rubp_sunl)
     ag_rubp_24_shal = met.GetDiurnalMean(site_diags.ag_rubp_shal)
 
+    
+    
     for icc,ic in enumerate(ics):
         ax1.plot(rabs_leaf_24_sunl[ic,:],vai,color=colors[icc])
     ax1.invert_yaxis()
@@ -875,6 +903,10 @@ def main(argv):
     
     plt.tight_layout()
     plt.show()
+
+
+
+
 
     
     fig23, ax1= plt.subplots(figsize=(7.5,7.5))

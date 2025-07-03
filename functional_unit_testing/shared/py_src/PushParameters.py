@@ -85,7 +85,7 @@ def XMLToDic(xmlroot, verbose: bool):
             if(verbose):
                 print(element.attrib["name"], element.text)
             param_vec = [float(txt) for txt in element.text.strip().split(',')]
-            pft_var_params[element.atrib["name"]] = param_vec
+            pft_var_params[element.attrib["name"]] = param_vec
                 
     scalar_root = xmlroot.find('f90_params').find('scalar_dim')
     for element in scalar_root.iter():
