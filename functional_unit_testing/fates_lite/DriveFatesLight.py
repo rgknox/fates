@@ -564,14 +564,16 @@ def main(argv):
                 
                     ssleaf_site_frac =  dlai*elem_diags[ican][icol].crown_area_frac/site_diags.lai_ground[sil]
                     if(ipar==0):
-                        site_diags.r_abs_leaf_sunl[it,sil] = site_diags.r_abs_leaf_sunl[it,sil] + ssleaf_site_frac * par_abs_leaf_umol/wm2_to_umolm2s
+                        site_diags.r_abs_leaf_sunl[it,sil] = site_diags.r_abs_leaf_sunl[it,sil] + ssleaf_site_frac * par_abs_leaf_umol
                         site_diags.ag_rubisco_sunl[it,sil] = site_diags.ag_rubisco_sunl[it,sil] + ssleaf_site_frac * agross_rubisco
+                        site_diags.ci_sunl[it,sil]         = site_diags.ci_sunl[it,sil] + ssleaf_site_frac * co2_interc_f.value
                         site_diags.ag_rubp_sunl[it,sil]    = site_diags.ag_rubp_sunl[it,sil] + ssleaf_site_frac * agross_rubp
                     else:
-                        site_diags.r_abs_leaf_shal[it,sil] = site_diags.r_abs_leaf_shal[it,sil] + ssleaf_site_frac * par_abs_leaf_umol/wm2_to_umolm2s
+                        site_diags.r_abs_leaf_shal[it,sil] = site_diags.r_abs_leaf_shal[it,sil] + ssleaf_site_frac * par_abs_leaf_umol
                         site_diags.ag_rubisco_shal[it,sil] = site_diags.ag_rubisco_shal[it,sil] + ssleaf_site_frac * agross_rubisco
                         site_diags.ag_rubp_shal[it,sil]    = site_diags.ag_rubp_shal[it,sil] + ssleaf_site_frac * agross_rubp
-                    
+                        site_diags.ci_shal[it,sil]         = site_diags.ci_shal[it,sil] + ssleaf_site_frac * co2_interc_f.value
+                        
             # Display instantaneous profiles
             # Complete leaf layer and sun/shade loops first
             do_profiles = GetParamList(xmlroot.find('analysis_controls'),'view_element_inst_profs','logical')[0]
@@ -637,7 +639,7 @@ def main(argv):
 
     ics = []
     for ic,cosz in enumerate(cosz_24):
-        if(cosz>0.01 and ((ic+1) % 3 == 0)):
+        if(cosz>0.01 and ((ic) % 4 == 0)):
             ics.append(ic)
             
     for icc,ic in enumerate(ics):
@@ -718,11 +720,12 @@ def main(argv):
     
     # Look at Ag and Rabs on sunlit versus shaded leaves
     
-    fig23,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8.5,6.5))
+    fig23,((ax1,ax2,ax3),(ax4,ax5,ax6)) = plt.subplots(2,3,figsize=(8.5,6.5))
 
     rabs_leaf_24_sunl = met.GetDiurnalMean(site_diags.r_abs_leaf_sunl)
     rabs_leaf_24_shal = met.GetDiurnalMean(site_diags.r_abs_leaf_shal)
-
+    ci_24_sunl = met.GetDiurnalMean(site_diags.ci_sunl)
+    ci_24_shal = met.GetDiurnalMean(site_diags.ci_shal)
     ag_rubisco_24_sunl = met.GetDiurnalMean(site_diags.ag_rubisco_sunl)
     ag_rubisco_24_shal = met.GetDiurnalMean(site_diags.ag_rubisco_shal)
     ag_rubp_24_sunl = met.GetDiurnalMean(site_diags.ag_rubp_sunl)
@@ -735,9 +738,10 @@ def main(argv):
     ax1.grid('on')
 
     for icc,ic in enumerate(ics):
-        ax2.plot(rabs_leaf_24_shal[ic,:],vai,color=colors[icc])
+        ax2.plot(rabs_leaf_24_shal[ic,:],vai,color=colors[icc],label=f'{ic}:00')
     ax2.invert_yaxis()
     ax2.set_xlabel('Rabs (shaded) [umol/m2/s]')
+    ax2.legend()
     ax2.grid('on')
 
     for icc,ic in enumerate(ics):
@@ -753,7 +757,18 @@ def main(argv):
     ax4.invert_yaxis()
     ax4.set_xlabel('Ag (shaded) [umol/m2/s]')
     ax4.grid('on')
-    
+
+    for icc,ic in enumerate(ics):
+        ax5.plot(ci_24_sunl[ic,:],vai,color=colors[icc])
+    ax5.invert_yaxis()
+    ax5.set_xlabel('Ci (sunlit) [Pa]')
+    ax5.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax6.plot(ci_24_shal[ic,:],vai,color=colors[icc])
+    ax6.invert_yaxis()
+    ax6.set_xlabel('Ci (shaded) [Pa]')
+    ax6.grid('on')
     
     plt.tight_layout()
     plt.show()

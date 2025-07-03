@@ -120,6 +120,13 @@ module LeafBiophysicsMod
   integer, parameter :: photosynth_acclim_model_none = 0
   integer, parameter :: photosynth_acclim_model_kumarathunge_etal_2019 = 1
 
+  ! This uses the kumarathunge acclimation model, but assumes that the
+  ! jv ratio (which is based off of smoothed growth and home temperatures)
+  ! applies to the not the 25 degree vcmax, but the temperature dependant value
+  ! this enforces a jv ratio to be more constnat and not follow the daily temperature
+  ! signal
+  integer, parameter :: photosynth_acclim_model_kumarathunge2019_noT25 = 2
+
   ! Rdark constants from Atkin et al., 2017 https://doi.org/10.1007/978-3-319-68703-2_6
   ! and Heskel et al., 2016 https://doi.org/10.1073/pnas.1520282113
   real(r8), parameter :: lmr_b = 0.1012_r8       ! (degrees C**-1)
@@ -1923,7 +1930,7 @@ contains
        vcmaxse = lb_params%vcmaxse(FT)
        jmaxse  = lb_params%jmaxse(FT)
        
-    case (photosynth_acclim_model_kumarathunge_etal_2019)
+    case (photosynth_acclim_model_kumarathunge_etal_2019,photosynth_acclim_model_kumarathunge2019_noT25)
        ! Kumarathunge et al. temperature acclimation
        ! Thome = 30-year running mean
        ! Tgrowth = defined as the mean air temperature for the 30 d before measurement (calculation)
@@ -1953,8 +1960,10 @@ contains
     select case( lb_params%photo_tempsens_model)
     case (photosynth_acclim_model_none)
        jmax25  = jmax25top_ft * nscaler * dayl_factor_local
-    case (photosynth_acclim_model_kumarathunge_etal_2019) 
+    case (photosynth_acclim_model_kumarathunge_etal_2019)
        jmax25 = vcmax25*jvr
+    case(photosynth_acclim_model_kumarathunge2019_noT25) 
+       jmax25 = -999  ! not used
     case default
        write (fates_log(),*)'error, incorrect leaf photosynthesis temperature acclimation model specified'
        write (fates_log(),*)'lb_params%photo_tempsens_model:',lb_params%photo_tempsens_model
@@ -1974,8 +1983,13 @@ contains
        kp = kp25_ft * nscaler * 2._r8**((min(veg_tempk,310._r8)-(tfrz+25._r8))/10._r8)
     end if
 
-    jmax  = jmax25 * ft1_f(veg_tempk, jmaxha) * fth_f(veg_tempk, jmaxhd, jmaxse, jmaxc)
- 
+    if(lb_params%photo_tempsens_model.eq.photosynth_acclim_model_kumarathunge2019_noT25) then
+       jmax = vcmax*jvr
+    else
+       jmax = jmax25 * ft1_f(veg_tempk, jmaxha) * fth_f(veg_tempk, jmaxhd, jmaxse, jmaxc)
+    end if
+
+    
     ! Adjust various rates for water limitations
     ! -----------------------------------------------------------------------------------
 

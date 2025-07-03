@@ -35,7 +35,7 @@
     <!-- fraction of visible light reflected by beam and diffuse radiation -->
     <ground_vis_albedo> 0.3, 0.3 </ground_vis_albedo>
     <ground_nir_albedo> 0.3, 0.3 </ground_nir_albedo> <!-- unused -->
-    <nlayers> 50 </nlayers> <!-- number of leaf layers (equal depth) -->
+    <nlayers> 150 </nlayers> <!-- number of leaf layers (equal depth) -->
     <frac_snow> 0.0 </frac_snow> <!-- fraction of lai covered by snoow -->
     <btran_avg> 0.8 </btran_avg> <!-- There is no soil model, so a constant btran is applied -->
     <btran_std> 0.1 </btran_std>
@@ -45,7 +45,7 @@
       <param name='fates_daylength_factor_switch'> 1 </param>
       <param name='fates_leaf_stomatal_model'> 2 </param>
       <param name='fates_leaf_stomatal_assim_model'> 1 </param>
-      <param name='fates_leaf_photo_tempsens_model'> 1 </param>
+      <param name='fates_leaf_photo_tempsens_model'> 2 </param>
       <param name='fates_electron_transport_model'> 1 </param>  <!--FvCB1980 = 1, JohnsonBerry2021 = 2 -->
       <param name='fates_maintresp_leaf_model'> 1 </param>
     </scalar_dim>
@@ -72,7 +72,7 @@
       <!-- These are loaded into python structures -->
       <param name='fates_leafn_vert_scaler_coeff1'> 0.00963 </param>
       <param name='fates_leafn_vert_scaler_coeff2'> 2.43 </param>
-      <param name='fates_leaf_vcmax25top'> 30 </param>
+      <param name='fates_leaf_vcmax25top'> 50 </param>
       <param name='fates_stoich_nitr'> 0.033 </param>
       <param name='fates_leaf_slatop'>  0.012</param>
       <param name='fates_rad_leaf_clumping_index'> 0.85 </param>
