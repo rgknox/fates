@@ -123,10 +123,12 @@ def PushDictPhotoParameters(f90,scalar_params,pft_params, verbose: bool):
 
     numpft = len(pft_params["fates_leaf_c3psn"])
     
-    if verbose:
-        print('Allocating parameter space for {} pfts'.format(numpft))
-        
-    iret = f90.alloc_leaf_param_sub(ci(numpft))
+    
+
+    if (not f90.isalloc_leaf_param_fun()):
+        if verbose:
+            print('Allocating parameter space for {} pfts'.format(numpft))
+        iret = f90.alloc_leaf_param_sub(ci(numpft))
     
     # These are photosynthesis PFT parameters that also need to be pushed to the fortran objects
     f90_photo_pft_params = ['fates_leaf_stomatal_btran_model','fates_leaf_agross_btran_model', \
@@ -154,7 +156,9 @@ def PushDictRadParameters(f90,pft_params, verbose: bool):
     
     # Allocate and push radiation parameters
     # -----------------------------------------------------------------------------------
-    iret = f90.alloc_radparams_sub(ci(numpft),ci(n_bands))
+    if (not f90.isalloc_radparam_fun()):
+        iret = f90.alloc_radparams_sub(ci(numpft),ci(n_bands))
+        
     for ft in range(numpft):
         pft = ft+1
         

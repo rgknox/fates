@@ -53,6 +53,30 @@ contains
     
   end subroutine Dealloc
 
+  function IsRadTypeAllocated() result(is_allocated)
+    
+    logical :: is_allocated 
+
+    if(allocated(twostream%n_col))then
+       is_allocated = .true.
+    else
+       is_allocated = .false.
+    end if
+    
+  end function IsRadTypeAllocated
+  
+  
+  function IsRadParamAllocated() result(is_allocated)
+    
+    logical :: is_allocated 
+
+    if(allocated(rad_params%rhol))then
+       is_allocated = .true.
+    else
+       is_allocated = .false.
+    end if
+       
+  end function IsRadParamAllocated
   
   subroutine SetRadParam(val,pft,ib,pname)
 

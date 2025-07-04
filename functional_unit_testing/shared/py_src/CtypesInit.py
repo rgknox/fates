@@ -154,7 +154,10 @@ class f90_modules:
         self.getabsrad_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapgetabsrad'))
         self.getparams_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapgetparams'))
         self.forceparam_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapforceparams'))
-                              
+        self.isalloc_radparam_fun =  getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','isradparamallocated'))
+        self.isalloc_radparam_fun.restype = c_bool
+        self.isalloc_radtype_fun = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','isradtypeallocated'))
+        self.isalloc_radtype_fun.restype = c_bool
         self.forceparam_sub.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int),POINTER(c_double),c_char_p,c_long]
         self.setup_canopy_sub.argtypes = [POINTER(c_int),POINTER(c_int),POINTER(c_int), \
                                           POINTER(c_double),POINTER(c_double),POINTER(c_double)]
@@ -181,6 +184,7 @@ class f90_modules:
         self.alloc_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','AllocAllomParam'))
         self.dealloc_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','DeallocAllomParam'))
         self.isallom_alloced_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','IsAllomParamAllocated'))
+        self.isallom_alloced_sub.restype = c_bool
         self.set_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','SetAllomParam'))
 
         self.h2d_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','h2d_allom'))
