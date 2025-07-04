@@ -36,7 +36,7 @@
     <!-- fraction of visible light reflected by beam and diffuse radiation -->
     <ground_vis_albedo> 0.3, 0.3 </ground_vis_albedo>
     <ground_nir_albedo> 0.3, 0.3 </ground_nir_albedo> <!-- unused -->
-    <nlayers> 150 </nlayers> <!-- number of leaf layers (equal depth) -->
+    <nlayers> 50 </nlayers> <!-- number of leaf layers (equal depth) -->
     <frac_snow> 0.0 </frac_snow> <!-- fraction of lai covered by snoow -->
     <btran_avg> 0.8 </btran_avg> <!-- There is no soil model, so a constant btran is applied -->
     <btran_std> 0.1 </btran_std>

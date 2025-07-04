@@ -849,7 +849,7 @@ def main(argv):
     
     # Look at Ag and Rabs on sunlit versus shaded leaves
     
-    fig23,((ax1,ax2,ax3),(ax4,ax5,ax6)) = plt.subplots(2,3,figsize=(8.5,6.5))
+    fig23,((ax1,ax2,ax3,ax4),(ax5,ax6,ax7,ax8)) = plt.subplots(2,4,figsize=(8.5,4.5))
 
     rabs_leaf_24_sunl = met.GetDiurnalMean(site_diags.r_abs_leaf_sunl)
     rabs_leaf_24_shal = met.GetDiurnalMean(site_diags.r_abs_leaf_shal)
@@ -860,46 +860,67 @@ def main(argv):
     ag_rubp_24_sunl = met.GetDiurnalMean(site_diags.ag_rubp_sunl)
     ag_rubp_24_shal = met.GetDiurnalMean(site_diags.ag_rubp_shal)
 
-    
+
+    cfrac_sunl_vl = np.zeros_like(site_diags.r_abs_veg_vl)
+    cfrac_shal_vl = np.zeros_like(site_diags.r_abs_veg_vl)
+    for it in range(ntimes):
+        cfrac_sunl_vl[it,:] = site_diags.ci_sunl[it,:]/(0.0004*met.data['can_press'][it])
+        cfrac_shal_vl[it,:] = site_diags.ci_shal[it,:]/(0.0004*met.data['can_press'][it])
+
+    cfrac_sunl_24_vl = met.GetDiurnalMean(cfrac_sunl_vl)
+    cfrac_shal_24_vl = met.GetDiurnalMean(cfrac_shal_vl)
     
     for icc,ic in enumerate(ics):
         ax1.plot(rabs_leaf_24_sunl[ic,:],vai,color=colors[icc])
     ax1.invert_yaxis()
-    ax1.set_xlabel('Rabs (sunlit) [umol/m2/s]')
+    ax1.set_xlabel('Rabs (sunlit)\n [umol/m2/s]')
     ax1.grid('on')
 
     for icc,ic in enumerate(ics):
-        ax2.plot(rabs_leaf_24_shal[ic,:],vai,color=colors[icc],label=f'{ic}:00')
-    ax2.invert_yaxis()
-    ax2.set_xlabel('Rabs (shaded) [umol/m2/s]')
-    ax2.legend()
-    ax2.grid('on')
-
-    for icc,ic in enumerate(ics):
-        ax3.plot(ag_rubisco_24_sunl[ic,:],vai,color=colors[icc])
-        ax3.plot(ag_rubp_24_sunl[ic,:],vai,color=colors[icc],linestyle = '--')
-    ax3.invert_yaxis()
-    ax3.set_xlabel('Ag (sunlit) [umol/m2/s]')
-    ax3.grid('on')
-
-    for icc,ic in enumerate(ics):
-        ax4.plot(ag_rubisco_24_shal[ic,:],vai,color=colors[icc])
-        ax4.plot(ag_rubp_24_shal[ic,:],vai,color=colors[icc],linestyle = '--')
-    ax4.invert_yaxis()
-    ax4.set_xlabel('Ag (shaded) [umol/m2/s]')
-    ax4.grid('on')
-
-    for icc,ic in enumerate(ics):
-        ax5.plot(ci_24_sunl[ic,:],vai,color=colors[icc])
+        ax5.plot(rabs_leaf_24_shal[ic,:],vai,color=colors[icc],label=f'{ic}:00')
     ax5.invert_yaxis()
-    ax5.set_xlabel('Ci (sunlit) [Pa]')
+    ax5.set_xlabel('Rabs (shaded)\n [umol/m2/s]')
+    ax5.legend()
     ax5.grid('on')
 
     for icc,ic in enumerate(ics):
-        ax6.plot(ci_24_shal[ic,:],vai,color=colors[icc])
+        ax2.plot(ag_rubisco_24_sunl[ic,:],vai,color=colors[icc])
+        ax2.plot(ag_rubp_24_sunl[ic,:],vai,color=colors[icc],linestyle = '--')
+    ax2.invert_yaxis()
+    ax2.set_xlabel('Ag (sunlit)\n  [umol/m2/s]')
+    ax2.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax6.plot(ag_rubisco_24_shal[ic,:],vai,color=colors[icc])
+        ax6.plot(ag_rubp_24_shal[ic,:],vai,color=colors[icc],linestyle = '--')
     ax6.invert_yaxis()
-    ax6.set_xlabel('Ci (shaded) [Pa]')
+    ax6.set_xlabel('Ag (shaded)\n  [umol/m2/s]')
     ax6.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax3.plot(ci_24_sunl[ic,:],vai,color=colors[icc])
+    ax3.invert_yaxis()
+    ax3.set_xlabel('Ci (sunlit)\n [Pa]')
+    ax3.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax7.plot(ci_24_shal[ic,:],vai,color=colors[icc])
+    ax7.invert_yaxis()
+    ax7.set_xlabel('Ci (shaded)\n [Pa]')
+    ax7.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax4.plot(cfrac_sunl_24_vl[ic,:],vai,color=colors[icc])
+    ax4.invert_yaxis()
+    ax4.set_xlabel('Ci/Ca (sunlit)')
+    ax4.grid('on')
+
+    for icc,ic in enumerate(ics):
+        ax8.plot(cfrac_shal_24_vl[ic,:],vai,color=colors[icc])
+    ax8.invert_yaxis()
+    ax8.set_xlabel('Ci/Ca (shaded)')
+    ax8.grid('on')
+    
     
     plt.tight_layout()
     plt.show()
