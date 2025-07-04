@@ -650,8 +650,10 @@ contains
              sapw_c          = currentCohort%prt%GetState(sapw_organ,carbon12_element)
              struct_c        = currentCohort%prt%GetState(struct_organ,carbon12_element)
 
-             if ( (cc_loss-currentCohort%c_area) > -nearzero .and. &
-                  (cc_loss-currentCohort%c_area) < area_target_precision ) then
+             if ( abs(cc_loss - currentCohort%c_area) < 1.0E-12_r8 ) then
+
+ !            if ( (cc_loss-currentCohort%c_area) > -nearzero .and. &
+ !                 (cc_loss-currentCohort%c_area) < area_target_precision ) then
 
                 ! If the whole cohort is being demoted, just change its
                 ! layer index
@@ -665,7 +667,9 @@ contains
                      (leaf_c + store_c + fnrt_c + sapw_c + struct_c) * currentCohort%n
 
              elseif( (cc_loss < currentCohort%c_area) .and. &
-                  (cc_loss > area_target_precision) ) then
+                     (cc_loss > 1.0E-12_r8)    ) then
+!             elseif( (cc_loss < currentCohort%c_area) .and. &
+!                  (cc_loss > area_target_precision) ) then
 
                 ! If only part of the cohort is demoted
                 ! then it must be split (little more complicated)
@@ -1131,8 +1135,10 @@ contains
                 sapw_c          = currentCohort%prt%GetState(sapw_organ,carbon12_element)
                 struct_c        = currentCohort%prt%GetState(struct_organ,carbon12_element)
 
-                if ( (cc_gain-currentCohort%c_area) > -nearzero .and. &
-                     (cc_gain-currentCohort%c_area) < area_target_precision ) then
+                if ( abs(cc_gain - currentCohort%c_area) < 1.0E-12_r8 ) then
+                
+                !if ( (cc_gain-currentCohort%c_area) > -nearzero .and. &
+                !     (cc_gain-currentCohort%c_area) < area_target_precision ) then
 
                    currentCohort%canopy_layer = i_lyr
 
@@ -1142,9 +1148,11 @@ contains
 
                    currentSite%promotion_carbonflux = currentSite%promotion_carbonflux + &
                         (leaf_c + fnrt_c + store_c + sapw_c + struct_c) * currentCohort%n
-
-                elseif ( (cc_gain < currentCohort%c_area) .and. &
-                     (cc_gain > area_target_precision) ) then
+                   
+                elseif( (cc_gain < currentCohort%c_area) .and. &
+                        (cc_gain > 1.0E-12_r8 ) ) then
+             !   elseif ( (cc_gain < currentCohort%c_area) .and. &
+             !        (cc_gain > area_target_precision) ) then
 
                    allocate(copyc)
 
