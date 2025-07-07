@@ -336,7 +336,6 @@ contains
 
        z = NumCanopyLayers(currentPatch)
        
-       ! Save number of canopy layers to the patch structure
        if(z > nclmax) then
           write(fates_log(),*) 'Termination should have ensured number'
           write(fates_log(),*) 'of canopy layers was not larger than nclmax'
