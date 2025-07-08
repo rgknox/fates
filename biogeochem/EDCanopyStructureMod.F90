@@ -750,20 +750,9 @@ contains
              ! (RGK-0822)
              !if(currentCohort%canopy_layer>1) then
 
-             if(currentCohort%canopy_layer>nclmax )then
-                ! put the litter from the terminated cohorts
-                ! straight into the fragmenting pools
-                call terminate_cohort(currentSite,currentPatch,currentCohort,bc_in,i_term_mort_type_canlev)
-                deallocate(currentCohort, stat=istat, errmsg=smsg)
-                if (istat/=0) then
-                   write(fates_log(),*) 'dealloc012: fail on deallocate(currentCohort):'//trim(smsg)
-                   call endrun(msg=errMsg(sourcefile, __LINE__))
-                endif
-             else
              call carea_allom(currentCohort%dbh,currentCohort%n, &
                   currentSite%spread,currentCohort%pft,currentCohort%crowndamage, &
                   currentCohort%c_area)
-             end if
 
           endif !canopy layer = i_ly
 
