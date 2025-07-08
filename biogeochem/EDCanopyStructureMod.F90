@@ -538,14 +538,14 @@ contains
 
             group_area = cohort%c_area
             ic_n       = ic
-            check_next:do while(ic_n<n_layer)
-               if( abs(cohort%height-layer_co(ic_n+1)%p%height) > similar_height_tol ) then
-                  exit check_next
-               else
-                  ic_n = ic_n + 1
-                  group_area = group_area+layer_co(ic_n)%p%c_area
-               end if
-            end do check_next
+            !check_next:do while(ic_n<n_layer)
+            !   if( abs(cohort%height-layer_co(ic_n+1)%p%height) > similar_height_tol ) then
+            !      exit check_next
+            !   else
+            !      ic_n = ic_n + 1
+            !      group_area = group_area+layer_co(ic_n)%p%c_area
+            !   end if
+            !end do check_next
 
             remainder_area = min(promdem_area-sumpd_area,group_area)
             do ic_nn = ic,ic_n
