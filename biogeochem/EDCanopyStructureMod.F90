@@ -708,19 +708,19 @@ contains
     ! And the layer below that may or may not had recieved
     ! Demotions
     
-    call CanopyLayerArea(currentPatch,currentSite%spread,i_lyr,arealayer)
+    !call CanopyLayerArea(currentPatch,currentSite%spread,i_lyr,arealayer)
     
-    if ( (abs(arealayer - currentPatch%area)/arealayer > area_check_rel_precision ) .or. &
-         (abs(arealayer - currentPatch%area) > area_check_precision) ) then
-       write(fates_log(),*) 'demotion did not trim area within tolerance'
-       write(fates_log(),*) 'arealayer:',arealayer
-       write(fates_log(),*) 'patch%area:',currentPatch%area
-       write(fates_log(),*) 'ilayer: ',i_lyr
-       write(fates_log(),*) 'bias:',arealayer - currentPatch%area
-       write(fates_log(),*) 'rel bias:',(arealayer - currentPatch%area)/arealayer
-       write(fates_log(),*) 'demote_area:',demote_area
-       call endrun(msg=errMsg(sourcefile, __LINE__))
-    end if
+    !if ( (abs(arealayer - currentPatch%area)/arealayer > area_check_rel_precision ) .or. &
+    !     (abs(arealayer - currentPatch%area) > area_check_precision) ) then
+    !   write(fates_log(),*) 'demotion did not trim area within tolerance'
+    !   write(fates_log(),*) 'arealayer:',arealayer
+    !   write(fates_log(),*) 'patch%area:',currentPatch%area
+    !   write(fates_log(),*) 'ilayer: ',i_lyr
+    !   write(fates_log(),*) 'bias:',arealayer - currentPatch%area
+    !   write(fates_log(),*) 'rel bias:',(arealayer - currentPatch%area)/arealayer
+    !   write(fates_log(),*) 'demote_area:',demote_area
+    !   call endrun(msg=errMsg(sourcefile, __LINE__))
+    !end if
     
     return
   end subroutine DemoteFromLayer
@@ -799,172 +799,24 @@ contains
 
        if(currentCohort%canopy_layer == i_lyr+1)then !look at the cohorts in the canopy layer below...
           
-          if (ED_val_comp_excln .ge. 0.0_r8 ) then
-             
-             ! ------------------------------------------------------------------
-             ! Stochastic case, as above (in demotion portion of code)
-             ! ------------------------------------------------------------------
-             
-             currentCohort%prom_weight = currentCohort%height**ED_val_comp_excln
-             sumweights = sumweights + currentCohort%prom_weight
-             
-          else
-             
-             ! ------------------------------------------------------------------
-             ! Rank ordered deterministic method
-             ! If there are cohorts that have the exact same height (which is possible, really)
-             ! we don't want to unilaterally promote/demote one before the others.
-             ! So we <>mote them as a unit
-             ! now we need to go through and figure out how many equal-size cohorts there are.
-             ! then we need to go through, add up the collective crown areas of all equal-sized
-             ! and equal-canopy-layer cohorts,
-             ! and then demote from each as if they were a single group
-             ! ------------------------------------------------------------------
-
-             currentCohort%prom_weight = &
-                  max(min(currentCohort%c_area, promote_area - sumweights ), 0._r8)
-             sumweights = sumweights + currentCohort%prom_weight
-                
-             
-          endif
+          ! ------------------------------------------------------------------
+          ! Rank ordered deterministic method
+          ! If there are cohorts that have the exact same height (which is possible, really)
+          ! we don't want to unilaterally promote/demote one before the others.
+          ! So we <>mote them as a unit
+          ! now we need to go through and figure out how many equal-size cohorts there are.
+          ! then we need to go through, add up the collective crown areas of all equal-sized
+          ! and equal-canopy-layer cohorts,
+          ! and then demote from each as if they were a single group
+          ! ------------------------------------------------------------------
+          
+          currentCohort%prom_weight = &
+               max(min(currentCohort%c_area, promote_area - sumweights ), 0._r8)
+          sumweights = sumweights + currentCohort%prom_weight
+          
        endif
        currentCohort => currentCohort%shorter
     enddo !currentCohort
-    
-    
-    ! If this is probabalistic promotion, we need to do a round of normalization.
-    ! And then a few rounds where we pre-calculate the promotion areas
-    ! and adjust things if the promoted area wants to be greater than
-    ! what is available.
-    
-    if (ED_val_comp_excln .ge. 0.0_r8 ) then
-       
-       scale_factor_min  = 1.e10_r8
-       scale_factor      = 0._r8
-       currentCohort => currentPatch%tallest
-       do while (associated(currentCohort))
-          
-          if(currentCohort%canopy_layer  ==  (i_lyr+1) ) then
-             
-             currentCohort%prom_weight = currentCohort%prom_weight/sumweights
-             if( 1._r8/currentCohort%prom_weight <  scale_factor_min )  &
-                  scale_factor_min = 1._r8/currentCohort%prom_weight
-             
-             scale_factor = scale_factor + currentCohort%prom_weight * currentCohort%c_area
-             
-          endif
-          currentCohort => currentCohort%shorter
-       enddo
-       
-       ! This is the factor by which we need to multiply
-       ! the demotion probabilities, so the sum result equals
-       ! the total amount to demote
-       scale_factor = promote_area/scale_factor
-       
-       
-       if(scale_factor <= scale_factor_min) then
-          
-          ! Trivial case, all of the demotion fractions
-          ! are less than 1.
-          
-          currentCohort => currentPatch%tallest
-          do while (associated(currentCohort))
-             if(currentCohort%canopy_layer  ==  (i_lyr+1) ) then
-                currentCohort%prom_weight = currentCohort%c_area * &
-                     currentCohort%prom_weight * scale_factor
-                
-                if(debug)then
-                   if((currentCohort%prom_weight > &
-                        (currentCohort%c_area+area_target_precision)) .or. &
-                        (currentCohort%prom_weight < 0._r8)  ) then
-                      write(fates_log(),*) 'promotion area too big (1)'
-                      write(fates_log(),*) 'currentCohort%c_area: ',currentCohort%c_area
-                      write(fates_log(),*) 'currentCohort%prom_weight: ', &
-                           currentCohort%prom_weight
-                      write(fates_log(),*) 'excess: ', &
-                           currentCohort%prom_weight - currentCohort%c_area
-                      call endrun(msg=errMsg(sourcefile, __LINE__))
-                   end if
-                end if
-                
-             endif
-             currentCohort => currentCohort%shorter
-          enddo
-
-       else
-
-          ! Non-trivial case, at least 1 cohort's promotion
-          ! rate would exceed its area, given the trivial scale factor
-          
-          area_res         = 0._r8
-          scale_factor_res = 0._r8
-          currentCohort => currentPatch%tallest
-          do while (associated(currentCohort))
-             if(currentCohort%canopy_layer  ==  (i_lyr+1) ) then
-                area_res         = area_res + &
-                     currentCohort%c_area*currentCohort%prom_weight*scale_factor_min
-                scale_factor_res = scale_factor_res + &
-                     currentCohort%c_area * &
-                     (1._r8 - (currentCohort%prom_weight * scale_factor_min))
-             endif
-             currentCohort => currentCohort%shorter
-          enddo
-          
-          area_res = promote_area - area_res
-          
-          scale_factor_res = area_res / scale_factor_res
-          
-          currentCohort => currentPatch%tallest
-          do while (associated(currentCohort))
-             if(currentCohort%canopy_layer  ==  (i_lyr+1)) then
-                
-                currentCohort%prom_weight = currentCohort%c_area * &
-                     (currentCohort%prom_weight * scale_factor_min + &
-                     (1._r8 - (currentCohort%prom_weight*scale_factor_min) ) * &
-                     scale_factor_res)
-                
-                if(debug)then
-                   if((currentCohort%prom_weight > &
-                        (currentCohort%c_area+area_target_precision)) .or. &
-                        (currentCohort%prom_weight < 0._r8)  ) then
-                      write(fates_log(),*) 'promotion area error (2)'
-                      write(fates_log(),*) 'currentCohort%c_area: ',currentCohort%c_area
-                      write(fates_log(),*) 'currentCohort%prom_weight: ', &
-                           currentCohort%prom_weight
-                      write(fates_log(),*) 'excess: ', &
-                           currentCohort%prom_weight - currentCohort%c_area
-                      call endrun(msg=errMsg(sourcefile, __LINE__))
-                   end if
-                end if
-                
-             endif
-             currentCohort => currentCohort%shorter
-          enddo
-          
-       end if
-       
-    end if
-
-
-    ! lets perform a check and see if the promotions meet the demand
-    sumweights = 0._r8
-    currentCohort => currentPatch%tallest
-    do while (associated(currentCohort))
-       if(currentCohort%canopy_layer  ==  (i_lyr+1)) then
-          sumweights = sumweights + currentCohort%prom_weight
-       end if
-       currentCohort => currentCohort%shorter
-    end do
-    
-    if(debug)then
-       if (abs(sumweights - promote_area) > area_check_precision ) then
-          write(fates_log(),*) 'promotions dont add up'
-          write(fates_log(),*) 'sum promotions: ',sumweights
-          write(fates_log(),*) 'area needed to be promoted: ',promote_area
-          write(fates_log(),*) 'excess: ',sumweights - promote_area
-          call endrun(msg=errMsg(sourcefile, __LINE__))
-       end if
-    end if
     
     currentCohort => currentPatch%tallest
     do while (associated(currentCohort))
@@ -993,8 +845,8 @@ contains
              currentSite%promotion_carbonflux = currentSite%promotion_carbonflux + &
                   (leaf_c + fnrt_c + store_c + sapw_c + struct_c) * currentCohort%n
              
-          elseif( (cc_gain < currentCohort%c_area) .and. &
-               (cc_gain > 1.0E-12_r8 ) ) then
+          else
+             
              !   elseif ( (cc_gain < currentCohort%c_area) .and. &
              !        (cc_gain > area_target_precision) ) then
              
@@ -1062,29 +914,22 @@ contains
              endif
              currentCohort%taller => copyc
              
-          elseif(cc_gain > currentCohort%c_area)then
-             
-             write(fates_log(),*) 'more area than the cohort has is being promoted'
-             write(fates_log(),*) 'loss:',cc_gain
-             write(fates_log(),*) 'existing area:',currentCohort%c_area
-             call endrun(msg=errMsg(sourcefile, __LINE__))
-             
           endif
           
        endif   ! if(currentCohort%canopy_layer == i_lyr+1) then
        currentCohort => currentCohort%shorter
     enddo !currentCohort
     
-    call CanopyLayerArea(currentPatch,currentSite%spread,i_lyr,arealayer_current)
-
-    if ((abs(arealayer_current - currentPatch%area)/arealayer_current > &
-         area_check_rel_precision ) .or. &
-         (abs(arealayer_current - currentPatch%area) > area_check_precision) ) then
-       write(fates_log(),*) 'promotion did not bring area within tolerance'
-       write(fates_log(),*) 'arealayer:',arealayer_current
-       write(fates_log(),*) 'patch%area:',currentPatch%area
-       call endrun(msg=errMsg(sourcefile, __LINE__))
-    end if
+    !call CanopyLayerArea(currentPatch,currentSite%spread,i_lyr,arealayer_current)
+    
+    !if ((abs(arealayer_current - currentPatch%area)/arealayer_current > &
+    !     area_check_rel_precision ) .or. &
+    !     (abs(arealayer_current - currentPatch%area) > area_check_precision) ) then
+    !   write(fates_log(),*) 'promotion did not bring area within tolerance'
+    !   write(fates_log(),*) 'arealayer:',arealayer_current
+    !   write(fates_log(),*) 'patch%area:',currentPatch%area
+    !   call endrun(msg=errMsg(sourcefile, __LINE__))
+    !end if
     
     
     return
