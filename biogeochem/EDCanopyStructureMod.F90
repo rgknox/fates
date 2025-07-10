@@ -476,7 +476,7 @@ contains
           sapw_c          = currentCohort%prt%GetState(sapw_organ,carbon12_element)
           struct_c        = currentCohort%prt%GetState(struct_organ,carbon12_element)
           
-          if ( abs(cc_loss - currentCohort%c_area) < 1.0E-11_r8 ) then
+          if ( abs(cc_loss - currentCohort%c_area) < 1.0E-12_r8 ) then
              
  !            if ( (cc_loss-currentCohort%c_area) > -nearzero .and. &
  !                 (cc_loss-currentCohort%c_area) < area_target_precision ) then
@@ -529,7 +529,6 @@ contains
              call copyc%InitPRTBoundaryConditions()
              
              newarea = currentCohort%c_area - cc_loss
-
              
              ! The copied cohort is the one that stays, so it
              ! retains the original area minus what is moved
@@ -724,7 +723,7 @@ contains
           sapw_c          = currentCohort%prt%GetState(sapw_organ,carbon12_element)
           struct_c        = currentCohort%prt%GetState(struct_organ,carbon12_element)
           
-          if ( abs(cc_gain - currentCohort%c_area) < 1.0E-11_r8 ) then
+          if ( abs(cc_gain - currentCohort%c_area) < 1.0E-12_r8 ) then
              
              !if ( (cc_gain-currentCohort%c_area) > -nearzero .and. &
              !     (cc_gain-currentCohort%c_area) < area_target_precision ) then
@@ -776,13 +775,14 @@ contains
              !     currentCohort%pft,currentCohort%crowndamage, currentCohort%c_area)
              
              ! number of individuals in promoted cohort.
-             copyc%n = currentCohort%n*cc_gain/currentCohort%c_area
+             !copyc%n = currentCohort%n*cc_gain/currentCohort%c_area
+             copyc%n = currentCohort%n*newarea/currentCohort%c_area
              
              ! number of individuals in cohort remaining in understorey
              currentCohort%n = currentCohort%n - copyc%n
              
-             currentCohort%canopy_layer = i_lyr + 1 ! keep current cohort in the understory.
-             copyc%canopy_layer = i_lyr             ! promote copy to the higher canopy layer.
+             currentCohort%canopy_layer = i_lyr ! keep current cohort in the understory.
+             copyc%canopy_layer = i_lyr + 1     ! promote copy to the higher canopy layer.
              
              ! keep track of number and biomass of promoted cohort
              currentSite%promotion_rate(copyc%size_class) = &
