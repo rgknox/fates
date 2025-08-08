@@ -100,7 +100,7 @@ module EDInitMod
   use FatesConstantsMod,      only : min_nocomp_pftfrac_perlanduse
   use EdTypesMod,             only : dump_site
   use SFNesterovMod,          only : nesterov_index
-
+  use ftorch
 
   ! CIME GLOBALS
   use shr_log_mod               , only : errMsg => shr_log_errMsg
@@ -241,6 +241,10 @@ contains
     allocate(nesterov_index :: site_in%fireWeather)
     call site_in%fireWeather%Init()
 
+    ! Initialize neural network architectures and weights
+    call torch_model_load(site_in%psn_model, "/my/saved/TorchScript/model.pt", torch_kCPU)
+
+    
   end subroutine init_site_vars
 
   ! ============================================================================

@@ -37,6 +37,7 @@ module EDTypesMod
   use FatesConstantsMod,     only : n_dbh_bins, n_dist_types
   use shr_log_mod,           only : errMsg => shr_log_errMsg
   use SFFireWeatherMod,      only : fire_weather
+  use ftorch   
 
   implicit none
   private               ! By default everything is private
@@ -567,12 +568,20 @@ module EDTypesMod
      logical, allocatable :: landuse_vector_gt_min(:)     ! is the land use state vector for each land use type greater than the minimum below which we ignore?
      logical :: transition_landuse_from_off_to_on         ! special flag to use only when reading restarts, which triggers procedure to initialize land use
 
+     integer, parameter :: psn_n_inputs = 12
+     integer, parameter :: psn_n_outputs = 2
+     type(torch_model) :: psn_model
+     type(torch_tensor), dimension(psn_n_inputs)  :: psn_input_arr
+     type(torch_tensor), dimension(psn_n_outputs) :: psn_output_arr
+     call torch_model_load(psn_model, "/my/saved/TorchScript/model.pt", torch_kCPU)
+
+     
      contains
 
        procedure, public :: get_current_landuse_statevector
        procedure, public :: get_secondary_young_fraction
 
-  end type ed_site_type
+    end type ed_site_type
   
   ! Make public necessary subroutines and functions
   public :: dump_site

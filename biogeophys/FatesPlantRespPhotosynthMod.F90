@@ -121,6 +121,8 @@ contains
     use FatesAllometryMod, only : set_root_fraction
     use DamageMainMod, only : GetCrownReduction
     use FatesInterfaceTypesMod, only : hlm_use_tree_damage
+    use ftorch
+
 
     ! ARGUMENTS:
     ! -----------------------------------------------------------------------------------
@@ -288,6 +290,14 @@ contains
     integer  :: NCL_p               ! number of canopy layers in patch
     integer  :: iage                ! loop counter for leaf age classes
     integer  :: solve_iter          ! number of iterations required for photosynthesis solve
+
+    ! FTorch NN data structures
+    real(r8), dimension(12), target :: psn_nn_in
+    real(r8), dimension(2),  target :: psn_nn_out
+
+    ! NN Error tracking
+    real(r8) :: psn_nn_err_z(nlevleaf,maxpft,nclmax) 
+    real(r8) :: gstoma_nn_err_z(nlevleaf,maxpft,nclmax)
     
     ! Parameters
     ! Absolute convergence tolerance on solving intracellular CO2 concentration [Pa]
@@ -412,7 +422,9 @@ contains
                   c13disc_z(:,:,:) = 0._r8
                   rs_z(:,:,:)      = 0._r8
                   lmr_z(:,:,:)     = 0._r8
-                                    
+                  psn_nn_err_z(:,:,:)    = 0._r8
+                  gstoma_nn_err_z(:,:,:) = 0._r8
+                  
                   if_any_cohorts: if(currentPatch%num_cohorts > 0)then
 
                      currentCohort => currentPatch%tallest
@@ -750,7 +762,7 @@ contains
                                     else
                                        hydr_k_lwp = 1._r8
                                     end if
-
+                                       
                                     call LeafLayerPhotosynthesis(            & !
                                          par_abs,                            &  ! in
                                          ft,                                 &  ! in
@@ -779,6 +791,26 @@ contains
                                          co2_inter_c_utest,                  &  ! out (unit tests)
                                          solve_iter)                            ! out performance tracking
 
+                                    
+                                    ! NOTE(RGK-0731): Re-formulate to use normalized co2 concentrations
+                                    if (lb_params%c3psn(ft) == c3_path_index)then
+
+                                       psn_nn_in(:) = [par_abs, vcmax_z, jmax_z, gs2, &
+                                            bc_in(s)%t_veg_pa(ifp), bc_in(s)%esat_tv_pa(ifp), &
+                                            gb_mol, bc_in(s)%eair_pa(ifp), mm_kco2, mm_ko2, &
+                                            co2_cpoint, lmr_z(iv,ft,cl)]
+                                       call torch_tensor_from_array(sites(s)%psn_input_arr, psn_nn_in, in_layout, torch_kCPU)
+                                       call torch_tensor_from_array(sites(s)%psn_output_arr, psn_nn_out, out_layout, torch_kCPU)
+                                       call torch_model_forward(sites(s)%psn_model, sites(s)%psn_input_arr, sites(s)%psn_output_arr)
+
+                                       psn_nn_err_z(iv,ft,cl)    = psn_nn_err_z(iv,ft,cl) + area_frac * (psn_nn_out[1]-psn_ll)
+                                       gstoma_nn_err_z(iv,ft,cl) = gstoma_nn_err_z(iv,ft,cl) + area_frac * (psn_nn_out[2]-gstoma_ll)/vmol_cf
+                                       
+                                       ! Compare inference to original model
+                                       print*,psn_nn_out[1],psn_nn_out[1]+psn_nn_err_z(iv,ft,cl)
+                                       print*,psn_nn_out[2],psn_nn_out[2]+gstoma_nn_err_z(iv,ft,cl)
+                                    end if
+                                    
                                     ! Average output quantities across sunlit and shaded leaves
                                     ! Convert from molar to velocity (umol /m**2/s) to (m/s)
                                     gstoma = gstoma + area_frac*(gstoma_ll / vmol_cf) 
@@ -829,6 +861,8 @@ contains
                                    psn_z(1:nv,ft,cl),                     & !in
                                    lmr_z(1:nv,ft,cl),                     & !in
                                    rs_z(1:nv,ft,cl),                      & !in
+                                   psn_nn_err_z(1:nv,ft,cl),              & !in
+                                   gstoma_nn_err_z(1:nv,ft,cl),           & !in
                                    currentPatch%elai_profile(cl,ft,1:nv), & !in
                                    c13disc_z(1:nv,ft,cl),                 & !in
                                    currentCohort%c_area,                  & !in
@@ -839,16 +873,18 @@ contains
                                    currentCohort%gpp_tstep,               & !out
                                    currentCohort%rdark,                   & !out
                                    currentCohort%c13disc_clm,             & !out
+                                   currentCohort%psn_nn_err,              & !out
+                                   currentCohort%gstoma_nn_err,           & !out
                                    cohort_eleaf_area)                       !out
 
-                           else
-
-                              
+                           else                              
                               
                               call ScaleLeafLayerFluxToCohort(nv,         & !in
                                    psn_z(1:nv,ft,cl),                     & !in
                                    lmr_z(1:nv,ft,cl),                     & !in
                                    rs_z(1:nv,ft,cl),                      & !in
+                                   psn_nn_err_z(1:nv,ft,cl),              & !in
+                                   gstoma_nn_err_z(1:nv,ft,cl),           & !in
                                    cohort_layer_elai(1:nv),               & !in
                                    c13disc_z(1:nv,ft,cl),                 & !in
                                    currentCohort%c_area,                  & !in
@@ -859,6 +895,8 @@ contains
                                    currentCohort%gpp_tstep,               & !out
                                    currentCohort%rdark,                   & !out
                                    currentCohort%c13disc_clm,             & !out
+                                   currentCohort%psn_nn_err,              & !out
+                                   currentCohort%gstoma_nn_err,           & !out
                                    cohort_eleaf_area)                       !out
                            end if
 
@@ -1240,6 +1278,8 @@ contains
     real(r8), intent(in) :: rs_llz(nv)       ! leaf layer stomatal resistance [s/m]
     real(r8), intent(in) :: elai_llz(nv)     ! exposed LAI per layer [m2 leaf/ m2 pft footprint]
     real(r8), intent(in) :: c13disc_llz(nv)  ! leaf layer c13 discrimination, weighted mean
+    real(r8), intent(in) :: psn_nn_err(nv)   ! Error from NN solution of Agross [umolC/m2leaf/s]
+    real(r8), intent(in) :: gstoma_nn_err(nv)! Error from NN solution of Gs     [m/s]
     real(r8), intent(in) :: c_area           ! crown area m2/m2
     real(r8), intent(in) :: nplant           ! indiv/m2
     real(r8), intent(in) :: rb               ! leaf boundary layer resistance (s/m)
