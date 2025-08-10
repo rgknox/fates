@@ -15,7 +15,7 @@ from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
 # Freezing point of water in Kelvin (at standard atmosphere)
 tfrz_1atm = 273.15
 eval_cosz = True
-const_g_b_umol = 1.e6
+const_g_b_umol = 0.5e6   #1.e6
 
 
 def simple_linear_regression(x, y):

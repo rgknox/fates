@@ -138,6 +138,13 @@ class site_diags_type:
 
     def __init__(self,ntimes,dvai,total_vai):
 
+        # histograms of leaf temperature
+        self.nhist_tleafc = 30
+        self.minhist_tleafc = 10
+        self.maxhist_tleafc = 40
+        self.tleafc_histbins = np.linspace(self.minhist_tleafc,self.maxhist_tleafc,self.nhist_tleafc)
+        self.tleafc_hist     = np.zeros(self.nhist_tleafc+2) #[umol/m2/leaf]
+        
         self.ntimes        = ntimes
         self.n_layer       = int(np.ceil(total_vai/dvai))
         self.vai_top       = np.zeros(self.n_layer) # top down integrated 'in-canopy"
@@ -147,6 +154,14 @@ class site_diags_type:
         self.lai_ground    = np.zeros(self.n_layer) # total amount of leaf area
                                                     # in the present layer per ground area
                                                     # m2 leaf / m2 ground 
+
+        # histograms of leaf radiation absorption
+        self.nhist_rabs    = 30
+        self.maxhist_rabs  = 1000
+        self.rabs_histbins = np.linspace(0,self.maxhist_rabs,self.nhist_rabs)
+        self.rabs_hist     = np.zeros(self.nhist_rabs)
+
+                                                    
         for il in range(self.n_layer):
             self.vai_top[il] = dvai*float(il)
             
@@ -167,7 +182,12 @@ class site_diags_type:
         self.gs2           = np.zeros(ntimes) # [0-1]
         self.solve_iter    = np.zeros(ntimes) # [count]
         self.co2_interc    = np.zeros(ntimes) # [Pa CO2]
-       
+
+        # History bin x vai depth diagnostics
+
+        #self.r_abs_leaf_histvl = np.zeros([nbin_light,self.n_layer]) #[umol/m2/leaf]
+
+        
         # Time x VAI depth diagnostics
         
         self.lmr_vl        = np.zeros([ntimes,self.n_layer]) # [umol/m2 leaf /s]

@@ -505,8 +505,17 @@ def main(argv):
                 if(maintresp_leaf_model==1):
                     iret = f90.lmr_ryan_sub(c8(lnc_top), c8(nscaler), ci(pft), c8(tvegk), byref(lmr_f))
                 elif(maintresp_leaf_model==2):
-                    iret = f90.lmr_atkin_sub(c8(lnc_top), c8(rdark_scaler), c8(tvegk), \
-                                             c8(atkin_mean_leaf_tempk), byref(lmr_f) )
+                    kn = f90.decaycoeffvcmax_fun(c8(vcmax25_top), \
+                                                 c8(float(GetParamFromAttrib(pft_root,'fates_maintresp_leaf_vert_scaler_coeff1')[ft])), \
+                                                 c8(float(GetParamFromAttrib(pft_root,'fates_maintresp_leaf_vert_scaler_coeff2')[ft])))
+                    
+                    rdark_scaler = np.exp(-kn*elem_diags[ican][icol].canopy_lai_mid[il])
+
+                    print(tvegk,met.data['t_grow'][it])
+                    
+                    iret = f90.lmr_atkin_sub(c8(lnc_top), c8(rdark_scaler), ci(pft), c8(tvegk), \
+                                             c8(met.data['t_grow'][it]), byref(lmr_f) )
+                    
                 else:
                     print('unknown leaf respiration model')
                     exit(1)
@@ -587,7 +596,17 @@ def main(argv):
                         leaf_site_frac = leaf_per_ground/site_diags.lai_ground[sil]
                     else:
                         leaf_site_frac = 0.
-                
+
+                    # Histogram
+                    if(cosz>0.05):
+                        ihb = np.max([0,np.sum(par_abs_leaf_umol>site_diags.rabs_histbins,dtype=int)-1])
+                        #if(ihb>12):
+                        #    code.interact(local=dict(globals(), **locals()))
+                        if(par_abs_leaf_umol>2000.0):
+                            print(par_abs_leaf_umol,cosz,(rd_abs_leaf_f.value+rb_abs_leaf_f.value)/(dlai*(met.data['visbdn'][it]+met.data['visddn'][it])))
+                            exit(0)
+                        site_diags.rabs_hist[ihb] = site_diags.rabs_hist[ihb] + leaf_site_frac
+                        
                     site_diags.lmr[it]        = site_diags.lmr[it] + leaf_per_ground*lmr_f.value
                     site_diags.agross[it]     = site_diags.agross[it] + leaf_per_ground*agross_f.value
                     site_diags.gstoma[it]     = site_diags.gstoma[it] + leaf_per_ground*gstoma_f.value
@@ -828,7 +847,7 @@ def main(argv):
     #xlabs = ax1.get_xticklabels()
     #xlabs[0].set_text('')
     #ax1.set_xticklabels(xlabs)
-    plt.show()
+    #plt.show()
 
     # Integrated fraction of absorbed PAR ifapar..
     ifapar_vl = np.zeros_like(site_diags.r_abs_veg_vl)
@@ -920,15 +939,22 @@ def main(argv):
     ax8.invert_yaxis()
     ax8.set_xlabel('Ci/Ca (shaded)')
     ax8.grid('on')
-    
-    
     plt.tight_layout()
-    plt.show()
 
-
-
-
-
+    
+    fig28, ax1=plt.subplots(figsize=(7.5,7.5))
+    binsc = site_diags.rabs_histbins
+    #print(site_diags.rabs_hist)
+    #code.interact(local=dict(globals(), **locals()))
+    
+    #binsc =  [0.5*(site_diags.rabs_histbins[i+1]+site_diags.rabs_histbins[i]) for i in range(len(site_diags.rabs_histbins)-1) ]
+    ax1.semilogy(binsc[1:],site_diags.rabs_hist[1:]/np.sum(site_diags.rabs_hist[1:]), color = 'k')
+    #ax1.plot(binsc[1:],site_diags.rabs_hist[1:]/np.sum(site_diags.rabs_hist[1:]), color = 'k')
+    ax1.set_ylabel('Count')
+    ax1.set_xlabel('[umol/m2/s]')
+    ax1.set_title('Historgram (density)\nAbsorbed Radiation')
+    ax1.grid('on')
+    
     
     fig23, ax1= plt.subplots(figsize=(7.5,7.5))
 
