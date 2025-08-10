@@ -119,7 +119,7 @@ contains
     use FatesAllometryMod, only : bleaf, bstore_allom
     use FatesAllometryMod, only : storage_fraction_of_target
     use FatesAllometryMod, only : set_root_fraction
-    use DamageMainMod, only : GetCrownReduction
+    use FatesAllometryMod, only : GetCrownReduction
     use FatesInterfaceTypesMod, only : hlm_use_tree_damage
     use ftorch
 
@@ -167,7 +167,7 @@ contains
     real(r8) :: psn_z(nlevleaf,maxpft,nclmax) 
 
     ! carbon 13 in newly assimilated carbon at leaf level
-    real(r8) :: c13disc_z(nlevleaf,maxpft,nclmax) 
+    real(r8) :: c13disc_z(nlevleaf,maxpft,nclmax)
     
     ! Mask used to determine which leaf-layer biophysical rates have been
     ! used already
@@ -819,6 +819,7 @@ contains
                                     psn_z(iv,ft,cl) = psn_z(iv,ft,cl) + area_frac * psn_ll
                                     anet_av_z(iv,ft,cl) = anet_av_z(iv,ft,cl) + area_frac * anet_ll
                                     c13disc_z(iv,ft,cl) = c13disc_z(iv,ft,cl) + area_frac * c13disc_ll
+
                                     
                                  end do do_sunsha
                                  

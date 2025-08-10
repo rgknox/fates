@@ -64,6 +64,7 @@ module LeafBiophysicsMod
   public :: CiMinMax
   public :: CiFunc
   public :: CiBisection
+  public :: ft1_f,fth_f,fth25_f
   
   character(len=*), parameter, private :: sourcefile = &
        __FILE__
@@ -111,9 +112,20 @@ module LeafBiophysicsMod
   integer, parameter :: net_assim_model = 1
   integer, parameter :: gross_assim_model = 2
 
+  ! Constants defining the electron transport model to use
+  integer, public, parameter :: FvCB1980 = 1
+  integer, public, parameter :: JohnsonBerry2021 = 2
+
   ! Constants defining the photosynthesis temperature acclimation model
   integer, parameter :: photosynth_acclim_model_none = 0
   integer, parameter :: photosynth_acclim_model_kumarathunge_etal_2019 = 1
+
+  ! This uses the kumarathunge acclimation model, but assumes that the
+  ! jv ratio (which is based off of smoothed growth and home temperatures)
+  ! applies to the not the 25 degree vcmax, but the temperature dependant value
+  ! this enforces a jv ratio to be more constnat and not follow the daily temperature
+  ! signal
+  integer, parameter :: photosynth_acclim_model_kumarathunge2019_noT25 = 2
 
   ! Rdark constants from Atkin et al., 2017 https://doi.org/10.1007/978-3-319-68703-2_6
   ! and Heskel et al., 2016 https://doi.org/10.1073/pnas.1520282113
@@ -124,9 +136,6 @@ module LeafBiophysicsMod
   ! These two are public for error checking during parameter read-in
   real(r8), parameter, public :: lmr_r_1 = 0.2061_r8     ! (umol CO2/m**2/s / (gN/(m2 leaf))) 
   real(r8), parameter, public :: lmr_r_2 = -0.0402_r8    ! (umol CO2/m**2/s/degree C)
-
-  ! Fraction of light absorbed by non-photosynthetic pigments
-  real(r8),parameter :: fnps = 0.15_r8
   
   ! term accounting that two photons are needed to fully transport a single 
   ! electron in photosystem 2
@@ -209,6 +218,9 @@ module LeafBiophysicsMod
                                                                   ! gross assimilation in the stomata model
      integer              :: stomatal_model                       ! switch for choosing between stomatal conductance models,
                                                                   ! for Ball-Berry, 2 for Medlyn
+     integer              :: electron_transport_model             ! index for electron transport model
+                                                                  ! 1: Farquhar von Caemmerer and Berry (FvCB 1980)
+                                                                  ! 2: Johnson and Berry (2021)
      integer,allocatable :: stomatal_btran_model(:)               ! index for how btran effects conductance
                                                                   ! 0: btran does not scale the stomatal slope or intercept
                                                                   ! 1: btran scales the stomatal intercept only
@@ -218,7 +230,7 @@ module LeafBiophysicsMod
                                                                   ! 0: btran does not scale vcmax or jmax
                                                                   ! 1: btran scales only vcmax
                                                                   ! 2: btran scales both vcmax and jmax
-     
+     real(r8),allocatable :: fnps(:)                              ! fraction of light absorbed by non-photosynthetic pigments
      ! -------------------------------------------------------------------------------------
      ! Note the omission of several parameter constants:
      !
@@ -427,7 +439,7 @@ contains
     real(r8) :: mm_ko2            ! Michaelis-Menten constant for O2 (Pa)
     
     ! Output
-    real(r8) :: ac               ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
+    real(r8) :: ac                ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
     
     ac = vcmax * max(ci-co2_cpoint, 0._r8) / &
          (ci+mm_kco2 * (1._r8+can_o2_ppress / mm_ko2 ))
@@ -436,11 +448,38 @@ contains
   
   ! =====================================================================================
 
-  function GetJe(par_abs,jmax) result(je)
+  function GetJe(par_abs,jmax,fnps) result (je)
 
     ! Input
     real(r8) :: par_abs           ! Absorbed PAR per leaf area [umol photons/m**2/s]
     real(r8) :: jmax              ! maximum electron transport rate (umol electrons/m**2/s)
+    real(r8) :: fnps              ! Fraction of light absorbed by non-photosynthetic pigments
+    real(r8) :: je                ! electron transport rate (umol electrons/m**2/s)
+
+    select case(lb_params%electron_transport_model)
+    case (FvCB1980)   
+       ! Get the smoothed (quadratic between J and Jmax) electron transport rate
+       je = GetJe_FvCB(par_abs,jmax,fnps)
+
+    case (JohnsonBerry2021)
+       je = GetJe_JB(par_abs,jmax,fnps)
+
+    case default
+       write (fates_log(),*)'error, incorrect leaf electron transport model specified:',lb_params%electron_transport_model
+       call endrun(msg=errMsg(sourcefile, __LINE__))
+    end select
+
+  end function GetJe
+  
+    
+  !======================================================================================
+
+  function GetJe_FvCB(par_abs,jmax,fnps) result(je)
+
+    ! Input
+    real(r8) :: par_abs           ! Absorbed PAR per leaf area [umol photons/m**2/s]
+    real(r8) :: jmax              ! maximum electron transport rate (umol electrons/m**2/s)
+    real(r8) :: fnps              ! Fraction of light absorbed by non-photosynthetic pigments
     real(r8) :: je                ! electron transport rate (umol electrons/m**2/s)
     real(r8) :: aquad,bquad,cquad ! terms for quadratic equations
     real(r8) :: r1,r2             ! roots of quadratic equation
@@ -469,16 +508,56 @@ contains
     end if
     
     je = min(r1,r2)
+
+    !print*,"Jpar,Jmax,Je:",jpar,jmax,je
+
+
     
-  end function GetJe
+  end function GetJe_FvCB
+
+  ! =====================================================================================
+
+  function GetJe_JB(par_abs,jmax,fnps) result(je)
+
+    ! Input
+    real(r8) :: par_abs           ! Absorbed PAR per leaf area [umol photons/m**2/s]
+    real(r8) :: jmax              ! maximum electron transport rate (umol electrons/m**2/s)
+    real(r8) :: fnps              ! Fraction of light absorbed by non-photosynthetic pigments
+    real(r8) :: je                ! electron transport rate (umol electrons/m**2/s)
+    real(r8) :: phi               ! maximum quantum yield (mol electrons/mol photons)
+    real(r8) :: cb6fmax           ! maximum activity of the cytochrome b6f complex
+                                  ! (umol electrons/m**2/s)
+                                  ! referred to as vqmax in Lamour et al.
+    real(r8) :: Qsat              ! Saturating irradiance - assumed to be a constant (umol/m**2/s)
+                                  ! Here we asssume abosorbed irradiance
+    real(r8) :: jsat              ! Electron transport rate estimated by the FvCB model for a
+                                  ! given Jmax at Qsat
+
+    Qsat = 1530.0_r8
+    
+    phi = (1.0_r8 - fnps) * photon_to_e
+
+    ! Calculate jsat
+    jsat = GetJe_FvCB(par_abs, jmax, fnps)
+   
+    ! Equation to convert PFT specific Jmax to cb6fmax
+    cb6fmax = (Qsat * jsat) / &
+         (Qsat - (jsat / phi) ) 
+
+    ! Simplified RH JB formulation
+    je = par_abs * cb6fmax / &
+         ( (cb6fmax / phi) + par_abs )  
+    
+  end function GetJe_JB
 
   ! =====================================================================================
   
-  function AgrossRuBPC3(par_abs,jmax,ci,co2_cpoint) result(aj)
+  function AgrossRuBPC3(par_abs,jmax,fnps,ci,co2_cpoint) result(aj)
 
     ! Input
     real(r8) :: par_abs    ! Absorbed PAR per leaf area [umol photons/m2leaf/s ]
     real(r8) :: jmax       ! maximum electron transport rate (umol electrons/m**2/s)
+    real(r8) :: fnps       ! Fraction of light absorbed by non-photosynthetic pigments
     real(r8) :: ci         ! intracellular leaf CO2 (Pa)
     real(r8) :: co2_cpoint ! CO2 compensation point (Pa)
 
@@ -487,14 +566,13 @@ contains
 
     ! locals
     real(r8) :: je         ! actual electron transport rate (umol electrons/m**2/s)
-    
-    ! Get the smoothed (quadratic between J and Jmax) electron transport rate
-    je = GetJe(par_abs,jmax)
 
     
+    je = GetJe(par_abs,jmax,fnps)
+
     aj = je * max(ci-co2_cpoint, 0._r8) / &
-                 (4._r8*ci+8._r8*co2_cpoint)
-    
+         (4._r8*ci+8._r8*co2_cpoint)
+       
     
   end function AgrossRuBPC3
   
@@ -718,8 +796,8 @@ contains
     end if
        
     ! Get the maximum e tranport rate for when we solve for RuBP (twice)
-    Je = GetJe(par_abs,jmax)
-    
+    je = GetJe(par_abs,jmax,lb_params%fnps(ft))
+     
     ! Find ci at maximum conductance (1/inf = 0)
     
     a = can_co2_ppress
@@ -747,7 +825,8 @@ contains
     f = 8._r8*co2_cpoint
     g = lmr
     ci(2) = CiFromAnetDiffGrad(a,b,c,d,e,f,g)
-    ag(2) = AgrossRuBPC3(par_abs,jmax,ci(2),co2_cpoint)
+    ag(2) = AgrossRuBPC3(par_abs,jmax, &
+         lb_params%fnps(ft),ci(2),co2_cpoint)
     
     if(debug)then
        if ( abs((can_co2_ppress-ci(2))/b - (ag(2)-lmr))  > 1.e-3_r8 ) then
@@ -785,7 +864,7 @@ contains
     f = 8._r8*co2_cpoint
     g = lmr
     ci(2) = CiFromAnetDiffGrad(a,b,c,d,e,f,g)
-    ag(2) = AgrossRuBPC3(par_abs,jmax,ci(2),co2_cpoint)
+    ag(2) = AgrossRuBPC3(par_abs,jmax,lb_params%fnps(ft),ci(2),co2_cpoint)
     
     if(debug)then
        if ( abs((can_co2_ppress-ci(2))/b -(ag(2)-lmr))  > 1.e-3_r8 ) then
@@ -904,7 +983,7 @@ contains
        ac = AgrossRubiscoC3(vcmax,ci,can_o2_ppress,co2_cpoint,mm_kco2,mm_ko2)
        
        ! C3: RuBP-limited photosynthesis
-       aj = AgrossRuBPC3(par_abs,jmax,ci,co2_cpoint )
+       aj = AgrossRuBPC3(par_abs,jmax, lb_params%fnps(ft),ci,co2_cpoint )
 
        ! Take the minimum, no smoothing
        agross = min(ac,aj)
@@ -1851,7 +1930,10 @@ contains
        vcmaxse = lb_params%vcmaxse(FT)
        jmaxse  = lb_params%jmaxse(FT)
        
-    case (photosynth_acclim_model_kumarathunge_etal_2019) !Kumarathunge et al. temperature acclimation, Thome=30-year running mean
+    case (photosynth_acclim_model_kumarathunge_etal_2019,photosynth_acclim_model_kumarathunge2019_noT25)
+       ! Kumarathunge et al. temperature acclimation
+       ! Thome = 30-year running mean
+       ! Tgrowth = defined as the mean air temperature for the 30 d before measurement (calculation)
        t_growth_celsius = t_growth-tfrz
        t_home_celsius = t_home-tfrz
        vcmaxha = (42.6_r8 + (1.14_r8*t_growth_celsius))*1e3_r8 !J/mol
@@ -1878,8 +1960,10 @@ contains
     select case( lb_params%photo_tempsens_model)
     case (photosynth_acclim_model_none)
        jmax25  = jmax25top_ft * nscaler * dayl_factor_local
-    case (photosynth_acclim_model_kumarathunge_etal_2019) 
+    case (photosynth_acclim_model_kumarathunge_etal_2019)
        jmax25 = vcmax25*jvr
+    case(photosynth_acclim_model_kumarathunge2019_noT25) 
+       jmax25 = -999  ! not used
     case default
        write (fates_log(),*)'error, incorrect leaf photosynthesis temperature acclimation model specified'
        write (fates_log(),*)'lb_params%photo_tempsens_model:',lb_params%photo_tempsens_model
@@ -1899,8 +1983,13 @@ contains
        kp = kp25_ft * nscaler * 2._r8**((min(veg_tempk,310._r8)-(tfrz+25._r8))/10._r8)
     end if
 
-    jmax  = jmax25 * ft1_f(veg_tempk, jmaxha) * fth_f(veg_tempk, jmaxhd, jmaxse, jmaxc)
- 
+    if(lb_params%photo_tempsens_model.eq.photosynth_acclim_model_kumarathunge2019_noT25) then
+       jmax = vcmax*jvr
+    else
+       jmax = jmax25 * ft1_f(veg_tempk, jmaxha) * fth_f(veg_tempk, jmaxhd, jmaxse, jmaxc)
+    end if
+
+    
     ! Adjust various rates for water limitations
     ! -----------------------------------------------------------------------------------
 

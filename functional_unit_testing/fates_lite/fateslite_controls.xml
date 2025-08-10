@@ -1,0 +1,99 @@
+<?xml version="1.0"?>
+<all>
+
+  <!-- Parameters for leaf biophysics unit tests -->
+  <numpft> 1 </numpft>
+  <!-- Site information:latitude, longitude and time-zone 
+       time zone is for calculating zenith angle off local met time-->
+  <site_info>
+    <lat> 9.153 </lat>     <!-- Deg Latitude -->
+    <lon> 280.1539 </lon>  <!-- Deg Longitude -->
+    <tzone>7</tzone>
+    <dvai> 0.1 </dvai>     <!-- Depth increment of LAI+SAI -->
+  </site_info>
+  <analysis_controls>
+    <visualize_elements> False </visualize_elements>
+    <view_element_inst_profs> False </view_element_inst_profs>
+    <view_site_inst_profs> False </view_site_inst_profs>
+    <met_filter> reysanchez_20112013_daytime </met_filter>
+    <!-- <met_filter> 10days_daytime </met_filter> -->
+    <!-- <met_filter> mizanur_ms </met_filter> -->
+    <view_met_forcing> False </view_met_forcing>
+  </analysis_controls>
+  <canopy_structure>
+    <!-- Specify how the canopy is constructed, on a cohort by cohort 
+	 basis. Each cohort must be associated with a pft index, which
+	 can be referenced in the parameter designation section below.
+	 Each cohort takes up a fraction of the canopy area.  If the 
+	 areas sum to less than 1, then the remainder is assumed to be air.  If
+	 the areas are greater than 1, then it is assumed that the cohorts are specified
+	 in height order and the algorithm will create multiple canopy layers -->
+    <cohort_pft> 1 </cohort_pft> <!-- can have multiple cohorts of diff pfts -->
+    <cohort_area_frac> 1.0 </cohort_area_frac> <!-- sums to 1 across pfts -->
+    <cohort_lai> 5.0 </cohort_lai>
+    <cohort_sai> 0.5 </cohort_sai>
+    <!-- These values describe site-level properties -->
+    <!-- fraction of visible light reflected by beam and diffuse radiation -->
+    <ground_vis_albedo> 0.3, 0.3 </ground_vis_albedo>
+    <ground_nir_albedo> 0.3, 0.3 </ground_nir_albedo> <!-- unused -->
+    <nlayers> 50 </nlayers> <!-- number of leaf layers (equal depth) -->
+    <frac_snow> 0.0 </frac_snow> <!-- fraction of lai covered by snoow -->
+    <btran_avg> 0.8 </btran_avg> <!-- There is no soil model, so a constant btran is applied -->
+    <btran_std> 0.1 </btran_std>
+    <n_stochastic_samples> 10 </n_stochastic_samples>
+  </canopy_structure>
+  <f90_params>
+    <scalar_dim>
+      <param name='fates_daylength_factor_switch'> 1 </param>   <!-- Daylength factor: 1) scale vcmax and jmax,  0) do not scale -->
+      <param name='fates_leaf_stomatal_model'> 2 </param>       <!-- Stomatal Model: 1) Ball-Berry, 2) Medlyn -->
+      <param name='fates_leaf_stomatal_assim_model'> 1 </param> <!-- Stomatal assimilation model, ie 1) net or 2) gross -->
+      <param name='fates_leaf_photo_tempsens_model'> 0 </param> <!-- Photosynthesis Acclimation: 0) none, 1) kumarathunge et al 2019 -->
+      <param name='fates_electron_transport_model'> 1 </param>  <!-- FvCB1980 = 1, JohnsonBerry2021 = 2 --> 
+      <param name='fates_maintresp_leaf_model'> 1 </param>      <!-- # 1=Ryan (1991), 2=Atkin et al (2017) -->
+    </scalar_dim>
+    <pft_dim_var>
+      <!-- These parameters are defined by an a priori gaussian 
+           standard deviation instead of a mean alone -->
+      <param name='fates_leaf_vcmax25top' > 70 </param>
+    </pft_dim_var>
+    <pft_dim>
+      <!-- These are loaded into F90 structures -->
+      <param name='fates_leaf_stomatal_btran_model'> 4 </param>
+      <param name='fates_leaf_agross_btran_model'> 0 </param>
+      <param name='fates_leaf_c3psn'> 1 </param>
+      <param name='fates_leaf_stomatal_slope_ballberry'> 8 </param>
+      <param name='fates_leaf_stomatal_slope_medlyn'> 4.1 </param>
+      <param name='fates_leaf_fnps'> 0.15 </param>
+      <param name='fates_leaf_stomatal_intercept'> 10000 </param>
+      <param name='fates_maintresp_reduction_curvature'>  0.01 </param>
+      <param name='fates_maintresp_reduction_intercept'> 1 </param>
+      <param name='fates_maintresp_reduction_upthresh'> 1 </param>
+      <param name='fates_maintresp_leaf_atkin2017_baserate'>  1.756 </param>
+      <param name='fates_maintresp_leaf_ryan1991_baserate'> 2.525e-06 </param>
+      <param name='fates_leaf_vcmaxha'> 65330 </param>
+      <param name='fates_leaf_jmaxha'> 43540 </param>
+      <param name='fates_leaf_vcmaxhd'> 149250 </param>
+      <param name='fates_leaf_jmaxhd'> 152040 </param>
+      <param name='fates_leaf_vcmaxse'> 485 </param>
+      <param name='fates_leaf_jmaxse'> 495 </param>
+      <!-- These are loaded into python structures -->
+      <param name='fates_leafn_vert_scaler_coeff1'> 0.00963 </param>
+      <param name='fates_leafn_vert_scaler_coeff2'> 2.43 </param>
+      <param name='fates_maintresp_leaf_vert_scaler_coeff1'> 0.00963 </param> <!-- Atkin only -->
+      <param name='fates_maintresp_leaf_vert_scaler_coeff2'> 2.43 </param>    <!-- Atkin only -->
+      <param name='fates_leaf_vcmax25top'> 73 </param>
+      <param name='fates_stoich_nitr'> 0.033 </param>
+      <param name='fates_leaf_slatop'>  0.012</param>
+      <param name='fates_rad_leaf_clumping_index'> 0.85 </param>
+      <param name='fates_rad_leaf_rhonir'> 0.46 </param>
+      <param name='fates_rad_leaf_rhovis'> 0.11 </param>
+      <param name='fates_rad_leaf_taunir'> 0.33 </param>
+      <param name='fates_rad_leaf_tauvis'> 0.06 </param>
+      <param name='fates_rad_leaf_xl'> 0.32 </param>
+      <param name='fates_rad_stem_rhonir'> 0.49 </param>
+      <param name='fates_rad_stem_rhovis'> 0.21 </param>
+      <param name='fates_rad_stem_taunir'> 0.001 </param>
+      <param name='fates_rad_stem_tauvis'> 0.001 </param>
+    </pft_dim>
+  </f90_params>
+</all>
