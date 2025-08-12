@@ -249,53 +249,46 @@ iret = f90.set_leaf_param_sub(c8(float(medlyn_model)),ci(1),*ccharnb('fates_leaf
 # Leaf temperature ranges [C]
 leaf_tempc_min = 20.0
 leaf_tempc_max = 50.0
-leaf_tempc_n = 5
+leaf_tempc_n = 10
 leaf_tempc_vec = np.linspace(leaf_tempc_min,leaf_tempc_max,num=leaf_tempc_n)
 
 # Relative Humidity Ranges
 rh_max = 1.00
 rh_min = 0.2
-rh_n   = 5
+rh_n   = 10
 rh_vec = np.linspace(rh_min,rh_max,num=rh_n)
 
 # CO2 concentration ranges
 
 co2_max = 600.0
 co2_min = 200.0
-co2_n   = 5
+co2_n   = 10
 co2_vec = np.linspace(co2_min,co2_max,num=co2_n)
 
 # Absorbed PAR ranges [W/m2]
 par_abs_min = 1.0
 par_abs_max = 250
-par_abs_n  = 5
+par_abs_n  = 10
 par_abs_vec = np.linspace(par_abs_min,par_abs_max,num=par_abs_n)
 
 # Boundary Conductance ranges [umol/m2/s]
 gb_min =  500000.0            # Lower limit imposed by CLM/ELM 0.5 mol/m2/s
 gb_max = 5000000.0            # 50% larger than  Roughly largestthe largest values seen at BCI (which are 2.5mol/m2/s)
-gb_n  = 5
+gb_n  = 10
 gb_vec = np.linspace(gb_min,gb_max,num=gb_n)
 
 # btran ranges
 
-btran_n   = 5
-btran_min = -2
-btran_max = 0
-btran_vec = np.logspace(btran_min,btran_max,num=btran_n)
+btran_n   = 10
+btran_min = 0.05
+btran_max = 1
+btran_vec = np.linspace(btran_min,btran_max,num=btran_n)
 
 # vcmax25top ranges
 vcmax25t_n = 10
 vcmax25t_min = 2
-vcmax25t_max = 125
+vcmax25t_max = 70
 vcmax25t_vec = np.linspace(vcmax25t_min,vcmax25t_max,num=vcmax25t_n)
-
-# air pressure
-
-air_press_max = 1.1*can_press_1atm
-air_press_min = 0.85*can_press_1atm
-air_press_n   = 5
-air_press_vec = np.linspace(air_press_min,air_press_max,air_press_n)
 
 print(' {} leaf temperature values [C] from {} to {}'.format(leaf_tempc_n,leaf_tempc_min,leaf_tempc_max))
 print(' {} RH values [fraction] from {} to {}'.format(rh_n,rh_min,rh_max))
@@ -460,7 +453,7 @@ print('Spliting model data into training and validation sets')
 
 # 1) Split the model input and output into a training set and a validation set
 # Remove validation points from the training sample
-valid_size = 5000
+valid_size = 10000
 ivs = [random.randint(0, n_model_runs-1) for _ in range(valid_size)]
 ivs.sort(reverse=True)
 valid_in  = np.zeros([valid_size,n_features_in])
@@ -510,29 +503,25 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class PhotoNeuralNetwork(nn.Module):
     def __init__(self):
         super(PhotoNeuralNetwork, self).__init__()
-        self.fc1   = nn.Linear(13, 32)
+        self.fc1   = nn.Linear(13, 64)
         self.relu1 = nn.ReLU()
-        self.fc2   = nn.Linear(32, 16)
+        self.fc2   = nn.Linear(64, 32)
         self.relu2 = nn.ReLU()
-        self.fc3   = nn.Linear(16, 2)
-
+        self.fc3   = nn.Linear(32, 2)
+        #self.relu3 = nn.ReLU()
+        #self.fc4   = nn.Linear(8, 2)
+        
     def forward(self, x):
         x = self.fc1(x)
         x = self.relu1(x)
         x = self.fc2(x)
         x = self.relu2(x)
         x = self.fc3(x)
+        #x = self.relu3(x)
+        #x = self.fc4(x)
         return x
 
-n_hidden  = 16   # number of perceptrons/neurons in the hidden layers
-mod_pattern = 'L16-Re-L32-Re-L32'  # This is a label for model architecture in plotting
-#model = nn.Sequential(
-#        nn.Linear(n_features_in,n_hidden),
-#        nn.ReLU(),
-#        nn.Linear(n_hidden,2*n_hidden),
-#        nn.ReLU(),
-#        nn.Linear(2*n_hidden,n_features_out),
-#        ).to(device)
+mod_pattern = '13-L64-Re-L32-Re-2'  # This is a label for model architecture in plotting
 
 model = PhotoNeuralNetwork().to(device)
 
@@ -550,6 +539,10 @@ y_mean,y_std,y_norm = Normalize2DTensor(y,dim=0)
 #x_norm = x
 #y_norm = y
 
+code.interact(local=dict(globals(), **locals()))
+
+print("real(wp), dimension(13) :: in_mean = {}".format(x_mean.numpy()))
+print("real(wp), dimension(13) :: in_mean = {}".format(x_std.numpy()))
 
 
 print('Checking training data for nans')
@@ -588,14 +581,14 @@ if(x_norm.isnan().any() or y_norm.isnan().any()):
 #batch_size = 2048
 batch_size = 4096*2
 
-learning_rate = 0.0005
+learning_rate = 0.0002
 criterion = nn.MSELoss()
 #optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate)
 optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
 num_epochs = 1000000
 #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.0001, patience=5)
 
-max_mse = 0.002
+max_mse = 0.0005
 
 print('Starting model passes, calculating losses and back-propogating')
 
@@ -653,9 +646,10 @@ yv_norm = model(xv_norm)
 yv_pred = DeNormalize2DTensor(yv_norm.to('cpu'),y_mean.to('cpu'),y_std.to('cpu')).detach().numpy()
 
 #yv_pred = yv_norm
+code.interact(local=dict(globals(), **locals()))
 
-print("Input Means: {}".format(x_mean))
-print("Input STDs: {}".format(x_std))
+print("real(wp), dimension(13) :: in_mean = [{}".format(x_mean))
+print("real(wp), dimension(13) :: in_mean = [{}".format(x_std))
 
 print("Output Means: {}".format(y_mean))
 print("Output STDs: {}".format(y_std))
@@ -688,8 +682,9 @@ ax2.set_ylabel('NN gs [mol/m2/s]')
 minax = np.min([1.e-6*yv_pred[:,1],1.e-6*valid_out[:,1]])
 maxax = np.max([1.e-6*yv_pred[:,1],1.e-6*valid_out[:,1]])
 rngax = maxax-minax
-minax = minax-0.1*rngax
-maxax = maxax+0.1*rngax
+minax = 0
+maxax = 5 #minax = minax-0.1*rngax
+#maxax = maxax+0.1*rngaxD
 ax2.set_xlim([minax,maxax])
 ax2.set_ylim([minax,maxax])
 ax2.plot([minax,maxax],[minax,maxax],'k--')
@@ -720,7 +715,7 @@ datestr = datetime.now().strftime("%Y%m%d-%H%M")
 #torch.save(model.state_dict(), './c3psn_modelsd_i13_{}_c{}.pt'.format(mod_pattern,datestr))
 
 script_module = torch.jit.script(model)
-script_module.save("./c3psn_modelsd_i13_{}_c{}.pt".format(mod_pattern,datestr))
+script_module.save("./c3psn_modelsd_szv2_i13_{}_c{}.pt".format(mod_pattern,datestr))
 
 
 #traced_model = torch.jit.trace(model, dummy_input)

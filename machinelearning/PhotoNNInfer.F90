@@ -46,22 +46,35 @@ program PhotoNNInfer
 
   ! Normalization
 
-  ! c3psn_modelsd_i13_L16-Re-L32-Re-L32_c20250807-1112.pt
-  
-  real(wp), dimension(13) :: in_mean = [5.7742e+02, 1.6995e+01, 1.7551e+01, &
-       2.9115e-01, 3.0815e+02, 3.9990e+02, &
-       6.4835e+03, 2.7501e+06, 3.8906e+03, &
-       1.8506e+02, 5.0139e+04, 7.9321e+00, &
-       5.2570e-01]
-  
-  real(wp), dimension(13) :: in_std =[4.0494e+02, 2.9277e+01, 3.4885e+01, &
-       3.7018e-01, 1.0610e+01, 1.4143e+02, &
-       3.5785e+03, 1.5914e+06, 2.9987e+03, &
-       1.6973e+02, 2.3459e+04, 3.8481e+00, &
-       2.0702e-01]
+  ! c3psn_4Lmodelsd_i13_13-L64-Re-L32-Re-2_c20250810-1514.pt
+  real(wp), dimension(13) :: in_mean = [5.7727e+02, 1.6995e+01, 1.7551e+01, 2.9133e-01, &
+       3.0815e+02, 3.9998e+02,6.4830e+03, 2.7502e+06, &
+       3.8902e+03, 1.8502e+02, 5.0136e+04, 7.9316e+00, &
+       5.2576e-01]
 
-  real(wp), dimension(2) :: out_mean = [1.8664e+00, 7.2744e+04]
-  real(wp), dimension(2) :: out_std  = [4.6094e+00, 4.5607e+05]
+  real(wp), dimension(13) :: in_std =[4.0495e+02, 2.9266e+01, 3.4873e+01, 3.7019e-01, &
+       1.0607e+01, 1.4141e+02, 3.5775e+03, 1.5905e+06, &
+       2.9995e+03, 1.6967e+02, 2.3453e+04, 3.8470e+00, &
+       2.0698e-01]
+
+  real(wp), dimension(2) :: out_mean = [1.7147e+00, 6.3865e+04]
+  
+  real(wp), dimension(2) :: out_std  = [4.0136e+00, 3.8227e+05]
+
+  !real(wp), dimension(13) :: in_mean = [5.7742e+02, 1.6995e+01, 1.7551e+01, &
+  !     2.9115e-01, 3.0815e+02, 3.9990e+02, &
+  !     6.4835e+03, 2.7501e+06, 3.8906e+03, &
+  !     1.8506e+02, 5.0139e+04, 7.9321e+00, &
+  !     5.2570e-01]
+  
+  !real(wp), dimension(13) :: in_std =[4.0494e+02, 2.9277e+01, 3.4885e+01, &
+  !     3.7018e-01, 1.0610e+01, 1.4143e+02, &
+  !     3.5785e+03, 1.5914e+06, 2.9987e+03, &
+  !     1.6973e+02, 2.3459e+04, 3.8481e+00, &
+  !     2.0702e-01]
+
+!  real(wp), dimension(2) :: out_mean = [1.8664e+00, 7.2744e+04]
+!  real(wp), dimension(2) :: out_std  = [4.6094e+00, 4.5607e+05]
 
 
   
@@ -115,6 +128,7 @@ program PhotoNNInfer
   
   ! 1 standard atmosphere in [Pa]
   real(dp), parameter :: can_press_stdatm_pa = 101325.0
+  
   ! Typical O2 concentration in atmosphere 209k ppm
   real(dp), parameter :: o2_ppp = 0.2095
 
@@ -215,19 +229,18 @@ program PhotoNNInfer
 
   call AllocLeafParam(1)
   
-  call SetLeafParam(real(fvcb1980,dp),0,'fates_electron_transport_model')
-  call SetLeafParam(real(daylen_on,dp),0,'fates_daylength_factor_switch')
-  call SetLeafParam(real(medlyn_model,dp),0,'fates_leaf_stomatal_model')
-  call SetLeafParam(real(net_assim_model,dp),0,'fates_leaf_stomatal_assim_model')
-  call SetLeafParam(real(no_tempsense,dp),0,'fates_leaf_photo_tempsens_model')
-  call SetLeafParam(real(c3_path,dp),1,'fates_leaf_c3psn')
-  call SetLeafParam(real(btran_on_gs_gs2,dp),1,'fates_leaf_stomatal_btran_model')
-  call SetLeafParam(real(btran_on_ag_vcmax_jmax,dp),1,'fates_leaf_agross_btran_model')
+  call SetLeafParam(real(1,dp),0,'fates_electron_transport_model')
+  call SetLeafParam(real(1,dp),0,'fates_daylength_factor_switch')
+  call SetLeafParam(real(2,dp),0,'fates_leaf_stomatal_model')
+  call SetLeafParam(real(1,dp),0,'fates_leaf_stomatal_assim_model')
+  call SetLeafParam(real(0,dp),0,'fates_leaf_photo_tempsens_model')
+  call SetLeafParam(real(1,dp),1,'fates_leaf_c3psn')
+  call SetLeafParam(real(4,dp),1,'fates_leaf_stomatal_btran_model')
+  call SetLeafParam(real(2,dp),1,'fates_leaf_agross_btran_model')
   call SetLeafParam(0.15_dp,1,'fates_leaf_fnps')
   call SetLeafParam(4.1_dp,1,'fates_leaf_stomatal_slope_medlyn')
   call SetLeafParam(10000._dp,1,'fates_leaf_stomatal_intercept')
   call SetLeafParam(2.525e-6_dp,1,'fates_maintresp_leaf_ryan1991_baserate')
-  call SetLeafParam(1.756_dp,1,'fates_maintresp_leaf_atkin2017_baserate')
   call SetLeafParam(65330._dp,1,'fates_leaf_vcmaxha')
   call SetLeafParam(43540._dp,1,'fates_leaf_jmaxha')
   call SetLeafParam(149250._dp,1,'fates_leaf_vcmaxhd')
@@ -328,8 +341,6 @@ program PhotoNNInfer
      call torch_model_forward(model, in_tensors, out_tensors)
 
      out_data = DeNormalize1DArray(out_data_norm,out_mean,out_std)
-
-     
      
      print*,agross,out_data(1),gs,out_data(2)
      !print*,"nn    out: ",out_data(1), out_data(2)
