@@ -342,6 +342,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_agb_si
   integer :: ih_npp_si
   integer :: ih_gpp_si
+  integer :: ih_gpp_nn_err_si
   integer :: ih_aresp_si
   integer :: ih_maint_resp_si
   integer :: ih_growth_resp_si
@@ -402,6 +403,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_hr_si
 
   integer :: ih_c_stomata_si
+  integer :: ih_c_stomata_nn_err_si
   integer :: ih_c_lblayer_si
   integer :: ih_vis_rad_err_si
   integer :: ih_nir_rad_err_si
@@ -5039,7 +5041,8 @@ contains
     integer  :: s        ! The local site index
     integer  :: io_si     ! The site index of the IO array
     integer  :: age_class  ! class age index
-    real(r8) :: site_area_veg_inv  ! inverse canopy area of the site (1/m2)
+    real(r8) :: site_lai            ! m2 of leaf per m2 of ground in the site
+    real(r8) :: site_area_veg_inv   ! inverse canopy area of the site (1/m2)
     real(r8) :: site_area_rad_inv   ! inverse canopy area of site for only
     ! patches that called the solver
     real(r8) :: dt_tstep_inv        ! inverse timestep (1/sec)
@@ -5052,11 +5055,13 @@ contains
 
 
     associate( hio_gpp_si                   => this%hvars(ih_gpp_si)%r81d, &
+         hio_gpp_nn_err_si            => this%hvars(ih_gpp_nn_err_si)%r81d, &
          hio_npp_si                   => this%hvars(ih_npp_si)%r81d, &
          hio_aresp_si                 => this%hvars(ih_aresp_si)%r81d, &
          hio_maint_resp_si            => this%hvars(ih_maint_resp_si)%r81d, &
          hio_growth_resp_si           => this%hvars(ih_growth_resp_si)%r81d, &
          hio_c_stomata_si             => this%hvars(ih_c_stomata_si)%r81d, &
+         hio_c_stomata_nn_err_si      => this%hvars(ih_c_stomata_nn_err_si)%r81d, &
          hio_c_lblayer_si             => this%hvars(ih_c_lblayer_si)%r81d, &
          hio_vis_rad_err_si           => this%hvars(ih_vis_rad_err_si)%r81d, &
          hio_nir_rad_err_si           => this%hvars(ih_nir_rad_err_si)%r81d, &
@@ -5095,6 +5100,7 @@ contains
          ! We do not call the radiation solver if
          ! a) there is no vegetation
          ! b) there is no light! (ie cos(zenith) ~= 0)
+         site_lai = 0._r8
          age_area_rad(:) = 0._r8
          cpatch => sites(s)%oldest_patch
          do while(associated(cpatch))
@@ -5153,7 +5159,7 @@ contains
             hio_c_stomata_si(io_si) = hlm_hio_ignore_val
             hio_c_lblayer_si(io_si) = hlm_hio_ignore_val
             hio_tveg(io_si)         = hlm_hio_ignore_val
-
+            hio_c_stomata_nn_err_si(io_si) = hlm_hio_ignore_val
             exit if_veg_area
 
          else
@@ -5194,6 +5200,20 @@ contains
                      hio_gpp_si(io_si) = hio_gpp_si(io_si) + &
                           ccohort%gpp_tstep * n_perm2 * dt_tstep_inv
 
+                     hio_gpp_nn_err_si(io_si) = hio_gpp_nn_err_si(io_si) + &
+                          ccohort%gpp_nn_err * n_perm2 * dt_tstep_inv
+
+                     ! This is similar to hio_c_stomata_si, but the weighting is slightly
+                     ! different. This value is based completely off of LAI weighting,
+                     ! whereas the other uses lai weighting inside the patch level,
+                     ! and then crown area weighting at the site level..
+                     hio_c_stomata_nn_err_si(io_si) = hio_c_stomata_nn_err_si(io_si) + &
+                          ccohort%gs_nn_err * (ccohort%treelai*ccohort%c_area*area_inv) * &
+                          mol_per_umol
+
+                     ! Mean total [m2/m2]
+                     site_lai = site_lai + ccohort%treelai*ccohort%c_area*area_inv
+                     
                      hio_maint_resp_si(io_si) = hio_maint_resp_si(io_si) + &
                           ccohort%resp_m_tstep * n_perm2 * dt_tstep_inv
 
@@ -5229,6 +5249,10 @@ contains
                end do
                cpatch => cpatch%younger
             end do
+            if(site_lai>nearzero)then
+               hio_c_stomata_nn_err_si(io_si) = hio_c_stomata_nn_err_si(io_si)/site_lai
+            end if
+            
          end if if_veg_area
       end do do_sites
 
@@ -7132,9 +7156,9 @@ contains
                avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar,  &
                initialize=initialize_variables, index=ih_canopy_fracarea_si)
 
-          call this%set_history_var(vname='FATES_NCL', units='',                  &
+          call this%set_history_var(vname='FATES_NCL', units='',          &
                long='number of canopy levels',                            &
-               use_default='inactive', avgflag='A', vtype=site_r8,               &
+               use_default='inactive', avgflag='A', vtype=site_r8,        &
                hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables, &
                index=ih_ncl_si)
 
@@ -8730,6 +8754,12 @@ contains
             upfreq=group_hifr_simple, ivar=ivar, initialize=initialize_variables,                 &
             index = ih_c_stomata_si)
 
+       call this%set_history_var(vname='FATES_STOMATAL_COND_NN_ERR',              &
+            units='mol m-2 s-1', long='mean stomatal conductance NN error',       &
+            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
+            upfreq=group_hifr_simple, ivar=ivar, initialize=initialize_variables, &
+            index = ih_c_stomata_nn_err_si)
+       
        call this%set_history_var(vname='FATES_LBLAYER_COND', units='mol m-2 s-1', &
             long='mean leaf boundary layer conductance', use_default='active',    &
             avgflag='A', vtype=site_r8, hlms='CLM:ALM',  upfreq=group_hifr_simple,                &
@@ -8760,6 +8790,11 @@ contains
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
             upfreq=group_hifr_simple, ivar=ivar, initialize=initialize_variables, index = ih_gpp_si)
 
+       call this%set_history_var(vname='FATES_GPP_NN_ERR', units='kg m-2 s-1',           &
+            long='gross primary production error bias from the NN solve',       &
+            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
+            upfreq=group_hifr_simple, ivar=ivar, initialize=initialize_variables, index = ih_gpp_nn_err_si)
+       
        call this%set_history_var(vname='FATES_MAINT_RESP', units='kg m-2 s-1',    &
             long='maintenance respiration in kg carbon per m2 land area per second', &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &

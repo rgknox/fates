@@ -23,7 +23,9 @@ from ctypes import *
 from operator import add
 import importlib.util
 
-sys.path.insert(0,'/home/rgknox/Models/CTSM/src/fates/functional_unit_testing/shared/py_src')
+current_path = os.getcwd()
+fates_path=current_path.split('fates')[0]+'fates'
+sys.path.insert(0,fates_path+'/functional_unit_testing/shared/py_src')
 
 from PyF90Utils import c8, ci, cchar, c8_arr, ci_arr, ccharnb
 import CtypesInit
@@ -104,7 +106,7 @@ ci_tol = 0.1
 # Create aliases for the ctype Fortran objects
 # =======================================================================================
 
-exec(open("/home/rgknox/Models/CTSM/src/fates/functional_unit_testing/shared/py_src/CtypesInit.py").read())
+exec(open(fates_path+"/functional_unit_testing/shared/py_src/CtypesInit.py").read())
 
 
 def Normalize2DTensor(x,dim=0,x_mean=None,x_std=None):
@@ -150,7 +152,7 @@ def GetJmaxKp25Top(vcmax25_top):
 
 # This class call instantiates all the fortran shared objects
 # and creates aliases for their functions and subroutines
-f90 = f90_modules('/home/rgknox/Models/CTSM/src/fates/functional_unit_testing/shared/bld/')
+f90 = f90_modules(fates_path+'/functional_unit_testing/shared/bld/')
 
 
 controls = {
@@ -179,7 +181,7 @@ parameter_constants = {
 
 # Load the xml control file
 # -----------------------------------------------------------------------------------
-xmlroot = et.parse("/home/rgknox/Models/CTSM/src/fates/functional_unit_testing/leaf_biophys/leaf_biophys_controls.xml").getroot()
+xmlroot = et.parse(fates_path+"/functional_unit_testing/leaf_biophys/leaf_biophys_controls.xml").getroot()
 
 # We will allocate 1 token pft to hold data, we will change the values as needed
 numpft = 1
@@ -258,12 +260,19 @@ rh_min = 0.2
 rh_n   = 10
 rh_vec = np.linspace(rh_min,rh_max,num=rh_n)
 
-# CO2 concentration ranges
+# CO2 concentration ranges (ppm)
 
 co2_max = 600.0
 co2_min = 200.0
 co2_n   = 10
 co2_vec = np.linspace(co2_min,co2_max,num=co2_n)
+
+# Atmospheric Pressure ranges
+
+can_press_min = 099000.0
+can_press_max = 103000.0
+can_press_n   = 10
+can_press_vec = np.linspace(can_press_min,can_press_max,can_press_n)
 
 # Absorbed PAR ranges [W/m2]
 par_abs_min = 1.0
@@ -311,14 +320,14 @@ qsdt_dummy_f = c_double(-9.0);esdt_dummy_f = c_double(-9.0)
 solve_iter_f = c_int(-9);     gs0_f        = c_double(-9.0)
 gs1_f        = c_double(-9.0);gs2_f        = c_double(-9.0)
 
-n_model_runs = len(vcmax25t_vec)*len(leaf_tempc_vec)*len(btran_vec)*len(gb_vec)*len(rh_vec)*len(par_abs_vec)*len(co2_vec)
+n_model_runs = len(vcmax25t_vec)*len(leaf_tempc_vec)*len(btran_vec)*len(gb_vec)*len(rh_vec)*len(par_abs_vec)*len(co2_vec)*len(can_press_vec)
 
 print('\nRunning mechanistic photosynthesis model for {} combinations'.format(n_model_runs))
 
 # Report every 5%
 ntestmod = int(n_model_runs/20)
 
-n_features_in  = 13   # number of controls on photosynthesis
+n_features_in  = 14   # number of controls on photosynthesis
 n_features_out = 2    # number of predictions (ie agross and gstoma)
 
 model_in  = np.zeros([n_model_runs,n_features_in])
@@ -327,6 +336,8 @@ model_out = np.zeros([n_model_runs,n_features_out])
 print('\nRunning a total of {} tests: \n'.format(n_model_runs))
 time0 = time.process_time()
 
+lnc_top  = fates_stoich_nitr[0]/fates_leaf_slatop[0]
+
 ip = 0
 for vcmax25_top in vcmax25t_vec:
 
@@ -334,116 +345,108 @@ for vcmax25_top in vcmax25t_vec:
 
   for leaf_tempc in leaf_tempc_vec:
     leaf_tempk = leaf_tempc + tfrz_1atm
-    iret = f90.qsat_sub(c8(leaf_tempk),c8(can_press_1atm), \
-                        byref(veg_qs_f),byref(veg_es_f), \
-                        byref(qsdt_dummy_f),byref(esdt_dummy_f))
+    for can_press in can_press_vec:
+
+      o2_ppress = 0.2095*can_press
+        
+      iret = f90.qsat_sub(c8(leaf_tempk),c8(can_press), \
+                          byref(veg_qs_f),byref(veg_es_f), \
+                          byref(qsdt_dummy_f),byref(esdt_dummy_f))
+
+      iret = f90.cangas_sub(c8(can_press), \
+                            c8(o2_ppress), \
+                            c8(leaf_tempk), \
+                            byref(mm_kco2_f), \
+                            byref(mm_ko2_f), \
+                            byref(co2_cpoint_f))
+
+      # Leaf Maintenance Respiration (temp and pft dependent)
+      if(fates_maintresp_leaf_model==1):
+        iret = f90.lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(1), c8(leaf_tempk), byref(lmr_f))
+      elif(fates_maintresp_leaf_model==2):
+        iret = f90.lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler_top),c8(leaf_tempk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
+      else:
+        print('unknown leaf respiration model')
+        exit(1)
+
+      for btran in btran_vec:
+        iret = f90.biophysrate_sub(ci(1), \
+                                   c8(vcmax25_top), c8(jmax25_top), c8(kp25_top), \
+                                   c8(nscaler_top), c8(leaf_tempk), c8(dayl_factor_full), \
+                                   c8(t_growth_kum), c8(t_home_kum), c8(btran), \
+                                   byref(vcmax_f), byref(jmax_f), byref(kp_f), byref(gs0_f), byref(gs1_f), byref(gs2_f))
+
+        for gb in gb_vec:
+          for par_abs in par_abs_vec:
+            par_abs_umol = par_abs*wm2_to_umolm2s
+            for rh in rh_vec:
+              vpress = rh * veg_es_f.value
+              for co2_ppm in co2_vec:
+                co2_ppress = co2_ppm * 1.e-6 * can_press
+
+                # We don't need to add the pft to the training
+                # because we assume this model is c3, has fnps=0.15
+                # and the typical metabolic rates, everything else
+                # is an argument.
+
+                model_in[ip,0] = par_abs_umol
+                model_in[ip,1] = vcmax_f.value
+                model_in[ip,2] = jmax_f.value
+                model_in[ip,3] = gs2_f.value
+                model_in[ip,4] = leaf_tempk
+                model_in[ip,5] = can_press
+                model_in[ip,6] = co2_ppress          #
+                model_in[ip,7] = veg_es_f.value
+                model_in[ip,8] = gb
+                model_in[ip,9] = vpress
+                model_in[ip,10] = mm_kco2_f.value
+                model_in[ip,11] = mm_ko2_f.value
+                model_in[ip,12] = co2_cpoint_f.value
+                model_in[ip,13] = lmr_f.value
 
 
+                try:
+                  # Call the FATES photosynthesis subroutine:
+                  # https://github.com/NGEET/fates/blob/main/biogeophys/LeafBiophysicsMod.F90#L1232
+                  iret = f90.leaflayerphoto_sub(c8(par_abs_umol),  \
+                                                ci(1),   \
+                                                c8(vcmax_f.value),   \
+                                                c8(jmax_f.value),    \
+                                                c8(kp_f.value),      \
+                                                c8(gs0_f.value), \
+                                                c8(gs1_f.value), \
+                                                c8(gs2_f.value), \
+                                                c8(leaf_tempk), \
+                                                c8(can_press), \
+                                                c8(co2_ppress), \
+                                                c8(o2_ppress), \
+                                                c8(veg_es_f.value), \
+                                                c8(gb), \
+                                                c8(vpress), \
+                                                c8(mm_kco2_f.value), \
+                                                c8(mm_ko2_f.value), \
+                                                c8(co2_cpoint_f.value), \
+                                                c8(lmr_f.value), \
+                                                c8(ci_tol), \
+                                                byref(agross_f), \
+                                                byref(gstoma_f), \
+                                                byref(anet_f), \
+                                                byref(c13_f), \
+                                                byref(co2_interc_f), \
+                                                byref(solve_iter_f) )
 
-    iret = f90.cangas_sub(c8(can_press_1atm), \
-                          c8(o2_ppress_209kppm), \
-                          c8(leaf_tempk), \
-                          byref(mm_kco2_f), \
-                          byref(mm_ko2_f), \
-                          byref(co2_cpoint_f))
+                  model_out[ip,0] = agross_f.value
+                  model_out[ip,1] = gstoma_f.value
 
-    # Leaf Nitrogen Concentration at the top
-    lnc_top  = fates_stoich_nitr[0]/fates_leaf_slatop[0]
+                                
+                except:
+                  print('Photosynthesis model could not find a solution')
+                  exit(1)
 
-    # Leaf Maintenance Respiration (temp and pft dependent)
-    if(fates_maintresp_leaf_model==1):
-      iret = f90.lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(1), c8(leaf_tempk), byref(lmr_f))
-    elif(fates_maintresp_leaf_model==2):
-      iret = f90.lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler_top),c8(leaf_tempk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
-    else:
-      print('unknown leaf respiration model')
-      exit(1)
+                if (np.mod(ip,ntestmod)==0):
+                    print('Completed {} tests -- {} percent complete'.format(ip,100*float(ip)/float(n_model_runs)))
 
-    for btran in btran_vec:
-      iret = f90.biophysrate_sub(ci(1), \
-                                  c8(vcmax25_top), c8(jmax25_top), c8(kp25_top), \
-                                  c8(nscaler_top), c8(leaf_tempk), c8(dayl_factor_full), \
-                                  c8(t_growth_kum), c8(t_home_kum), c8(btran), \
-                                  byref(vcmax_f), byref(jmax_f), byref(kp_f), byref(gs0_f), byref(gs1_f), byref(gs2_f))
-
-      for gb in gb_vec:
-        for par_abs in par_abs_vec:
-          par_abs_umol = par_abs*wm2_to_umolm2s
-          for rh in rh_vec:
-            vpress = rh * veg_es_f.value
-            for co2_ppm in co2_vec:
-              co2_ppress = co2_ppm * 1.e-6 * can_press_1atm
-
-              # We don't need to add the pft to the training
-              # because we assume this model is c3, has fnps=0.15
-              # and the typical metabolic rates, everything else
-              # is an argument.
-
-              model_in[ip,0] = par_abs_umol
-              model_in[ip,1] = vcmax_f.value
-              model_in[ip,2] = jmax_f.value
-              model_in[ip,3] = gs2_f.value
-              model_in[ip,4] = leaf_tempk
-              model_in[ip,5] = co2_ppm          #
-              model_in[ip,6] = veg_es_f.value
-              model_in[ip,7] = gb
-              model_in[ip,8] = vpress
-              model_in[ip,9] = mm_kco2_f.value
-              model_in[ip,10] = mm_ko2_f.value
-              model_in[ip,11] = co2_cpoint_f.value
-              model_in[ip,12] = lmr_f.value
-
-              if(ip==11):
-                  print(model_in[ip,:])
-
-
-
-              try:
-                # Call the FATES photosynthesis subroutine:
-                # https://github.com/NGEET/fates/blob/main/biogeophys/LeafBiophysicsMod.F90#L1232
-                iret = f90.leaflayerphoto_sub(c8(par_abs_umol),  \
-                                              ci(1),   \
-                                              c8(vcmax_f.value),   \
-                                              c8(jmax_f.value),    \
-                                              c8(kp_f.value),      \
-                                              c8(gs0_f.value), \
-                                              c8(gs1_f.value), \
-                                              c8(gs2_f.value), \
-                                              c8(leaf_tempk), \
-                                              c8(can_press_1atm), \
-                                              c8(co2_ppress), \
-                                              c8(o2_ppress_209kppm), \
-                                              c8(veg_es_f.value), \
-                                              c8(gb), \
-                                              c8(vpress), \
-                                              c8(mm_kco2_f.value), \
-                                              c8(mm_ko2_f.value), \
-                                              c8(co2_cpoint_f.value), \
-                                              c8(lmr_f.value), \
-                                              c8(ci_tol), \
-                                              byref(agross_f), \
-                                              byref(gstoma_f), \
-                                              byref(anet_f), \
-                                              byref(c13_f), \
-                                              byref(co2_interc_f), \
-                                              byref(solve_iter_f) )
-
-                model_out[ip,0] = agross_f.value
-                model_out[ip,1] = gstoma_f.value
-                if(ip==11):
-                    print(model_out[ip,:])
-
-              except:
-                print('Photosynthesis model could not find a solution')
-                exit(1)
-
-              if (np.mod(ip,ntestmod)==0):
-                print('Completed {} tests -- {} percent complete'.format(ip,100*float(ip)/float(n_model_runs)))
-
-              ip = ip + 1
-
-#              if(ip==1):
-#                code.interact(local=dict(globals(), **locals()))
+                ip = ip + 1
 
 # Train an NN model
 # ------------------------------------------------------------------------------------------
@@ -503,7 +506,9 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class PhotoNeuralNetwork(nn.Module):
     def __init__(self):
         super(PhotoNeuralNetwork, self).__init__()
-        self.fc1   = nn.Linear(13, 64)
+        #self.register_buffer('input_mean', torch.zeros(input_size))
+        #self.register_buffer('data_std', torch.ones(input_size))
+        self.fc1   = nn.Linear(14, 64)
         self.relu1 = nn.ReLU()
         self.fc2   = nn.Linear(64, 32)
         self.relu2 = nn.ReLU()
@@ -520,6 +525,11 @@ class PhotoNeuralNetwork(nn.Module):
         #x = self.relu3(x)
         #x = self.fc4(x)
         return x
+
+    #def set_normalization_params(self, mean, std):
+    #    # Method to update the mean and std after calculating from training data
+    #    self.data_mean = mean
+    #    self.data_std = std
 
 mod_pattern = '13-L64-Re-L32-Re-2'  # This is a label for model architecture in plotting
 
@@ -538,12 +548,6 @@ x_mean,x_std,x_norm = Normalize2DTensor(x,dim=0)
 y_mean,y_std,y_norm = Normalize2DTensor(y,dim=0)
 #x_norm = x
 #y_norm = y
-
-code.interact(local=dict(globals(), **locals()))
-
-print("real(wp), dimension(13) :: in_mean = {}".format(x_mean.numpy()))
-print("real(wp), dimension(13) :: in_mean = {}".format(x_std.numpy()))
-
 
 print('Checking training data for nans')
 if(x_norm.isnan().any() or y_norm.isnan().any()):
@@ -579,7 +583,7 @@ if(x_norm.isnan().any() or y_norm.isnan().any()):
 # start with a batch size of 512 or 1000
 
 #batch_size = 2048
-batch_size = 4096*2
+batch_size = 4096*2*2
 
 learning_rate = 0.0002
 criterion = nn.MSELoss()
@@ -588,7 +592,7 @@ optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
 num_epochs = 1000000
 #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.0001, patience=5)
 
-max_mse = 0.0005
+max_mse = 0.005
 
 print('Starting model passes, calculating losses and back-propogating')
 
@@ -648,11 +652,11 @@ yv_pred = DeNormalize2DTensor(yv_norm.to('cpu'),y_mean.to('cpu'),y_std.to('cpu')
 #yv_pred = yv_norm
 code.interact(local=dict(globals(), **locals()))
 
-print("real(wp), dimension(13) :: in_mean = [{}".format(x_mean))
-print("real(wp), dimension(13) :: in_mean = [{}".format(x_std))
+print("real(r4), dimension(14) :: in_mean = [{}".format(x_mean))
+print("real(r4), dimension(14) :: in_std = [{}".format(x_std))
 
-print("Output Means: {}".format(y_mean))
-print("Output STDs: {}".format(y_std))
+print("real(r4), dimension(2) :: out_mean = [{}".format(y_mean))
+print("real(r4), dimension(2) :: out_std = [{}".format(y_std))
 
 
 # Generate some scatter plots

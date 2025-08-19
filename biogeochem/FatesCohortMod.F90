@@ -98,8 +98,8 @@ module FatesCohortMod
     integer  :: nv                      ! number of leaf layers
     integer  :: status_coh              ! growth status of plant  [2 = leaves on , 1 = leaves off]
     real(r8) :: efleaf_coh              ! elongation factor for leaves [fraction]
-    real(r8) ::  effnrt_coh             ! elongation factor for fine roots [fraction]
-    real(r8) ::  efstem_coh             ! elongation factor for stem [fraction]
+    real(r8) :: effnrt_coh              ! elongation factor for fine roots [fraction]
+    real(r8) :: efstem_coh              ! elongation factor for stem [fraction]
                                         !   for all the elongation factors, 0 means fully abscissed, and 
                                         !   1 means fully flushed.
     real(r8) :: c_area                  ! areal extent of canopy [m2]
@@ -148,6 +148,9 @@ module FatesCohortMod
     real(r8) :: npp_acc
     real(r8) :: npp_acc_hold
 
+    real(r8) :: gpp_nn_err                ! GPP error from NN [kg/plant/s]
+    real(r8) :: gs_nn_err                 ! Stomatal conductance error from NN [umol/m2/s]
+    
     real(r8) :: resp_m_tstep              ! Maintenance respiration (see above *)
     real(r8) :: resp_m_acc
     real(r8) :: resp_m_acc_hold
@@ -390,6 +393,8 @@ module FatesCohortMod
       this%resp_m_acc              = nan 
       this%resp_m_acc_hold         = nan
       this%resp_g_acc_hold         = nan
+      this%gpp_nn_err              = nan
+      this%gs_nn_err               = nan
       this%c13disc_clm             = nan
       this%c13disc_acc             = nan
       this%vcmax25top              = nan
@@ -482,7 +487,6 @@ module FatesCohortMod
       this%coage_class             = 1
    
       this%size_class_lasttimestep = 0
-      this%gpp_tstep               = 0._r8
       this%gpp_acc                 = 0._r8
       this%npp_acc                 = 0._r8
       this%resp_m_tstep            = 0._r8
@@ -708,7 +712,6 @@ module FatesCohortMod
       copyCohort%size_class_lasttimestep = this%size_class_lasttimestep
 
       ! CARBON AND NUTRIENT FLUXES
-      copyCohort%gpp_tstep               = this%gpp_tstep
       copyCohort%gpp_acc                 = this%gpp_acc
       copyCohort%gpp_acc_hold            = this%gpp_acc_hold
       copyCohort%npp_acc                 = this%npp_acc
