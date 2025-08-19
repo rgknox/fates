@@ -568,12 +568,11 @@ module EDTypesMod
      logical, allocatable :: landuse_vector_gt_min(:)     ! is the land use state vector for each land use type greater than the minimum below which we ignore?
      logical :: transition_landuse_from_off_to_on         ! special flag to use only when reading restarts, which triggers procedure to initialize land use
 
-     integer, parameter :: psn_n_inputs = 12
-     integer, parameter :: psn_n_outputs = 2
-     type(torch_model) :: psn_model
-     type(torch_tensor), dimension(psn_n_inputs)  :: psn_input_arr
-     type(torch_tensor), dimension(psn_n_outputs) :: psn_output_arr
-     call torch_model_load(psn_model, "/my/saved/TorchScript/model.pt", torch_kCPU)
+     type(torch_model) :: nn_psn_model
+     type(torch_tensor), dimension(1) :: nn_psn_in     ! Input tensor to NN photosynthesis
+     type(torch_tensor), dimension(1) :: nn_psn_out    ! Output tensor to NN photosynthesis
+
+     !call torch_model_load(psn_model, "/global/homes/r/rgknox/E3SM/components/elm/src/external_models/fates/machinelearning/c3psn_modelsd_szv2_i13_13-L64-Re-L32-Re-2_c20250812-0933.pt", torch_kCPU)
 
      
      contains
