@@ -6466,7 +6466,7 @@ contains
        call this%set_history_var(vname='FATES_RX_BURN_WINDOW', units='',           &
             long='fraction of time when prescribed fire burn window presents',     &
             use_default='active',avgflag='A', vtype=site_r8, hlms='CLM:ALM',       &
-            upfreq=1, ivar=ivar, initialize=initialize_variables,                  &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                  &
             index=ih_rx_burn_window_si)
 
        call this%set_history_var(vname='FATES_IGNITIONS',                         &
@@ -6532,14 +6532,14 @@ contains
             units='J m-1 s-1',                                                    &
             long='spitfire surface fireline intensity of prescribed fire in J per m per second', &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
-            upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index=ih_rx_intensity_si)
    
        call this%set_history_var(vname='FATES_RXFIRE_INTENSITY_BURNFRAC',         &
             units='J m-1 s-1',                                                    &
             long='product of prescribed fire intensity and burned fraction -- to be devided by FATES_RXFIRE_BURNFRAC to get area-weighted mean intensity', &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
-            upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index=ih_rx_intensity_fracarea_product_si)
 
        call this%set_history_var(vname='FATES_BURNFRAC', units='s-1',             &
@@ -6551,31 +6551,31 @@ contains
        call this%set_history_var(vname='FATES_WILDFIRE_BURNFRAC', units='s-1',    &
             long='burned area fraction per second by wildfire',                   &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
-            upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index=ih_nonrx_fracarea_si)
      
        call this%set_history_var(vname='FATES_RXFIRE_BURNFRAC', units='s-1',      &
             long='burned area fraction per second by prescribed fire',            &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
-            upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index=ih_rx_fracarea_si)
    
        call this%set_history_var(vname='FATES_RXFIRE_BURNABLE_FUEL', units='',    &
             long='burnable area fraction by Rx fire when fuel cond. met',         &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
-            upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index=ih_rx_fracarea_fuel_si)
    
        call this%set_history_var(vname='FATES_RXFIRE_BURNABLE_FI', units='',      &
             long='burnable area fraction by Rx fire when fuel and FI cond. met',  &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
-            upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index=ih_rx_fracarea_fi_si)
    
        call this%set_history_var(vname='FATES_RXFIRE_BURNABLE_FINAL', units='',   &
             long='burnable area fraction by Rx fire when all cond. met',          &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',     &
-            upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index=ih_rx_fracarea_final_si)
 
        call this%set_history_var(vname='FATES_FUEL_MEF', units='m3 m-3',          &
@@ -7089,8 +7089,13 @@ contains
                upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables, index = ih_crownarea_ustory_damage_si )
 
        end if if_crowndamage1
-       
 
+       call this%set_history_var(vname='FATES_NCL', units='',                  &
+            long='number of canopy levels',                            &
+            use_default='inactive', avgflag='A', vtype=site_r8,               &
+            hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables, &
+            index=ih_ncl_si)
+       
        if_dyn1: if(hlm_hist_level_dynam>1) then
 
           call this%set_history_var(vname='FATES_NPP_LU', units='kg m-2 s-1',        &
@@ -7133,7 +7138,7 @@ contains
           call this%set_history_var(vname='FATES_RECRUITMENT_CFLUX_PF', units='kg m-2 yr-1',  &
                long='total PFT-level biomass of new recruits in kg of carbon per land area',         &
                use_default='active', avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', &
-               upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+               upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables,                 &
                index=ih_recruitment_cflux_si_pft)
 
           call this%set_history_var(vname='FATES_LEAFC_PF', units='kg m-2',          &
@@ -7299,18 +7304,12 @@ contains
 
           call this%set_history_var(vname='FATES_CANOPYAREA', units='m2 m-2',     &
                long='canopy area per m2 land area', use_default='inactive', &
-               avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar,  &
+               avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_complx, ivar=ivar,  &
                initialize=initialize_variables, index=ih_canopy_fracarea_si)
-
-          call this%set_history_var(vname='FATES_NCL', units='',                  &
-               long='number of canopy levels',                            &
-               use_default='inactive', avgflag='A', vtype=site_r8,               &
-               hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables, &
-               index=ih_ncl_si)
 
           call this%set_history_var(vname='FATES_PATCHAREA', units='m2 m-2',      &
                long='patch area per m2 land area', use_default='inactive',  &
-               avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar,  &
+               avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_complx, ivar=ivar,  &
                initialize=initialize_variables, index=ih_fracarea_si)
 
           ! patch age class variables
@@ -7394,14 +7393,14 @@ contains
                units='m2 m-2',                                                       &
                long='secondary forest patch area since anthropgenic disturbance', &
                use_default='inactive', avgflag='A', vtype=site_r8,               &
-               hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables, &
+               hlms='CLM:ALM', upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables, &
                index=ih_agesince_anthrodist_si)
 
           call this%set_history_var(vname='FATES_SECONDARY_AREA',                &
                units='m2 m-2',                                                       &
                long='secondary forest patch area since any kind of disturbance', &
                use_default='inactive', avgflag='A', vtype=site_r8,               &
-               hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables, &
+               hlms='CLM:ALM', upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables, &
                index=ih_secondarylands_fracarea_si)
 
           call this%set_history_var(vname='FATES_SECONDARY_AREA_AP',                &
@@ -7415,7 +7414,7 @@ contains
                units='m2 m-2',                                                   &
                long='primary forest patch area since any kind of disturbance',   &
                use_default='inactive', avgflag='A', vtype=site_r8,               &
-               hlms='CLM:ALM', upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables, &
+               hlms='CLM:ALM', upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables, &
                index=ih_primarylands_fracarea_si)
 
           call this%set_history_var(vname='FATES_PRIMARY_AREA_AP',                &
@@ -7478,14 +7477,14 @@ contains
           call this%set_history_var(vname='FATES_RXFIRE_BURNFRAC_AP', units='s-1',   &
                long='spitfire fraction area burnt due to prescribed fire by patch age', &
                use_default='active', avgflag='A', vtype=site_age_r8, hlms='CLM:ALM', &
-               upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+               upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables,                 &
                index= ih_rx_fracarea_burnt_si_age)
       
           call this%set_history_var(vname='FATES_RXFIRE_INTENSITY_BURNFRAC_AP',      &
                units='J m-1 s-1',                                                    &
                long='product of prescribed fire intensity and burned fraction by patch age, to be devided by FATES_RXFIRE_BURNFRAC_AP to get area-weighted mean intensity)', &
                use_default='active', avgflag='A', vtype=site_age_r8, hlms='CLM:ALM', &
-               upfreq=1, ivar=ivar, initialize=initialize_variables,                 &
+               upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables,                 &
                index = ih_rx_intensity_si_age)
 
           call this%set_history_var(vname='FATES_FUEL_AMOUNT_AP', units='kg m-2',    &
@@ -8104,21 +8103,21 @@ contains
                units = 'm-2 yr-1',                                                  &
                long='prescribed fire mortality by pft/size in number of plants per m2 per year', &
                use_default='inactive', avgflag='A', vtype=site_size_pft_r8,         &
-               hlms='CLM:ALM', upfreq=1, ivar=ivar,                                 &
+               hlms='CLM:ALM', upfreq=group_dyna_complx, ivar=ivar,                                 &
                initialize=initialize_variables, index = ih_m12_si_scpf)
      
           call this%set_history_var(vname='FATES_MORTALITY_RXCROWN_SZPF',            &
                units = 'm-2 yr-1',                                                   &
                long='fire mortality from crown scorch due to prescribed fire by pft/size in number of plants per m2 per year', &
                use_default='inactive', avgflag='A', vtype=site_size_pft_r8,          &
-               hlms='CLM:ALM', upfreq=1, ivar=ivar,                                  &
+               hlms='CLM:ALM', upfreq=group_dyna_complx, ivar=ivar,                                  &
                initialize=initialize_variables, index = ih_rx_crown_mort_si_scpf)
      
           call this%set_history_var(vname='FATES_MORTALITY_RXCAMBIAL_SZPF',          &
                units = 'm-2 yr-1',                                                   &
                long='fire mortality from cambial kill due to prescribed fire by pft/size in number of plants per m2 per year', &
                use_default='inactive', avgflag='A', vtype=site_size_pft_r8,          &
-               hlms='CLM:ALM', upfreq=1, ivar=ivar,                                  &
+               hlms='CLM:ALM', upfreq=group_dyna_complx, ivar=ivar,                                  &
                initialize=initialize_variables, index = ih_rx_cambial_mort_si_scpf)
 
           call this%set_history_var(vname='FATES_MORTALITY_TERMINATION_SZPF',        &
