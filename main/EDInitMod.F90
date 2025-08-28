@@ -242,7 +242,7 @@ contains
     call site_in%fireWeather%Init()
 
     ! Initialize neural network architectures and weights
-    call torch_model_load(site_in%nn_psn_model,'/global/homes/r/rgknox/E3SM/components/elm/src/external_models/fates/machinelearning/c3psn_modelsd_szv2_i13_13-L64-Re-L32-Re-2_c20250819-0820.pt',torch_kCPU)
+    call torch_model_load(site_in%nn_psn_model,'/global/homes/r/rgknox/E3SM/components/elm/src/external_models/fates/machinelearning/c3psn_modelsd_mv4_i14_13-L64-Re-L32-Re-2_c20250827-1955.pt',torch_kCPU)
     
   end subroutine init_site_vars
 

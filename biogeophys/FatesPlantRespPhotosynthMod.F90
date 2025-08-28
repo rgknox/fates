@@ -307,13 +307,16 @@ contains
     real(r4), dimension(14), target :: psn_nn_in_norm
     real(r4), dimension(2),  target :: psn_nn_out_norm
 
-    real(r4), dimension(14) :: in_mean = [5.7730e+02, 1.8330e+01, 1.8257e+01, 5.2500e-01, 3.0815e+02, 1.0100e+05, &
-         4.0400e+01, 6.3228e+03, 2.7500e+06, 3.7937e+03, 1.7081e+02, 4.9098e+04,7.7560e+00, 5.5019e-01]
-    real(r4), dimension(14) :: in_std = [3.6555e+02, 1.7887e+01, 2.1844e+01, 3.0319e-01, 9.5743e+00, 1.2766e+03, &
-         1.2904e+01, 3.1960e+03, 1.4361e+06, 2.6361e+03, 1.4709e+02, 2.0962e+04, 3.4359e+00, 1.9768e-01]
-    real(r4), dimension(2) :: out_mean = [2.0886e+00, 4.5190e+04]
-    real(r4), dimension(2) :: out_std = [2.9023e+00, 1.1303e+05]
+    real(r4), dimension(14) :: in_mean = [2.9974e+02, 5.1095e+01, 7.1926e+01, 9.8053e-01, 3.0336e+02, 1.0005e+05, &
+         3.6717e+01, 4.3937e+03, 1.1651e+06, 3.1461e+03, 7.6110e+01, 3.6376e+04, &
+         5.6496e+00, 6.5792e-01]
+    real(r4), dimension(14) :: in_std = [2.5597e+02, 6.3779e+00, 9.2768e+00, 5.9760e-02, 3.8734e+00, 2.8024e+02, &
+         1.0285e-01, 1.0379e+03, 3.1470e+05, 9.3099e+02, 3.5673e+01, 7.0107e+03, &
+         1.1355e+00, 6.2290e-02]
+    real(r4), dimension(2) :: out_mean = [6.4790e+00, 2.7090e+05]
+    real(r4), dimension(2) :: out_std = [2.6276e+00, 2.7770e+05]
     
+
     ! NN Error tracking
     real(r8) :: psn_nn_err_z(nlevleaf,maxpft,nclmax) 
     real(r8) :: gstoma_nn_err_z(nlevleaf,maxpft,nclmax)
@@ -774,8 +777,7 @@ contains
                                          gs0,                                 &  ! out
                                          gs1,                                 &  ! out
                                          gs2 )                                   ! out
-
-
+                                    
                                     if ( (hlm_use_planthydro.eq.itrue .and. EDPftvarcon_inst%hydr_k_lwp(ft)>nearzero) ) then
                                        hydr_k_lwp = EDPftvarcon_inst%hydr_k_lwp(ft)
                                     else
@@ -812,30 +814,52 @@ contains
 
                                     
 
-                                    if (lb_params%c3psn(ft) == c3_path_index)then
+                                    if (lb_params%c3psn(ft) == c3_path_index .and. par_abs>nearzero)then
                                        
                                        co2_ppm = 1.e6*bc_in(s)%cair_pa(ifp)/bc_in(s)%forc_pbot
+
+                                       !model_in[ip,0] = par_abs_umol
+                                       !model_in[ip,1] = vcmax_f.value
+                                       !model_in[ip,2] = jmax_f.value
+                                       !model_in[ip,3] = gs2_f.value
+                                       !model_in[ip,4] = leaf_tempk
+                                       !model_in[ip,5] = can_press
+                                       !model_in[ip,6] = co2_ppress
+                                       !model_in[ip,7] = veg_es_f.value
+                                       !model_in[ip,8] = gb
+                                       !model_in[ip,9] = vpress
+                                       !model_in[ip,10] = mm_kco2_f.value
+                                       !model_in[ip,11] = mm_ko2_f.value
+                                       !model_in[ip,12] = co2_cpoint_f.value
+                                       !model_in[ip,13] = lmr_f.value
+                                       
                                        
                                        psn_nn_in(:) = [par_abs, vcmax_z, jmax_z, gs2, &
-                                            bc_in(s)%t_veg_pa(ifp), co2_ppm, &
+                                            bc_in(s)%t_veg_pa(ifp), bc_in(s)%forc_pbot, &
+                                            bc_in(s)%cair_pa(ifp), &
                                             bc_in(s)%esat_tv_pa(ifp), &
                                             gb_mol, bc_in(s)%eair_pa(ifp), mm_kco2, mm_ko2, &
                                             co2_cpoint, lmr_z(iv,ft,cl)]
 
                                        psn_nn_in_norm = Normalize1DArray(psn_nn_in,in_mean,in_std)
-
-                                       !call torch_tensor_from_array(in_tensors(1), in_data_norm, torch_kCPU)
-                                       !call torch_tensor_from_array(out_tensors(1), out_data_norm, torch_kCPU)
-                                       !call torch_model_forward(model, in_tensors, out_tensors)
      
                                        call torch_tensor_from_array(sites(s)%nn_psn_in(1), psn_nn_in_norm, torch_kCPU)
                                        call torch_tensor_from_array(sites(s)%nn_psn_out(1), psn_nn_out_norm, torch_kCPU)
+                                       psn_nn_out_norm = [-999.,-999.]
                                        call torch_model_forward(sites(s)%nn_psn_model, sites(s)%nn_psn_in, sites(s)%nn_psn_out)
-
+                                       if(abs(psn_nn_out_norm(1)-(-999.))<nearzero)then
+                                          write(fates_log(),*)'not updating psn'
+                                       end if
+                                       
                                        psn_nn_out = DeNormalize1DArray(psn_nn_out_norm,out_mean,out_std)
                                        
                                        psn_nn_err_z(iv,ft,cl)    = psn_nn_err_z(iv,ft,cl) + &
                                             area_frac * (real(psn_nn_out(1),r8)-psn_ll)
+
+                                       !if( abs((real(psn_nn_out(1),r8)-psn_ll)/psn_ll) > 0.5_r8 ) then
+                                       !!if(associated(currentCohort,currentPatch%tallest) .and. ifp==1)then
+                                       !!   write(fates_log(),'(A,5(F9.2,","),(F9.1,","),(F7.3,","),6(F10.2,","),2(F7.3,","),(F9.1))') 'NN,',psn_nn_in,psn_ll,gstoma_ll
+                                       !!end if
                                        
                                        gstoma_nn_err_z(iv,ft,cl) = gstoma_nn_err_z(iv,ft,cl) + &
                                             area_frac * (real(psn_nn_out(2),r8)-gstoma_ll)/vmol_cf

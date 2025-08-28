@@ -166,6 +166,8 @@ contains
 
                       root_resis(ft,j) = sites(s)%rootfrac_scr(j)*rresis
 
+                      !print*,"j:",j,"por/sat:",bc_in(s)%eff_porosity_sl(j)/bc_in(s)%watsat_sl(j),(smp_node - smpsc(ft)) / (smpso(ft) - smpsc(ft))
+                      
                       ! root water uptake is not linearly proportional to root density,
                       ! to allow proper deep root funciton. Replace with equations from SPA/Newman. FIX(RF,032414)
 
@@ -177,6 +179,8 @@ contains
 
                 end do !j
 
+                !print*,"BTRAN:",cpatch%btran_ft(ft)
+                
                 ! Normalize root resistances to get layer contribution to ET
                 do j = 1,bc_in(s)%nlevsoil  
                    if (cpatch%btran_ft(ft)  >  nearzero) then

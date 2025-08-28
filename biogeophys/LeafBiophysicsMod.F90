@@ -2029,7 +2029,7 @@ contains
     ! Apply water limitations to stomatal slope (hypothesis dependent)
     gs2 = 1._r8 
     if(lb_params%stomatal_btran_model(ft)==btran_on_gs_gs1 .or. &
-       lb_params%stomatal_btran_model(ft)==btran_on_gs_gs01)then
+         lb_params%stomatal_btran_model(ft)==btran_on_gs_gs01)then
        if(lb_params%stomatal_model.eq.medlyn_model ) then
           gs1 = lb_params%medlyn_slope(ft)*btran
        else

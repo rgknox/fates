@@ -83,9 +83,6 @@ mol_per_umol = 1.e-6
 # 1 standard atmosphere in [Pa]
 can_press_1atm = 101325.0
 
-# Atmospheric CO2 partial pressure [Pa] at 400 ppm
-co2_ppress_400ppm = 0.0004*can_press_1atm
-
 # Atmospheric O2 partial pressure [Pa] %29.5 of atmosphere
 o2_ppress_209kppm = 0.2095*can_press_1atm
 
@@ -231,8 +228,6 @@ for param in py_scalar_root.iter('param'):
   if (param.attrib['name']=='fates_maintresp_leaf_model'):
     fates_maintresp_leaf_model = int(param.text.split(',')[0])
 
-
-
 c3_path_index = 1
 iret = f90.set_leaf_param_sub(c8(float(c3_path_index)),ci(1),*ccharnb('fates_leaf_c3psn'))
 
@@ -246,57 +241,58 @@ medlyn_model = 2
 ballberry_model = 1
 iret = f90.set_leaf_param_sub(c8(float(medlyn_model)),ci(1),*ccharnb('fates_leaf_stomatal_model'))
 
-
+n_small = 5
+n_large = 15
 
 # Leaf temperature ranges [C]
-leaf_tempc_min = 20.0
+leaf_tempc_min = 15.0
 leaf_tempc_max = 50.0
-leaf_tempc_n = 10
+leaf_tempc_n = n_large
 leaf_tempc_vec = np.linspace(leaf_tempc_min,leaf_tempc_max,num=leaf_tempc_n)
 
 # Relative Humidity Ranges
 rh_max = 1.00
-rh_min = 0.2
-rh_n   = 10
+rh_min = 0.1
+rh_n   = n_large
 rh_vec = np.linspace(rh_min,rh_max,num=rh_n)
 
 # CO2 concentration ranges (ppm)
 
-co2_max = 600.0
-co2_min = 200.0
-co2_n   = 10
+co2_max = 450.0
+co2_min = 250.0
+co2_n   = n_small
 co2_vec = np.linspace(co2_min,co2_max,num=co2_n)
 
 # Atmospheric Pressure ranges
 
-can_press_min = 099000.0
-can_press_max = 103000.0
-can_press_n   = 10
+can_press_min = 090000.0
+can_press_max = 110000.0
+can_press_n   = n_small
 can_press_vec = np.linspace(can_press_min,can_press_max,can_press_n)
 
 # Absorbed PAR ranges [W/m2]
-par_abs_min = 1.0
-par_abs_max = 250
-par_abs_n  = 10
+par_abs_min = 0.0
+par_abs_max = 300
+par_abs_n  = n_large
 par_abs_vec = np.linspace(par_abs_min,par_abs_max,num=par_abs_n)
 
 # Boundary Conductance ranges [umol/m2/s]
 gb_min =  500000.0            # Lower limit imposed by CLM/ELM 0.5 mol/m2/s
 gb_max = 5000000.0            # 50% larger than  Roughly largestthe largest values seen at BCI (which are 2.5mol/m2/s)
-gb_n  = 10
+gb_n  = n_large
 gb_vec = np.linspace(gb_min,gb_max,num=gb_n)
 
 # btran ranges
 
-btran_n   = 10
-btran_min = 0.05
+btran_n   = n_large
+btran_min = 0.01
 btran_max = 1
 btran_vec = np.linspace(btran_min,btran_max,num=btran_n)
 
 # vcmax25top ranges
-vcmax25t_n = 10
-vcmax25t_min = 2
-vcmax25t_max = 70
+vcmax25t_n = n_large
+vcmax25t_min = 0.1
+vcmax25t_max = 60
 vcmax25t_vec = np.linspace(vcmax25t_min,vcmax25t_max,num=vcmax25t_n)
 
 print(' {} leaf temperature values [C] from {} to {}'.format(leaf_tempc_n,leaf_tempc_min,leaf_tempc_max))
@@ -448,6 +444,48 @@ for vcmax25_top in vcmax25t_vec:
 
                 ip = ip + 1
 
+# Visualize the distributions of the input data
+
+# 14 variables, 4x4 should work
+
+fig, ((ax1,ax2,ax3,ax4), (ax5,ax6,ax7,ax8), \
+      (ax9,ax10,ax11,ax12),(ax13,ax14,ax15,ax16)) = plt.subplots(4,4,figsize=(9.,9.))
+
+
+ax1.hist( model_in[:,0] ,bins=n_large)
+ax1.set_title('PAR (umol/m2/s)')
+ax2.hist(model_in[:,1], bins=n_large)
+ax2.set_title('Vcmax (umol/m2/s)')
+ax3.hist(model_in[:,2], bins=n_large)
+ax3.set_title('Jmax (umol/m2/s)')
+ax4.hist(model_in[:,3], bins=n_large)
+ax4.set_title('Gs2 (-)')
+ax5.hist(model_in[:,4], bins=n_large)
+ax5.set_title('Tl (K)')
+ax6.hist(model_in[:,5], bins=n_large)
+ax6.set_title('P_atm (Pa)')
+ax7.hist(model_in[:,6], bins=n_large)
+ax7.set_title('P_co2 (Pa)')
+ax8.hist(model_in[:,7], bins=n_large)
+ax8.set_title('E_sat (Pa)')
+
+ax9.hist(model_in[:,8], bins=n_large)
+ax9.set_title('g_b (umol/m2/s)')
+ax10.hist(model_in[:,9], bins=n_large)
+ax10.set_title('E (Pa)')
+ax11.hist(model_in[:,10], bins=n_large)
+ax11.set_title('Kco2')
+ax12.hist(model_in[:,11], bins=n_large)
+ax12.set_title('Ko2')
+ax13.hist(model_in[:,12], bins=n_large)
+ax13.set_title('Co2 Cpoint (Pa)')
+ax14.hist(model_in[:,13], bins=n_large)
+ax14.set_title('LMR (umol/m2/s')
+
+plt.tight_layout()
+plt.show()
+
+                
 # Train an NN model
 # ------------------------------------------------------------------------------------------
 
@@ -492,7 +530,10 @@ print('Constructing model')
 # layers learn low-level features (e.g., edges, textures), while the later layers
 # learn higher-level features (e.g., objects, scenes). By increasing the size of the
 # middle layer, we are allowing the network to learn more complex and abstract
-# representations of the input data. Balancing the number of parameters: In a neural network, the number of parameters in each layer is proportional to the product of the input and output sizes. By doubling the size of the middle layer, we are effectively balancing the number of parameters in each layer, which can help to prevent overfitting.
+# representations of the input data. Balancing the number of parameters: In a neural network,
+# the number of parameters in each layer is proportional to the product of the input and
+# output sizes. By doubling the size of the middle layer, we are effectively balancing the
+# number of parameters in each layer, which can help to prevent overfitting.
 
 #2^x = 2,4,8,16,32,64,128,256
 
@@ -506,8 +547,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class PhotoNeuralNetwork(nn.Module):
     def __init__(self):
         super(PhotoNeuralNetwork, self).__init__()
-        #self.register_buffer('input_mean', torch.zeros(input_size))
-        #self.register_buffer('data_std', torch.ones(input_size))
         self.fc1   = nn.Linear(14, 64)
         self.relu1 = nn.ReLU()
         self.fc2   = nn.Linear(64, 32)
@@ -548,6 +587,13 @@ x_mean,x_std,x_norm = Normalize2DTensor(x,dim=0)
 y_mean,y_std,y_norm = Normalize2DTensor(y,dim=0)
 #x_norm = x
 #y_norm = y
+
+print("real(r4), dimension(14) :: in_mean = [{}".format(x_mean))
+print("real(r4), dimension(14) :: in_std = [{}".format(x_std))
+
+print("real(r4), dimension(2) :: out_mean = [{}".format(y_mean))
+print("real(r4), dimension(2) :: out_std = [{}".format(y_std))
+
 
 print('Checking training data for nans')
 if(x_norm.isnan().any() or y_norm.isnan().any()):
@@ -648,16 +694,6 @@ yv_norm = model(xv_norm)
 
 # Denormalize the validation set
 yv_pred = DeNormalize2DTensor(yv_norm.to('cpu'),y_mean.to('cpu'),y_std.to('cpu')).detach().numpy()
-
-#yv_pred = yv_norm
-code.interact(local=dict(globals(), **locals()))
-
-print("real(r4), dimension(14) :: in_mean = [{}".format(x_mean))
-print("real(r4), dimension(14) :: in_std = [{}".format(x_std))
-
-print("real(r4), dimension(2) :: out_mean = [{}".format(y_mean))
-print("real(r4), dimension(2) :: out_std = [{}".format(y_std))
-
 
 # Generate some scatter plots
 
