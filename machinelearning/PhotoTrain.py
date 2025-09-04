@@ -24,6 +24,7 @@ import importlib.util
 
 # THIS SCRIPT SHOULD BE RUN WITH TORCHRUN!
 # e.g.:
+
 # torchrun --nproc_per_node=<N> PhotoTrain.py
 
 current_path = os.getcwd()
@@ -36,19 +37,15 @@ from PushParameters import PushParameters
 from PushParameters import PushXMLPhotoParameters
 from PushParameters import GetParamFromAttrib
 from PushParameters import GetParamList
-
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.distributed import DistributedSampler
 import torch.distributed as dist
 import torch.optim as optim
 import torch.multiprocessing as mp
+import multiprocessing
 from torch.nn.parallel import DistributedDataParallel as DDP
-    
-#from torchvision import datasets
-#from torchvision.transforms import ToTensor
-#from torch.optim.lr_scheduler import ReduceLROnPlateau
-
 import pandas as pd
 from ipywidgets import widgets
 from IPython.display import display
@@ -61,7 +58,7 @@ font = {'family' : 'sans-serif',
 
 matplotlib.rc('font', **font)
 
-print("IS CUDA AVAILABLE?:{}".format(torch.cuda.is_available()))
+
 
 # Global constants to use in all Leaf Biophysics unit testing
 # =======================================================================================
@@ -123,220 +120,275 @@ def GetJmaxKp25Top(vcmax25_top):
 
     return jmax25_top, kp25_top
 
-def setup():
-    os.environ['MASTER_ADDR'] = '127.0.0.1'
-    os.environ['MASTER_PORT'] = '29500'
+os.environ['MASTER_ADDR'] = 'localhost' #'127.0.0.1'
+os.environ['MASTER_PORT'] = '29500'
+dist.init_process_group(backend='gloo', init_method='env://')
 
-    dist.init_process_group(backend='gloo', init_method='env://')
+rank = dist.get_rank()
+world_size = dist.get_world_size()
 
-def cleanup():
-    dist.destroy_process_group()
+if(rank==0):
+    print("IS CUDA AVAILABLE?:{}".format(torch.cuda.is_available()))
+
+
     
+# Create aliases for the ctype Fortran objects
+# =======================================================================================
 
-setup()
+exec(open(fates_path+"/functional_unit_testing/shared/py_src/CtypesInit.py").read())
 
-if(dist.get_rank()==1):
-    
-    # Create aliases for the ctype Fortran objects
-    # =======================================================================================
+dist.barrier()
 
-    exec(open(fates_path+"/functional_unit_testing/shared/py_src/CtypesInit.py").read())
-
-
-    # This class call instantiates all the fortran shared objects
-    # and creates aliases for their functions and subroutines
-    f90 = f90_modules(fates_path+'/functional_unit_testing/shared/bld/')
+# This class call instantiates all the fortran shared objects
+# and creates aliases for their functions and subroutines
+f90 = f90_modules(fates_path+'/functional_unit_testing/shared/bld/')
 
 
-    controls = {
-        "fates_daylength_factor_switch": [1],
-        "fates_leaf_stomatal_btran_model": [4],
-        "fates_leaf_agross_btran_model": [2],
-        "fates_leaf_c3psn": [1],
-        "fates_maintresp_leaf_model": [1] }
+controls = {
+    "fates_daylength_factor_switch": [1],
+    "fates_leaf_stomatal_btran_model": [4],
+    "fates_leaf_agross_btran_model": [2],
+    "fates_leaf_c3psn": [1],
+    "fates_maintresp_leaf_model": [1] }
 
-    parameter_constants = {
-        "fates_leaf_fnps": [0.15],
-        "fates_maintresp_leaf_atkin2017_baserate": [1.756],
-        "fates_maintresp_leaf_ryan1991_baserate": [2.525e-06],
-        "fates_leaf_vcmaxha": [65330],
-        "fates_leaf_jmaxha": [43540],
-        "fates_leaf_vcmaxhd": [149250],
-        "fates_leaf_jmaxhd": [149250],
-        "fates_leaf_vcmaxse": [485],
-        "fates_leaf_jmaxse": [495],
-        "fates_leafn_vert_scaler_coeff1": [0.00963],
-        "fates_leafn_vert_scaler_coeff2": [2.43],
-        "fates_stoich_nitr": [0.033],
-        "fates_leaf_slatop": [0.012]}
+parameter_constants = {
+    "fates_leaf_fnps": [0.15],
+    "fates_maintresp_leaf_atkin2017_baserate": [1.756],
+    "fates_maintresp_leaf_ryan1991_baserate": [2.525e-06],
+    "fates_leaf_vcmaxha": [65330],
+    "fates_leaf_jmaxha": [43540],
+    "fates_leaf_vcmaxhd": [149250],
+    "fates_leaf_jmaxhd": [149250],
+    "fates_leaf_vcmaxse": [485],
+    "fates_leaf_jmaxse": [495],
+    "fates_leafn_vert_scaler_coeff1": [0.00963],
+    "fates_leafn_vert_scaler_coeff2": [2.43],
+    "fates_stoich_nitr": [0.033],
+    "fates_leaf_slatop": [0.012]}
 
 
 
-    # Load the xml control file
-    # -----------------------------------------------------------------------------------
-    xmlroot = et.parse(fates_path+"/functional_unit_testing/leaf_biophys/leaf_biophys_controls.xml").getroot()
+# Load the xml control file
+# -----------------------------------------------------------------------------------
+xmlroot = et.parse(fates_path+"/functional_unit_testing/leaf_biophys/leaf_biophys_controls.xml").getroot()
 
-    # We will allocate 1 token pft to hold data, we will change the values as needed
-    numpft = 1
+# We will allocate 1 token pft to hold data, we will change the values as needed
+numpft = 1
 
-    # Push scalar parameters
-    print('Pushing parameters from the xml file to the f90 lb_params datastructure')
-    scalar_root = xmlroot.find('f90_params').find('scalar_dim')
-    for param in scalar_root.iter('param'):
-        print('pushing: '+param.attrib['name'].strip())
-        iret = f90.set_leaf_param_sub(c8(float(param.text.split(',')[0])),ci(0),*ccharnb(param.attrib['name'].strip()))
+# Push scalar parameters
+print('Pushing parameters from the xml file to the f90 lb_params datastructure')
+scalar_root = xmlroot.find('f90_params').find('scalar_dim')
+for param in scalar_root.iter('param'):
+    print('pushing: '+param.attrib['name'].strip())
+    iret = f90.set_leaf_param_sub(c8(float(param.text.split(',')[0])),ci(0),*ccharnb(param.attrib['name'].strip()))
         
-    PushXMLPhotoParameters(f90,xmlroot)
+PushXMLPhotoParameters(f90,xmlroot)
         
-    # Push pft parameters to fortran instantiations
-    pft_root = xmlroot.find('f90_params').find('pft_dim')
-    leaf_c3psn = []
-    leaf_stomatal_intercept = []
-    for param in pft_root.iter('param'):
-        print('pushing: '+param.attrib['name'].strip())
-        for pft in range(numpft):
-            iret = f90.set_leaf_param_sub(c8(float(param.text.split(',')[pft])),ci(pft+1),*ccharnb(param.attrib['name'].strip()))
-            if(param.attrib['name'].strip() == 'fates_leaf_c3psn'):
-                leaf_c3psn.append(int(param.text.split(',')[pft]))
-            if(param.attrib['name'].strip() == 'fates_leaf_stomatal_intercept'):
-                leaf_stomatal_intercept.append(int(param.text.split(',')[pft]))
+# Push pft parameters to fortran instantiations
+pft_root = xmlroot.find('f90_params').find('pft_dim')
+leaf_c3psn = []
+leaf_stomatal_intercept = []
+for param in pft_root.iter('param'):
+    print('pushing: '+param.attrib['name'].strip())
+    for pft in range(numpft):
+        iret = f90.set_leaf_param_sub(c8(float(param.text.split(',')[pft])),ci(pft+1),*ccharnb(param.attrib['name'].strip()))
+        if(param.attrib['name'].strip() == 'fates_leaf_c3psn'):
+            leaf_c3psn.append(int(param.text.split(',')[pft]))
+        if(param.attrib['name'].strip() == 'fates_leaf_stomatal_intercept'):
+            leaf_stomatal_intercept.append(int(param.text.split(',')[pft]))
 
-    # Read in non-fortran parameters from the xml file
-    fates_leaf_vcmax25top    = []
-    fates_stoich_nitr = []
-    fates_leaf_slatop = []
+# Read in non-fortran parameters from the xml file
+fates_leaf_vcmax25top    = []
+fates_stoich_nitr = []
+fates_leaf_slatop = []
 
-    print('Reading non-fortran pft parameters')
-    py_pft_root = xmlroot.find('py_params').find('pft_dim')
-    for param in py_pft_root.iter('param'):
-        for pft in range(numpft):
-            if (param.attrib['name']=='fates_leaf_vcmax25top'):
-                fates_leaf_vcmax25top.append(np.float64(param.text.split(',')[pft]))
-            if (param.attrib['name']=='fates_leaf_slatop'):
-                fates_leaf_slatop.append(np.float64(param.text.split(',')[pft]))
-            if (param.attrib['name']=='fates_stoich_nitr'):
-                fates_stoich_nitr.append(np.float64(param.text.split(',')[pft]))
+print('Reading non-fortran pft parameters')
+py_pft_root = xmlroot.find('py_params').find('pft_dim')
+for param in py_pft_root.iter('param'):
+    for pft in range(numpft):
+        if (param.attrib['name']=='fates_leaf_vcmax25top'):
+            fates_leaf_vcmax25top.append(np.float64(param.text.split(',')[pft]))
+        if (param.attrib['name']=='fates_leaf_slatop'):
+            fates_leaf_slatop.append(np.float64(param.text.split(',')[pft]))
+        if (param.attrib['name']=='fates_stoich_nitr'):
+            fates_stoich_nitr.append(np.float64(param.text.split(',')[pft]))
 
 
-    print('Reading non-fortran scalar parameters')
-    py_scalar_root = xmlroot.find('py_params').find('scalar_dim')
-    for param in py_scalar_root.iter('param'):
-        if (param.attrib['name']=='fates_maintresp_leaf_model'):
-            fates_maintresp_leaf_model = int(param.text.split(',')[0])
+print('Reading non-fortran scalar parameters')
+py_scalar_root = xmlroot.find('py_params').find('scalar_dim')
+for param in py_scalar_root.iter('param'):
+    if (param.attrib['name']=='fates_maintresp_leaf_model'):
+        fates_maintresp_leaf_model = int(param.text.split(',')[0])
 
-    c3_path_index = 1
-    iret = f90.set_leaf_param_sub(c8(float(c3_path_index)),ci(1),*ccharnb('fates_leaf_c3psn'))
+c3_path_index = 1
+iret = f90.set_leaf_param_sub(c8(float(c3_path_index)),ci(1),*ccharnb('fates_leaf_c3psn'))
 
-    btran_on_gs_gs2  = 4       # apply btran to the whole non-intercept portion
-    iret = f90.set_leaf_param_sub(c8(float(btran_on_gs_gs2)),ci(1),*ccharnb('fates_leaf_stomatal_btran_model'))
+btran_on_gs_gs2  = 4       # apply btran to the whole non-intercept portion
+iret = f90.set_leaf_param_sub(c8(float(btran_on_gs_gs2)),ci(1),*ccharnb('fates_leaf_stomatal_btran_model'))
 
-    btran_on_ag_vcmax_jmax = 2 # apply btran to vcmax and jmax
-    iret = f90.set_leaf_param_sub(c8(float(btran_on_ag_vcmax_jmax)),ci(1),*ccharnb('fates_leaf_agross_btran_model'))
+btran_on_ag_vcmax_jmax = 2 # apply btran to vcmax and jmax
+iret = f90.set_leaf_param_sub(c8(float(btran_on_ag_vcmax_jmax)),ci(1),*ccharnb('fates_leaf_agross_btran_model'))
 
-    medlyn_model = 2
-    ballberry_model = 1
-    iret = f90.set_leaf_param_sub(c8(float(medlyn_model)),ci(1),*ccharnb('fates_leaf_stomatal_model'))
+medlyn_model = 2
+ballberry_model = 1
+iret = f90.set_leaf_param_sub(c8(float(medlyn_model)),ci(1),*ccharnb('fates_leaf_stomatal_model'))
 
-    n_small = 5
-    n_large = 8
+n_small = 5
+n_large = 8
 
-    # Leaf temperature ranges [C]
-    leaf_tempc_min = 15.0
-    leaf_tempc_max = 50.0
-    leaf_tempc_n = n_large
-    leaf_tempc_vec = np.linspace(leaf_tempc_min,leaf_tempc_max,num=leaf_tempc_n)
+# Leaf temperature ranges [C]
+leaf_tempc_min = 15.0
+leaf_tempc_max = 50.0
+leaf_tempc_n = n_large
+leaf_tempc_vec = np.linspace(leaf_tempc_min,leaf_tempc_max,num=leaf_tempc_n)
     
-    # Relative Humidity Ranges
-    rh_max = 1.00
-    rh_min = 0.1
-    rh_n   = n_large
-    rh_vec = np.linspace(rh_min,rh_max,num=rh_n)
+# Relative Humidity Ranges
+rh_max = 1.00
+rh_min = 0.1
+rh_n   = n_large
+rh_vec = np.linspace(rh_min,rh_max,num=rh_n)
 
-    # CO2 concentration ranges (ppm)
-    co2_max = 450.0
-    co2_min = 250.0
-    co2_n   = n_small
-    co2_vec = np.linspace(co2_min,co2_max,num=co2_n)
+# CO2 concentration ranges (ppm)
+co2_max = 450.0
+co2_min = 250.0
+co2_n   = n_small
+co2_vec = np.linspace(co2_min,co2_max,num=co2_n)
 
-    # Atmospheric Pressure ranges
-    can_press_min = 090000.0
-    can_press_max = 110000.0
-    can_press_n   = n_small
-    can_press_vec = np.linspace(can_press_min,can_press_max,can_press_n)
+# Atmospheric Pressure ranges
+can_press_min = 090000.0
+can_press_max = 110000.0
+can_press_n   = n_small
+can_press_vec = np.linspace(can_press_min,can_press_max,can_press_n)
 
-    # Absorbed PAR ranges [W/m2]
-    par_abs_min = 0.0
-    par_abs_max = 300
-    par_abs_n  = n_large
-    par_abs_vec = np.linspace(par_abs_min,par_abs_max,num=par_abs_n)
+# Absorbed PAR ranges [W/m2]
+par_abs_min = 0.0
+par_abs_max = 300
+par_abs_n  = n_large
+par_abs_vec = np.linspace(par_abs_min,par_abs_max,num=par_abs_n)
 
-    # Boundary Conductance ranges [umol/m2/s]
-    gb_min =  500000.0            # Lower limit imposed by CLM/ELM 0.5 mol/m2/s
-    gb_max = 5000000.0            # 50% larger than  Roughly largestthe largest values seen at BCI (which are 2.5mol/m2/s)
-    gb_n  = n_large
-    gb_vec = np.linspace(gb_min,gb_max,num=gb_n)
+# Boundary Conductance ranges [umol/m2/s]
+gb_min =  500000.0            # Lower limit imposed by CLM/ELM 0.5 mol/m2/s
+gb_max = 5000000.0            # 50% larger than  Roughly largestthe largest values seen at BCI (which are 2.5mol/m2/s)
+gb_n  = n_large
+gb_vec = np.linspace(gb_min,gb_max,num=gb_n)
 
-    # btran ranges
-    btran_n   = n_large
-    btran_min = 0.01
-    btran_max = 1
-    btran_vec = np.linspace(btran_min,btran_max,num=btran_n)
+# btran ranges
+btran_n   = n_large
+btran_min = 0.01
+btran_max = 1
+btran_vec = np.linspace(btran_min,btran_max,num=btran_n)
     
-    # vcmax25top ranges
-    vcmax25t_n = n_large
-    vcmax25t_min = 0.1
-    vcmax25t_max = 60
-    vcmax25t_vec = np.linspace(vcmax25t_min,vcmax25t_max,num=vcmax25t_n)
+# vcmax25top ranges
+vcmax25t_n = n_large
+vcmax25t_min = 0.1
+vcmax25t_max = 60
+vcmax25t_vec = np.linspace(vcmax25t_min,vcmax25t_max,num=vcmax25t_n)
 
+dist.barrier()
+
+if(rank==0):
     print(' {} leaf temperature values [C] from {} to {}'.format(leaf_tempc_n,leaf_tempc_min,leaf_tempc_max))
     print(' {} RH values [fraction] from {} to {}'.format(rh_n,rh_min,rh_max))
     print(' {} PAR Abs [W/m2] values from {} to {}'.format(par_abs_n,par_abs_min,par_abs_max))
     print(' {} BL conductance (gb) [umol/m2/s] values from {} to {}'.format(gb_n,gb_min,gb_max))
     print(' {} BTRAN values [fraction] from {} to {}'.format(btran_n,np.exp(btran_min),np.exp(btran_max)))
     print(' {} Vcmax 25 top values [umol/m2/s] from {} to {}'.format(vcmax25t_n,vcmax25t_min,vcmax25t_max))
-
-    # Initialize fortran return values
-    # these are all temps and doubles
-    vcmax_f      = c_double(-9.0);jmax_f       = c_double(-9.0)
-    kp_f         = c_double(-9.0);agross_f     = c_double(-9.0)
-    gstoma_f     = c_double(-9.0);anet_f       = c_double(-9.0)
-    lmr_f        = c_double(-9.0);c13_f        = c_double(-9.0)
-    co2_interc_f = c_double(-9.0);veg_qs_f     = c_double(-9.0)
-    veg_es_f     = c_double(-9.0);mm_kco2_f    = c_double(-9.0)
-    mm_ko2_f     = c_double(-9.0);co2_cpoint_f = c_double(-9.0)
-    qsdt_dummy_f = c_double(-9.0);esdt_dummy_f = c_double(-9.0)
-    solve_iter_f = c_int(-9);     gs0_f        = c_double(-9.0)
-    gs1_f        = c_double(-9.0);gs2_f        = c_double(-9.0)
     
-    n_model_runs = len(vcmax25t_vec)*len(leaf_tempc_vec)*len(btran_vec)*len(gb_vec)*len(rh_vec)*len(par_abs_vec)*len(co2_vec)*len(can_press_vec)
+# Initialize fortran return values
+# these are all temps and doubles
+vcmax_f      = c_double(-9.0);jmax_f       = c_double(-9.0)
+kp_f         = c_double(-9.0);agross_f     = c_double(-9.0)
+gstoma_f     = c_double(-9.0);anet_f       = c_double(-9.0)
+lmr_f        = c_double(-9.0);c13_f        = c_double(-9.0)
+co2_interc_f = c_double(-9.0);veg_qs_f     = c_double(-9.0)
+veg_es_f     = c_double(-9.0);mm_kco2_f    = c_double(-9.0)
+mm_ko2_f     = c_double(-9.0);co2_cpoint_f = c_double(-9.0)
+qsdt_dummy_f = c_double(-9.0);esdt_dummy_f = c_double(-9.0)
+solve_iter_f = c_int(-9);     gs0_f        = c_double(-9.0)
+gs1_f        = c_double(-9.0);gs2_f        = c_double(-9.0)
+    
+n_model_runs = vcmax25t_n * leaf_tempc_n * btran_n * gb_n * rh_n * par_abs_n * co2_n * can_press_n
 
+dist.barrier()
+
+if(rank == 0):
     print('\nRunning mechanistic photosynthesis model for {} combinations'.format(n_model_runs))
+    print('\nThere are {} threads to process this data'.format(world_size))
 
-    # Report every 5%
-    ntestmod = int(n_model_runs/20)
+chunk_size = int(np.floor(n_model_runs/world_size))
 
-    n_features_in  = 14   # number of controls on photosynthesis
-    n_features_out = 2    # number of predictions (ie agross and gstoma)
+ida = int(rank*chunk_size)
+if(rank==(world_size-1)):
+    idz = int(n_model_runs)
+else:
+    idz = int((rank+1)*chunk_size)
 
-    model_in  = torch.from_numpy(np.zeros([n_model_runs,n_features_in]).astype(np.float32))
-    model_out = torch.from_numpy(np.zeros([n_model_runs,n_features_out]).astype(np.float32))
+dist.barrier()
+print('Rank {}: has indices {}:{}'.format(rank,ida,idz))
+dist.barrier()
 
-    print('\nRunning a total of {} tests: \n'.format(n_model_runs))
-    time0 = time.process_time()
 
-    lnc_top  = fates_stoich_nitr[0]/fates_leaf_slatop[0]
+if rank == 0:
+    # Create a shared tensor
+    #shm = torch.utils.shared_memory.shared_memory_(name='my_shm', create=True, size=(world_size) * torch.finfo(torch.float32).bits // 8)
 
-    ip = 0
-    for vcmax25_top in vcmax25t_vec:
+    #shm = mp.shared_memory(create=True, size=(world_size) * torch.finfo(torch.float32).bits // 8, name='my_shm')
+    shm = torch.shared_memory(create=True, name='my_shm', size=(4) * 4)
+else:
+    #shm = mp.shared_memory(create=False, name='my_shm')
+    shm = torch.shared_memory(create=False, name='my_shm')
+
+    
+test_tensor = torch.frombuffer(shm.buf, dtype=torch.float32).reshape(world_size)
+
+#test_tensor = torch.zeros((world_size))
+#test_tensor.share_memory_()
+#else:
+    #shm = torch.utils.shared_memory.shared_memory_(name='my_shm', create=False)
+
+dist.barrier()  
+#test_tensor = torch.frombuffer(shm.buf, dtype=torch.float32).reshape(num_samples, num_features)
+
+test_tensor[rank] = float(rank)
+
+dist.barrier()
+
+if(rank == 1):
+    print(test_tensor[:])
+
+exit(0)
+
+
+
+# Report every 5%
+ntestmod = int(n_model_runs/20)
+
+n_features_in  = 14   # number of controls on photosynthesis
+n_features_out = 2    # number of predictions (ie agross and gstoma)
+
+model_in  = torch.from_numpy(np.zeros([n_model_runs,n_features_in]).astype(np.float32))
+model_out = torch.from_numpy(np.zeros([n_model_runs,n_features_out]).astype(np.float32))
+
+print('\nRunning a total of {} tests: \n'.format(n_model_runs))
+
+time0 = time.process_time()
+
+lnc_top  = fates_stoich_nitr[0]/fates_leaf_slatop[0]
+
+def GetArgIndices(i,vcmax25t_n,leaf_tempc_n,can_press_n, btran_n,gb_n,rh_n,par_abs_n,co2_n):
+
+    return i
+
+
+
+ip = 0
+for vcmax25_top in vcmax25t_vec:
 
   jmax25_top,kp25_top =  GetJmaxKp25Top(vcmax25_top)
-
   for leaf_tempc in leaf_tempc_vec:
     leaf_tempk = leaf_tempc + tfrz_1atm
     for can_press in can_press_vec:
-
       o2_ppress = 0.2095*can_press
-        
       iret = f90.qsat_sub(c8(leaf_tempk),c8(can_press), \
                           byref(veg_qs_f),byref(veg_es_f), \
                           byref(qsdt_dummy_f),byref(esdt_dummy_f))
@@ -509,7 +561,7 @@ dataset = CustomDataset(model_in, model_out)
 
 model_out_std = model_out.std(dim=0)
 
-data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, sampler=DistributedSampler())
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -541,10 +593,7 @@ mod_pattern = '13-L64-Re-L32-Re-2'  # This is a label for model architecture in 
 
 model = PhotoNeuralNetwork().to(device)
 
-
-
 ddp_model = DDP(model, device_ids=[dist.get_rank()])
-
 
 #model = Net()
 # Mean Absolute Fractional Error (scale invariant)
@@ -555,6 +604,7 @@ def mafe_loss(pred, target):
 
 def norm_mse_loss(pred,target,std):
     return torch.mean( ((pred-target)/std)**2 )
+
 
 criterion = norm_mse_loss #nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
@@ -576,18 +626,19 @@ for epoch in range(1000):
 
     #print('Epoch %d, loss = %.3f' %
     #(epoch + 1, loss.item() ))
+    if(rank==0):
+        ckp = ddp_model.module.state_dict()
+        datestr = datetime.now().strftime("%Y%m%d-%H")
+        torch.save(ckp,"checkpoint_{}.pt".format(datestr))
 
-
-cleanup()
-
-
-if(dist.get_rank()==1):
+if(rank==0):
     # give the model run a unique string
     datestr = datetime.now().strftime("%Y%m%d-%H%M")
 
     script_module = torch.jit.script(model)
     script_module.save("./c3psn_modelsd_szv2_i13_{}_c{}.pt".format(mod_pattern,datestr))
 
+dist.destroy_process_group()
 
 #traced_model = torch.jit.trace(model, dummy_input)
 #    frozen_model = torch.jit.freeze(traced_model)
