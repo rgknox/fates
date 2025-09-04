@@ -1,5 +1,4 @@
 import matplotlib as mpl
-#mpl.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
 import argparse
@@ -25,7 +24,7 @@ import importlib.util
 
 # THIS SCRIPT SHOULD BE RUN WITH TORCHRUN!
 # e.g.:
-# torchrun --nproc_per_node=12 python PhotoTrain.py
+# torchrun --nproc_per_node=<N> PhotoTrain.py
 
 current_path = os.getcwd()
 fates_path=current_path.split('fates')[0]+'fates'
@@ -54,7 +53,6 @@ import pandas as pd
 from ipywidgets import widgets
 from IPython.display import display
 
-
 #! (cd /home/rgknox/Models/CTSM/src/fates/functional_unit_testing/shared/;./build_fates_objs.sh)
 
 font = {'family' : 'sans-serif',
@@ -64,8 +62,6 @@ font = {'family' : 'sans-serif',
 matplotlib.rc('font', **font)
 
 print("IS CUDA AVAILABLE?:{}".format(torch.cuda.is_available()))
-
-#code.interact(local=dict(globals(), **locals()))
 
 # Global constants to use in all Leaf Biophysics unit testing
 # =======================================================================================
@@ -126,6 +122,18 @@ def GetJmaxKp25Top(vcmax25_top):
     # co2_rcurve_islope = co2_rcurve_islope25 * 2._r8**((veg_tempk-(tfrz+25._r8))/10._r8)
 
     return jmax25_top, kp25_top
+
+def setup():
+    os.environ['MASTER_ADDR'] = '127.0.0.1'
+    os.environ['MASTER_PORT'] = '29500'
+
+    dist.init_process_group(backend='gloo', init_method='env://')
+
+def cleanup():
+    dist.destroy_process_group()
+    
+
+setup()
 
 if(dist.get_rank()==1):
     
@@ -534,19 +542,7 @@ mod_pattern = '13-L64-Re-L32-Re-2'  # This is a label for model architecture in 
 model = PhotoNeuralNetwork().to(device)
 
 
-def setup():
-    os.environ['MASTER_ADDR'] = '127.0.0.1'
-    os.environ['MASTER_PORT'] = '29500'
 
-    dist.init_process_group(backend='gloo', init_method='env://')
-    # initialize the process group
-    #dist.init_process_group("gloo", rank=rank, world_size=world_size)
-
-def cleanup():
-    dist.destroy_process_group()
-    
-
-setup()
 ddp_model = DDP(model, device_ids=[dist.get_rank()])
 
 
