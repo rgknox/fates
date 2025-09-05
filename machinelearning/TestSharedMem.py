@@ -2,8 +2,6 @@ import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
 
-
-
         
 def GetLeafTempc(n_samp):
     return np.random.normal(loc=302-273.4, scale=5, size=n_samp)
@@ -13,6 +11,9 @@ def GetRH(n_samp):
 
 def GetCO2(n_samp):
     return np.random.uniform(low=250.0,high=450., size=n_samp)
+
+def GetPress(n_samp):
+    return np.random.normal(loc=100000., scale=1000, size=n_samp)
 
 def GetALTempDiff(n_samp):
     # This is T_air - T_leaf
@@ -50,16 +51,22 @@ def RankPrepInput(rank, shared_tensor, chunk):
     btran_vec      = GetBTran(n_samp)
     gb_vec         = GetGB(n_samp)
     parabs_vec     = GetPARAbsUmol(n_samp)
-
+    press_vec      = GetPress(n_samp)
+    
     # The chunk is a list of indices in the shared
     # tensor
     for i,ip in enumerate(chunk):
 
-        iret = f90.qsat_sub(c8(leaf_tempk),c8(can_press), \
+        leaf_tempk = leaf_temp_c[i]+273.14
+        
+        
+        iret = f90.qsat_sub(c8(leaf_tempk),c8(press_vec[i]), \
                             byref(veg_qs_f),byref(veg_es_f), \
                             byref(qsdt_dummy_f),byref(esdt_dummy_f))
+
+        vpress_sat = veg_es_f.value
         
-        iret = f90.cangas_sub(c8(can_press), \
+        iret = f90.cangas_sub(c8(press_vec[i]), \
                               c8(o2_ppress), \
                               c8(leaf_tempk), \
                               byref(mm_kco2_f), \
@@ -68,7 +75,6 @@ def RankPrepInput(rank, shared_tensor, chunk):
 
         iret = f90.lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(1), \
                                 c8(leaf_tempk), byref(lmr_f))
-
 
         iret = f90.biophysrate_sub(ci(1), \
                                    c8(vcmax25_top), c8(jmax25_top), c8(kp25_top), \
