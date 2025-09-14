@@ -5384,7 +5384,6 @@ contains
     integer  :: lb1,ub1,lb2,ub2  ! IO array bounds for the calling thread
     integer  :: ivar             ! index of IO variable object vector
     integer  :: ft               ! functional type index
-    integer  :: ifp              ! patch's hlm index
     real(r8) :: n_density   ! individual of cohort per m2.
     real(r8) :: n_perm2     ! individuals per m2 for the whole column
     real(r8) :: site_area_veg_inv           ! 1/area of the site that is not bare-ground 
@@ -5593,12 +5592,14 @@ contains
                         hio_laisha_clllpf(io_si,clllpf_indx) = hio_laisha_clllpf(io_si,clllpf_indx) + &
                              cpatch%elai_profile(ican,ipft,ileaf)*(1._r8-cpatch%f_sun(ican,ipft,ileaf))*clllpf_area
 
-                        parprof_pft_dir_z = bc_in(s)%solad_parb(ifp,ipar) * &
-                             cpatch%nrmlzd_parprof_pft_dir_z(ican,ipft,ileaf)
-
-                        parprof_pft_dif_z = bc_in(s)%solai_parb(ifp,ipar) * &
-                             cpatch%nrmlzd_parprof_pft_dif_z(ican,ipft,ileaf)
-
+                        if (cpatch%nocomp_pft_label.ne.nocomp_bareground)then
+                           parprof_pft_dir_z = bc_in(s)%solad_parb(cpatch%patchno,ipar) * &
+                                cpatch%nrmlzd_parprof_pft_dir_z(ican,ipft,ileaf)
+                           
+                           parprof_pft_dif_z = bc_in(s)%solai_parb(cpatch%patchno,ipar) * &
+                                cpatch%nrmlzd_parprof_pft_dif_z(ican,ipft,ileaf)
+                        end if
+                           
                         hio_parprof_dir_si_cnlfpft(io_si,clllpf_indx) = hio_parprof_dir_si_cnlfpft(io_si,clllpf_indx) + &
                              parprof_pft_dir_z * clllpf_area
 
