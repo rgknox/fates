@@ -155,7 +155,7 @@ module FatesPatchMod
     !---------------------------------------------------------------------------
 
     ! RADIATION
-    real(r8) :: rad_error(num_swb)                        ! radiation consv error by band [W/m2]
+    real(r8) :: rad_error(num_swb)                        ! radiation consv error (as fraction of forcing)
     real(r8) :: fcansno                                   ! fraction of canopy covered in snow [0-1]
     real(r8) :: gnd_alb_dif(num_swb)                      ! ground albedo for diffuse rad, both bands [0-1]
     real(r8) :: gnd_alb_dir(num_swb)                      ! ground albedo for direct rad, both bands [0-1]
