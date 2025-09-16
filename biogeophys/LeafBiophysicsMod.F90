@@ -939,7 +939,7 @@ contains
     real(r8), intent(in)  :: lmr            ! leaf maintenance respiration rate (umol CO2/m**2/s)
     real(r8), intent(in)  :: par_abs        ! par absorbed per unit lai [umol photons/m2leaf/s ]
     real(r8), intent(in)  :: gb             ! leaf boundary layer conductance (umol H2O/m**2/s)
-    real(r8), intent(in)  :: veg_tempk      ! vegetation temperature
+    real(r8), intent(in)  :: veg_tempk      ! vegetation temperature (unused, except error reporting) [K]
     real(r8), intent(in)  :: veg_esat       !
     real(r8), intent(in)  :: gs0            ! conductance intercept (umol H20/m2/s)
     real(r8), intent(in)  :: gs1            ! conductance slope (could be multiplied by btran)
@@ -950,7 +950,6 @@ contains
     real(r8), intent(out) :: fval           ! ci_input - ci_updated  (Pa)
     
     !real(r8) :: veg_esat          ! Saturation vapor pressure at leaf-surface [Pa]
-    real(r8) :: veg_qs            ! DUMMY, specific humidity at leaf-surface [kg/kg]
     real(r8) :: a_gs              ! The assimilation (a) for calculating conductance (gs)
                                   ! is either = to anet or agross
     real(r8) :: ac                ! Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
@@ -1128,59 +1127,64 @@ contains
     ! Maximum number of iterations on intracelluar co2 solver until is quits
     integer, parameter :: max_iters = 200
 
-    ! Find the starting points (end-points) for bisection
-    ! We dont need stomatal slope because we just want the two extremes
-    ! which is the intercept and infinite conductance
-    call CiMinMax(ft,vcmax,jmax,kp,co2_cpoint,mm_kco2,mm_ko2, &
-         can_co2_ppress,can_o2_ppress,can_press,lmr,par_abs, &
-         gb,gs0,ci_l,ci_h)
+    ! Only set this to true if we are debugging and having trouble with
+    ! solver. I keep this here because the print statements are useful
+    logical, parameter :: abort_print_debug = .false.
     
+    ! We take a simple approach to setting the end-points to the bisection
+    ! solver. Mathematically, ci's below the co2_compensation point have no reduced
+    ! effect on C3 photosynthesis, but do have an effect on C4 PEP. For the
+    ! the high end-point, we choose something generic and extremely high. Present
+    ! day co2 partial pressures (circa 21st century) are ~400+ PPM, which depending
+    ! on atmospheric pressure is 20-40 Pa range.  A productive plant with positive
+    ! assimilation should have Ci values lower than this. A plant that is net
+    ! respiring, should have values higher, but not that much higher than atmospheric
+
+    ci_h = 150.0
+    ci_l = 0.5*co2_cpoint
+
+    ! ------------------------------------------------------------------------------
+    ! ci_update = ci_start - fval
+    ! The updated value is the original minus fval.
+    !
+    ! 1) If fval_h is negative, that means the solution should be higher
+    ! than the highest estimate, accept ci_h as the solution because
+    ! we must be dealing with something really extreme. Just accept
+    ! the endpoint.
+    !
+    ! 2) If fval_l is positive, that means the soltuion should be lower
+    ! than the co2_cpoint, which is strange and weird, so just accept the co2_cpoint
+    ! as the solution.
+    !
+    ! 3) If the high value is positive and the low value is negative, that is expected.
+    ! -------------------------------------------------------------------------------
+
     call CiFunc(ci_h, &
          ft,vcmax,jmax,kp,co2_cpoint,mm_kco2,mm_ko2, &
          can_co2_ppress,can_o2_ppress,can_press,can_vpress,lmr,par_abs,gb,veg_tempk,veg_esat, &
          gs0,gs1,gs2, &
          anet,agross,gs,fval_h)
-    
+
+    if( fval_h<0._r8) then
+       ci = ci_h
+       !call ErrorReport('Bisection Ci at high bound',ci,ft,vcmax,jmax,kp,co2_cpoint,mm_kco2, &
+       !     mm_ko2,can_co2_ppress,can_o2_ppress,can_press,can_vpress,lmr,par_abs,gb,veg_tempk,gs0,gs1,gs2,ci_tol)
+       !stop
+       return
+    end if
+        
     call CiFunc(ci_l, &
          ft,vcmax,jmax,kp,co2_cpoint,mm_kco2,mm_ko2, &
          can_co2_ppress,can_o2_ppress,can_press,can_vpress,lmr,par_abs,gb,veg_tempk,veg_esat, &
          gs0,gs1,gs2, &
          anet,agross,gs,fval_l)
-
-    ! It is necessary that our starting points are on opposite sides of the root
-    if( nint(fval_h/abs(fval_h)) .eq. nint(fval_l/abs(fval_l)) ) then
-       
-       ! Try an exteremly large bisection range, if this doesn't work, then
-       ! fail the run
-       ci_h = 0.000001_r8
-       call CiFunc(ci_h, &
-            ft,vcmax,jmax,kp,co2_cpoint,mm_kco2,mm_ko2, &
-            can_co2_ppress,can_o2_ppress,can_press,can_vpress,lmr,par_abs,gb,veg_tempk,veg_esat, &
-            gs0,gs1,gs2, &
-            anet,agross,gs,fval_h)
-
-       ci_l = 2000._r8
-       call CiFunc(ci_l, &
-         ft,vcmax,jmax,kp,co2_cpoint,mm_kco2,mm_ko2, &
-         can_co2_ppress,can_o2_ppress,can_press,can_vpress,lmr,par_abs,gb,veg_tempk, veg_esat, &
-         gs0,gs1,gs2, &
-         anet,agross,gs,fval_l)
-       
-       ! It is necessary that our starting points are on opposite sides of the root
-       if( nint(fval_h/abs(fval_h)) .eq. nint(fval_l/abs(fval_l)) ) then
-          write(fates_log(),*)'While attempting bisection for Ci calculations,'
-          write(fates_log(),*)'the two starting values for Ci were on the same'
-          write(fates_log(),*)'side of the root. Try increasing and decreasing'
-          write(fates_log(),*)'init_ci_high and init_ci_low respectively'
-          write(fates_log(),*) "ci_h=",ci_h,"fval_h=",fval_h,"ci_l=",ci_l,"fval_l=",fval_l
-          write(fates_log(),*) "ft= ",ft,"is c3psn:",lb_params%c3psn(ft) == c3_path_index
-          write(fates_log(),*) "vcmax=",vcmax,"jmax=",jmax,"kp=",kp
-          write(fates_log(),*) "co2_cpoint=",co2_cpoint,"mm_kco2=",mm_kco2,"mm_ko2=",mm_ko2
-          write(fates_log(),*) "can_co2_ppress=",can_co2_ppress,"can_o2_ppress=",can_o2_ppress,"can_press=",can_press
-          write(fates_log(),*) "can_vpress=",can_vpress,"lmr=",lmr,"par_abs=",par_abs,"gb=",gb
-          write(fates_log(),*) "veg_tempk=",veg_tempk,"gs0=",gs0,"gs1=",gs1,"gs2=",gs2,"ci_tol=",ci_tol
-          call endrun(msg=errMsg(sourcefile, __LINE__))
-       end if
+    
+    if( fval_l>0._r8  ) then
+       ci = ci_l
+       !call ErrorReport('Bisection Ci at lower bound',ci,ft,vcmax,jmax,kp,co2_cpoint,mm_kco2, &
+       !     mm_ko2,can_co2_ppress,can_o2_ppress,can_press,can_vpress,lmr,par_abs,gb,veg_tempk,gs0,gs1,gs2,ci_tol)
+       !stop
+       return
     end if
 
     loop_continue = .true.
@@ -1201,9 +1205,11 @@ contains
        end if
        
        if( solve_iter == max_iters) then
-          write (fates_log(),*) 'Ci bisection during photosynthesis failed'
-          write (fates_log(),*) 'try increasing tolerance or widening the starting points'
-          call endrun(msg=errMsg(sourcefile, __LINE__))
+          print*,"MAX BISECTION:",solve_iter
+          !write (fates_log(),*) 'Ci bisection during photosynthesis failed'
+          !write (fates_log(),*) 'try increasing tolerance or widening the starting points'
+          !call endrun(msg=errMsg(sourcefile, __LINE__))
+          exit bi_iter_loop
        end if
        
        ! Determining which side of the interval we want to retain
@@ -1223,6 +1229,8 @@ contains
     ! is the bisection point minus the difference
     
     ci = ci_b - fval_b
+
+    print*,"CI_END",ci
 
     return
   end subroutine CiBisection
@@ -1324,7 +1332,7 @@ contains
     real(r8),parameter :: init_a2l_co2_c4 = 0.4_r8
 
     ! For testing, it is useful to force the bisection method
-    logical, parameter :: force_bisection = .false.
+    logical, parameter :: force_bisection = .true.
 
     ! Maximum number of iterations on intracelluar co2 solver until is quits
     integer, parameter :: max_iters = 10
@@ -1478,8 +1486,7 @@ contains
        lwp_star = 1._r8
     end if
     
-    ! call QSat(veg_tempk, can_press, qsat_alt, veg_esat)
-
+    call QSat(veg_tempk, can_press, qsat_alt, veg_esat)
     qsat_alt = qsat_alt * g_per_kg
     
     ceair = GetConstrainedVPress(can_vpress,veg_esat)
@@ -2295,5 +2302,74 @@ contains
   end function VeloToMolarCF
 
   ! =====================================================================================
+
+  subroutine ErrorReport(message,ci,ft,vcmax,jmax,kp,co2_cpoint,mm_kco2, &
+       mm_ko2,can_co2_ppress,can_o2_ppress,can_press, &
+       can_vpress,lmr,par_abs,gb,veg_tempk,gs0,gs1,gs2,ci_tol)
+    
+    character(len=*) :: message
+    real(r8), intent(in)  :: ci             ! Input (trial) intracellular leaf CO2 (Pa)
+    integer, intent(in)   :: ft             ! plant functional type index
+    real(r8), intent(in)  :: vcmax          ! maximum rate of carboxylation (umol co2/m**2/s)
+    real(r8), intent(in)  :: jmax           ! maximum electron transport rate (umol electrons/m**2/s)
+    real(r8), intent(in)  :: kp             ! initial slope of CO2 response curve (C4 plants)
+    real(r8), intent(in)  :: mm_kco2        ! Michaelis-Menten constant for CO2 (Pa)
+    real(r8), intent(in)  :: mm_ko2         ! Michaelis-Menten constant for O2 (Pa)
+    real(r8), intent(in)  :: co2_cpoint     ! CO2 compensation point (Pa)
+    real(r8), intent(in)  :: can_press      ! Air pressure near the surface of the leaf (Pa)
+    real(r8), intent(in)  :: can_co2_ppress ! Partial pressure of CO2 near the leaf surface (Pa)
+    real(r8), intent(in)  :: can_o2_ppress  ! Partial pressure of O2 near the leaf surface (Pa)
+    real(r8), intent(in)  :: can_vpress     ! vapor pressure of the canopy air (Pa)
+    real(r8), intent(in)  :: lmr            ! leaf maintenance respiration rate (umol CO2/m**2/s)
+    real(r8), intent(in)  :: par_abs        ! par absorbed per unit lai [umol photons/m2leaf/s ]
+    real(r8), intent(in)  :: gb             ! leaf boundary layer conductance (umol H2O/m**2/s)
+    real(r8), intent(in)  :: veg_tempk      ! vegetation temperature (unused, except error reporting) [K]
+    real(r8), intent(in)  :: gs0            ! conductance intercept (umol H20/m2/s)
+    real(r8), intent(in)  :: gs1            ! conductance slope (could be multiplied by btran)
+    real(r8), intent(in)  :: gs2            ! for Medlyn only: either 1 or btran
+    real(r8), intent(in)  :: ci_tol
+
+    integer, parameter :: report_style = 2  ! 1 for write statements
+                                            ! 2 for print (used in unit testing debugging)
+
+    if(report_style==1)then
+       write(fates_log(),*) message
+       write(fates_log(),*) "ci=",ci
+       write(fates_log(),*) "ft= ",ft,"is c3psn:",lb_params%c3psn(ft) == c3_path_index
+       write(fates_log(),*) "vcmax=",vcmax,"jmax=",jmax,"kp=",kp
+       write(fates_log(),*) "co2_cpoint=",co2_cpoint,"mm_kco2=",mm_kco2,"mm_ko2=",mm_ko2
+       write(fates_log(),*) "can_co2_ppress=",can_co2_ppress,"can_o2_ppress=",can_o2_ppress
+       write(fates_log(),*) "can_press=",can_press
+       write(fates_log(),*) "can_vpress=",can_vpress,"lmr=",lmr,"par_abs=",par_abs,"gb=",gb
+       write(fates_log(),*)"veg_tempk=",veg_tempk,"gs0=",gs0,"gs1=",gs1,"gs2=",gs2,"ci_tol=",ci_tol
+       if(lb_params%c3psn(ft)==c3_path_index)then
+          write(fates_log(),*)"C3 Ag Rubisco: ",AgrossRubiscoC3(vcmax,ci,can_o2_ppress,co2_cpoint,mm_kco2,mm_ko2)
+          write(fates_log(),*)"C3 Ag RuBP: ",AgrossRuBPC3(par_abs,jmax,lb_params%fnps(ft),ci,co2_cpoint)
+       else
+          write(fates_log(),*)"C4 Ag Rubisco: ",vcmax
+          write(fates_log(),*)"C4 Ag RuBP: ", AgrossRuBPC4(par_abs)
+          write(fates_log(),*)"C4 PEP: ", AgrossPEPC4(ci,kp,can_press)
+       end if       
+    else
+       print*, message
+       print*, "ci=",ci
+       print*, "ft= ",ft,"is c3psn:",lb_params%c3psn(ft) == c3_path_index
+       print*, "vcmax=",vcmax,"jmax=",jmax,"kp=",kp
+       print*, "co2_cpoint=",co2_cpoint,"mm_kco2=",mm_kco2,"mm_ko2=",mm_ko2
+       print*, "can_co2_ppress=",can_co2_ppress,"can_o2_ppress=",can_o2_ppress
+       print*, "can_press=",can_press
+       print*, "can_vpress=",can_vpress,"lmr=",lmr,"par_abs=",par_abs,"gb=",gb
+       print*,"veg_tempk=",veg_tempk,"gs0=",gs0,"gs1=",gs1,"gs2=",gs2,"ci_tol=",ci_tol
+       if(lb_params%c3psn(ft)==c3_path_index)then
+          print*,"C3 Ag Rubisco: ",AgrossRubiscoC3(vcmax,ci,can_o2_ppress,co2_cpoint,mm_kco2,mm_ko2)
+          print*,"C3 Ag RuBP: ",AgrossRuBPC3(par_abs,jmax,lb_params%fnps(ft),ci,co2_cpoint)
+       else
+          print*,"C4 Ag Rubisco: ",vcmax
+          print*,"C4 Ag RuBP: ", AgrossRuBPC4(par_abs)
+          print*,"C4 PEP: ", AgrossPEPC4(ci,kp,can_press)
+       end if
+    end if
+    
+  end subroutine ErrorReport
   
 end module LeafBiophysicsMod

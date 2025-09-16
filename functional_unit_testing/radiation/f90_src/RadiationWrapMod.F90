@@ -220,9 +220,13 @@ contains
     integer(c_int) :: ican, icol
     integer(c_int) :: ib
     real(r8)    :: vai_top,vai_bot
-    real(r8)    :: Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,Rb_abs,Rd_abs
+    real(r8)    :: Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow
+    real(r8)    :: leaf_sun_frac,Rb_abs,Rd_abs
+    logical     :: call_fail
 
-    call twostream%GetAbsRad(ican,icol,ib,vai_top,vai_bot,Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+    call twostream%GetAbsRad(ican,icol,ib,vai_top,vai_bot,Rb_abs, &
+         Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac, &
+         call_fail)
     
     return
   end subroutine WrapGetAbsRad

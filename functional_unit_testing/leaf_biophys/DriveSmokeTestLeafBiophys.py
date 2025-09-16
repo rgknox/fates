@@ -211,6 +211,7 @@ def main(argv):
     # daylength factors (scale vcmax, but covered by btran scaling)
     # 
 
+    leaf_electron_transp_models = [1,2]  # 1 - FvCB80 , 2- JB2021
     leaf_stomatal_btran_models = [0,1,2,3,4,5]   #4,5 medlyn only
     leaf_agross_btran_models = [0,1,2]
     
@@ -293,6 +294,7 @@ def main(argv):
 
     print(' 2 conductance models, Medlyn and Ball-Berry')
     print(' 2 pathway (C3/C4) models')
+    print(' {} electron transport models from {} to {}'.format(len(leaf_electron_transp_models),leaf_electron_transp_models[0],leaf_electron_transp_models[-1]))
     print(' {} stomatal btran options from {} to {}'.format(len(leaf_stomatal_btran_models),leaf_stomatal_btran_models[0],leaf_stomatal_btran_models[-1]))
     print(' {} agross btran options from {} to {}'.format(len(leaf_agross_btran_models),leaf_agross_btran_models[0],leaf_agross_btran_models[-1]))
     print(' {} leaf temperature values [C] from {} to {}'.format(leaf_tempc_n,leaf_tempc_min,leaf_tempc_max))
@@ -328,93 +330,97 @@ def main(argv):
             
             for iab in leaf_agross_btran_models:
 
-                iret = f90_set_leaf_param_sub(c8(float( iab  )),ci(1),*ccharnb('fates_leaf_agross_btran_model'))
+                iret = f90_set_leaf_param_sub(c8(float(iab)),ci(1),*ccharnb('fates_leaf_agross_btran_model'))
 
-                for ic3 in [0,1]:
+                for iet in leaf_electron_transp_models:
+                    iret = f90_set_leaf_param_sub(c8(float(iet)),ci(1),*ccharnb('fates_leaf_electron_transport_model'))
+                
+                    for ic3 in [0,1]:
+                        iret = f90_set_leaf_param_sub(c8(float( ic3  )),ci(1),*ccharnb('fates_leaf_c3psn'))
 
-                    iret = f90_set_leaf_param_sub(c8(float( ic3  )),ci(1),*ccharnb('fates_leaf_c3psn'))
-
-                    for vcmax25_top in vcmax25t_vec:
+                        for vcmax25_top in vcmax25t_vec:
                     
-                        jmax25_top,kp25_top =  GetJmaxKp25Top(vcmax25_top)
+                            jmax25_top,kp25_top =  GetJmaxKp25Top(vcmax25_top)
                     
-                        for leaf_tempc in leaf_tempc_vec:
+                            for leaf_tempc in leaf_tempc_vec:
                         
-                            leaf_tempk = leaf_tempc + tfrz_1atm
-            
-                            iret = f90_qsat_sub(c8(leaf_tempk),c8(can_press_1atm), \
-                                                byref(veg_qs_f),byref(veg_es_f), \
-                                                byref(qsdt_dummy_f),byref(esdt_dummy_f))
+                                leaf_tempk = leaf_tempc + tfrz_1atm
+                                iret = f90_qsat_sub(c8(leaf_tempk),c8(can_press_1atm), \
+                                                    byref(veg_qs_f),byref(veg_es_f), \
+                                                    byref(qsdt_dummy_f),byref(esdt_dummy_f))
 
-                            iret = f90_cangas_sub(c8(can_press_1atm), \
-                                                  c8(o2_ppress_209kppm), \
-                                                  c8(leaf_tempk), \
-                                                  byref(mm_kco2_f), \
-                                                  byref(mm_ko2_f), \
-                                                  byref(co2_cpoint_f))
+                                iret = f90_cangas_sub(c8(can_press_1atm), \
+                                                      c8(o2_ppress_209kppm), \
+                                                      c8(leaf_tempk), \
+                                                      byref(mm_kco2_f), \
+                                                      byref(mm_ko2_f), \
+                                                      byref(co2_cpoint_f))
         
-                            # Leaf Nitrogen Concentration at the top
-                            lnc_top  = fates_stoich_nitr[0]/fates_leaf_slatop[0]
+                                # Leaf Nitrogen Concentration at the top
+                                lnc_top  = fates_stoich_nitr[0]/fates_leaf_slatop[0]
 
-                            # Leaf Maintenance Respiration (temp and pft dependent)
-                            if(fates_maintresp_leaf_model==1):
-                                iret = f90_lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(1), c8(leaf_tempk), byref(lmr_f))
-                            elif(fates_maintresp_leaf_model==2):
-                                iret = f90_lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler_top),c8(leaf_tempk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
-                            else:
-                                print('unknown leaf respiration model')
-                                exit(1)
-                                
-                            for btran in btran_vec:
-                                iret = f90_biophysrate_sub(ci(1), \
-                                                           c8(vcmax25_top), c8(jmax25_top), c8(kp25_top), \
-                                                           c8(nscaler_top), c8(leaf_tempk), c8(dayl_factor_full), \
-                                                           c8(t_growth_kum), c8(t_home_kum), c8(btran), \
-                                                           byref(vcmax_f), byref(jmax_f), byref(kp_f), byref(gs0_f), byref(gs1_f), byref(gs2_f))
+                                # Leaf Maintenance Respiration (temp and pft dependent)
+                                if(fates_maintresp_leaf_model==1):
+                                    iret = f90_lmr_ryan_sub(c8(lnc_top),c8(nscaler_top), ci(1), \
+                                                            c8(leaf_tempk), byref(lmr_f))
+                                elif(fates_maintresp_leaf_model==2):
+                                    iret = f90_lmr_atkin_sub(c8(lnc_top),c8(rdark_scaler_top), \
+                                                             c8(leaf_tempk),c8(atkin_mean_leaf_tempk),byref(lmr_f) )
+                                else:
+                                    print('unknown leaf respiration model')
+                                    exit(1)
+
+                                for btran in btran_vec:
+                                    iret = f90_biophysrate_sub(ci(1), \
+                                                               c8(vcmax25_top), c8(jmax25_top), c8(kp25_top), \
+                                                               c8(nscaler_top), c8(leaf_tempk), c8(dayl_factor_full), \
+                                                               c8(t_growth_kum), c8(t_home_kum), c8(btran), \
+                                                               byref(vcmax_f), byref(jmax_f), byref(kp_f), byref(gs0_f), byref(gs1_f), byref(gs2_f))
             
-                                for gb in gb_vec:
-                                    for par_abs in par_abs_vec:
-                                        par_abs_umol = par_abs*wm2_to_umolm2s
-                                        for rh in rh_vec:
-                                            vpress = rh * veg_es_f.value
-                                            ptests = ptests + 1
-                                            try:
-                                                iret = f90_leaflayerphoto_sub(c8(par_abs_umol),  \
-                                                                              ci(1),   \
-                                                                              c8(vcmax_f.value),   \
-                                                                              c8(jmax_f.value),    \
-                                                                              c8(kp_f.value),      \
-                                                                              c8(gs0_f.value), \
-                                                                              c8(gs1_f.value), \
-                                                                              c8(gs2_f.value), \
-                                                                              c8(leaf_tempk), \
-                                                                              c8(can_press_1atm), \
-                                                                              c8(co2_ppress_400ppm), \
-                                                                              c8(o2_ppress_209kppm), \
-                                                                              c8(veg_es_f.value), \
-                                                                              c8(gb), \
-                                                                              c8(vpress), \
-                                                                              c8(mm_kco2_f.value), \
-                                                                              c8(mm_ko2_f.value), \
-                                                                              c8(co2_cpoint_f.value), \
-                                                                              c8(lmr_f.value), \
-                                                                              c8(ci_tol), \
-                                                                              byref(agross_f), \
-                                                                              byref(gstoma_f), \
-                                                                              byref(anet_f), \
-                                                                              byref(c13_f), \
-                                                                              byref(co2_interc_f), \
-                                                                              byref(solve_iter_f) )
-                                            except:
-                                                pfails = pfails+1
-                                                printfail=True
+                                    for gb in gb_vec:
+                                        for par_abs in par_abs_vec:
+                                            par_abs_umol = par_abs*wm2_to_umolm2s
+                                            for rh in rh_vec:
+                                                print('rh: {}, Esat: {}'.format(rh,veg_es_f.value))
+                                                vpress = rh * veg_es_f.value
+                                                ptests = ptests + 1
+                                                try:
+                                                    iret = f90_leaflayerphoto_sub(c8(par_abs_umol),  \
+                                                                                  ci(1),   \
+                                                                                  c8(vcmax_f.value),   \
+                                                                                  c8(jmax_f.value),    \
+                                                                                  c8(kp_f.value),      \
+                                                                                  c8(gs0_f.value), \
+                                                                                  c8(gs1_f.value), \
+                                                                                  c8(gs2_f.value), \
+                                                                                  c8(leaf_tempk), \
+                                                                                  c8(can_press_1atm), \
+                                                                                  c8(co2_ppress_400ppm), \
+                                                                                  c8(o2_ppress_209kppm), \
+                                                                                  c8(veg_es_f.value), \
+                                                                                  c8(gb), \
+                                                                                  c8(vpress), \
+                                                                                  c8(mm_kco2_f.value), \
+                                                                                  c8(mm_ko2_f.value), \
+                                                                                  c8(co2_cpoint_f.value), \
+                                                                                  c8(lmr_f.value), \
+                                                                                  c8(ci_tol), \
+                                                                                  byref(agross_f), \
+                                                                                  byref(gstoma_f), \
+                                                                                  byref(anet_f), \
+                                                                                  byref(c13_f), \
+                                                                                  byref(co2_interc_f), \
+                                                                                  byref(solve_iter_f) )
+                                                except:
+                                                    pfails = pfails+1
+                                                    printfail=True
                                                 
-                                            if (np.mod(ptests,ntestmod)==0):
-                                                print('Completed {} tests -- {} percent complete'.format(ptests,100*float(ptests)/float(ntests)))
+                                                if (np.mod(ptests,ntestmod)==0):
+                                                    print('Completed {} tests -- {} percent complete'.format(ptests,100*float(ptests)/float(ntests)))
 
-                                            if (pfails>0 and np.mod(pfails,100)==0 and printfail):
-                                                printfail=False
-                                                print('\n{} fails so far\n'.format(pfails))
+                                                if (pfails>0 and np.mod(pfails,100)==0 and printfail):
+                                                    printfail=False
+                                                    print('\n{} fails so far\n'.format(pfails))
                                                 
 
                                                 

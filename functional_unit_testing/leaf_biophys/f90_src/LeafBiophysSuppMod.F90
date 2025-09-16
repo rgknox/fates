@@ -36,6 +36,7 @@ contains
     allocate(lb_params%jmaxhd(numpft))
     allocate(lb_params%vcmaxse(numpft))
     allocate(lb_params%jmaxse(numpft))
+    allocate(lb_params%fnps(numpft))
 
     return
   end subroutine AllocLeafParam
@@ -59,6 +60,7 @@ contains
     deallocate(lb_params%jmaxhd)
     deallocate(lb_params%vcmaxse)
     deallocate(lb_params%jmaxse)
+    deallocate(lb_params%fnps)
     
   end subroutine DeallocLeafParam
   
@@ -71,6 +73,8 @@ contains
     integer(kind=c_int), intent(in) :: pft
 
     select case(trim(pname))
+    case('fates_leaf_electron_transport_model')
+       lb_params%electron_transport_model = nint(val)
     case('fates_daylength_factor_switch')
        lb_params%dayl_switch = nint(val)
     case('fates_leaf_stomatal_model')
@@ -113,6 +117,8 @@ contains
        lb_params%vcmaxse(pft) = val
     case('fates_leaf_jmaxse')
        lb_params%jmaxse(pft) = val
+    case('fates_leaf_fnps')
+       lb_params%fnps(pft) = val
     case default
        print*,"An unknown parameter name was sent to the parameter"
        print*,"initialization function."
@@ -144,6 +150,7 @@ contains
     print*,'fates_leaf_jmaxhd: ',lb_params%jmaxhd
     print*,'fates_leaf_vcmaxse: ',lb_params%vcmaxse
     print*,'fates_leaf_jmaxse: ',lb_params%jmaxse
+    print*,'fates_leaf_fnps: ',lb_params%fnps
     
   end subroutine DumpParams
   
