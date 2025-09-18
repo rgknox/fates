@@ -852,12 +852,18 @@ contains
     ! [kg/site/day] * [site/m2 day/sec] = [kgC/m2/s]
     bc_out%gpp_site = site_cmass%gpp_acc * area_inv / sec_per_day
     bc_out%ar_site  = site_cmass%aresp_acc * area_inv / sec_per_day
+    ! Set boundary condition to HLM for carbon loss to atm from fires and grazing
+    ! [kgC/ha/day]*[ha/m2]*[day/s] = [kg/m2/s] 
+    bc_out%fire_closs_to_atm_si = site_cmass%burn_flux_to_atm * ha_per_m2 * days_per_sec
+    bc_out%grazing_closs_to_atm_si = site_cmass%herbivory_flux_out * ha_per_m2 * days_per_sec
     
     if(hlm_use_sp.eq.ifalse .and. (.not.is_restarting))then
        call canopy_spread(currentSite)
     else
        site_cmass%gpp_acc = 0._r8
        site_cmass%aresp_acc = 0._r8
+       site_cmass%burn_flux_to_atm = 0._r8
+       site_cmass%herbivory_flux_out = 0._r8
     end if
 
     call TotalBalanceCheck(currentSite,6)
@@ -924,11 +930,7 @@ contains
     bc_out%litter_cwd_c_si = bc_out%litter_cwd_c_si * g_per_kg * AREA_INV
     bc_out%seed_c_si = bc_out%seed_c_si * g_per_kg * AREA_INV
 
-    ! Set boundary condition to HLM for carbon loss to atm from fires and grazing
-    ! [kgC/ha/day]*[ha/m2]*[day/s] = [kg/m2/s] 
-    
-    bc_out%fire_closs_to_atm_si = site_cmass%burn_flux_to_atm * ha_per_m2 * days_per_sec
-    bc_out%grazing_closs_to_atm_si = site_cmass%herbivory_flux_out * ha_per_m2 * days_per_sec
+
 
     
 
