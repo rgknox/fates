@@ -660,7 +660,8 @@ contains
     
   ! =====================================================================================
 
-    subroutine ZeroFluxDiags(this)
+  subroutine ZeroFluxDiags(this)
+
       
       class(site_fluxdiags_type) :: this
       integer :: el
@@ -676,9 +677,16 @@ contains
          this%elem(el)%err_liveveg   = 0._r8
          this%elem(el)%err_litter   = 0._r8
 
+         this%elem(el)%wood_product_harvest(:) = 0._r8
+         this%elem(el)%wood_product_landusechange(:) = 0._r8
+         this%elem(el)%burn_flux_to_atm = 0._r8
+         this%elem(el)%herbivory_flux_out = 0._r8
+         
       end do
 
      this%npp = 0._r8
+     this%gpp = 0._r8
+     this%resp = 0._r8
      this%resp_excess = 0._r8
      this%nh4_uptake  = 0._r8
      this%no3_uptake  = 0._r8
