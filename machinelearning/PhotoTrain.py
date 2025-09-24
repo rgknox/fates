@@ -22,10 +22,17 @@ from ctypes import *
 from operator import add
 import importlib.util
 
+# -------------------------------------------------------------------------------
+# This script generates a wide range of possible input conditions to
+# train a photosynthesis emulator.  Steps:
+# 1) Generate input conditions to the mechanistic solver
+# 2) Run the mechanistic solver and generate outputs
+# 3) Train NN on both the inputs and outputs
+#
 # THIS SCRIPT SHOULD BE RUN WITH TORCHRUN!
 # e.g.:
-
 # torchrun --nproc_per_node=<N> PhotoTrain.py
+# -------------------------------------------------------------------------------
 
 current_path = os.getcwd()
 fates_path=current_path.split('fates')[0]+'fates'
@@ -57,8 +64,6 @@ font = {'family' : 'sans-serif',
         'size'   : 12}
 
 matplotlib.rc('font', **font)
-
-
 
 # Global constants to use in all Leaf Biophysics unit testing
 # =======================================================================================
@@ -129,8 +134,6 @@ world_size = dist.get_world_size()
 
 if(rank==0):
     print("IS CUDA AVAILABLE?:{}".format(torch.cuda.is_available()))
-
-
     
 # Create aliases for the ctype Fortran objects
 # =======================================================================================
@@ -324,22 +327,37 @@ else:
     idz = int((rank+1)*chunk_size)
 
 dist.barrier()
-print('Rank {}: has indices {}:{}'.format(rank,ida,idz))
+
+
+
+comm_simple = torch.zeros(1)
+
 dist.barrier()
 
-
 if rank == 0:
+    dist.send(comm_simple, dst=1) # Rank 0 blocks until data is sent
+    print('Rank {}: has indices {}:{}'.format(rank,ida,idz))
     # Create a shared tensor
-    #shm = torch.utils.shared_memory.shared_memory_(name='my_shm', create=True, size=(world_size) * torch.finfo(torch.float32).bits // 8)
-
-    #shm = mp.shared_memory(create=True, size=(world_size) * torch.finfo(torch.float32).bits // 8, name='my_shm')
+    #shm = torch.utils.shared_memory.shared_memory_(name='my_shm', \
+        #create=True, size=(world_size) * torch.finfo(torch.float32).bits // 8)
+    #shm = mp.shared_memory(create=True, size=(world_size) * \
+        #torch.finfo(torch.float32).bits // 8, name='my_shm')
     shm = torch.shared_memory(create=True, name='my_shm', size=(4) * 4)
 else:
+    # Blocking recieve (helps with ordered messaging)
+    dist.recv(comm_simple, src=rank-1)
+    if(rank<(world_size-1)):
+        dist.send(comm_simple, dst=rank+1)
+    print('Rank {}: has indices {}:{}'.format(rank,ida,idz))
     #shm = mp.shared_memory(create=False, name='my_shm')
     shm = torch.shared_memory(create=False, name='my_shm')
 
-    
+
 test_tensor = torch.frombuffer(shm.buf, dtype=torch.float32).reshape(world_size)
+
+dist.barrier()
+
+
 
 #test_tensor = torch.zeros((world_size))
 #test_tensor.share_memory_()

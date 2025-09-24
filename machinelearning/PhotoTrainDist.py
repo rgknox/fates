@@ -1,7 +1,9 @@
 import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
-
+import numpy as np
+import argparse
+import time
         
 def GetLeafTempc(n_samp):
     return np.random.normal(loc=302-273.4, scale=5, size=n_samp)
@@ -36,10 +38,16 @@ def GetRH(n_samp):
     return np.random.uniform(low=0.1,high=1.0, size= n_samp)
 
 
-def RankPrepInput(rank, shared_tensor, chunk):
+def TestDistWorker(rank,test_tensor):
+    test_tensor[0,rank] = rank
+    return test_tensor
+    
+def RankPrepInput(rank, chunk, shared_inputs):
 
-    # Every process needs to sample from
-    # a different
+    # Every process needs to sample from a different
+
+    print("Rank: {}, ida: {}, idz: {}".format(rank,chunk[0],chunk[-1]))
+
     np.random.seed(rank)
     
     n_samp         = len(chunk)
@@ -53,12 +61,11 @@ def RankPrepInput(rank, shared_tensor, chunk):
     parabs_vec     = GetPARAbsUmol(n_samp)
     press_vec      = GetPress(n_samp)
     
-    # The chunk is a list of indices in the shared
-    # tensor
+    #shared_inputs[ip,0] = rank
+
     for i,ip in enumerate(chunk):
 
-        leaf_tempk = leaf_temp_c[i]+273.14
-        
+        leaf_tempk = leaf_tempc_vec[i]+273.14
         
         iret = f90.qsat_sub(c8(leaf_tempk),c8(press_vec[i]), \
                             byref(veg_qs_f),byref(veg_es_f), \
@@ -82,58 +89,71 @@ def RankPrepInput(rank, shared_tensor, chunk):
                                    c8(t_growth_kum), c8(t_home_kum), c8(btran), \
                                    byref(vcmax_f), byref(jmax_f), byref(kp_f), byref(gs0_f), byref(gs1_f), byref(gs2_f))
         
-        model_in[ip,0] = par_abs_umol[i]
-        model_in[ip,1] = vcmax_f.value
-        model_in[ip,2] = jmax_f.value
-        model_in[ip,3] = gs2_f.value
-        model_in[ip,4] = leaf_tempk
-        model_in[ip,5] = can_press
-        model_in[ip,6] = co2_ppress          #
-        model_in[ip,7] = veg_es_f.value
-        model_in[ip,8] = gb
-        model_in[ip,9] = vpress
-        model_in[ip,10] = mm_kco2_f.value
-        model_in[ip,11] = mm_ko2_f.value
-        model_in[ip,12] = co2_cpoint_f.value
-        model_in[ip,13] = lmr_f.value
-        
-        
-def main():
-    """
-    Main function to set up the multiprocessing environment and manage the shared tensor.
-    """
+        shared_inputs[ip,0] = par_abs_umol[i]
+        shared_inputs[ip,1] = vcmax_f.value
+        shared_inputs[ip,2] = jmax_f.value
+        shared_inputs[ip,3] = gs2_f.value
+        shared_inputs[ip,4] = leaf_tempk
+        shared_inputs[ip,5] = can_press
+        shared_inputs[ip,6] = co2_ppress          #
+        shared_inputs[ip,7] = veg_es_f.value
+        shared_inputs[ip,8] = gb
+        shared_inputs[ip,9] = vpress
+        shared_inputs[ip,10] = mm_kco2_f.value
+        shared_inputs[ip,11] = mm_ko2_f.value
+        shared_inputs[ip,12] = co2_cpoint_f.value
+        shared_inputs[ip,13] = lmr_f.value
 
-    # We invoke with torchrun because we use the distributed methods
-    # to parallelize the training process. However, we use multiprocessing
-    # for steps prior. So we use the former to identify the world size for
-    # the latter
-    dist.init_process_group(backend='gloo', init_method='env://')
-    world_size = dist.get_world_size()
-    dist.destroy_process_group()
-    
-    num_processes = world_size
-    mp.set_start_method('spawn', force=True)
+        
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Parse command line arguments to this script.')
+    parser.add_argument('--numproc',dest='nproc', type=int, \
+                        help="Define how many processes (world_size) to run.", required=True)
+    args = parser.parse_args()
+
+    world_size = args.nproc
+
+    print("World size: {}".format(world_size))
     
     # Create the shared tensor in the main process.
     # The '.share_memory_()' method makes its memory accessible to all child processes.
-    shared_tensor = torch.zeros(1, 4, dtype=torch.float32).share_memory_()
-    
+    #shared_tensor = torch.zeros(1, 4, dtype=torch.float32).share_memory_()
+
+    n_trainset = 50
+    n_infeatures = 14
+    shared_inputs = torch.zeros([n_trainset,n_infeatures],dtype=torch.float32).share_memory_()
+
     # Create a list to hold the process objects.
     processes = []
-    
-    # Launch a process for each rank from 0 to 3.
-    for rank in range(num_processes):
-        # The mp.Process object is created, and the arguments are passed to the worker function.
-        p = mp.Process(target=worker, args=(rank, shared_tensor,chunk))
-        processes.append(p)
+    for rank in range(world_size):
+        chunk_size = int(np.floor(n_trainset/world_size))
+        ida = int(rank*chunk_size)
+        if(rank==(world_size-1)):
+            idz = int(n_trainset)
+        else:
+            idz = int((rank+1)*chunk_size)
+        chunk = list(range(ida,idz))
+        p = mp.Process(target=RankPrepInput, args=(rank, chunk, shared_inputs))
         p.start()
+        processes.append(p)
     
     # Wait for all processes to complete their work.
     for p in processes:
         p.join()
     
     # The shared tensor is now fully populated.
-    print(f"Final shared tensor after all processes have written: {shared_tensor}")
+    print(f"Final shared tensor after all processes have written: {shared_inputs[:,0]}")
+
+    # We invoke with torchrun because we use the distributed methods
+    # to parallelize the training process. However, we use multiprocessing
+    # for steps prior. So we use the former to identify the world size for
+    # the latter
+    ##dist.init_process_group(backend='gloo', init_method='env://')
+    ##world_size = dist.get_world_size()
+    ##dist.destroy_process_group()
+
     
-if __name__ == '__main__':
-    main()
+
+    
+
