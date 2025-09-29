@@ -1,6 +1,10 @@
+import matplotlib
+import matplotlib.pyplot as plt
 import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
+from torch.utils.data import DataLoader, Dataset
+from torch.nn.parallel import DistributedDataParallel as DDP
 import numpy as np
 import argparse
 import time
@@ -8,6 +12,7 @@ import os
 import sys
 import xml.etree.ElementTree as et
 import code  # For development: code.interact(local=dict(globals(), **locals()))
+from datetime import datetime
 
 current_path = os.getcwd()
 fates_path=current_path.split('fates')[0]+'fates'
@@ -21,7 +26,59 @@ from PushParameters import PushXMLPhotoParameters
 from PushParameters import GetParamFromAttrib
 from PushParameters import GetParamList
 
+STOP_SIGNAL = torch.zeros(1, dtype=torch.int32)
 
+# LOSS FUNCTIONS
+def mafe_loss(pred, target):
+    eps = 1e-8
+    return torch.mean(torch.abs((pred - target) / (torch.abs(target) + eps)))
+
+def norm_mse_loss(pred,target,std):
+    return torch.mean( ((pred-target)/std)**2 )
+
+
+class PhotoNeuralNetwork(torch.nn.Module):
+    def __init__(self):
+        super(PhotoNeuralNetwork, self).__init__()
+        self.fc1   = torch.nn.Linear(11, 64)
+        self.relu1 = torch.nn.ReLU()
+        self.fc2   = torch.nn.Linear(64, 32)
+        self.relu2 = torch.nn.ReLU()
+        self.fc3   = torch.nn.Linear(32, 2)
+        #self.relu3 = torch.nn.ReLU()
+        #self.fc4   = torch.nn.Linear(8, 2)
+        
+    def forward(self, x):
+        x = self.relu1(self.fc1(x))
+        x = self.relu2(self.fc2(x))
+        x = self.fc3(x)
+        #x = self.relu3(x)
+        #x = self.fc4(x)
+        return x
+
+class CustomDataset(Dataset):
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.in_mean = self.inputs.mean(dim=0)
+        self.in_std = self.inputs.std(dim=0)
+        self.out_mean = self.outputs.mean(dim=0)
+        self.out_std = self.outputs.std(dim=0)
+        
+    def __len__(self):
+        return len(self.inputs)
+
+    def __getitem__(self, idx):
+
+        # Save this if you need to do normalization
+        #x = (self.inputs[idx] - self.in_mean) / self.in_std
+        #y = (self.outputs[idx] - self.out_mean) / self.out_std
+        x = self.inputs[idx]
+        y = self.outputs[idx]
+        return x, y
+
+
+    
 def GetLeafTempc(n_samp):
     return np.random.normal(loc=302-273.4, scale=5, size=n_samp)
     
@@ -45,7 +102,7 @@ def GetBTran(n_samp):
     return np.random.normal(loc=0.6,scale=0.6,size=n_samp).clip(0.0,1.0)
 
 def GetGB(n_samp):
-    return np.random.normal(loc=1.e6,scale=0.5e6,size=n_samp).clip(0,None)
+    return np.random.normal(loc=1.e6,scale=0.5e6,size=n_samp).clip(0.2e6,None)
 
 def GetPARAbsUmol(n_samp):
     # umol/m2/s
@@ -63,15 +120,15 @@ def GetLNCTop(n_samp):
     return np.random.normal(loc=lnc.mean(),scale=lnc.std(),size=n_samp).clip(0.1,None)
     
 
-def RankPrepInput(rank, chunk, fates_path, shared_inputs):
+def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
 
-    print(f"Rank: {rank} starting input prep")
-    #print(f"Rank: {rank} chunk idices:, ida: {chunk[0]}, idz: {chunk[-1]}")
+    print(f"RANK:[{rank}/{world_size}] PHASE 1: Starting input prep.")
 
     # Constants
     dayl_factor_full = 1.0
     kumgrowth_tempk = -999.9
     kumhome_tempk   = -999.9
+    ci_tol = 0.1
     
     # This class call instantiates all the fortran shared objects
     # and creates aliases for their functions and subroutines
@@ -208,9 +265,189 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs):
         shared_inputs[ip,9] = nscaler_vec[i]
         shared_inputs[ip,10] = lmr_f.value
 
-    print(f"Rank: {rank} ending input prep")
+        try:
+            # Call the FATES photosynthesis subroutine:
+            # https://github.com/NGEET/fates/blob/main/biogeophys/LeafBiophysicsMod.F90#L1232
+            iret = f90.leaflayerphoto_sub(c8(parabs_vec[i]),  \
+                                          ci(pft),   \
+                                          c8(vcmax_f.value),   \
+                                          c8(jmax_f.value),    \
+                                          c8(kp_f.value),      \
+                                          c8(gs0_f.value), \
+                                          c8(gs1_f.value), \
+                                          c8(gs2_f.value), \
+                                          c8(leaf_tempk), \
+                                          c8(press_vec[i]), \
+                                          c8(co2_ppress), \
+                                          c8(o2_ppress), \
+                                          c8(veg_es_f.value), \
+                                          c8(gb_vec[i]), \
+                                          c8(vpress), \
+                                          c8(mm_kco2_f.value), \
+                                          c8(mm_ko2_f.value), \
+                                          c8(co2_cpoint_f.value), \
+                                          c8(lmr_f.value), \
+                                          c8(ci_tol), \
+                                          byref(agross_f), \
+                                          byref(gstoma_f), \
+                                          byref(anet_f), \
+                                          byref(c13_f), \
+                                          byref(co2_interc_f), \
+                                          byref(solve_iter_f) )
 
+            shared_outputs[ip,0] = agross_f.value
+            shared_outputs[ip,1] = gstoma_f.value
+        except:
+            print('Photosynthesis model could not find a solution')
+            exit(1)
         
+    print(f"RANK:[{rank}/{world_size}] PHASE 1: Ending input prep.")
+    
+def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
+
+    """
+    Worker function to initialize DDP and train the model using the shared dataset.
+    """
+
+    #rank = dist.get_rank()
+    batch_size = 1024
+    
+    # 1. Setup Environment and Initialize Process Group
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '29500'
+    
+    dist.init_process_group(
+        backend="gloo",
+        rank=rank,
+        world_size=world_size
+    )
+    print(f"RANK:[{rank}/{world_size}] PHASE 2: DDP group initialized.")
+
+    dataset = CustomDataset(shared_inputs, shared_outputs)
+    model_out_std = shared_outputs.std(dim=0)
+
+    #sampler_ext = torch.utils.data.distributed.DistributedSampler(
+    #    dataset, 
+    #    num_replicas=world_size, 
+    #    rank=rank, 
+    #    shuffle=True
+    #)
+    
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, \
+                             sampler=torch.utils.data.distributed.DistributedSampler(dataset))
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
+    model = PhotoNeuralNetwork().to(device)
+
+    #ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
+    # Use this for CPUs which don't have to provide a phyisocal device ID
+    ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[], output_device=None)
+
+    learning_rate = 0.0001
+    criterion = norm_mse_loss #nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    LOSS_THRESHOLD = 0.1
+    
+    # Train the network
+    loss_history = []
+    print_interval = 100
+    
+    for epoch in range(50000):
+        global STOP_SIGNAL
+        STOP_SIGNAL.zero_() 
+        STOP_SIGNAL = STOP_SIGNAL.to(device)
+        running_loss = 0.0
+        for batch_idx, (inputs, data_out) in enumerate(data_loader):
+            optimizer.zero_grad()
+            model_out = ddp_model(inputs)
+            loss = criterion(model_out, data_out, model_out_std )
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+            loss_history.append(loss.item())
+
+        if(rank==0 and loss.item() < LOSS_THRESHOLD):
+            print(f"Rank {rank}: Loss {loss.item():.4f} is below threshold {LOSS_THRESHOLD}. Sending STOP signal.")
+            # Set the signal to 1 (True)
+            STOP_SIGNAL[0] = 1 
+                
+        # 6. Broadcast the decision to all ranks
+        # This is the CRITICAL DDP synchronization step
+        dist.broadcast(tensor=STOP_SIGNAL, src=0)
+
+        if STOP_SIGNAL.item() == 1:
+            print(f"Rank {rank}: Received STOP signal. Canceling epoch {epoch+1} at batch {batch_idx+1}.")
+            break # Exit the inner (batch/iteration) loop
+        
+        if(rank==0 and epoch % print_interval == 0):
+            print(f'Epoch: {epoch} Loss: {loss.item():.6f}')
+
+        if(rank==0):
+            ckp = ddp_model.module.state_dict()
+            datestr = datetime.now().strftime("%Y%m%d-%H")
+            torch.save(ckp,"checkpoint_{}.pt".format(datestr))
+
+            
+    if(rank==0):
+        # give the model run a unique string
+        datestr = datetime.now().strftime("%Y%m%d-%H%M")
+
+        script_module = torch.jit.script(model)
+        mod_pattern = '11-L64-Re-L32-Re-2'  # This is a label for model architecture in plotting
+        script_module.save("./c3psn_modelsd_szv2_i13_{}_c{}.pt".format(mod_pattern,datestr))
+
+    print(f"RANK:[{rank}/{world_size}] PHASE 2: Training complete")
+
+    # Generate some scatter plots    
+
+    if(rank==0):
+        plot_data = data_out.detach().numpy()
+        plot_mod  = model_out.detach().numpy()
+        plot_data[:,1] = plot_data[:,1]*1.e-6
+        plot_mod[:,1] = plot_mod[:,1]*1.e-6
+        
+        fig, ((ax1,ax2)) = plt.subplots(1,2,figsize=(8.5,4.))
+        ax1.scatter(plot_data[:,0],plot_mod[:,0])
+        ax1.set_xlabel('FATES Ag [umol/m2/s]')
+        ax1.set_ylabel('NN Ag [umol/m2/s]')
+        minax = np.min([plot_data[:,0],plot_mod[:,0]])
+        maxax = np.max([plot_data[:,0],plot_mod[:,0]])
+        rngax = maxax-minax
+        minax = minax-0.1*rngax
+        maxax = maxax+0.1*rngax
+        ax1.set_xlim([minax,maxax])
+        ax1.set_ylim([minax,maxax])
+        ax1.text(minax+0.05*(maxax-minax), \
+                 minax+0.80*(maxax-minax), \
+                 f'epoch: {epoch+1}\nlr: {learning_rate:.4f}\nmodel: {mod_pattern}' , \
+                 bbox=dict(facecolor=[0.95,0.95,0.95], edgecolor='black'))
+        ax1.grid(True)
+
+       
+        
+        ax2.scatter(plot_data[:,1],plot_mod[:,1])
+        ax2.set_xlabel('FATES gs [mol/m2/s]')
+        ax2.set_ylabel('NN gs [mol/m2/s]')
+        minax = np.min([plot_data[:,1],plot_mod[:,1]])
+        maxax = np.max([plot_data[:,1],plot_mod[:,1]])
+        rngax = maxax-minax
+        minax = minax-0.1*rngax
+        maxax = maxax+0.1*rngax
+        ax2.set_xlim([minax,maxax])
+        ax2.set_ylim([minax,maxax])
+        ax2.grid(True)
+        
+        plt.tight_layout()
+        plt.show()
+
+
+    
+
+# ==================================================================================================
+
+    
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Parse command line arguments to this script.')
@@ -226,10 +463,12 @@ if __name__ == '__main__':
     # The '.share_memory_()' method makes its memory accessible to all child processes.
     #shared_tensor = torch.zeros(1, 4, dtype=torch.float32).share_memory_()
 
-    n_trainset = 5000
+    n_trainset = 50000
     n_infeatures = 11
+    n_outfeatures = 2
     shared_inputs = torch.zeros([n_trainset,n_infeatures],dtype=torch.float32).share_memory_()
-
+    shared_outputs = torch.zeros([n_trainset,n_outfeatures],dtype=torch.float32).share_memory_()
+    
     # Create a list to hold the process objects.
     processes = []
     for rank in range(world_size):
@@ -240,7 +479,7 @@ if __name__ == '__main__':
         else:
             idz = int((rank+1)*chunk_size)
         chunk = list(range(ida,idz))
-        p = mp.Process(target=RankPrepInput, args=(rank, chunk, fates_path,shared_inputs))
+        p = mp.Process(target=RankPrepInput, args=(rank, chunk, fates_path,shared_inputs,shared_outputs))
         p.start()
         processes.append(p)
     
@@ -256,19 +495,15 @@ if __name__ == '__main__':
     
     # Training
 
-    # 1. Setup Environment Variables
-    # The master address must be set so processes know where to find Rank 0.
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '29500'
+    mp.spawn(
+        DDPRankTrain, 
+        args=(world_size, shared_inputs, shared_outputs),
+        nprocs=world_size,
+        join=True)  # Blocks until all DDP workers have terminated
 
-    
-    # We invoke with torchrun because we use the distributed methods
-    # to parallelize the training process. However, we use multiprocessing
-    # for steps prior. So we use the former to identify the world size for
-    # the latter
-    ##dist.init_process_group(backend='gloo', init_method='env://')
-    ##world_size = dist.get_world_size()
-    ##dist.destroy_process_group()
+
+    print("\n--- All Execution Complete ---")
+
 
     
 
