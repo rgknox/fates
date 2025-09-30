@@ -310,40 +310,46 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
     """
 
     #rank = dist.get_rank()
-    batch_size = 1024
+    #batch_size = 1024
+    batch_size = 128
     
     # 1. Setup Environment and Initialize Process Group
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '29500'
-    
-    dist.init_process_group(
+
+    if (torch.cuda.is_available()):
+        torch.cuda.set_device(rank)
+        dist.init_process_group(
+            backend="nccl",
+            rank=rank,
+            world_size=world_size)
+        use_gpu = True
+        device = torch.device("cuda:0")
+        gpu_id = rank
+    else:
+        dist.init_process_group(
         backend="gloo",
         rank=rank,
-        world_size=world_size
-    )
+        world_size=world_size)
+        use_gpu = False
+        device = "cpu"
+        gpu_id = None
+        
     print(f"RANK:[{rank}/{world_size}] PHASE 2: DDP group initialized.")
 
     dataset = CustomDataset(shared_inputs, shared_outputs)
     model_out_std = shared_outputs.std(dim=0)
 
-    #sampler_ext = torch.utils.data.distributed.DistributedSampler(
-    #    dataset, 
-    #    num_replicas=world_size, 
-    #    rank=rank, 
-    #    shuffle=True
-    #)
-    
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, \
                              sampler=torch.utils.data.distributed.DistributedSampler(dataset))
-
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    
+   
     model = PhotoNeuralNetwork().to(device)
 
-    #ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
-    # Use this for CPUs which don't have to provide a phyisocal device ID
-    ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[], output_device=None)
-
+    if(use_gpu):
+        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu_id], output_device=None)
+    else:
+        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[], output_device=None)
+    
     learning_rate = 0.0001
     criterion = norm_mse_loss #nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -352,21 +358,21 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
     
     # Train the network
     loss_history = []
-    print_interval = 100
+    print_interval = 10
     
-    for epoch in range(50000):
+    for epoch in range(500000):
         global STOP_SIGNAL
         STOP_SIGNAL.zero_() 
         STOP_SIGNAL = STOP_SIGNAL.to(device)
-        running_loss = 0.0
+        data_loader.sampler.set_epoch(epoch)
         for batch_idx, (inputs, data_out) in enumerate(data_loader):
             optimizer.zero_grad()
             model_out = ddp_model(inputs)
             loss = criterion(model_out, data_out, model_out_std )
             loss.backward()
             optimizer.step()
-            running_loss += loss.item()
-            loss_history.append(loss.item())
+            
+        loss_history.append(loss.item())
 
         if(rank==0 and loss.item() < LOSS_THRESHOLD):
             print(f"Rank {rank}: Loss {loss.item():.4f} is below threshold {LOSS_THRESHOLD}. Sending STOP signal.")
@@ -378,7 +384,7 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
         dist.broadcast(tensor=STOP_SIGNAL, src=0)
 
         if STOP_SIGNAL.item() == 1:
-            print(f"Rank {rank}: Received STOP signal. Canceling epoch {epoch+1} at batch {batch_idx+1}.")
+            print(f"Rank {rank}: Received STOP due to acceptable loss, epoch: {epoch+1}.")
             break # Exit the inner (batch/iteration) loop
         
         if(rank==0 and epoch % print_interval == 0):
@@ -443,8 +449,54 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
         plt.show()
 
 
-    
+def ViewTrainingData(shared_inputs,shared_outputs):
 
+    fig, ((ax1,ax2,ax3,ax4), (ax5,ax6,ax7,ax8), \
+          (ax9,ax10,ax11,ax12),(ax13,ax14,ax15,ax16)) = plt.subplots(4,4,figsize=(9.,9.))
+
+    n_large = 20
+    
+    ax1.hist(shared_inputs[:,0] ,bins=n_large)
+    ax1.set_title('PAR (umol/m2/s)')
+    
+    ax2.hist(shared_inputs[:,1], bins=n_large)
+    ax2.set_title('Vcmax25top (umol/m2/s)')
+    
+    ax3.hist(shared_inputs[:,2], bins=n_large)
+    ax3.set_title('BTRAN (-)')
+    
+    ax4.hist(shared_inputs[:,3], bins=n_large)
+    ax4.set_title('Tleaf (K)')
+
+    ax5.hist(shared_inputs[:,4], bins=n_large)
+    ax5.set_title('Patm (Pa)')
+    
+    ax6.hist(shared_inputs[:,5], bins=n_large)
+    ax6.set_title('P_co2 (Pa)')
+    
+    ax7.hist(shared_inputs[:,6], bins=n_large)
+    ax7.set_title('Esat (Pa)')
+
+    ax8.hist(shared_inputs[:,7], bins=n_large)
+    ax8.set_title('gb (umol/m2/s)')
+    
+    ax9.hist(shared_inputs[:,8], bins=n_large)
+    ax9.set_title('E (Pa)')
+    
+    ax10.hist(shared_inputs[:,9], bins=n_large)
+    ax10.set_title('Nscaler (-)')
+    
+    ax11.hist(shared_inputs[:,10], bins=n_large)
+    ax11.set_title('LMR (umol/m2/s)')
+    
+    ax12.hist(shared_outputs[:,0], bins=n_large)
+    ax12.set_title('Ag (umol/m2/s)')
+    
+    ax13.hist(shared_outputs[:,1], bins=n_large)
+    ax13.set_title('gs (umol/m2/s)')
+    
+    plt.tight_layout()
+    plt.show()
 # ==================================================================================================
 
     
@@ -454,7 +506,6 @@ if __name__ == '__main__':
     parser.add_argument('--numproc',dest='nproc', type=int, \
                         help="Define how many processes (world_size) to run.", required=True)
     args = parser.parse_args()
-
     world_size = args.nproc
 
     print("World size: {}".format(world_size))
@@ -488,7 +539,14 @@ if __name__ == '__main__':
         p.join()
 
     # Child processes are complete
-        
+
+    # Take a look at the training data
+    
+
+    if(True):
+        ViewTrainingData(shared_inputs,shared_outputs)
+
+    
     # The shared tensor is now fully populated.
     print(f"Final shared tensor after all processes have written: {shared_inputs[:,0]}")
 
