@@ -36,6 +36,23 @@ def mafe_loss(pred, target):
 def norm_mse_loss(pred,target,std):
     return torch.mean( ((pred-target)/std)**2.0 )
 
+def norm_huber_loss(pred,target,std):
+    delta = 1.0
+    a = torch.abs((pred-target)/std)
+    quadratic_mask = a <= delta
+    quadratic_loss = 0.5 * a**2
+
+    # 2. Linear Region: |a| > delta
+    # Loss is delta * (|a| - 0.5 * delta)
+    linear_mask = a > delta
+    linear_loss = delta * (a - 0.5 * delta)
+    
+    # Combine the losses based on the mask
+    loss = torch.where(quadratic_mask, quadratic_loss, linear_loss)
+    
+    # Return the mean loss across the entire batch
+    return torch.mean(loss)
+
 def norm_target_np(target):
     return target/np.std(target,dim=0)
 
@@ -65,6 +82,10 @@ class CustomDataset(Dataset):
     def __init__(self, inputs, outputs):
         self.inputs = inputs
         self.outputs = outputs
+        self.inputs_mean = inputs.mean()
+        self.inputs_std  = inputs.std()
+        self.outputs_mean = outputs.mean()
+        self.outputs_std  = outputs.std()
         
     def __len__(self):
         return len(self.inputs)
@@ -80,9 +101,11 @@ class CustomDataset(Dataset):
     
 def GetLeafTempc(n_samp):
     return np.random.normal(loc=302-273.4, scale=5, size=n_samp)
-    
+    # SCALE E2
+
 def GetRH(n_samp):
     return np.random.uniform(low=0.1, high=1.0, size=n_samp)
+    # SCALE E1
 
 def GetCO2(n_samp):
     return np.random.uniform(low=390.0,high=410., size=n_samp)
@@ -93,13 +116,13 @@ def GetPress(n_samp):
 def GetALTempDiff(n_samp):
     # This is T_air - T_leaf
     #return np.random.normal(loc=0, scale = 10, size = n_samp)
-    return np.random.uniform(low=-2,high=0., size=n_samp)
+    return np.random.uniform(low=-2.0, high=0., size=n_samp)
 
 def GetNScaler(n_samp):
-    return np.random.uniform(low=0.01,high=1.0, size = n_samp)
+    return np.random.uniform(low=0.05, high=1.0, size = n_samp)
 
 def GetBTran(n_samp):
-    return np.random.normal(loc=0.6,scale=0.6,size=n_samp).clip(0.0,1.0)
+    return np.random.normal(loc=0.6,scale=0.6,size=n_samp).clip(0.05,1.0)
 
 def GetGB(n_samp):
     return np.random.normal(loc=1.e6,scale=0.5e6,size=n_samp).clip(0.2e6,None)
@@ -109,7 +132,7 @@ def GetPARAbsUmol(n_samp):
     return np.random.uniform(low=0,high=300.0*4.6, size = n_samp)
 
 def GetVcmax25Top(n_samp):
-    return np.random.normal(loc=60,scale=20,size=n_samp).clip(0.,200.)
+    return np.random.normal(loc=60,scale=20,size=n_samp).clip(5.0,200.)
 
 def GetLNCTop(n_samp):
     fates_stoich_nitr = [0.033, 0.029, 0.04, 0.033, 0.04, 0.04, \
@@ -253,17 +276,19 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
                                    c8(kumgrowth_tempk), c8(kumhome_tempk), c8(btran_vec[i]), \
                                    byref(vcmax_f), byref(jmax_f), byref(kp_f), byref(gs0_f), byref(gs1_f), byref(gs2_f))
 
-        shared_inputs[ip,0] = parabs_vec[i]
-        shared_inputs[ip,1] = vcmax25top_vec[i]
-        shared_inputs[ip,2] = btran_vec[i]
-        shared_inputs[ip,3] = leaf_tempk
-        shared_inputs[ip,4] = press_vec[i]
-        shared_inputs[ip,5] = co2_ppress
-        shared_inputs[ip,6] = veg_es_f.value
-        shared_inputs[ip,7] = gb_vec[i]
-        shared_inputs[ip,8] = vpress
-        shared_inputs[ip,9] = nscaler_vec[i]
-        shared_inputs[ip,10] = lmr_f.value
+
+        
+        shared_inputs[ip,0] = parabs_vec[i]      # E2-E3
+        shared_inputs[ip,1] = vcmax25top_vec[i]  # E1-E2
+        shared_inputs[ip,2] = btran_vec[i]       # E0
+        shared_inputs[ip,3] = leaf_tempk         # E2
+        shared_inputs[ip,4] = press_vec[i]*1.e-5 # E5  -> change to bars (E0)
+        shared_inputs[ip,5] = co2_ppress         # E2
+        shared_inputs[ip,6] = veg_es_f.value     # E3
+        shared_inputs[ip,7] = gb_vec[i]*1e-6     # E6  -> change to mol (E1)
+        shared_inputs[ip,8] = vpress             # E3
+        shared_inputs[ip,9] = nscaler_vec[i]     # E0
+        shared_inputs[ip,10] = lmr_f.value       # E1
 
         try:
             # Call the FATES photosynthesis subroutine:
@@ -296,7 +321,8 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
                                           byref(solve_iter_f) )
 
             shared_outputs[ip,0] = agross_f.value
-            shared_outputs[ip,1] = gstoma_f.value
+            shared_outputs[ip,1] = gstoma_f.value# * 1.e-6
+            
         except:
             print('Photosynthesis model could not find a solution')
             exit(1)
@@ -350,12 +376,14 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
     else:
         ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[])
     
-    learning_rate = 0.01
+    learning_rate = 0.0001
     #criterion = norm_mse_loss #nn.MSELoss()
-    criterion = torch.nn.MSELoss()
+    #criterion = norm_huber_loss
+    criterion = torch.nn.HuberLoss (reduction='mean', delta=0.5)
+    #criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    LOSS_THRESHOLD = 0.1
+    LOSS_THRESHOLD = 0.01
     
     # Train the network
     loss_history = []
@@ -369,7 +397,8 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
         for batch_idx, (inputs, data_out) in enumerate(data_loader):
             optimizer.zero_grad()
             model_out = ddp_model(inputs)
-            loss = criterion(model_out, data_out) #, model_out_std )
+            #loss = criterion(model_out, data_out, model_out_std)
+            loss = criterion(model_out, data_out)
             loss.backward()
             optimizer.step()
             
@@ -412,8 +441,8 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
     if(rank==0):
         plot_data = data_out.detach().numpy()
         plot_mod  = model_out.detach().numpy()
-        plot_data[:,1] = plot_data[:,1]*1.e-6
-        plot_mod[:,1] = plot_mod[:,1]*1.e-6
+        plot_data[:,1] = plot_data[:,1]
+        plot_mod[:,1] = plot_mod[:,1]
         
         fig, ((ax1,ax2)) = plt.subplots(1,2,figsize=(8.5,4.))
         ax1.scatter(plot_data[:,0],plot_mod[:,0])
@@ -568,8 +597,12 @@ if __name__ == '__main__':
     # The worker routine only runs on rank 0 btw
     #p = mp.spawn(target=ViewTrainingData, args(shared_inputs,shared_outputs))
 
-    shared_outputs = shared_outputs/shared_outputs.std(dim=0)
-
+    # Lets normalize
+    shared_inputs  = (shared_inputs-shared_inputs.mean(dim=0))/shared_inputs.std(dim=0)
+    shared_outputs = (shared_outputs-shared_outputs.mean(dim=0))/shared_outputs.std(dim=0)
+    # View the correlation matrix of the data
+    # First concat
+    #combined_data = torch.cat((shared_inputs, shared_outputs), dim=1)
     
     #if(rank==0):
     if(False):
