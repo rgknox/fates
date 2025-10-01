@@ -34,17 +34,21 @@ def mafe_loss(pred, target):
     return torch.mean(torch.abs((pred - target) / (torch.abs(target) + eps)))
 
 def norm_mse_loss(pred,target,std):
-    return torch.mean( ((pred-target)/std)**2 )
+    return torch.mean( ((pred-target)/std)**2.0 )
+
+def norm_target_np(target):
+    return target/np.std(target,dim=0)
 
 
 class PhotoNeuralNetwork(torch.nn.Module):
     def __init__(self):
         super(PhotoNeuralNetwork, self).__init__()
-        self.fc1   = torch.nn.Linear(11, 64)
+        self.fc1   = torch.nn.Linear(11, 32)
         self.relu1 = torch.nn.ReLU()
-        self.fc2   = torch.nn.Linear(64, 32)
+        self.fc2   = torch.nn.Linear(32, 32)
         self.relu2 = torch.nn.ReLU()
-        self.fc3   = torch.nn.Linear(32, 2)
+        self.fc3   = torch.nn.Linear(32, 16)
+        self.fc4   = torch.nn.Linear(16, 2)
         #self.relu3 = torch.nn.ReLU()
         #self.fc4   = torch.nn.Linear(8, 2)
         
@@ -52,6 +56,7 @@ class PhotoNeuralNetwork(torch.nn.Module):
         x = self.relu1(self.fc1(x))
         x = self.relu2(self.fc2(x))
         x = self.fc3(x)
+        x = self.fc4(x)
         #x = self.relu3(x)
         #x = self.fc4(x)
         return x
@@ -60,10 +65,6 @@ class CustomDataset(Dataset):
     def __init__(self, inputs, outputs):
         self.inputs = inputs
         self.outputs = outputs
-        self.in_mean = self.inputs.mean(dim=0)
-        self.in_std = self.inputs.std(dim=0)
-        self.out_mean = self.outputs.mean(dim=0)
-        self.out_std = self.outputs.std(dim=0)
         
     def __len__(self):
         return len(self.inputs)
@@ -71,8 +72,6 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
 
         # Save this if you need to do normalization
-        #x = (self.inputs[idx] - self.in_mean) / self.in_std
-        #y = (self.outputs[idx] - self.out_mean) / self.out_std
         x = self.inputs[idx]
         y = self.outputs[idx]
         return x, y
@@ -83,17 +82,18 @@ def GetLeafTempc(n_samp):
     return np.random.normal(loc=302-273.4, scale=5, size=n_samp)
     
 def GetRH(n_samp):
-    return np.random.uniform(low=0.0, high=1.0, size=n_samp)
+    return np.random.uniform(low=0.1, high=1.0, size=n_samp)
 
 def GetCO2(n_samp):
-    return np.random.uniform(low=250.0,high=450., size=n_samp)
+    return np.random.uniform(low=390.0,high=410., size=n_samp)
 
 def GetPress(n_samp):
     return np.random.normal(loc=100000., scale=1000, size=n_samp)
 
 def GetALTempDiff(n_samp):
     # This is T_air - T_leaf
-    return np.random.normal(loc=0, scale = 10, size = n_samp)
+    #return np.random.normal(loc=0, scale = 10, size = n_samp)
+    return np.random.uniform(low=-2,high=0., size=n_samp)
 
 def GetNScaler(n_samp):
     return np.random.uniform(low=0.01,high=1.0, size = n_samp)
@@ -311,7 +311,7 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
 
     #rank = dist.get_rank()
     #batch_size = 1024
-    batch_size = 128
+    batch_size = 2048
     
     # 1. Setup Environment and Initialize Process Group
     os.environ['MASTER_ADDR'] = 'localhost'
@@ -340,18 +340,19 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
     dataset = CustomDataset(shared_inputs, shared_outputs)
     model_out_std = shared_outputs.std(dim=0)
 
-    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, \
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, \
                              sampler=torch.utils.data.distributed.DistributedSampler(dataset))
    
     model = PhotoNeuralNetwork().to(device)
 
     if(use_gpu):
-        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu_id], output_device=None)
+        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu_id])
     else:
-        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[], output_device=None)
+        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[])
     
-    learning_rate = 0.0001
-    criterion = norm_mse_loss #nn.MSELoss()
+    learning_rate = 0.01
+    #criterion = norm_mse_loss #nn.MSELoss()
+    criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     LOSS_THRESHOLD = 0.1
@@ -368,7 +369,7 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
         for batch_idx, (inputs, data_out) in enumerate(data_loader):
             optimizer.zero_grad()
             model_out = ddp_model(inputs)
-            loss = criterion(model_out, data_out, model_out_std )
+            loss = criterion(model_out, data_out) #, model_out_std )
             loss.backward()
             optimizer.step()
             
@@ -448,65 +449,90 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
         plt.tight_layout()
         plt.show()
 
+def PrepBar(bar_inputs):
+    n_large = 20
+    counts, bin_edges = np.histogram(bar_inputs, bins=n_large)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    bin_width = (bin_edges[1] - bin_edges[0])*0.9
+    
+    
+    return bin_centers, counts, bin_width
 
 def ViewTrainingData(shared_inputs,shared_outputs):
 
+    #matplotlib.use('Agg')
     fig, ((ax1,ax2,ax3,ax4), (ax5,ax6,ax7,ax8), \
           (ax9,ax10,ax11,ax12),(ax13,ax14,ax15,ax16)) = plt.subplots(4,4,figsize=(9.,9.))
 
+    print("Generating fig")
     n_large = 20
-    
-    ax1.hist(shared_inputs[:,0] ,bins=n_large)
-    ax1.set_title('PAR (umol/m2/s)')
-    
+
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,0])
+    ax1.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
+    ax1.set_title('PAR abs (umol/m2/s)')
+
     ax2.hist(shared_inputs[:,1], bins=n_large)
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,1])
+    ax2.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax2.set_title('Vcmax25top (umol/m2/s)')
-    
-    ax3.hist(shared_inputs[:,2], bins=n_large)
+
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,2])
+    ax3.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax3.set_title('BTRAN (-)')
-    
-    ax4.hist(shared_inputs[:,3], bins=n_large)
+
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,3])
+    ax4.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax4.set_title('Tleaf (K)')
 
-    ax5.hist(shared_inputs[:,4], bins=n_large)
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,4])
+    ax5.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax5.set_title('Patm (Pa)')
-    
-    ax6.hist(shared_inputs[:,5], bins=n_large)
+
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,5])
+    ax6.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax6.set_title('P_co2 (Pa)')
-    
-    ax7.hist(shared_inputs[:,6], bins=n_large)
+
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,6])
+    ax7.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax7.set_title('Esat (Pa)')
 
-    ax8.hist(shared_inputs[:,7], bins=n_large)
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,7])
+    ax8.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax8.set_title('gb (umol/m2/s)')
-    
-    ax9.hist(shared_inputs[:,8], bins=n_large)
+
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,8])
+    ax9.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax9.set_title('E (Pa)')
     
-    ax10.hist(shared_inputs[:,9], bins=n_large)
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,9])
+    ax10.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax10.set_title('Nscaler (-)')
-    
-    ax11.hist(shared_inputs[:,10], bins=n_large)
+
+    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,10])
+    ax11.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax11.set_title('LMR (umol/m2/s)')
-    
-    ax12.hist(shared_outputs[:,0], bins=n_large)
+
+    bin_centers, counts, bin_width = PrepBar(shared_outputs[:,0])
+    ax12.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax12.set_title('Ag (umol/m2/s)')
     
-    ax13.hist(shared_outputs[:,1], bins=n_large)
+    bin_centers, counts, bin_width = PrepBar(shared_outputs[:,1])
+    ax13.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
     ax13.set_title('gs (umol/m2/s)')
-    
+
     plt.tight_layout()
     plt.show()
+    
 # ==================================================================================================
 
     
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Parse command line arguments to this script.')
-    parser.add_argument('--numproc',dest='nproc', type=int, \
+    parser.add_argument('--numproc',dest='numproc', type=int, \
                         help="Define how many processes (world_size) to run.", required=True)
     args = parser.parse_args()
-    world_size = args.nproc
+    world_size = args.numproc
 
     print("World size: {}".format(world_size))
     
@@ -538,15 +564,18 @@ if __name__ == '__main__':
     for p in processes:
         p.join()
 
-    # Child processes are complete
-
     # Take a look at the training data
-    
+    # The worker routine only runs on rank 0 btw
+    #p = mp.spawn(target=ViewTrainingData, args(shared_inputs,shared_outputs))
 
-    if(True):
+    shared_outputs = shared_outputs/shared_outputs.std(dim=0)
+
+    
+    #if(rank==0):
+    if(False):
+        print("About to make plot")
         ViewTrainingData(shared_inputs,shared_outputs)
-
-    
+            
     # The shared tensor is now fully populated.
     print(f"Final shared tensor after all processes have written: {shared_inputs[:,0]}")
 
@@ -556,8 +585,8 @@ if __name__ == '__main__':
     mp.spawn(
         DDPRankTrain, 
         args=(world_size, shared_inputs, shared_outputs),
-        nprocs=world_size,
-        join=True)  # Blocks until all DDP workers have terminated
+        nprocs=world_size) #,
+#        join=True)  # Blocks until all DDP workers have terminated
 
 
     print("\n--- All Execution Complete ---")
