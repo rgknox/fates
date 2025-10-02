@@ -28,6 +28,13 @@ from PushParameters import GetParamList
 
 STOP_SIGNAL = torch.zeros(1, dtype=torch.int32)
 
+# Simple class to hold hyper-parameters
+class hyper_parameters:
+    def __init__(self, learning_rate, batch_size, loss_threshold):
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
+        self.loss_threshold = loss_threshold
+        
 # LOSS FUNCTIONS
 def mafe_loss(pred, target):
     eps = 1e-8
@@ -60,24 +67,71 @@ def norm_target_np(target):
 class PhotoNeuralNetwork(torch.nn.Module):
     def __init__(self):
         super(PhotoNeuralNetwork, self).__init__()
+        self.nametag = '11-L32-Re-L16-L16-2-Re'
         self.fc1   = torch.nn.Linear(11, 32)
         self.relu1 = torch.nn.ReLU()
-        self.fc2   = torch.nn.Linear(32, 32)
-        self.relu2 = torch.nn.ReLU()
-        self.fc3   = torch.nn.Linear(32, 16)
+        self.fc2   = torch.nn.Linear(32, 16)
+        self.fc3   = torch.nn.Linear(16, 16)
+        #self.relu2 = torch.nn.ReLU()
+        #self.fc3   = torch.nn.Linear(32, 16)
         self.fc4   = torch.nn.Linear(16, 2)
-        #self.relu3 = torch.nn.ReLU()
+        #self.relu4 = torch.nn.ReLU()
         #self.fc4   = torch.nn.Linear(8, 2)
         
     def forward(self, x):
         x = self.relu1(self.fc1(x))
-        x = self.relu2(self.fc2(x))
+        x = self.fc2(x)
         x = self.fc3(x)
         x = self.fc4(x)
-        #x = self.relu3(x)
-        #x = self.fc4(x)
         return x
 
+    def NormScale(self,in_mean,in_std,out_mean,out_std):
+
+        # We apply this after the model has been
+        # trained on normalized input data. It
+        # essentially reverses the normalization
+        # process, so inference does not need
+        # to perform that step
+        
+        with torch.no_grad():
+
+            # Lets scale the model's first linear
+            # weights and biases by the normalization factor
+            W = self.fc1.weight.data  # W is typically shape [output_size, input_size]
+            B = self.fc1.bias.data    # B is typically shape [output_size]
+            
+            # 1. Update Weights: W_new = W / sigma
+            # The unsqueeze(0) ensures 'stds' has shape [1, n_input_features] for correct division
+            W_new = W.div(in_std.unsqueeze(0)) 
+    
+            # 2. Update Bias: B_new = B - Sum(W_i * mu_i / sigma_i)
+            # The term to subtract is the vector-matrix product: W_i * (mu_i / sigma_i)
+    
+            # Calculate mu_i / sigma_i for each feature
+            scale_term = in_mean.div(in_std) # shape [3]
+
+            # Calculate the adjustment for the bias: Sum over the input features
+            # W_new @ scale_term is a matrix multiplication that sums over the input features
+            bias_adjustment = W.matmul(scale_term) # shape [output_size]
+
+            B_new = B.sub(bias_adjustment)
+    
+            # 3. Overwrite the trained model parameters
+            self.fc1.weight.data.copy_(W_new)
+            self.fc1.bias.data.copy_(B_new)
+
+            
+            # Extract the trained tensors
+            W = self.fc4.weight.data 
+            B = self.fc4.bias.data
+
+            W_new = W * out_std.unsqueeze(1) 
+            B_new = (B * out_std) + out_mean
+
+            self.fc4.weight.data.copy_(W_new)
+            self.fc4.bias.data.copy_(B_new)
+            
+    
 class CustomDataset(Dataset):
     def __init__(self, inputs, outputs):
         self.inputs = inputs
@@ -98,7 +152,6 @@ class CustomDataset(Dataset):
         return x, y
 
 
-    
 def GetLeafTempc(n_samp):
     return np.random.normal(loc=302-273.4, scale=5, size=n_samp)
     # SCALE E2
@@ -127,9 +180,9 @@ def GetBTran(n_samp):
 def GetGB(n_samp):
     return np.random.normal(loc=1.e6,scale=0.5e6,size=n_samp).clip(0.2e6,None)
 
-def GetPARAbsUmol(n_samp):
+def GetPARAbsWatts(n_samp):
     # umol/m2/s
-    return np.random.uniform(low=0,high=300.0*4.6, size = n_samp)
+    return np.random.uniform(low=0,high=300.0, size = n_samp)
 
 def GetVcmax25Top(n_samp):
     return np.random.normal(loc=60,scale=20,size=n_samp).clip(5.0,200.)
@@ -222,7 +275,7 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
     nscaler_vec    = GetNScaler(n_samp)
     btran_vec      = GetBTran(n_samp)
     gb_vec         = GetGB(n_samp)
-    parabs_vec     = GetPARAbsUmol(n_samp)
+    parabs_vec     = GetPARAbsWatts(n_samp)
     press_vec      = GetPress(n_samp)
     vcmax25top_vec = GetVcmax25Top(n_samp)
     lnctop_vec     = GetLNCTop(n_samp)
@@ -244,6 +297,7 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
     
     for i,ip in enumerate(chunk):
 
+        parabs_umol = parabs_vec[i]*4.6
         leaf_tempk = leaf_tempc_vec[i]+273.14
         air_tempk  = leaf_tempk + altdiff_vec[i]
         o2_ppress = 0.2095*press_vec[i]
@@ -278,22 +332,22 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
 
 
         
-        shared_inputs[ip,0] = parabs_vec[i]      # E2-E3
+        shared_inputs[ip,0] = parabs_vec[i]      # E0-E2
         shared_inputs[ip,1] = vcmax25top_vec[i]  # E1-E2
         shared_inputs[ip,2] = btran_vec[i]       # E0
-        shared_inputs[ip,3] = leaf_tempk         # E2
-        shared_inputs[ip,4] = press_vec[i]*1.e-5 # E5  -> change to bars (E0)
-        shared_inputs[ip,5] = co2_ppress         # E2
-        shared_inputs[ip,6] = veg_es_f.value     # E3
-        shared_inputs[ip,7] = gb_vec[i]*1e-6     # E6  -> change to mol (E1)
-        shared_inputs[ip,8] = vpress             # E3
+        shared_inputs[ip,3] = leaf_tempc_vec[i]         # E2
+        shared_inputs[ip,4] = press_vec[i]   #*1.e-5 # E5  -> change to bars (E0)
+        shared_inputs[ip,5] = co2_ppress           # E2
+        shared_inputs[ip,6] = veg_es_f.value #*1.e-3 # E3 -> kPa (E0)
+        shared_inputs[ip,7] = gb_vec[i] #*1.e-6      # E6  -> change to mol (E1)
+        shared_inputs[ip,8] = vpress #*1.e-3       # E3 -> kPa (E0)
         shared_inputs[ip,9] = nscaler_vec[i]     # E0
         shared_inputs[ip,10] = lmr_f.value       # E1
 
         try:
             # Call the FATES photosynthesis subroutine:
             # https://github.com/NGEET/fates/blob/main/biogeophys/LeafBiophysicsMod.F90#L1232
-            iret = f90.leaflayerphoto_sub(c8(parabs_vec[i]),  \
+            iret = f90.leaflayerphoto_sub(c8(parabs_umol),  \
                                           ci(pft),   \
                                           c8(vcmax_f.value),   \
                                           c8(jmax_f.value),    \
@@ -321,7 +375,7 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
                                           byref(solve_iter_f) )
 
             shared_outputs[ip,0] = agross_f.value
-            shared_outputs[ip,1] = gstoma_f.value# * 1.e-6
+            shared_outputs[ip,1] = gstoma_f.value #* 1.e-6
             
         except:
             print('Photosynthesis model could not find a solution')
@@ -329,16 +383,14 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
         
     print(f"RANK:[{rank}/{world_size}] PHASE 1: Ending input prep.")
     
-def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
+def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, \
+                 shared_inputs_mean, shared_inputs_std, \
+                 shared_outputs_mean, shared_outputs_std):
 
     """
     Worker function to initialize DDP and train the model using the shared dataset.
     """
 
-    #rank = dist.get_rank()
-    #batch_size = 1024
-    batch_size = 2048
-    
     # 1. Setup Environment and Initialize Process Group
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '29500'
@@ -363,49 +415,54 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
         
     print(f"RANK:[{rank}/{world_size}] PHASE 2: DDP group initialized.")
 
+    # We don't need to normalize the output data because we normalize during the loss function
+    
+    #shared_outputs = (shared_outputs-shared_outputs.mean(dim=0))/shared_outputs.std(dim=0)
+    
     dataset = CustomDataset(shared_inputs, shared_outputs)
     model_out_std = shared_outputs.std(dim=0)
 
-    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, \
+    data_loader = DataLoader(dataset, batch_size=hyper_params.batch_size, shuffle=False, pin_memory=True, \
                              sampler=torch.utils.data.distributed.DistributedSampler(dataset))
    
     model = PhotoNeuralNetwork().to(device)
 
-    if(use_gpu):
+    if(use_gpu): 
         ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu_id])
     else:
         ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[])
     
-    learning_rate = 0.0001
+   
+
+
     #criterion = norm_mse_loss #nn.MSELoss()
     #criterion = norm_huber_loss
-    criterion = torch.nn.HuberLoss (reduction='mean', delta=0.5)
+    criterion = torch.nn.HuberLoss(reduction='mean', delta=1.0)
     #criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(ddp_model.parameters(), lr=hyper_params.learning_rate)
 
-    LOSS_THRESHOLD = 0.01
-    
     # Train the network
     loss_history = []
     print_interval = 10
+    save_interval = 50
     
     for epoch in range(500000):
         global STOP_SIGNAL
         STOP_SIGNAL.zero_() 
         STOP_SIGNAL = STOP_SIGNAL.to(device)
         data_loader.sampler.set_epoch(epoch)
-        for batch_idx, (inputs, data_out) in enumerate(data_loader):
+        for batch_idx, (batch_inputs, batch_outputs) in enumerate(data_loader):
             optimizer.zero_grad()
-            model_out = ddp_model(inputs)
-            #loss = criterion(model_out, data_out, model_out_std)
-            loss = criterion(model_out, data_out)
+            pred_outputs = ddp_model(batch_inputs)
+            #loss = criterion(pred_outputs, batch_outputs, model_out_std)
+            loss = criterion(pred_outputs, batch_outputs)
             loss.backward()
             optimizer.step()
             
         loss_history.append(loss.item())
 
-        if(rank==0 and loss.item() < LOSS_THRESHOLD):
-            print(f"Rank {rank}: Loss {loss.item():.4f} is below threshold {LOSS_THRESHOLD}. Sending STOP signal.")
+        if(rank==0 and loss.item() < hyper_params.loss_threshold):
+            print(f"Rank {rank}: Loss {loss.item():.4f} is below threshold {hyper_params.loss_threshold}. Sending STOP signal.")
             # Set the signal to 1 (True)
             STOP_SIGNAL[0] = 1 
                 
@@ -420,18 +477,22 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
         if(rank==0 and epoch % print_interval == 0):
             print(f'Epoch: {epoch} Loss: {loss.item():.6f}')
 
-        if(rank==0):
+        if(rank==0 and epoch % save_interval == 0):
             ckp = ddp_model.module.state_dict()
             datestr = datetime.now().strftime("%Y%m%d-%H")
             torch.save(ckp,"checkpoint_{}.pt".format(datestr))
 
             
     if(rank==0):
+
+        # Scale the weights and biases of the first layer
+        model.NormScale(shared_inputs_mean,shared_inputs_std,shared_outputs_mean,shared_outputs_std)
+        
         # give the model run a unique string
         datestr = datetime.now().strftime("%Y%m%d-%H%M")
 
         script_module = torch.jit.script(model)
-        mod_pattern = '11-L64-Re-L32-Re-2'  # This is a label for model architecture in plotting
+        mod_pattern = model.nametag#'11-L64-Re-L32-Re-2'  # This is a label for model architecture in plotting
         script_module.save("./c3psn_modelsd_szv2_i13_{}_c{}.pt".format(mod_pattern,datestr))
 
     print(f"RANK:[{rank}/{world_size}] PHASE 2: Training complete")
@@ -439,10 +500,24 @@ def DDPRankTrain(rank, world_size, shared_inputs, shared_outputs):
     # Generate some scatter plots    
 
     if(rank==0):
-        plot_data = data_out.detach().numpy()
-        plot_mod  = model_out.detach().numpy()
-        plot_data[:,1] = plot_data[:,1]
-        plot_mod[:,1] = plot_mod[:,1]
+
+        # Lets un-normalize the input data
+
+        # new  = (old-mean)/std
+        # old = new*std+mean
+        shared_inputs = shared_inputs*shared_inputs_std + shared_inputs_mean
+        shared_outputs = shared_outputs*shared_outputs_std + shared_outputs_mean
+        
+        indices_of_all_data = torch.randperm(shared_inputs.size(0))
+        n_plot = 10000
+        
+        plot_mod  = model(shared_inputs[indices_of_all_data[0:n_plot]]).detach().numpy()
+        plot_data = shared_outputs[indices_of_all_data[0:n_plot]].detach().numpy()
+        
+        #plot_data = batch_outputs.detach().numpy()
+        #plot_mod  = pred_outputs.detach().numpy()
+        plot_data[:,1] = plot_data[:,1]*1.e-6  # Convert from umol to mol
+        plot_mod[:,1] = plot_mod[:,1]*1.e-6
         
         fig, ((ax1,ax2)) = plt.subplots(1,2,figsize=(8.5,4.))
         ax1.scatter(plot_data[:,0],plot_mod[:,0])
@@ -554,22 +629,53 @@ def ViewTrainingData(shared_inputs,shared_outputs):
     
 # ==================================================================================================
 
+
+
     
 if __name__ == '__main__':
 
+    
+    default_learning_rate = 0.01
+    default_loss_threshold = 0.001
+    
+    
     parser = argparse.ArgumentParser(description='Parse command line arguments to this script.')
     parser.add_argument('--numproc',dest='numproc', type=int, \
                         help="Define how many processes (world_size) to run.", required=True)
+    parser.add_argument('--learning_rate',dest='learning_rate', type=float, \
+                        help="The learning rate (scale of training data)", required=False, default=default_learning_rate)
+    parser.add_argument('--global_batch_size',dest='global_batch_size', type=int, \
+                        help="The total batch size across all processes", required=True)
+    parser.add_argument('--loss_threshold',dest='loss_threshold', type=float, \
+                        help="The acceptable loss threshold to converge", required=False, default=default_loss_threshold)
+
     args = parser.parse_args()
     world_size = args.numproc
+    global_batch_size = args.global_batch_size
+    learning_rate = args.learning_rate
+    local_batch_size = int(float(global_batch_size)/float(world_size))
+    loss_threshold = args.loss_threshold
 
-    print("World size: {}".format(world_size))
+    #world_size = 8
+    #global_batch_size = 2048
+    #learning_rate = 0.01
+    #loss_threshold = 0.001
+
+    hyper_params = hyper_parameters(learning_rate,local_batch_size,loss_threshold)
+    
+    
+    print(f"\n------- Training Initiated --------\n\n")
+    print(f"Global batch size: {global_batch_size}")
+    print(f"World size (process count): {world_size}")
+    print(f"Local (per process) batch size: {local_batch_size}")
+    print(f"Acceptable loss threshold: {loss_threshold}")
+    print(f"Learning rate: {learning_rate}\n\n")
     
     # Create the shared tensor in the main process.
     # The '.share_memory_()' method makes its memory accessible to all child processes.
     #shared_tensor = torch.zeros(1, 4, dtype=torch.float32).share_memory_()
 
-    n_trainset = 50000
+    n_trainset = 500000
     n_infeatures = 11
     n_outfeatures = 2
     shared_inputs = torch.zeros([n_trainset,n_infeatures],dtype=torch.float32).share_memory_()
@@ -597,9 +703,8 @@ if __name__ == '__main__':
     # The worker routine only runs on rank 0 btw
     #p = mp.spawn(target=ViewTrainingData, args(shared_inputs,shared_outputs))
 
-    # Lets normalize
-    shared_inputs  = (shared_inputs-shared_inputs.mean(dim=0))/shared_inputs.std(dim=0)
-    shared_outputs = (shared_outputs-shared_outputs.mean(dim=0))/shared_outputs.std(dim=0)
+    
+   
     # View the correlation matrix of the data
     # First concat
     #combined_data = torch.cat((shared_inputs, shared_outputs), dim=1)
@@ -608,18 +713,28 @@ if __name__ == '__main__':
     if(False):
         print("About to make plot")
         ViewTrainingData(shared_inputs,shared_outputs)
-            
+
+    # Lets normalize
+    shared_inputs_mean = shared_inputs.mean(dim=0)
+    shared_inputs_std  = shared_inputs.std(dim=0)
+    shared_inputs  = (shared_inputs-shared_inputs_mean)/shared_inputs_std
+
+    shared_outputs_mean = shared_outputs.mean(dim=0)
+    shared_outputs_std  = shared_outputs.std(dim=0)
+    shared_outputs  = (shared_outputs-shared_outputs_mean)/shared_outputs_std
+    
     # The shared tensor is now fully populated.
+
     print(f"Final shared tensor after all processes have written: {shared_inputs[:,0]}")
 
-    
     # Training
 
     mp.spawn(
         DDPRankTrain, 
-        args=(world_size, shared_inputs, shared_outputs),
-        nprocs=world_size) #,
-#        join=True)  # Blocks until all DDP workers have terminated
+        args=(world_size, hyper_params, shared_inputs, shared_outputs, \
+              shared_inputs_mean, shared_inputs_std, \
+              shared_outputs_mean, shared_outputs_std),
+        nprocs=world_size)
 
 
     print("\n--- All Execution Complete ---")
