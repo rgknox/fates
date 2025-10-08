@@ -81,9 +81,10 @@ def DefineMask(mask,n_shared,n_output,m_in,m_out):
     for i in range(n_output):
         j0 = n_shared+i*(m_in)
         j1 = j0+m_in
-        i0 = i*m_out
-        i1 = i0+m_out
-        mask[i0:i1,j0:j1] = True
+        for j in range(j0,j1):
+            i0 = i*m_out
+            i1 = i0+m_out
+            mask[i0:i1,j] = True
 
     if(print_mask):
         print(f"Printing mask")
@@ -469,9 +470,9 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
     mask4 = torch.zeros(n_output,   n_hidden3, dtype=torch.bool)
 
     mask1 = DefineMask(mask1,n_shared,numleaf,n_per_leaflayer,n_mult1).float().to(device)
-    mask2 = DefineMask(mask2,0,numleaf,n_mult1,n_mult2).float().to(device)
-    mask3 = DefineMask(mask3,0,numleaf,n_mult2,n_mult3).float().to(device)
-    mask4 = DefineMask(mask4,0,numleaf,n_mult3,n_output).float().to(device)
+    mask2 = DefineMask(mask2,0,       numleaf,n_mult1,n_mult2).float().to(device)
+    mask3 = DefineMask(mask3,0,       numleaf,n_mult2,n_mult3).float().to(device)
+    mask4 = DefineMask(mask4,0,       numleaf,n_mult3,1).float().to(device)
 
     model = PhotoNeuralNetwork(n_input,n_output,[n_hidden1,n_hidden2,n_hidden3]).to(device)
 
@@ -480,7 +481,16 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
     else:
         ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[])
 
-        
+    assert mask1.shape == ddp_model.module.fc1.weight.data.shape, \
+        f"Shape mismatch: {mask1.shape} != {ddp_model.module.fc1.weight.data.shape}"
+    assert mask2.shape == ddp_model.module.fc2.weight.data.shape, \
+        f"Shape mismatch: {mask2.shape} != {ddp_model.module.fc2.weight.data.shape}"
+    assert mask3.shape == ddp_model.module.fc3.weight.data.shape, \
+        f"Shape mismatch: {mask3.shape} != {ddp_model.module.fc3.weight.data.shape}"
+    assert mask4.shape == ddp_model.module.fc4.weight.data.shape, \
+        f"Shape mismatch: {mask4.shape} != {ddp_model.module.fc4.weight.data.shape}"
+    
+
     #criterion = norm_mse_loss #nn.MSELoss()
     #criterion = norm_huber_loss
     criterion = torch.nn.HuberLoss(reduction='mean', delta=1.0)
@@ -576,8 +586,7 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
         
         #plot_data = batch_outputs.detach().numpy()
         #plot_mod  = pred_outputs.detach().numpy()
-        plot_data[:,1] = plot_data[:,1]*1.e-6  # Convert from umol to mol
-        plot_mod[:,1] = plot_mod[:,1]*1.e-6
+        
         
         fig, ((ax1,ax2)) = plt.subplots(1,2,figsize=(8.5,4.))
         ax1.scatter(plot_data[:,0],plot_mod[:,0])
@@ -592,22 +601,25 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
         ax1.set_ylim([minax,maxax])
         ax1.text(minax+0.05*(maxax-minax), \
                  minax+0.80*(maxax-minax), \
-                 f'epoch: {epoch+1}\nlr: {learning_rate:.4f}\nmodel: {mod_pattern}' , \
+                 f'epoch: {epoch+1}\nlr: {hyper_params.learning_rate:.4f}\nmodel: {mod_pattern}' , \
                  bbox=dict(facecolor=[0.95,0.95,0.95], edgecolor='black'))
         ax1.grid(True)
-        
-        ax2.scatter(plot_data[:,1],plot_mod[:,1])
-        ax2.set_xlabel('FATES Ag(2) [mol/m2/s]')
-        ax2.set_ylabel('NN Ag(2) [mol/m2/s]')
-        minax = np.min([plot_data[:,1],plot_mod[:,1]])
-        maxax = np.max([plot_data[:,1],plot_mod[:,1]])
-        rngax = maxax-minax
-        minax = minax-0.1*rngax
-        maxax = maxax+0.1*rngax
-        ax2.set_xlim([minax,maxax])
-        ax2.set_ylim([minax,maxax])
-        ax2.grid(True)
-        
+
+        if(True):#plot_data.size(1)>1):
+            plot_data[:,1] = plot_data[:,1] #*1.e-6  # Convert from umol to mol
+            plot_mod[:,1] = plot_mod[:,1]    #*1.e-6
+            ax2.scatter(plot_data[:,1],plot_mod[:,1])
+            ax2.set_xlabel('FATES Ag(2) [mol/m2/s]')
+            ax2.set_ylabel('NN Ag(2) [mol/m2/s]')
+            minax = np.min([plot_data[:,1],plot_mod[:,1]])
+            maxax = np.max([plot_data[:,1],plot_mod[:,1]])
+            rngax = maxax-minax
+            minax = minax-0.1*rngax
+            maxax = maxax+0.1*rngax
+            ax2.set_xlim([minax,maxax])
+            ax2.set_ylim([minax,maxax])
+            ax2.grid(True)
+            
         plt.tight_layout()
         plt.show()
 
