@@ -427,7 +427,7 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
             rank=rank,
             world_size=world_size)
         use_gpu = True
-        device = torch.device("cuda:0")
+        device = rank
         gpu_id = rank
     else:
         dist.init_process_group(
@@ -477,7 +477,7 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
     model = PhotoNeuralNetwork(n_input,n_output,[n_hidden1,n_hidden2,n_hidden3]).to(device)
 
     if(use_gpu): 
-        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[gpu_id])
+        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
     else:
         ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[])
 
@@ -509,6 +509,8 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
         STOP_SIGNAL = STOP_SIGNAL.to(device)
         data_loader.sampler.set_epoch(epoch)
         for batch_idx, (batch_inputs, batch_outputs) in enumerate(data_loader):
+            batch_inputs = batch_inputs.to(device)
+            batch_outputs = batch_outputs.to(device)
             optimizer.zero_grad()
 
             ddp_model.module.fc1.weight.data.mul_(mask1)
@@ -556,6 +558,8 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
     if(rank==0):
 
         # Scale the weights and biases of the first layer
+        # Lets bring the model back to the CPU if it is not already there
+        model.to("cpu")
         model.NormScale(shared_inputs_mean,shared_inputs_std,shared_outputs_mean,shared_outputs_std)
         
         # give the model run a unique string
@@ -563,13 +567,13 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
 
         script_module = torch.jit.script(model)
         mod_pattern = model.nametag#'11-L64-Re-L32-Re-2'  # This is a label for model architecture in plotting
-        script_module.save("./c3psn_modelsd_szv2_i13_{}_c{}.pt".format(mod_pattern,datestr))
+        script_module.save("./c3psn_vec_321608_v1_n{}_c{}.pt".format(numleaf,datestr))
 
     print(f"RANK:[{rank}/{world_size}] PHASE 2: Training complete")
 
     # Generate some scatter plots    
 
-    if(rank==0):
+    if(rank==0 and False):
 
         # Lets un-normalize the input data
 
@@ -744,9 +748,9 @@ if __name__ == '__main__':
     # The '.share_memory_()' method makes its memory accessible to all child processes.
     #shared_tensor = torch.zeros(1, 4, dtype=torch.float32).share_memory_()
 
-    #n_trainset = int(2**20)  # ~1M
+    n_trainset = int(2**20)  # ~1M
 
-    n_trainset = int(2**15)   # ~32k
+    #n_trainset = int(2**15)   # ~32k
     
     # LETS DO 10 layers with sunlit/shaded 
 
@@ -759,8 +763,6 @@ if __name__ == '__main__':
     # we need to get the conductance slope terms. Or we can run that algorithm
     # to feed them into the model? Instead of btran? The calculations of gs0,gs1 and gs2
     # are only dependent on the parameter constants (pft) and btran.
-    
-    
     
     n_infeatures = n_shared + numleaf*n_per_leaflayer
     
