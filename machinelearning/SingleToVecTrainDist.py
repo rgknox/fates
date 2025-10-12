@@ -69,6 +69,7 @@ def NormHuberLoss(pred,target,std):
     # Return the mean loss across the entire batch
     return torch.mean(loss)
 
+
 def DefineMask(mask,n_shared,n_output,m_in,m_out):
 
     print_mask = False
@@ -95,27 +96,26 @@ def DefineMask(mask,n_shared,n_output,m_in,m_out):
     return mask
 
 
-def ReplicateModel(model_in,nreps,n_shared):
+def ReplicateModel(model_in,n_reps,n_shared):
 
     # Extend the model to handle a vector of inputs
     # Tell it how many replicates, and the number of inputs
     # that are replicated. It will assume the last inputs
     # are those to be replicated
 
-    # LETS KEEP THIS SIMPLE FOR NOW, MANUALLY
-    code.interact(local=dict(globals(), **locals()))
+    
     
     n_input  = model_in.fc1.weight.data.size(1)
     n_output = model_in.fc4.weight.data.size(0)
-    n_hidden1 = model_in.fc1.weight.data.size(0)*nreps
-    n_hidden2 = model_in.fc2.weight.data.size(0)*nreps
-    n_hidden3 = model_in.fc3.weight.data.size(0)*nreps
+    n_hidden1 = model_in.fc1.weight.data.size(0)
+    n_hidden2 = model_in.fc2.weight.data.size(0)
+    n_hidden3 = model_in.fc3.weight.data.size(0)
     
     n_in_per_rep = n_input - n_shared
 
-    model_out = PhotoNeuralNetwork( n_shared + nreps*n_in_per_rep, \
+    model_out = PhotoNeuralNetwork( n_shared + n_reps*n_in_per_rep, \
                                     n_output*n_reps, \
-                                    [n_hidden1,n_hidden2,n_hidden3])
+                                    [n_reps*n_hidden1,n_reps*n_hidden2,n_reps*n_hidden3])
 
     model_out.fc1 = TransferWeightsBias(model_out.fc1,model_in.fc1,n_shared,n_reps)
     model_out.fc2 = TransferWeightsBias(model_out.fc2,model_in.fc2,0,n_reps)
@@ -127,9 +127,10 @@ def ReplicateModel(model_in,nreps,n_shared):
     
 def TransferWeightsBias(fc_out,fc_in,n_shared,n_reps):
 
+    #
     # FC is being changed from [n_out x n_in] -> [nreps*n_out x n_shared+nreps*n_nonshared]
-
-
+    #
+    #
     #   Example 4 out, 3 in (2 shared) with 2 replicates
     #   x x x       x x x o 
     #   x x x       x x x o
@@ -139,6 +140,8 @@ def TransferWeightsBias(fc_out,fc_in,n_shared,n_reps):
     #               x x o x
     #               x x o x
     #               x x o x
+
+    #code.interact(local=dict(globals(), **locals()))
     
     fc_out.weight.data[:,:] = 0.
     fc_out.bias.data[:] = 0.
@@ -147,27 +150,23 @@ def TransferWeightsBias(fc_out,fc_in,n_shared,n_reps):
     n_nonshared = n_input - n_shared
 
     n_output = fc_in.weight.data.size(0)
-    
-    # Transfer Biases
-    for j in range(n_shared):
-        fc_out.bias.data[j] = fc_in.bias.data[j]
 
-    for i in range(nreps):
-        for jj in range(n_nonshared):
-            j_in  = n_shared+jj
-            j_out = n_shared+i*n_nonshared+jj
-            fc_out.bias.data[j_out] = fc_in.bias.data[j_in]
+    # Transfer Biases
+    for i in range(n_reps):
+        i0 = i*n_output
+        i1 = i0+n_output
+        fc_out.bias.data[i0:i1] = fc_in.bias.data[:]
 
     # Transfer weights
-    for i in range(nreps):
-        i0 = i*n_hidden1
-        i1 = i0+n_hidden1
+    for i in range(n_reps):
+        i0 = i*n_output
+        i1 = i0+n_output
         for j in range(n_shared):
             fc_out.weight.data[i0:i1,j] = fc_in.weight.data[0:n_output,j]
 
         for jj in range(n_nonshared):
-            j_in  = n_shared+jj
-            j_out = n_shared+i*n_nonshared+jj
+            j_in  = jj+n_shared
+            j_out = jj+n_shared+i*n_nonshared
             fc_out.weight.data[i0:i1,j_out] = fc_in.weight.data[0:n_output,j_in]
         
 
@@ -177,7 +176,7 @@ def TransferWeightsBias(fc_out,fc_in,n_shared,n_reps):
 class PhotoNeuralNetwork(torch.nn.Module):
     def __init__(self,n_input,n_output,n_hidden):
         super(PhotoNeuralNetwork, self).__init__()
-        self.nametag = 'its complicated'
+        self.nametag = '16-16-4'
         self.fc1   = torch.nn.Linear(n_input, n_hidden[0])
         self.relu1 = torch.nn.ReLU()
         self.fc2   = torch.nn.Linear(n_hidden[0],n_hidden[1])
@@ -298,7 +297,7 @@ def GetLNCTop(n_samp):
     return np.random.normal(loc=lnc.mean(),scale=lnc.std(),size=n_samp).clip(0.1,None)
     
 
-def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
+def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs, numleaf):
 
     print(f"RANK:[{rank}/{world_size}] PHASE 1: Starting input prep.")
 
@@ -377,9 +376,7 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
     btran_vec      = GetBTran(n_samp)
     gb_vec         = GetGB(n_samp)
     press_vec      = GetPress(n_samp)
-    nscaler_vec    = GetNScaler(n_samp)
-    parabs_vec     = GetPARAbsWatts(n_samp)*4.6
-        
+    
     pft = 1
     ft  = pft-1  # Python index associated with PFT of interest
 
@@ -423,7 +420,8 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
                               byref(mm_ko2_f), \
                               byref(co2_cpoint_f))
 
-        
+        nscaler_vec    = GetNScaler(numleaf)
+        parabs_vec     = GetPARAbsWatts(numleaf)*4.6
 
         shared_inputs[ip,0] = btran_vec[i]
         shared_inputs[ip,1] = leaf_tempc_vec[i]
@@ -432,59 +430,64 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs):
         shared_inputs[ip,4] = veg_es_f.value
         shared_inputs[ip,5] = gb_vec[i]
         shared_inputs[ip,6] = vpress
-        shared_inputs[ip,7] = parabs_vec[i]
-        shared_inputs[ip,8] = nscaler_vec[i]
+            
+        for j in range(numleaf):
+        
+            iret = f90.lmr_ryan_sub(c8(lnctop),c8(nscaler_vec[j]), ci(pft), \
+                                    c8(leaf_tempk), byref(lmr_f))
 
         
-        iret = f90.lmr_ryan_sub(c8(lnctop),c8(nscaler_vec[i]), ci(pft), \
-                                c8(leaf_tempk), byref(lmr_f))
-
+            iret = f90.biophysrate_sub(ci(pft), \
+                                       c8(vcmax25top), c8(jmax25top), c8(kp25top), \
+                                       c8(nscaler_vec[j]), c8(leaf_tempk), c8(dayl_factor_full), \
+                                       c8(kumgrowth_tempk), c8(kumhome_tempk), c8(btran_vec[i]), \
+                                       byref(vcmax_f), byref(jmax_f), byref(kp_f), byref(gs0_f), byref(gs1_f), byref(gs2_f))
         
-        iret = f90.biophysrate_sub(ci(pft), \
-                                   c8(vcmax25top), c8(jmax25top), c8(kp25top), \
-                                   c8(nscaler_vec[i]), c8(leaf_tempk), c8(dayl_factor_full), \
-                                   c8(kumgrowth_tempk), c8(kumhome_tempk), c8(btran_vec[i]), \
-                                   byref(vcmax_f), byref(jmax_f), byref(kp_f), byref(gs0_f), byref(gs1_f), byref(gs2_f))
+            ip0 = 7+(j*2)
+            shared_inputs[ip,ip0]   = nscaler_vec[j]
+            shared_inputs[ip,ip0+1] = parabs_vec[j]
         
-        try:
-            # Call the FATES photosynthesis subroutine:
-            # https://github.com/NGEET/fates/blob/main/biogeophys/LeafBiophysicsMod.F90#L1232
-            iret = f90.leaflayerphoto_sub(c8(parabs_vec[i]),  \
-                                          ci(pft),   \
-                                          c8(vcmax_f.value),   \
-                                          c8(jmax_f.value),    \
-                                          c8(kp_f.value),      \
-                                          c8(gs0_f.value), \
-                                          c8(gs1_f.value), \
-                                          c8(gs2_f.value), \
-                                          c8(leaf_tempk), \
-                                          c8(press_vec[i]), \
-                                          c8(co2_ppress), \
-                                          c8(o2_ppress), \
-                                          c8(veg_es_f.value), \
-                                          c8(gb_vec[i]), \
-                                          c8(vpress), \
-                                          c8(mm_kco2_f.value), \
-                                          c8(mm_ko2_f.value), \
-                                          c8(co2_cpoint_f.value), \
-                                          c8(lmr_f.value), \
-                                          c8(ci_tol), \
-                                          byref(agross_f), \
-                                          byref(gstoma_f), \
-                                          byref(anet_f), \
-                                          byref(c13_f), \
-                                          byref(co2_interc_f), \
-                                          byref(solve_iter_f) )
+            try:
+                # Call the FATES photosynthesis subroutine:
+                # https://github.com/NGEET/fates/blob/main/biogeophys/LeafBiophysicsMod.F90#L1232
+                iret = f90.leaflayerphoto_sub(c8(parabs_vec[j]),  \
+                                              ci(pft),   \
+                                              c8(vcmax_f.value),   \
+                                              c8(jmax_f.value),    \
+                                              c8(kp_f.value),      \
+                                              c8(gs0_f.value), \
+                                              c8(gs1_f.value), \
+                                              c8(gs2_f.value), \
+                                              c8(leaf_tempk), \
+                                              c8(press_vec[i]), \
+                                              c8(co2_ppress), \
+                                              c8(o2_ppress), \
+                                              c8(veg_es_f.value), \
+                                              c8(gb_vec[i]), \
+                                              c8(vpress), \
+                                              c8(mm_kco2_f.value), \
+                                              c8(mm_ko2_f.value), \
+                                              c8(co2_cpoint_f.value), \
+                                              c8(lmr_f.value), \
+                                              c8(ci_tol), \
+                                              byref(agross_f), \
+                                              byref(gstoma_f), \
+                                              byref(anet_f), \
+                                              byref(c13_f), \
+                                              byref(co2_interc_f), \
+                                              byref(solve_iter_f) )
 
-            shared_outputs[ip,0] = agross_f.value
+                shared_outputs[ip,j] = agross_f.value
 
-        except:
-            print('Photosynthesis model could not find a solution')
-            exit(1)
+            
+            except:
+                print('Photosynthesis model could not find a solution')
+                exit(1)
         
     print(f"RANK:[{rank}/{world_size}] PHASE 1: Ending input prep.")
     
 def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, \
+                 rep_shared_inputs, rep_shared_outputs, \
                  shared_inputs_mean, shared_inputs_std, \
                  shared_outputs_mean, shared_outputs_std, numleaf):
 
@@ -532,42 +535,22 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
     # We define the size of the hidden layers
     # as multiples of the number of independent leaf layers
     
-    n_mult1 = 32
+    n_mult1 = 16
     n_mult2 = 16
-    n_mult3 = 8
+    n_mult3 = 4
 
     n_hidden1 = n_mult1
     n_hidden2 = n_mult2
     n_hidden3 = n_mult3
     
-    #mask1 = torch.zeros(n_hidden1,  n_input,   dtype=torch.bool)
-    #mask2 = torch.zeros(n_hidden2,  n_hidden1, dtype=torch.bool)
-    #mask3 = torch.zeros(n_hidden3,  n_hidden2, dtype=torch.bool)
-    #mask4 = torch.zeros(n_output,   n_hidden3, dtype=torch.bool)
-
-    #mask1 = DefineMask(mask1,n_shared,numleaf,n_per_leaflayer,n_mult1).float().to(device)
-    #mask2 = DefineMask(mask2,0,       numleaf,n_mult1,n_mult2).float().to(device)
-    #mask3 = DefineMask(mask3,0,       numleaf,n_mult2,n_mult3).float().to(device)
-    #mask4 = DefineMask(mask4,0,       numleaf,n_mult3,1).float().to(device)
-    
     model = PhotoNeuralNetwork(n_input,n_output,[n_hidden1,n_hidden2,n_hidden3]).to(device)
 
-    replicated_model = ReplicateModel(model,numleaf,7)
     
     if(use_gpu): 
         ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
     else:
         ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[])
 
-    #assert mask1.shape == ddp_model.module.fc1.weight.data.shape, \
-    #    f"Shape mismatch: {mask1.shape} != {ddp_model.module.fc1.weight.data.shape}"
-    #assert mask2.shape == ddp_model.module.fc2.weight.data.shape, \
-    #    f"Shape mismatch: {mask2.shape} != {ddp_model.module.fc2.weight.data.shape}"
-    #assert mask3.shape == ddp_model.module.fc3.weight.data.shape, \
-    #    f"Shape mismatch: {mask3.shape} != {ddp_model.module.fc3.weight.data.shape}"
-    #assert mask4.shape == ddp_model.module.fc4.weight.data.shape, \
-    #    f"Shape mismatch: {mask4.shape} != {ddp_model.module.fc4.weight.data.shape}"
-    
 
     #criterion = norm_mse_loss #nn.MSELoss()
     #criterion = norm_huber_loss
@@ -590,22 +573,11 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
             batch_inputs = batch_inputs.to(device)
             batch_outputs = batch_outputs.to(device)
             optimizer.zero_grad()
-
-            #ddp_model.module.fc1.weight.data.mul_(mask1)
-            #ddp_model.module.fc2.weight.data.mul_(mask2)
-            #ddp_model.module.fc3.weight.data.mul_(mask3)
-            #ddp_model.module.fc4.weight.data.mul_(mask4)
-            
             pred_outputs = ddp_model(batch_inputs)
-            #loss = criterion(pred_outputs, batch_outputs, model_out_std)
             loss = criterion(pred_outputs, batch_outputs)
             loss.backward()
             optimizer.step()
 
-            #ddp_model.module.fc1.weight.data.mul_(mask1)
-            #ddp_model.module.fc2.weight.data.mul_(mask2)
-            #ddp_model.module.fc3.weight.data.mul_(mask3)
-            #ddp_model.module.fc4.weight.data.mul_(mask4)
             
         loss_history.append(loss.item())
 
@@ -652,41 +624,39 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
         # give the model run a unique string
         datestr = datetime.now().strftime("%Y%m%d-%H%M")
 
-        script_module = torch.jit.script(model)
-        mod_pattern = model.nametag#'11-L64-Re-L32-Re-2'  # This is a label for model architecture in plotting
+        script_module = torch.jit.script(replicated_model)
+        mod_pattern = model.nametag
         script_module.save("./c3psn_vec_321608_v1_n{}_c{}.pt".format(numleaf,datestr))
 
     print(f"RANK:[{rank}/{world_size}] PHASE 2: Training complete")
 
     # Generate some scatter plots    
 
-    if(rank==0 and False):
+    if(rank==0 and True):
 
         # Lets un-normalize the input data
 
         # new  = (old-mean)/std
         # old = new*std+mean
-        shared_inputs = shared_inputs*shared_inputs_std + shared_inputs_mean
-        shared_outputs = shared_outputs*shared_outputs_std + shared_outputs_mean
+        #shared_inputs = shared_inputs*shared_inputs_std + shared_inputs_mean
+        #shared_outputs = shared_outputs*shared_outputs_std + shared_outputs_mean
+        
+        #indices_of_all_data = torch.randperm(rep_shared_inputs.size(0))
+        #n_plot = 10000
+        
+        plot_mod  = replicated_model(rep_shared_inputs).detach().numpy().flatten()
+        plot_data = rep_shared_outputs.detach().numpy().flatten()
 
-
-        
-        indices_of_all_data = torch.randperm(shared_inputs.size(0))
-        n_plot = 10000
-        
-        plot_mod  = model(shared_inputs[indices_of_all_data[0:n_plot]]).detach().numpy()
-        plot_data = shared_outputs[indices_of_all_data[0:n_plot]].detach().numpy()
-        
         #plot_data = batch_outputs.detach().numpy()
         #plot_mod  = pred_outputs.detach().numpy()
         
         
-        fig, ((ax1,ax2)) = plt.subplots(1,2,figsize=(8.5,4.))
-        ax1.scatter(plot_data[:,0],plot_mod[:,0])
-        ax1.set_xlabel('FATES Ag(1) [umol/m2/s]')
-        ax1.set_ylabel('NN Ag(1) [umol/m2/s]')
-        minax = np.min([plot_data[:,0],plot_mod[:,0]])
-        maxax = np.max([plot_data[:,0],plot_mod[:,0]])
+        fig, ((ax1)) = plt.subplots(1,1,figsize=(8.5,7.5))
+        ax1.scatter(plot_data[:],plot_mod[:])
+        ax1.set_xlabel('FATES Ag [umol/m2/s]')
+        ax1.set_ylabel('NN Ag [umol/m2/s]')
+        minax = np.min([plot_data[:],plot_mod[:]])
+        maxax = np.max([plot_data[:],plot_mod[:]])
         rngax = maxax-minax
         minax = minax-0.1*rngax
         maxax = maxax+0.1*rngax
@@ -698,7 +668,7 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
                  bbox=dict(facecolor=[0.95,0.95,0.95], edgecolor='black'))
         ax1.grid(True)
 
-        if(True):#plot_data.size(1)>1):
+        if(False):#plot_data.size(1)>1):
             plot_data[:,1] = plot_data[:,1] #*1.e-6  # Convert from umol to mol
             plot_mod[:,1] = plot_mod[:,1]    #*1.e-6
             ax2.scatter(plot_data[:,1],plot_mod[:,1])
@@ -839,6 +809,8 @@ if __name__ == '__main__':
 
     n_trainset = int(2**20)  # ~1M
 
+    n_validset = int(2**12)  # Validation set (vectorized version)
+    
     #n_trainset = int(2**15)   # ~32k
     
     # LETS DO 10 layers with sunlit/shaded 
@@ -853,10 +825,14 @@ if __name__ == '__main__':
     # to feed them into the model? Instead of btran? The calculations of gs0,gs1 and gs2
     # are only dependent on the parameter constants (pft) and btran.
     
-    n_infeatures = n_shared + numleaf*n_per_leaflayer
-    
+    n_infeatures = n_shared + n_per_leaflayer
     shared_inputs = torch.zeros([n_trainset,n_infeatures],dtype=torch.float32).share_memory_()
-    shared_outputs = torch.zeros([n_trainset,n_outfeatures*numleaf],dtype=torch.float32).share_memory_()
+    shared_outputs = torch.zeros([n_trainset,n_outfeatures],dtype=torch.float32).share_memory_()
+
+    n_rep_infeatures = n_shared + numleaf*n_per_leaflayer
+    rep_shared_inputs = torch.zeros([n_validset,n_rep_infeatures],dtype=torch.float32).share_memory_()
+    rep_shared_outputs = torch.zeros([n_validset,n_outfeatures*numleaf],dtype=torch.float32).share_memory_()
+    
 
     # Create a list to hold the process objects.
     processes = []
@@ -868,7 +844,7 @@ if __name__ == '__main__':
         else:
             idz = int((rank+1)*chunk_size)
         chunk = list(range(ida,idz))
-        p = mp.Process(target=RankPrepInput, args=(rank, chunk, fates_path,shared_inputs,shared_outputs,numleaf))
+        p = mp.Process(target=RankPrepInput, args=(rank, chunk, fates_path,shared_inputs,shared_outputs,1))
         p.start()
         processes.append(p)
     
@@ -876,6 +852,26 @@ if __name__ == '__main__':
     for p in processes:
         p.join()
 
+
+    # Create a list to hold the process objects.
+    processes = []
+    for rank in range(world_size):
+        chunk_size = int(np.floor(n_validset/world_size))
+        ida = int(rank*chunk_size)
+        if(rank==(world_size-1)):
+            idz = int(n_validset)
+        else:
+            idz = int((rank+1)*chunk_size)
+        chunk = list(range(ida,idz))
+        p = mp.Process(target=RankPrepInput, args=(rank, chunk, fates_path,rep_shared_inputs,rep_shared_outputs,numleaf))
+        p.start()
+        processes.append(p)
+    
+    # Wait for all processes to complete their work.
+    for p in processes:
+        p.join()
+
+        
     if(False):
         print("About to make plot")
         ViewTrainingData(shared_inputs,shared_outputs)
@@ -895,13 +891,14 @@ if __name__ == '__main__':
 
     # Training
 
-    model_in = PhotoNeuralNetwork(9,1,[32,16,8])
-    
-    model_out = ReplicateModel(model_in,3,7)
+    # Test replication
+    #model_in = PhotoNeuralNetwork(9,1,[32,16,8])
+    #model_out = ReplicateModel(model_in,3,7)
     
     mp.spawn(
         DDPRankTrain, 
         args=(world_size, hyper_params, shared_inputs, shared_outputs, \
+              rep_shared_inputs, rep_shared_outputs, \
               shared_inputs_mean, shared_inputs_std, \
               shared_outputs_mean, shared_outputs_std, numleaf),
         nprocs=world_size)
