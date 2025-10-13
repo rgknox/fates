@@ -920,7 +920,6 @@ contains
     !
     ! !LOCAL VARIABLES:
 
-    integer  :: model_day_int     ! integer model day 1 - inf
     integer  :: ncolddays         ! no days underneath the threshold for leaf drop
     integer  :: i_tmem            ! Loop counter for veg temp mem days
     integer  :: ipft              ! plant functional type index
@@ -970,14 +969,13 @@ contains
     logical  :: last_flush_long_ago      ! Has it been a very long time since last flushing?
 
 
-    ! This is the elapsed number of days since the very beginning of the simulation time
-    model_day_int = currentSite%phen_model_date
-
-
     !Parameters: defaults from Botta et al. 2000 GCB,6 709-725
     !Parameters, default from from SDGVM model of senesence
 
-    ! Retrieve average canopy temperature of the current day
+    ! Retrieve average canopy temperature for the previous
+    ! 24 hours. The indices of vegtemp_memory represent
+    ! the previous 10 days, index 1 is the most recent day
+
     temp_in_C = currentSite%vegtemp_memory(1)
 
 
@@ -1032,19 +1030,19 @@ contains
 
     !this logic is to prevent GDD accumulating after the leaves have fallen and before the
     ! beginnning of the accumulation period, to prevend erroneous autumn leaf flushing.
-    if(model_day_int> ndays_per_year)then !only do this after the first year to prevent odd behaviour
+    if(currentSite%phen_model_date> ndays_per_year)then !only do this after the first year to prevent odd behaviour
 
        if(currentSite%lat .gt. 0.0_r8)then !Northern Hemisphere
           ! In the north, don't accumulate when we are past the leaf fall date.
           ! Accumulation starts on day 1 of year in NH.
           ! The 180 is to prevent going into an 'always off' state after initialization
-          if( model_day_int .gt. currentSite%cleafoffdate.and.hlm_day_of_year.gt.180)then !
+          if( currentSite%phen_model_date .gt. currentSite%cleafoffdate.and.hlm_day_of_year.gt.180)then !
              currentSite%grow_deg_days = 0._r8
           endif
        else !Southern Hemisphere
           ! In the South, don't accumulate after the leaf off date, and before the start of
           ! the accumulation phase (day 181).
-          if(model_day_int .gt. currentSite%cleafoffdate.and.hlm_day_of_year.lt.gddstart) then!
+          if(currentSite%phen_model_date .gt. currentSite%cleafoffdate.and.hlm_day_of_year.lt.gddstart) then!
              currentSite%grow_deg_days = 0._r8
           endif
        endif
@@ -1054,16 +1052,16 @@ contains
     ! and off. If this is the beginning of the simulation, that day might
     ! not had occured yet, so set it to last year to get things rolling
 
-    if (model_day_int < currentSite%cleafoffdate) then
-       currentSite%cndaysleafoff = model_day_int - (currentSite%cleafoffdate - ndays_per_year)
+    if (currentSite%phen_model_date < currentSite%cleafoffdate) then
+       currentSite%cndaysleafoff = currentSite%phen_model_date - (currentSite%cleafoffdate - ndays_per_year)
     else
-       currentSite%cndaysleafoff = model_day_int - currentSite%cleafoffdate
+       currentSite%cndaysleafoff = currentSite%phen_model_date - currentSite%cleafoffdate
     end if
 
-    if (model_day_int < currentSite%cleafondate) then
-       currentSite%cndaysleafon = model_day_int - (currentSite%cleafondate - ndays_per_year)
+    if (currentSite%phen_model_date < currentSite%cleafondate) then
+       currentSite%cndaysleafon = currentSite%phen_model_date - (currentSite%cleafondate - ndays_per_year)
     else
-       currentSite%cndaysleafon = model_day_int - currentSite%cleafondate
+       currentSite%cndaysleafon = currentSite%phen_model_date - currentSite%cleafondate
     end if
 
 
@@ -1081,7 +1079,7 @@ contains
          (currentSite%cndaysleafoff > ED_val_phen_mindayson) .and. &
          (currentSite%nchilldays >= 1)) then
        currentSite%cstatus = phen_cstat_notcold  ! Set to not-cold status (leaves can come on)
-       currentSite%cleafondate = model_day_int
+       currentSite%cleafondate = currentSite%phen_model_date
        currentSite%cndaysleafon = 0
        currentSite%grow_deg_days = 0._r8 ! zero GDD for the rest of the year until counting season begins.
        if ( debug ) write(fates_log(),*) 'leaves on'
@@ -1099,7 +1097,7 @@ contains
 
 
     if ( (currentSite%cstatus == phen_cstat_notcold) .and. &
-         (model_day_int > num_vegtemp_mem)      .and. &
+         (currentSite%phen_model_date > num_vegtemp_mem)      .and. &
          (ncolddays > ED_val_phen_ncolddayslim) .and. &
          (currentSite%cndaysleafon > ED_val_phen_mindayson) )then
 
@@ -1109,7 +1107,7 @@ contains
        ! clear this value, it will cause
        ! leaves to flush later in the year
        currentSite%cstatus       = phen_cstat_iscold  ! alter status of site to 'leaves off'
-       currentSite%cleafoffdate = model_day_int       ! record leaf off date
+       currentSite%cleafoffdate = currentSite%phen_model_date  ! record leaf off date
        currentSite%cndaysleafoff = 0
 
        if ( debug ) write(fates_log(),*) 'leaves off'
@@ -1129,7 +1127,7 @@ contains
        currentSite%cstatus = phen_cstat_nevercold  ! alter status of site to imply that this
        ! site is never really cold enough
        ! for cold deciduous
-       currentSite%cleafoffdate = model_day_int    ! record leaf off date
+       currentSite%cleafoffdate = currentSite%phen_model_date    ! record leaf off date
        currentSite%cndaysleafoff = 0
 
        if ( debug ) write(fates_log(),*) 'leaves off'
@@ -1165,15 +1163,15 @@ contains
        ! Calculate days since last flushing and shedding event, but make a provision
        ! for the first year of simulation, we have to assume leaf drop / leaf flush
        ! dates to start, so if that is in the future, set it to last year
-       if (model_day_int < currentSite%dleafoffdate(ipft)) then
-          currentSite%dndaysleafoff(ipft) = model_day_int - (currentSite%dleafoffdate(ipft)-ndays_per_year)
+       if (currentSite%phen_model_date < currentSite%dleafoffdate(ipft)) then
+          currentSite%dndaysleafoff(ipft) = currentSite%phen_model_date - (currentSite%dleafoffdate(ipft)-ndays_per_year)
        else
-          currentSite%dndaysleafoff(ipft) = model_day_int - currentSite%dleafoffdate(ipft)
+          currentSite%dndaysleafoff(ipft) = currentSite%phen_model_date - currentSite%dleafoffdate(ipft)
        end if
-       if (model_day_int < currentSite%dleafondate(ipft)) then
-          currentSite%dndaysleafon(ipft) = model_day_int - (currentSite%dleafondate(ipft)-ndays_per_year)
+       if (currentSite%phen_model_date < currentSite%dleafondate(ipft)) then
+          currentSite%dndaysleafon(ipft) = currentSite%phen_model_date - (currentSite%dleafondate(ipft)-ndays_per_year)
        else
-          currentSite%dndaysleafon(ipft) = model_day_int - currentSite%dleafondate(ipft)
+          currentSite%dndaysleafon(ipft) = currentSite%phen_model_date - currentSite%dleafondate(ipft)
        end if
 
 
@@ -1254,7 +1252,7 @@ contains
           ! up to one change occurs at any given time. Also, prevent changes until the
           ! soil moisture memory is populated (the outer if check).
           !---~---
-          past_spinup_ifelse: if (model_day_int > numWaterMem) then
+          past_spinup_ifelse: if (currentSite%phen_model_date > numWaterMem) then
              drought_smoist_ifelse: if ( prolonged_off_period .and. &
                                          ( .not. smoist_below_threshold ) ) then
                 ! LEAF ON: DROUGHT DECIDUOUS WETNESS
@@ -1265,7 +1263,7 @@ contains
                 ! b) Has there also been at least a nominaly short amount of "leaf-off"?
                 ! c) Is the soil moisture sufficiently high?
                 currentSite%dstatus(ipft)      = phen_dstat_moiston  ! set status to leaf-on
-                currentSite%dleafondate(ipft)  = model_day_int       ! save the model day we start flushing
+                currentSite%dleafondate(ipft)  = currentSite%phen_model_date       ! save the model day we start flushing
                 currentSite%dndaysleafon(ipft) = 0
                 currentSite%elong_factor(ipft) = 1.
 
@@ -1279,7 +1277,7 @@ contains
                 ! last year's bud-burst.  If this is imposed, then we set the new
                 ! status to indicate bud-burst was forced by timing
                 currentSite%dstatus(ipft)      = phen_dstat_timeon ! force budburst!
-                currentSite%dleafondate(ipft)  = model_day_int     ! record leaf on date
+                currentSite%dleafondate(ipft)  = currentSite%phen_model_date     ! record leaf on date
                 currentSite%dndaysleafon(ipft) = 0
                 currentSite%elong_factor(ipft) = 1.
 
@@ -1289,7 +1287,7 @@ contains
                 ! flush again as soon as they exceed a minimum off time
                 ! This typically occurs in a perennially wet system.
                 currentSite%dstatus(ipft)      = phen_dstat_timeon    ! force budburst!
-                currentSite%dleafondate(ipft)  = model_day_int        ! record leaf on date
+                currentSite%dleafondate(ipft)  = currentSite%phen_model_date        ! record leaf on date
                 currentSite%dndaysleafon(ipft) = 0
                 currentSite%elong_factor(ipft) = 1.
 
@@ -1298,7 +1296,7 @@ contains
                 ! Are the leaves rouhgly at the end of their lives? If so, shed leaves 
                 ! even if it is not dry.
                 currentSite%dstatus(ipft)      = phen_dstat_timeoff    !alter status of site to 'leaves off'
-                currentSite%dleafoffdate(ipft) = model_day_int         !record leaf on date
+                currentSite%dleafoffdate(ipft) = currentSite%phen_model_date         !record leaf on date
                 currentSite%dndaysleafoff(ipft) = 0
                 currentSite%elong_factor(ipft)  = 0.
 
@@ -1306,7 +1304,7 @@ contains
                 ! LEAF OFF: DROUGHT DECIDUOUS DRYNESS - if the soil gets too dry,
                 ! and the leaves have already been on a while...
                 currentSite%dstatus(ipft) = phen_dstat_moistoff     ! alter status of site to 'leaves off'
-                currentSite%dleafoffdate(ipft) = model_day_int      ! record leaf on date
+                currentSite%dleafoffdate(ipft) = currentSite%phen_model_date      ! record leaf on date
                 currentSite%dndaysleafoff(ipft) = 0
                 currentSite%elong_factor(ipft)  = 0.
              end if drought_smoist_ifelse
@@ -1360,7 +1358,7 @@ contains
 
 
           ! Make sure elongation factor is bounded and check for special cases.
-          drought_gradual_ifelse: if ( model_day_int <= numWaterMem ) then
+          drought_gradual_ifelse: if ( currentSite%phen_model_date <= numWaterMem ) then
              ! Too early in the simulation, keep the same elongation factor as the day before.
              currentSite%elong_factor(ipft) = elongf_prev
 
@@ -1368,14 +1366,14 @@ contains
              ! Leaves have been on for too long and exceeded leaf lifespan. Force abscission
              currentSite%elong_factor(ipft)  = 0.0_r8             ! Force full budburst
              currentSite%dstatus(ipft)       = phen_dstat_timeoff ! Flag that this has been forced
-             currentSite%dleafoffdate(ipft)  = model_day_int      ! Record leaf off date
+             currentSite%dleafoffdate(ipft)  = currentSite%phen_model_date      ! Record leaf off date
              currentSite%dndaysleafoff(ipft) = 0                  ! Reset clock
 
           elseif ( last_flush_long_ago ) then
              ! Plant has not flushed at all for a very long time. Force flushing
              currentSite%elong_factor(ipft)  = elongf_min         ! Force minimum budburst
              currentSite%dstatus(ipft)       = phen_dstat_timeon  ! Flag that this has been forced
-             currentSite%dleafondate(ipft)   = model_day_int      ! Record leaf on date
+             currentSite%dleafondate(ipft)   = currentSite%phen_model_date      ! Record leaf on date
              currentSite%dndaysleafon(ipft)  = 0                  ! Reset clock
 
           elseif ( recent_flush .and. elongf_1st < elongf_prev ) then
@@ -1395,7 +1393,7 @@ contains
              if (elongf_prev >= elongf_min ) then
                 ! This is the first day moisture fell below minimum. Flag change of status.
                 currentSite%dstatus(ipft)       = phen_dstat_moistoff ! Flag that this has not been forced
-                currentSite%dleafoffdate(ipft)  = model_day_int       ! Record leaf off date
+                currentSite%dleafoffdate(ipft)  = currentSite%phen_model_date       ! Record leaf off date
                 currentSite%dndaysleafoff(ipft) = 0                   ! Reset clock
              end if
 
@@ -1407,7 +1405,7 @@ contains
              if (elongf_prev < elongf_min ) then
                 ! This is the first day moisture allows leaves to exist. Flag change of status.
                 currentSite%dstatus(ipft)       = phen_dstat_moiston  ! Flag that this has not been forced
-                currentSite%dleafondate(ipft)   = model_day_int       ! Record leaf on date
+                currentSite%dleafondate(ipft)   = currentSite%phen_model_date       ! Record leaf on date
                 currentSite%dndaysleafon(ipft)  = 0                   ! Reset clock
              elseif (elongf_1st < elongf_prev) then
                 currentSite%dstatus(ipft)       = phen_dstat_pshed    ! Flag partial shedding,
