@@ -181,7 +181,7 @@ def TransferWeightsBias(fc_out,fc_in,n_shared,n_reps):
 class PhotoNeuralNetwork(torch.nn.Module):
     def __init__(self,n_input,n_output,n_hidden):
         super(PhotoNeuralNetwork, self).__init__()
-        self.nametag = '16-16-4'
+        self.nametag = 'tuning'
         self.fc1   = torch.nn.Linear(n_input, n_hidden[0])
         self.relu1 = torch.nn.ReLU()
         self.fc2   = torch.nn.Linear(n_hidden[0],n_hidden[1])
@@ -495,43 +495,41 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs, numlea
 # 2. Define the main training function for a single trial
 # This function is run on *each* distributed worker by Ray Train
 
-def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, \
-                 rep_shared_inputs, rep_shared_outputs, \
-                 shared_inputs_mean, shared_inputs_std, \
-                 shared_outputs_mean, shared_outputs_std, numleaf):
+#def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, \
+#                 rep_shared_inputs, rep_shared_outputs, \
+#                 shared_inputs_mean, shared_inputs_std, \
+#                 shared_outputs_mean, shared_outputs_std, numleaf):
     
-def train_func(config,shared_inputs, shared_outputs):
+def train_func(config):
 
     
     # Get environment variables set by Ray Train/Ray DDP
     local_rank = ray.train.get_local_rank()
     world_size = ray.train.get_world_size()
-    
-    # --- Data Setup ---
-    # Synthetic data for regression (X is 2D, Y is 1D)
-    #X = torch.randn(1000, config["input_size"])
-    #Y = torch.randn(1000, 1) + 0.5 * X[:, 0].unsqueeze(1) # Simple relationship
-    
-    # Partition data among DDP workers (essential for correct DDP)
-    # The Ray Data utility is the recommended way to handle this in a distributed setting
-    # For this simple example, we use a basic PyTorch sampler approach
 
-    dataset = CustomDataset(shared_inputs, shared_outputs)
-    sampler = torch.utils.data.DistributedSampler(
-        dataset, num_replicas=world_size, rank=local_rank
+
+    shard = ray.train.get_dataset_shared("train_key")
+
+    # Get all column names in the shard. This triggers a necessary metadata fetch.
+    all_columns = shard.columns() 
+    
+    # Use list comprehension and regex to filter for feature columns
+    feature_columns = [col for col in all_columns if re.match(r"input_\d+", col)]
+    target_columns = [col for col in all_columns if re.match(r"target_\d+", col)]
+                       
+    # 3. Convert to PyTorch DataLoader using the discovered column names
+    torch_loader = shard.to_torch(
+        label_columns=target_columns,
+        feature_columns=feature_columns,
+        batch_size=config["batch_size"],
+        label_column_dtypes=torch.float32 
     )
-    
-    data_loader = DataLoader(dataset, batch_size=config["batch_size"], shuffle=False, pin_memory=True, \
-                                                        sampler=sampler)
 
-    # --- Model and Optimizer Setup ---
-    # Create the model instance
-    #model = TwoLayerNet(config["input_size"], config["hidden_size"], 1)
-
-    n_input = shared_inputs.size(1)
-    n_output = shared_outputs.size(1)
+    # 4. Model Setup (dynamically uses the discovered feature count)
+    train_loader = ray.train.torch.prepare_data_loader(torch_loader)               
     
-    model = PhotoNeuralNetwork(n_input,n_output,[config["hidden_size1"],config["hidden_size2"],config["hidden_size3"])
+    model = PhotoNeuralNetwork(len(feature_columns),len(target_columns), \
+                               [config["hidden_size1"],config["hidden_size2"],config["hidden_size3"])
     
     
     # Wrap the model for DistributedDataParallel (DDP)
@@ -545,11 +543,11 @@ def train_func(config,shared_inputs, shared_outputs):
     # --- Training Loop ---
     for epoch in range(config["epochs"]):
         model.train()
-        sampler.set_epoch(epoch) # Important for DDP shuffling
+        if hasattr(train_loader.sampler, "set_epoch"):             
+            train_loader.sampler.set_epoch(epoch) # Important for DDP shuffling
+
         epoch_loss = 0.0
-        
-        for X_batch, Y_batch in dataloader:
-            X_batch, Y_batch = X_batch.to(local_rank), Y_batch.to(local_rank)
+        for X_batch, Y_batch in train_loader:
 
             optimizer.zero_grad()
             outputs = model(X_batch)
@@ -772,79 +770,7 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
         plt.tight_layout()
         plt.show()
 
-def PrepBar(bar_inputs):
-    n_large = 20
-    counts, bin_edges = np.histogram(bar_inputs, bins=n_large)
-    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-    bin_width = (bin_edges[1] - bin_edges[0])*0.9
-    
-    
-    return bin_centers, counts, bin_width
 
-def ViewTrainingData(shared_inputs,shared_outputs):
-
-    #matplotlib.use('Agg')
-    fig, ((ax1,ax2,ax3,ax4), (ax5,ax6,ax7,ax8), \
-          (ax9,ax10,ax11,ax12),(ax13,ax14,ax15,ax16)) = plt.subplots(4,4,figsize=(9.,9.))
-
-    print("Generating fig")
-    n_large = 20
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,0])
-    ax1.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax1.set_title('PAR abs (umol/m2/s)')
-
-    ax2.hist(shared_inputs[:,1], bins=n_large)
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,1])
-    ax2.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax2.set_title('Vcmax25top (umol/m2/s)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,2])
-    ax3.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax3.set_title('BTRAN (-)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,3])
-    ax4.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax4.set_title('Tleaf (K)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,4])
-    ax5.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax5.set_title('Patm (Pa)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,5])
-    ax6.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax6.set_title('P_co2 (Pa)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,6])
-    ax7.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax7.set_title('Esat (Pa)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,7])
-    ax8.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax8.set_title('gb (umol/m2/s)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,8])
-    ax9.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax9.set_title('E (Pa)')
-    
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,9])
-    ax10.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax10.set_title('Nscaler (-)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_inputs[:,10])
-    ax11.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax11.set_title('LMR (umol/m2/s)')
-
-    bin_centers, counts, bin_width = PrepBar(shared_outputs[:,0])
-    ax12.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax12.set_title('Ag (umol/m2/s)')
-    
-    bin_centers, counts, bin_width = PrepBar(shared_outputs[:,1])
-    ax13.bar(bin_centers, counts, width=bin_width, color='skyblue', edgecolor='black')
-    ax13.set_title('gs (umol/m2/s)')
-
-    plt.tight_layout()
-    plt.show()
     
 # ==================================================================================================
 
@@ -971,17 +897,29 @@ if __name__ == '__main__':
     shared_outputs_std  = shared_outputs.std(dim=0)
     shared_outputs  = (shared_outputs-shared_outputs_mean)/shared_outputs_std
     
-    # The shared tensor is now fully populated.
-
     print(f"Final shared tensor after all processes have written: {shared_inputs[:,0]}")
 
     # Initialize Ray
-    ray.init() 
+    ray.init()
 
+    # Ray wants a dictionary. Intererstingly, it also likes it when
+    # each feature has its own entry
+
+    train_data_dict = {
+        f"input_{i}": shared_inputs[:, i].numpy() for i in range(shared_inputs.shape[1])
+        f"target_{i}": shared_outputs[:,i].numpy() for i in range(shared_outputs.shape[1])
+    }
+
+    train_dataset = ray.data.from_dict(train_data_dict)
+
+
+                               
     # Define the hyperparameter search space
     search_space = {
         "input_size": 9, # Fixed for this example
-        "hidden_size": tune.choice([32, 16, 8]),
+        "hidden_size1": tune.choice([32, 16, 8]),
+        "hidden_size2": tune.choice([32, 16, 8]),
+        "hidden_size3": tune.choice([32, 16, 8]),
         "lr": tune.loguniform(1e-4, 1e-2),
         "batch_size": tune.choice([32, 128, 512, 1024, 2048]),
         "epochs": 20, # Small number for example speed
