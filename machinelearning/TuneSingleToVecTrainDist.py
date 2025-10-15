@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch.nn.parallel import DistributedDataParallel as DDP
 import numpy as np
 import argparse
+import pandas as pd
 import time
 import os
 import sys
@@ -42,12 +43,6 @@ n_outfeatures = 1
 
 STOP_SIGNAL = torch.zeros(1, dtype=torch.int32)
 
-# Simple class to hold hyper-parameters
-class hyper_parameters:
-    def __init__(self, learning_rate, batch_size, loss_threshold):
-        self.learning_rate = learning_rate
-        self.batch_size = batch_size
-        self.loss_threshold = loss_threshold
         
 # LOSS FUNCTIONS
 def MafeLoss(pred, target):
@@ -495,21 +490,10 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs, numlea
 # 2. Define the main training function for a single trial
 # This function is run on *each* distributed worker by Ray Train
 
-#def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, \
-#                 rep_shared_inputs, rep_shared_outputs, \
-#                 shared_inputs_mean, shared_inputs_std, \
-#                 shared_outputs_mean, shared_outputs_std, numleaf):
+def RayTrainPhoto(config):
+
+    shard = ray.train.get_dataset_shard("train_key").materialize()
     
-def train_func(config):
-
-    
-    # Get environment variables set by Ray Train/Ray DDP
-    local_rank = ray.train.get_local_rank()
-    world_size = ray.train.get_world_size()
-
-
-    shard = ray.train.get_dataset_shared("train_key")
-
     # Get all column names in the shard. This triggers a necessary metadata fetch.
     all_columns = shard.columns() 
     
@@ -518,18 +502,24 @@ def train_func(config):
     target_columns = [col for col in all_columns if re.match(r"target_\d+", col)]
                        
     # 3. Convert to PyTorch DataLoader using the discovered column names
-    torch_loader = shard.to_torch(
-        label_columns=target_columns,
-        feature_columns=feature_columns,
+    #torch_loader = shard.to_torch(
+    #    label_columns=target_columns,
+    #    feature_columns=feature_columns,
+    #    batch_size=config["batch_size"],
+    #    label_column_dtypes=torch.float32 
+    #)
+    data_iterator = shard.iter_torch_batches(
         batch_size=config["batch_size"],
-        label_column_dtypes=torch.float32 
+        # Specify all columns and their data types here
+        dtypes={col: torch.float32 for col in feature_columns + target_columns} 
     )
+    
 
     # 4. Model Setup (dynamically uses the discovered feature count)
-    train_loader = ray.train.torch.prepare_data_loader(torch_loader)               
+    #train_loader = ray.train.torch.prepare_data_loader(torch_loader)               
     
     model = PhotoNeuralNetwork(len(feature_columns),len(target_columns), \
-                               [config["hidden_size1"],config["hidden_size2"],config["hidden_size3"])
+                               [config["hidden_size1"],config["hidden_size2"],config["hidden_size3"]])
     
     
     # Wrap the model for DistributedDataParallel (DDP)
@@ -547,11 +537,18 @@ def train_func(config):
             train_loader.sampler.set_epoch(epoch) # Important for DDP shuffling
 
         epoch_loss = 0.0
-        for X_batch, Y_batch in train_loader:
-
+        for batch in data_iterator:
+        #for X_batch, Y_batch in train_loader:
+            targets = torch.cat(
+                [torch.unsqueeze(batch[f], dim=1) for f in target_columns], dim=1
+            )
+            inputs = torch.cat(
+                [torch.unsqueeze(batch[f], dim=1) for f in feature_columns], dim=1
+            )
+            
             optimizer.zero_grad()
-            outputs = model(X_batch)
-            loss = criterion(outputs, Y_batch)
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
@@ -570,257 +567,29 @@ def train_func(config):
     )
 
 
-    
-def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, \
-                 rep_shared_inputs, rep_shared_outputs, \
-                 shared_inputs_mean, shared_inputs_std, \
-                 shared_outputs_mean, shared_outputs_std, numleaf):
-
-    """
-    Worker function to initialize DDP and train the model using the shared dataset.
-    """
-
-    # 1. Setup Environment and Initialize Process Group
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '29500'
-
-    if (torch.cuda.is_available()):
-        torch.cuda.set_device(rank)
-        dist.init_process_group(
-            backend="nccl",
-            rank=rank,
-            world_size=world_size)
-        use_gpu = True
-        device = rank
-        gpu_id = rank
-    else:
-        dist.init_process_group(
-        backend="gloo",
-        rank=rank,
-        world_size=world_size)
-        use_gpu = False
-        device = "cpu"
-        gpu_id = None
-        
-    print(f"RANK:[{rank}/{world_size}] PHASE 2: DDP group initialized.")
-
-    # We don't need to normalize the output data because we normalize during the loss function
-    
-    #shared_outputs = (shared_outputs-shared_outputs.mean(dim=0))/shared_outputs.std(dim=0)
-    
-    dataset = CustomDataset(shared_inputs, shared_outputs)
-
-    data_loader = DataLoader(dataset, batch_size=hyper_params.batch_size, shuffle=False, pin_memory=True, \
-                             sampler=torch.utils.data.distributed.DistributedSampler(dataset))
-    
-    n_input = shared_inputs.size(1)
-    n_output = shared_outputs.size(1)
-
-    # We define the size of the hidden layers
-    # as multiples of the number of independent leaf layers
-    
-    n_mult1 = 16
-    n_mult2 = 16
-    n_mult3 = 4
-
-    n_hidden1 = n_mult1
-    n_hidden2 = n_mult2
-    n_hidden3 = n_mult3
-    
-    model = PhotoNeuralNetwork(n_input,n_output,[n_hidden1,n_hidden2,n_hidden3]).to(device)
-
-    
-    if(use_gpu): 
-        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
-    else:
-        ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[])
-
-
-    #criterion = norm_mse_loss #nn.MSELoss()
-    #criterion = norm_huber_loss
-    criterion = torch.nn.HuberLoss(reduction='mean', delta=1.0)
-    #criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.AdamW(ddp_model.parameters(), lr=hyper_params.learning_rate)
-
-    # Train the network
-    loss_history = []
-    print_interval = 10
-    save_interval = 50
-
-    start_time = time.time()
-    for epoch in range(500000):
-        global STOP_SIGNAL
-        STOP_SIGNAL.zero_() 
-        STOP_SIGNAL = STOP_SIGNAL.to(device)
-        data_loader.sampler.set_epoch(epoch)
-        for batch_idx, (batch_inputs, batch_outputs) in enumerate(data_loader):
-            batch_inputs = batch_inputs.to(device)
-            batch_outputs = batch_outputs.to(device)
-            optimizer.zero_grad()
-            pred_outputs = ddp_model(batch_inputs)
-            loss = criterion(pred_outputs, batch_outputs)
-            loss.backward()
-            optimizer.step()
-
-            
-        loss_history.append(loss.item())
-
-        if(rank==0 and loss.item() < hyper_params.loss_threshold):
-            print(f"Rank {rank}: Loss {loss.item():.4f} is below threshold {hyper_params.loss_threshold}. Sending STOP signal.")
-            # Set the signal to 1 (True)
-            STOP_SIGNAL[0] = 1 
-                
-        # 6. Broadcast the decision to all ranks
-        # This is the CRITICAL DDP synchronization step
-        dist.broadcast(tensor=STOP_SIGNAL, src=0)
-
-        if STOP_SIGNAL.item() == 1:
-            print(f"Rank {rank}: Received STOP due to acceptable loss, epoch: {epoch+1}.")
-            break # Exit the inner (batch/iteration) loop
-        
-        if(rank==0 and epoch % print_interval == 0):
-            elapsed_time = time.time() - start_time
-            print(f'Epoch: {epoch} Loss: {loss.item():.6f}, elapse: {elapsed_time:.4f}')
-            start_time = time.time()
-            
-        if(rank==0 and epoch % save_interval == 0):
-            ckp = ddp_model.module.state_dict()
-            datestr = datetime.now().strftime("%Y%m%d-%H")
-            torch.save(ckp,"checkpoint_{}.pt".format(datestr))
-            
-            
-    if(rank==0):
-
-        # Scale the weights and biases of the first layer
-        # Lets bring the model back to the CPU if it is not already there
-        model.to("cpu")
-        model.NormScale(shared_inputs_mean,shared_inputs_std,shared_outputs_mean,shared_outputs_std)
-
-
-        # Extend the model to handle a vector of inputs
-        # Tell it how many replicates, and the number of inputs
-        # that are replicated. It will assume the last inputs
-        # are those to be replicated
-
-        replicated_model = ReplicateModel(model,numleaf,7)
-
-        
-        # give the model run a unique string
-        datestr = datetime.now().strftime("%Y%m%d-%H%M")
-
-        script_module = torch.jit.script(replicated_model)
-        mod_pattern = model.nametag
-        script_module.save("./c3psn_vec_321608_v1_n{}_c{}.pt".format(numleaf,datestr))
-
-    print(f"RANK:[{rank}/{world_size}] PHASE 2: Training complete")
-
-    # Generate some scatter plots    
-
-    if(rank==0 and True):
-
-        # Lets un-normalize the input data
-
-        # new  = (old-mean)/std
-        # old = new*std+mean
-        #shared_inputs = shared_inputs*shared_inputs_std + shared_inputs_mean
-        #shared_outputs = shared_outputs*shared_outputs_std + shared_outputs_mean
-        
-        #indices_of_all_data = torch.randperm(rep_shared_inputs.size(0))
-        #n_plot = 10000
-        
-        plot_mod  = replicated_model(rep_shared_inputs).detach().numpy().flatten()
-        plot_data = rep_shared_outputs.detach().numpy().flatten()
-
-        #plot_data = batch_outputs.detach().numpy()
-        #plot_mod  = pred_outputs.detach().numpy()
-        
-        
-        fig, ((ax1)) = plt.subplots(1,1,figsize=(8.5,7.5))
-        ax1.scatter(plot_data[:],plot_mod[:])
-        ax1.set_xlabel('FATES Ag [umol/m2/s]')
-        ax1.set_ylabel('NN Ag [umol/m2/s]')
-        minax = np.min([plot_data[:],plot_mod[:]])
-        maxax = np.max([plot_data[:],plot_mod[:]])
-        rngax = maxax-minax
-        minax = minax-0.1*rngax
-        maxax = maxax+0.1*rngax
-        ax1.set_xlim([minax,maxax])
-        ax1.set_ylim([minax,maxax])
-        ax1.text(minax+0.05*(maxax-minax), \
-                 minax+0.80*(maxax-minax), \
-                 f'epoch: {epoch+1}\nlr: {hyper_params.learning_rate:.4f}\nmodel: {mod_pattern}' , \
-                 bbox=dict(facecolor=[0.95,0.95,0.95], edgecolor='black'))
-        ax1.grid(True)
-
-        if(False):#plot_data.size(1)>1):
-            plot_data[:,1] = plot_data[:,1] #*1.e-6  # Convert from umol to mol
-            plot_mod[:,1] = plot_mod[:,1]    #*1.e-6
-            ax2.scatter(plot_data[:,1],plot_mod[:,1])
-            ax2.set_xlabel('FATES Ag(2) [mol/m2/s]')
-            ax2.set_ylabel('NN Ag(2) [mol/m2/s]')
-            minax = np.min([plot_data[:,1],plot_mod[:,1]])
-            maxax = np.max([plot_data[:,1],plot_mod[:,1]])
-            rngax = maxax-minax
-            minax = minax-0.1*rngax
-            maxax = maxax+0.1*rngax
-            ax2.set_xlim([minax,maxax])
-            ax2.set_ylim([minax,maxax])
-            ax2.grid(True)
-            
-        plt.tight_layout()
-        plt.show()
-
-
-    
 # ==================================================================================================
-
-
 
     
 if __name__ == '__main__':
 
     
-    default_learning_rate = 0.01
-    default_loss_threshold = 0.001
-    
-    
     parser = argparse.ArgumentParser(description='Parse command line arguments to this script.')
     parser.add_argument('--numproc',dest='numproc', type=int, \
                         help="Define how many processes (world_size) to run.", required=True)
-    parser.add_argument('--learning_rate',dest='learning_rate', type=float, \
-                        help="The learning rate (scale of training data)", required=False, default=default_learning_rate)
-    parser.add_argument('--global_batch_size',dest='global_batch_size', type=int, \
-                        help="The total batch size across all processes", required=True)
-    parser.add_argument('--loss_threshold',dest='loss_threshold', type=float, \
-                        help="The acceptable loss threshold to converge", required=False, default=default_loss_threshold)
-    parser.add_argument('--numleaf',dest='numleaf', type=int, \
-                        help="How many leaf layers to solve simultaneously?",required=True)
-
     
     args = parser.parse_args()
     world_size = args.numproc
-    global_batch_size = args.global_batch_size
-    learning_rate = args.learning_rate
-    local_batch_size = int(float(global_batch_size)/float(world_size))
-    loss_threshold = args.loss_threshold
-    numleaf = args.numleaf
-
-    hyper_params = hyper_parameters(learning_rate,local_batch_size,loss_threshold)
-    
     
     print(f"\n------- Training Initiated --------\n\n")
-    print(f"Global batch size: {global_batch_size}")
     print(f"World size (process count): {world_size}")
-    print(f"Local (per process) batch size: {local_batch_size}")
-    print(f"Acceptable loss threshold: {loss_threshold}")
-    print(f"Learning rate: {learning_rate}\n\n")
     
     # Create the shared tensor in the main process.
     # The '.share_memory_()' method makes its memory accessible to all child processes.
     #shared_tensor = torch.zeros(1, 4, dtype=torch.float32).share_memory_()
 
-    n_trainset = int(2**20)  # ~1M
-
+    #n_trainset = int(2**20)  # ~1M
+    n_trainset = int(2**16)
+    
     n_validset = int(2**12)  # Validation set (vectorized version)
     
     #n_trainset = int(2**15)   # ~32k
@@ -841,11 +610,6 @@ if __name__ == '__main__':
     shared_inputs = torch.zeros([n_trainset,n_infeatures],dtype=torch.float32).share_memory_()
     shared_outputs = torch.zeros([n_trainset,n_outfeatures],dtype=torch.float32).share_memory_()
 
-    n_rep_infeatures = n_shared + numleaf*n_per_leaflayer
-    rep_shared_inputs = torch.zeros([n_validset,n_rep_infeatures],dtype=torch.float32).share_memory_()
-    rep_shared_outputs = torch.zeros([n_validset,n_outfeatures*numleaf],dtype=torch.float32).share_memory_()
-    
-
     # Create a list to hold the process objects.
     processes = []
     for rank in range(world_size):
@@ -865,25 +629,6 @@ if __name__ == '__main__':
         p.join()
 
 
-    # Create a list to hold the process objects.
-    processes = []
-    for rank in range(world_size):
-        chunk_size = int(np.floor(n_validset/world_size))
-        ida = int(rank*chunk_size)
-        if(rank==(world_size-1)):
-            idz = int(n_validset)
-        else:
-            idz = int((rank+1)*chunk_size)
-        chunk = list(range(ida,idz))
-        p = mp.Process(target=RankPrepInput, args=(rank, chunk, fates_path,rep_shared_inputs,rep_shared_outputs,numleaf))
-        p.start()
-        processes.append(p)
-    
-    # Wait for all processes to complete their work.
-    for p in processes:
-        p.join()
-
-        
     if(False):
         print("About to make plot")
         ViewTrainingData(shared_inputs,shared_outputs)
@@ -906,17 +651,24 @@ if __name__ == '__main__':
     # each feature has its own entry
 
     train_data_dict = {
-        f"input_{i}": shared_inputs[:, i].numpy() for i in range(shared_inputs.shape[1])
-        f"target_{i}": shared_outputs[:,i].numpy() for i in range(shared_outputs.shape[1])
-    }
+        f"input_{i}": shared_inputs[:, i].numpy() for i in range(shared_inputs.shape[1])}
 
-    train_dataset = ray.data.from_dict(train_data_dict)
+    for i in range(shared_outputs.shape[1]):
+        train_data_dict[f"target_{i}"] = shared_outputs[:,i].numpy()
 
+    #code.interact(local=dict(globals(), **locals()))
+    # Ray wants things in a dataframe
+    train_dataset = ray.data.from_pandas(pd.DataFrame(train_data_dict))
+    #code.interact(local=dict(globals(), **locals()))
+    #shard = ray.train.get_dataset_shard("train_key")
 
+    # Get all column names in the shard. This triggers a necessary metadata fetch.
+    #    all_columns = shard.columns()
+
+    
                                
     # Define the hyperparameter search space
     search_space = {
-        "input_size": 9, # Fixed for this example
         "hidden_size1": tune.choice([32, 16, 8]),
         "hidden_size2": tune.choice([32, 16, 8]),
         "hidden_size3": tune.choice([32, 16, 8]),
@@ -925,12 +677,22 @@ if __name__ == '__main__':
         "epochs": 20, # Small number for example speed
     }
 
+    #search_space = {
+        # The 'config' key holds all the parameters that will be passed
+        # to your actual training function or model builder.
+    #    "config": model_hparams,
+        
+        # You might also have trainer-specific arguments here, like
+        # "scaling_config": tune.grid_search([...])
+    #}
+
     # Use Ray Train to manage the distributed training environment (DDP)
     # num_workers specifies the number of DDP processes (GPUs or CPUs)
     trainer = TorchTrainer(
-        train_func,
-        scaling_config=ray.train.ScalingConfig(num_workers=world_size, use_gpu=False), # Use 2 workers/GPUs
+        train_loop_per_worker = RayTrainPhoto,
+        scaling_config=ray.train.ScalingConfig(num_workers=world_size, use_gpu=False),
         run_config=ray.air.RunConfig(name="ddp_tune_regression"),
+        datasets={"train_key":train_dataset},
     )
 
     # Configure the hyperparameter search with an ASHA scheduler
@@ -943,19 +705,16 @@ if __name__ == '__main__':
 
     tuner = tune.Tuner(
         trainer,
-        param_space=search_space,
-        tune_config=tune.TuneConfig(
-            num_samples=10, # Number of hyperparameter trials to run
-            scheduler=scheduler,
-        ),
+        param_space={"train_loop_config": search_space},
     )
 
     # Start the hyperparameter search
     results = tuner.fit()
     
     best_result = results.get_best_result("loss", "min")
+    #code.interact(local=dict(globals(), **locals()))
     print(f"\nBest config found: {best_result.config}")
-    print(f"Best validation loss: {best_result.metrics['loss']:.4f}")
+    #print(f"Best validation loss: {best_result.metrics['loss']:.4f}")
 
     
     
