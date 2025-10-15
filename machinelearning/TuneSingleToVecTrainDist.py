@@ -19,6 +19,7 @@ import ray
 from ray import tune
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
+from ray.air.config import RunConfig, CheckpointConfig
 
 current_path = os.getcwd()
 fates_path=current_path.split('fates')[0]+'fates'
@@ -69,110 +70,6 @@ def NormHuberLoss(pred,target,std):
     # Return the mean loss across the entire batch
     return torch.mean(loss)
 
-
-def DefineMask(mask,n_shared,n_output,m_in,m_out):
-
-    print_mask = False
-    
-    mask[:,:] = False
-    
-    for i in range(n_shared):
-        mask[:,i] = True
-
-    for i in range(n_output):
-        j0 = n_shared+i*(m_in)
-        j1 = j0+m_in
-        for j in range(j0,j1):
-            i0 = i*m_out
-            i1 = i0+m_out
-            mask[i0:i1,j] = True
-
-    if(print_mask):
-        print(f"Printing mask")
-        for i in range(mask.size(0)):
-            print(f"{mask[i,:]}")
-        code.interact(local=dict(globals(), **locals()))
-        
-    return mask
-
-
-def ReplicateModel(model_in,n_reps,n_shared):
-
-    # Extend the model to handle a vector of inputs
-    # Tell it how many replicates, and the number of inputs
-    # that are replicated. It will assume the last inputs
-    # are those to be replicated
-
-    
-    
-    n_input  = model_in.fc1.weight.data.size(1)
-    n_output = model_in.fc4.weight.data.size(0)
-    n_hidden1 = model_in.fc1.weight.data.size(0)
-    n_hidden2 = model_in.fc2.weight.data.size(0)
-    n_hidden3 = model_in.fc3.weight.data.size(0)
-    
-    n_in_per_rep = n_input - n_shared
-
-    model_out = PhotoNeuralNetwork( n_shared + n_reps*n_in_per_rep, \
-                                    n_output*n_reps, \
-                                    [n_reps*n_hidden1,n_reps*n_hidden2,n_reps*n_hidden3])
-
-    model_out.fc1 = TransferWeightsBias(model_out.fc1,model_in.fc1,n_shared,n_reps)
-    model_out.fc2 = TransferWeightsBias(model_out.fc2,model_in.fc2,0,n_reps)
-    model_out.fc3 = TransferWeightsBias(model_out.fc3,model_in.fc3,0,n_reps)
-    model_out.fc4 = TransferWeightsBias(model_out.fc4,model_in.fc4,0,n_reps)
-
-    return model_out
-
-    
-def TransferWeightsBias(fc_out,fc_in,n_shared,n_reps):
-
-    #
-    # FC is being changed from [n_out x n_in] -> [nreps*n_out x n_shared+nreps*n_nonshared]
-    #
-    #
-    #   Example 4 out, 3 in (2 shared) with 2 replicates
-    #   x x x       x x x o 
-    #   x x x       x x x o
-    #   x x x  ->   x x x o
-    #   x x x       x x x o
-    #               x x o x
-    #               x x o x
-    #               x x o x
-    #               x x o x
-
-    #code.interact(local=dict(globals(), **locals()))
-    
-    fc_out.weight.data[:,:] = 0.
-    fc_out.bias.data[:] = 0.
-
-    n_input  = fc_in.weight.data.size(1)
-    n_nonshared = n_input - n_shared
-
-    n_output = fc_in.weight.data.size(0)
-
-    # Transfer Biases
-    for i in range(n_reps):
-        i0 = i*n_output
-        i1 = i0+n_output
-        fc_out.bias.data[i0:i1] = fc_in.bias.data[:]
-
-    # Transfer weights
-    for i in range(n_reps):
-        i0 = i*n_output
-        i1 = i0+n_output
-        for j in range(n_shared):
-            fc_out.weight.data[i0:i1,j] = fc_in.weight.data[0:n_output,j]
-
-        for jj in range(n_nonshared):
-            j_in  = jj+n_shared
-            j_out = jj+n_shared+i*n_nonshared
-            fc_out.weight.data[i0:i1,j_out] = fc_in.weight.data[0:n_output,j_in]
-        
-
-    return fc_out
-            
-        
 class PhotoNeuralNetwork(torch.nn.Module):
     def __init__(self,n_input,n_output,n_hidden):
         super(PhotoNeuralNetwork, self).__init__()
@@ -527,18 +424,20 @@ def RayTrainPhoto(config):
     model = ray.train.torch.prepare_model(model) 
 
     # Loss function and optimizer (tuned hyperparameters)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=config["lr"])
+    criterion = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
 
     # --- Training Loop ---
     for epoch in range(config["epochs"]):
         model.train()
-        if hasattr(train_loader.sampler, "set_epoch"):             
-            train_loader.sampler.set_epoch(epoch) # Important for DDP shuffling
+        #if hasattr(train_loader.sampler, "set_epoch"):             
+        #    train_loader.sampler.set_epoch(epoch) # Important for DDP shuffling
 
         epoch_loss = 0.0
+        niter = 0.0
         for batch in data_iterator:
         #for X_batch, Y_batch in train_loader:
+            niter = niter+1.0
             targets = torch.cat(
                 [torch.unsqueeze(batch[f], dim=1) for f in target_columns], dim=1
             )
@@ -553,7 +452,7 @@ def RayTrainPhoto(config):
             optimizer.step()
             epoch_loss += loss.item()
 
-        avg_loss = epoch_loss / len(dataloader)
+        avg_loss = epoch_loss / niter
         
         # Report the metric back to Ray Tune
         # Ray Train syncs this metric from all workers to the rank 0 process
@@ -561,10 +460,10 @@ def RayTrainPhoto(config):
         ray.train.report({"loss": avg_loss})
 
     # Optional: Save a final checkpoint
-    ray.train.save_checkpoint(
-        model_state_dict=model.state_dict(),
-        epoch=config["epochs"]
-    )
+    # ray.train.save_checkpoint(
+    #    model_state_dict=model.state_dict(),
+    #    epoch=config["epochs"]
+    #)
 
 
 # ==================================================================================================
@@ -669,11 +568,11 @@ if __name__ == '__main__':
                                
     # Define the hyperparameter search space
     search_space = {
-        "hidden_size1": tune.choice([32, 16, 8]),
-        "hidden_size2": tune.choice([32, 16, 8]),
-        "hidden_size3": tune.choice([32, 16, 8]),
+        "hidden_size1": tune.choice([32, 16, 8, 4]),
+        "hidden_size2": tune.choice([32, 16, 8, 4]),
+        "hidden_size3": tune.choice([32, 16, 8, 4]),
         "lr": tune.loguniform(1e-4, 1e-2),
-        "batch_size": tune.choice([32, 128, 512, 1024, 2048]),
+        "batch_size": tune.choice([16, 32, 128, 512, 1024, 2048]),
         "epochs": 20, # Small number for example speed
     }
 
@@ -686,12 +585,24 @@ if __name__ == '__main__':
         # "scaling_config": tune.grid_search([...])
     #}
 
+    run_config = RunConfig(
+        name="ddp_tune_regression",
+        checkpoint_config=CheckpointConfig(
+            # Increase this value to, for example, 5
+            num_to_keep=5, 
+            # Optionally, force checkpoint saving only on a specific metric (e.g., lowest loss)
+            checkpoint_score_attribute="loss",
+            checkpoint_score_order="min"
+        )
+    )
+
     # Use Ray Train to manage the distributed training environment (DDP)
     # num_workers specifies the number of DDP processes (GPUs or CPUs)
     trainer = TorchTrainer(
         train_loop_per_worker = RayTrainPhoto,
+        run_config=run_config, 
         scaling_config=ray.train.ScalingConfig(num_workers=world_size, use_gpu=False),
-        run_config=ray.air.RunConfig(name="ddp_tune_regression"),
+        #run_config=ray.air.RunConfig(name="ddp_tune_regression"),
         datasets={"train_key":train_dataset},
     )
 
