@@ -19,7 +19,7 @@ import ray
 from ray import tune
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
-from ray.air.config import RunConfig, CheckpointConfig
+from ray.air.config import RunConfig, CheckpointConfig, ScalingConfig
 
 current_path = os.getcwd()
 fates_path=current_path.split('fates')[0]+'fates'
@@ -78,61 +78,22 @@ class PhotoNeuralNetwork(torch.nn.Module):
         self.relu1 = torch.nn.ReLU()
         self.fc2   = torch.nn.Linear(n_hidden[0],n_hidden[1])
         self.fc3   = torch.nn.Linear(n_hidden[1],n_hidden[2])
-        self.fc4   = torch.nn.Linear(n_hidden[2],n_output)
+        if(n_hidden[3]>0):
+            self.fc4   = torch.nn.Linear(n_hidden[2],n_hidden[3])
+            self.fc5   = torch.nn.Linear(n_hidden[3],n_output)
+        else:
+            self.fc4   = torch.nn.Linear(n_hidden[2],n_output)
         
     def forward(self, x):
         x = self.relu1(self.fc1(x))
         x = self.fc2(x)
         x = self.fc3(x)
         x = self.fc4(x)
+        if hasattr(self, 'fc5'):
+            x = self.fc5(x)
+            
         return x
 
-    def NormScale(self,in_mean,in_std,out_mean,out_std):
-
-        # We apply this after the model has been
-        # trained on normalized input data. It
-        # essentially reverses the normalization
-        # process, so inference does not need
-        # to perform that step
-        
-        with torch.no_grad():
-
-            # Lets scale the model's first linear
-            # weights and biases by the normalization factor
-            W = self.fc1.weight.data  # W is typically shape [output_size, input_size]
-            B = self.fc1.bias.data    # B is typically shape [output_size]
-            
-            # 1. Update Weights: W_new = W / sigma
-            # The unsqueeze(0) ensures 'stds' has shape [1, n_input_features] for correct division
-            W_new = W.div(in_std.unsqueeze(0)) 
-    
-            # 2. Update Bias: B_new = B - Sum(W_i * mu_i / sigma_i)
-            # The term to subtract is the vector-matrix product: W_i * (mu_i / sigma_i)
-    
-            # Calculate mu_i / sigma_i for each feature
-            scale_term = in_mean.div(in_std) # shape [3]
-
-            # Calculate the adjustment for the bias: Sum over the input features
-            # W_new @ scale_term is a matrix multiplication that sums over the input features
-            bias_adjustment = W.matmul(scale_term) # shape [output_size]
-
-            B_new = B.sub(bias_adjustment)
-    
-            # 3. Overwrite the trained model parameters
-            self.fc1.weight.data.copy_(W_new)
-            self.fc1.bias.data.copy_(B_new)
-
-            
-            # Extract the trained tensors
-            W = self.fc4.weight.data 
-            B = self.fc4.bias.data
-
-            W_new = W * out_std.unsqueeze(1) 
-            B_new = (B * out_std) + out_mean
-
-            self.fc4.weight.data.copy_(W_new)
-            self.fc4.bias.data.copy_(B_new)
-            
     
 class CustomDataset(Dataset):
     def __init__(self, inputs, outputs):
@@ -384,6 +345,12 @@ def RankPrepInput(rank, chunk, fates_path, shared_inputs, shared_outputs, numlea
     print(f"RANK:[{rank}/{world_size}] PHASE 1: Ending input prep.")
 
 
+
+def count_model_parameters(model: torch.nn.Module) -> int:
+
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    
 # 2. Define the main training function for a single trial
 # This function is run on *each* distributed worker by Ray Train
 
@@ -416,13 +383,18 @@ def RayTrainPhoto(config):
     #train_loader = ray.train.torch.prepare_data_loader(torch_loader)               
     
     model = PhotoNeuralNetwork(len(feature_columns),len(target_columns), \
-                               [config["hidden_size1"],config["hidden_size2"],config["hidden_size3"]])
+                               [config["hidden_size1"],config["hidden_size2"],config["hidden_size3"],config["hidden_size4"]])
+
+    
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     
     
     # Wrap the model for DistributedDataParallel (DDP)
     # Ray Train sets up the distributed process group, so we just wrap it
     model = ray.train.torch.prepare_model(model) 
 
+    #ray.train.report({"total_parameters":total_params})
+    
     # Loss function and optimizer (tuned hyperparameters)
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
@@ -453,11 +425,14 @@ def RayTrainPhoto(config):
             epoch_loss += loss.item()
 
         avg_loss = epoch_loss / niter
+
+        metrics = {"loss": avg_loss}
+        metrics["total_parameters"] = total_params
         
         # Report the metric back to Ray Tune
         # Ray Train syncs this metric from all workers to the rank 0 process
         # before reporting to Tune.
-        ray.train.report({"loss": avg_loss})
+        ray.train.report(metrics)
 
     # Optional: Save a final checkpoint
     # ray.train.save_checkpoint(
@@ -475,9 +450,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse command line arguments to this script.')
     parser.add_argument('--numproc',dest='numproc', type=int, \
                         help="Define how many processes (world_size) to run.", required=True)
-    
+    parser.add_argument('--numsamples',dest='numsamples', type=int, \
+                        help="Define how many trials to sample.", required=True)
+    parser.add_argument('--maxepoch',dest='maxepoch', type=int, \
+                        help="Maximum number of epochs to run per trial.", required=True)
     args = parser.parse_args()
     world_size = args.numproc
+    
     
     print(f"\n------- Training Initiated --------\n\n")
     print(f"World size (process count): {world_size}")
@@ -486,8 +465,8 @@ if __name__ == '__main__':
     # The '.share_memory_()' method makes its memory accessible to all child processes.
     #shared_tensor = torch.zeros(1, 4, dtype=torch.float32).share_memory_()
 
-    #n_trainset = int(2**20)  # ~1M
-    n_trainset = int(2**16)
+    n_trainset = int(2**20)  # ~1M
+    #n_trainset = int(2**16)
     
     n_validset = int(2**12)  # Validation set (vectorized version)
     
@@ -527,7 +506,13 @@ if __name__ == '__main__':
     for p in processes:
         p.join()
 
+    # Test counter
+    #test_model = PhotoNeuralNetwork(9,2,[16,8,4,2])
+    #code.interact(local=dict(globals(), **locals()))
+    
+    #total_params = sum(p.numel() for p in test_model.parameters() if p.requires_grad)
 
+    
     if(False):
         print("About to make plot")
         ViewTrainingData(shared_inputs,shared_outputs)
@@ -544,7 +529,7 @@ if __name__ == '__main__':
     print(f"Final shared tensor after all processes have written: {shared_inputs[:,0]}")
 
     # Initialize Ray
-    ray.init()
+    ray.init(num_cpus=world_size, num_gpus=0)
 
     # Ray wants a dictionary. Intererstingly, it also likes it when
     # each feature has its own entry
@@ -571,11 +556,15 @@ if __name__ == '__main__':
         "hidden_size1": tune.choice([32, 16, 8, 4]),
         "hidden_size2": tune.choice([32, 16, 8, 4]),
         "hidden_size3": tune.choice([32, 16, 8, 4]),
+        "hidden_size4": tune.choice([32, 16, 4, 0]),
         "lr": tune.loguniform(1e-4, 1e-2),
-        "batch_size": tune.choice([16, 32, 128, 512, 1024, 2048]),
-        "epochs": 20, # Small number for example speed
+        "batch_size": tune.choice([16, 128, 512, 1024, 2048]),
+        "epochs": args.maxepoch, # Small number for example speed
     }
 
+
+    #Best config found: {'train_loop_config': {'hidden_size1': 32, 'hidden_size2': 16, 'hidden_size3': 4, 'lr': 0.002293489078025084, 'batch_size': 128, 'epochs': 20}}
+    
     #search_space = {
         # The 'config' key holds all the parameters that will be passed
         # to your actual training function or model builder.
@@ -585,11 +574,19 @@ if __name__ == '__main__':
         # "scaling_config": tune.grid_search([...])
     #}
 
+    resources_per_trial = {"cpu": 1, "gpu": 0} # Example: 1 CPU, 0 GPU per trial
+    scaling_config = ScalingConfig(
+        num_workers=1,  # Number of distributed workers (1 for a single-node trial)
+        use_gpu=False,  # Set to True if you want to use a GPU
+        # If using GPU, you might also specify: resources_per_worker={"CPU": 1, "GPU": 1}
+        # But usually, 'use_gpu=True' is sufficient for a single GPU per worker.
+    )
+    
     run_config = RunConfig(
-        name="ddp_tune_regression",
+        name="tune_regression1",
         checkpoint_config=CheckpointConfig(
             # Increase this value to, for example, 5
-            num_to_keep=5, 
+            num_to_keep=20, 
             # Optionally, force checkpoint saving only on a specific metric (e.g., lowest loss)
             checkpoint_score_attribute="loss",
             checkpoint_score_order="min"
@@ -600,8 +597,8 @@ if __name__ == '__main__':
     # num_workers specifies the number of DDP processes (GPUs or CPUs)
     trainer = TorchTrainer(
         train_loop_per_worker = RayTrainPhoto,
-        run_config=run_config, 
-        scaling_config=ray.train.ScalingConfig(num_workers=world_size, use_gpu=False),
+        run_config=run_config,
+        scaling_config=ray.train.ScalingConfig(num_workers=1, use_gpu=False),
         #run_config=ray.air.RunConfig(name="ddp_tune_regression"),
         datasets={"train_key":train_dataset},
     )
@@ -611,20 +608,41 @@ if __name__ == '__main__':
         metric="loss",
         mode="min",
         max_t=search_space["epochs"],
-        grace_period=1,
+        grace_period=5,
     )
+
+    
 
     tuner = tune.Tuner(
         trainer,
         param_space={"train_loop_config": search_space},
+        tune_config=tune.TuneConfig(num_samples=args.numsamples,
+                                    scheduler=scheduler)
     )
 
     # Start the hyperparameter search
     results = tuner.fit()
+
+    # The "inf" here just makes sure that if no meaninful loss was generated, a safe an interpretable
+    # default it used.
+
+    acc_loss = 0.01
+    df = results.get_dataframe()
+    compliant_df = df[df['loss'] <= acc_loss]
+    sorted_compliant_df = compliant_df.sort_values(by='total_parameters', ascending=True)
+
+    print(sorted_compliant_df[[
+        'trial_id',
+        'loss',
+        'total_parameters',
+        'config/train_loop_config/lr'
+    ]])
     
-    best_result = results.get_best_result("loss", "min")
+
+        
+    #best_result = results.get_best_result("loss", "min")
     #code.interact(local=dict(globals(), **locals()))
-    print(f"\nBest config found: {best_result.config}")
+    #print(f"\nBest config found: {best_result.config}")
     #print(f"Best validation loss: {best_result.metrics['loss']:.4f}")
 
     

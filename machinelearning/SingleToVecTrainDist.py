@@ -13,7 +13,7 @@ import sys
 import xml.etree.ElementTree as et
 import code  # For development: code.interact(local=dict(globals(), **locals()))
 from datetime import datetime
-
+from pathlib import Path
 current_path = os.getcwd()
 fates_path=current_path.split('fates')[0]+'fates'
 sys.path.insert(0,fates_path+'/functional_unit_testing/shared/py_src')
@@ -103,10 +103,15 @@ def ReplicateModel(model_in,n_reps,n_shared):
     # that are replicated. It will assume the last inputs
     # are those to be replicated
 
-    
-    
     n_input  = model_in.fc1.weight.data.size(1)
-    n_output = model_in.fc4.weight.data.size(0)
+
+    if hasattr(model_in, 'fc5'):
+        n_output = model_in.fc5.weight.data.size(0)
+        n_hidden4 = model_in.fc4.weight.data.size(0)
+    else:
+        n_output = model_in.fc4.weight.data.size(0)
+        n_hidden4 =0
+        
     n_hidden1 = model_in.fc1.weight.data.size(0)
     n_hidden2 = model_in.fc2.weight.data.size(0)
     n_hidden3 = model_in.fc3.weight.data.size(0)
@@ -115,13 +120,16 @@ def ReplicateModel(model_in,n_reps,n_shared):
 
     model_out = PhotoNeuralNetwork( n_shared + n_reps*n_in_per_rep, \
                                     n_output*n_reps, \
-                                    [n_reps*n_hidden1,n_reps*n_hidden2,n_reps*n_hidden3])
+                                    [n_reps*n_hidden1,n_reps*n_hidden2,n_reps*n_hidden3,n_reps*n_hidden4],'16-4-8-4')
 
     model_out.fc1 = TransferWeightsBias(model_out.fc1,model_in.fc1,n_shared,n_reps)
     model_out.fc2 = TransferWeightsBias(model_out.fc2,model_in.fc2,0,n_reps)
     model_out.fc3 = TransferWeightsBias(model_out.fc3,model_in.fc3,0,n_reps)
     model_out.fc4 = TransferWeightsBias(model_out.fc4,model_in.fc4,0,n_reps)
 
+    if hasattr(model_in, 'fc5'):
+        model_out.fc5 = TransferWeightsBias(model_out.fc5,model_in.fc5,0,n_reps)
+    
     return model_out
 
     
@@ -174,20 +182,26 @@ def TransferWeightsBias(fc_out,fc_in,n_shared,n_reps):
             
         
 class PhotoNeuralNetwork(torch.nn.Module):
-    def __init__(self,n_input,n_output,n_hidden):
+    def __init__(self,n_input,n_output,n_hidden,nametag):
         super(PhotoNeuralNetwork, self).__init__()
-        self.nametag = '16-16-4'
+        self.nametag = nametag
         self.fc1   = torch.nn.Linear(n_input, n_hidden[0])
         self.relu1 = torch.nn.ReLU()
         self.fc2   = torch.nn.Linear(n_hidden[0],n_hidden[1])
         self.fc3   = torch.nn.Linear(n_hidden[1],n_hidden[2])
-        self.fc4   = torch.nn.Linear(n_hidden[2],n_output)
-        
+        if(n_hidden[3]>0):
+            self.fc4   = torch.nn.Linear(n_hidden[2],n_hidden[3])
+            self.fc5   = torch.nn.Linear(n_hidden[3],n_output)
+        else:
+            self.fc4   = torch.nn.Linear(n_hidden[2],n_output)
+                    
     def forward(self, x):
         x = self.relu1(self.fc1(x))
         x = self.fc2(x)
         x = self.fc3(x)
         x = self.fc4(x)
+        if hasattr(self, 'fc5'):
+            x = self.fc5(x)
         return x
 
     def NormScale(self,in_mean,in_std,out_mean,out_std):
@@ -225,16 +239,23 @@ class PhotoNeuralNetwork(torch.nn.Module):
             self.fc1.weight.data.copy_(W_new)
             self.fc1.bias.data.copy_(B_new)
 
-            
-            # Extract the trained tensors
-            W = self.fc4.weight.data 
-            B = self.fc4.bias.data
-
-            W_new = W * out_std.unsqueeze(1) 
-            B_new = (B * out_std) + out_mean
-
-            self.fc4.weight.data.copy_(W_new)
-            self.fc4.bias.data.copy_(B_new)
+            if hasattr(self, 'fc5'):
+                # Extract the trained tensors
+                W = self.fc5.weight.data 
+                B = self.fc5.bias.data
+                W_new = W * out_std.unsqueeze(1) 
+                B_new = (B * out_std) + out_mean
+                self.fc5.weight.data.copy_(W_new)
+                self.fc5.bias.data.copy_(B_new)
+                
+            else:
+                # Extract the trained tensors
+                W = self.fc4.weight.data 
+                B = self.fc4.bias.data
+                W_new = W * out_std.unsqueeze(1) 
+                B_new = (B * out_std) + out_mean
+                self.fc4.weight.data.copy_(W_new)
+                self.fc4.bias.data.copy_(B_new)
             
     
 class CustomDataset(Dataset):
@@ -536,15 +557,16 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
     # as multiples of the number of independent leaf layers
     
     n_mult1 = 16
-    n_mult2 = 16
-    n_mult3 = 4
-
+    n_mult2 = 4
+    n_mult3 = 8
+    n_mult4 = 4
+    
     n_hidden1 = n_mult1
     n_hidden2 = n_mult2
     n_hidden3 = n_mult3
+    n_hidden4 = n_mult4
     
-    model = PhotoNeuralNetwork(n_input,n_output,[n_hidden1,n_hidden2,n_hidden3]).to(device)
-
+    model = PhotoNeuralNetwork(n_input,n_output,[n_hidden1,n_hidden2,n_hidden3,n_hidden4],'16-4-8-4').to(device)
     
     if(use_gpu): 
         ddp_model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
@@ -554,9 +576,9 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
 
     #criterion = norm_mse_loss #nn.MSELoss()
     #criterion = norm_huber_loss
-    criterion = torch.nn.HuberLoss(reduction='mean', delta=1.0)
-    #criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.AdamW(ddp_model.parameters(), lr=hyper_params.learning_rate)
+    #criterion = torch.nn.HuberLoss(reduction='mean', delta=1.0)
+    criterion = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(ddp_model.parameters(), lr=hyper_params.learning_rate)
 
     # Train the network
     loss_history = []
@@ -612,79 +634,16 @@ def DDPRankTrain(rank, world_size, hyper_params, shared_inputs, shared_outputs, 
         model.to("cpu")
         model.NormScale(shared_inputs_mean,shared_inputs_std,shared_outputs_mean,shared_outputs_std)
 
-
-        # Extend the model to handle a vector of inputs
-        # Tell it how many replicates, and the number of inputs
-        # that are replicated. It will assume the last inputs
-        # are those to be replicated
-
-        replicated_model = ReplicateModel(model,numleaf,7)
+        script_module = torch.jit.script(model)
+        script_module.save("./c3psn_321608_v1_c{}.pt".format(datetime.now().strftime("%Y%m%d-%H")))
 
         
-        # give the model run a unique string
-        datestr = datetime.now().strftime("%Y%m%d-%H%M")
-
-        script_module = torch.jit.script(replicated_model)
-        mod_pattern = model.nametag
-        script_module.save("./c3psn_vec_321608_v1_n{}_c{}.pt".format(numleaf,datestr))
-
     print(f"RANK:[{rank}/{world_size}] PHASE 2: Training complete")
 
+    
     # Generate some scatter plots    
 
-    if(rank==0 and True):
 
-        # Lets un-normalize the input data
-
-        # new  = (old-mean)/std
-        # old = new*std+mean
-        #shared_inputs = shared_inputs*shared_inputs_std + shared_inputs_mean
-        #shared_outputs = shared_outputs*shared_outputs_std + shared_outputs_mean
-        
-        #indices_of_all_data = torch.randperm(rep_shared_inputs.size(0))
-        #n_plot = 10000
-        
-        plot_mod  = replicated_model(rep_shared_inputs).detach().numpy().flatten()
-        plot_data = rep_shared_outputs.detach().numpy().flatten()
-
-        #plot_data = batch_outputs.detach().numpy()
-        #plot_mod  = pred_outputs.detach().numpy()
-        
-        
-        fig, ((ax1)) = plt.subplots(1,1,figsize=(8.5,7.5))
-        ax1.scatter(plot_data[:],plot_mod[:])
-        ax1.set_xlabel('FATES Ag [umol/m2/s]')
-        ax1.set_ylabel('NN Ag [umol/m2/s]')
-        minax = np.min([plot_data[:],plot_mod[:]])
-        maxax = np.max([plot_data[:],plot_mod[:]])
-        rngax = maxax-minax
-        minax = minax-0.1*rngax
-        maxax = maxax+0.1*rngax
-        ax1.set_xlim([minax,maxax])
-        ax1.set_ylim([minax,maxax])
-        ax1.text(minax+0.05*(maxax-minax), \
-                 minax+0.80*(maxax-minax), \
-                 f'epoch: {epoch+1}\nlr: {hyper_params.learning_rate:.4f}\nmodel: {mod_pattern}' , \
-                 bbox=dict(facecolor=[0.95,0.95,0.95], edgecolor='black'))
-        ax1.grid(True)
-
-        if(False):#plot_data.size(1)>1):
-            plot_data[:,1] = plot_data[:,1] #*1.e-6  # Convert from umol to mol
-            plot_mod[:,1] = plot_mod[:,1]    #*1.e-6
-            ax2.scatter(plot_data[:,1],plot_mod[:,1])
-            ax2.set_xlabel('FATES Ag(2) [mol/m2/s]')
-            ax2.set_ylabel('NN Ag(2) [mol/m2/s]')
-            minax = np.min([plot_data[:,1],plot_mod[:,1]])
-            maxax = np.max([plot_data[:,1],plot_mod[:,1]])
-            rngax = maxax-minax
-            minax = minax-0.1*rngax
-            maxax = maxax+0.1*rngax
-            ax2.set_xlim([minax,maxax])
-            ax2.set_ylim([minax,maxax])
-            ax2.grid(True)
-            
-        plt.tight_layout()
-        plt.show()
 
 def PrepBar(bar_inputs):
     n_large = 20
@@ -761,7 +720,6 @@ def ViewTrainingData(shared_inputs,shared_outputs):
     plt.show()
     
 # ==================================================================================================
-
 
 
     
@@ -904,10 +862,60 @@ if __name__ == '__main__':
         nprocs=world_size)
 
 
-    print("\n--- All Execution Complete ---")
+    print("\n--- Training Complete ---")
 
 
     
+    # Extend the model to handle a vector of inputs
+    # Tell it how many replicates, and the number of inputs
+    # that are replicated. It will assume the last inputs
+    # are those to be replicated
 
+    # reload trained model
+    n_input = shared_inputs.size(1)
+    n_output = shared_outputs.size(1)
+    
+    final_model = PhotoNeuralNetwork(n_input,n_output,[16,4,8,4],'16-4-8-4')
+
+    load_name = "./c3psn_321608_v1_c{}.pt".format(datetime.now().strftime("%Y%m%d-%H"))
+    
+    load_path = Path(load_name)
+    
+    if load_path.exists():
+        # Load the state dict (map_location='cpu' is often safer)
+        final_model = torch.jit.load(load_path, map_location='cpu')
+    
+        # Load the state dict into the model structure
+        final_model.eval()
+    else:
+        print("could not find model")
+        
+    replicated_model = ReplicateModel(final_model,numleaf,7)
+
+    plot_mod  = replicated_model(rep_shared_inputs).detach().numpy().flatten()
+    plot_data = rep_shared_outputs.detach().numpy().flatten()
+
+    #code.interact(local=dict(globals(), **locals()))
+    
+    fig, ((ax1)) = plt.subplots(1,1,figsize=(8.5,7.5))
+    ax1.scatter(plot_data[:],plot_mod[:])
+    ax1.set_xlabel('FATES Ag [umol/m2/s]')
+    ax1.set_ylabel('NN Ag [umol/m2/s]')
+    minax = np.min([plot_data[:],plot_mod[:]])
+    maxax = np.max([plot_data[:],plot_mod[:]])
+    rngax = maxax-minax
+    minax = minax-0.1*rngax
+    maxax = maxax+0.1*rngax
+    ax1.set_xlim([minax,maxax])
+    ax1.set_ylim([minax,maxax])
+    ax1.text(minax+0.05*(maxax-minax), \
+             minax+0.80*(maxax-minax), \
+             f'model: 16-4-8-4' , \
+             bbox=dict(facecolor=[0.95,0.95,0.95], edgecolor='black'))
+    ax1.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+    
     
 
