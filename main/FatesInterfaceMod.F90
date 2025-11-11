@@ -111,9 +111,11 @@ module FatesInterfaceMod
    use FatesHistoryInterfaceMod  , only : fates_hist
    use FatesHydraulicsMemMod     , only : nshell
    use FatesHydraulicsMemMod     , only : nlevsoi_hyd_max
-   use FatesTwoStreamUtilsMod, only : TransferRadParams
+   use FatesTwoStreamUtilsMod    , only : TransferRadParams
    use LeafBiophysicsMod         , only : lb_params
    use LeafBiophysicsMod         , only : FvCB1980
+   use EDBtranMod                , only : check_layer_water
+   
    ! CIME Globals
    use shr_log_mod               , only : errMsg => shr_log_errMsg
    use shr_infnan_mod            , only : nan => shr_infnan_nan, assignment(=)
@@ -2296,12 +2298,21 @@ contains
                  ! Calculate the soil moisture at the seedling rooting depth for each pft
 
                  ilayer_seedling_root = minloc(abs(bc_in(s)%z_sisl(:)-EDPftvarcon_inst%seedling_root_depth(pft)),dim=1)
-                 new_seedling_layer_smp = bc_in(s)%smp_sl(ilayer_seedling_root)
 
+                 if ( check_layer_water(bc_in(s)%h2o_liqvol_sl(ilayer_seedling_root),bc_in(s)%tempk_sl(ilayer_seedling_root))) then
+                 
+                    new_seedling_layer_smp = max(EDPftvarcon_inst%smpsc(pft),bc_in(s)%smp_sl(ilayer_seedling_root))
+
+                 else
+
+                    new_seedling_layer_smp = EDPftvarcon_inst%smpsc(pft)  ! Soil water potential at full stomatal closure
+                    
+                 end if
+                    
                  ! Calculate the new moisture deficit day (mdd) value for each pft
                  new_seedling_mdd = (abs(EDPftvarcon_inst%seedling_psi_crit(pft)) - abs(new_seedling_layer_smp)) &
                       * (-1.0_r8) * sdlng_mdd_timescale
-
+                 
                  ! If mdds are negative then it means that soil is wetter than smp_crit and the moisture
                  ! deficit is 0  
                  if (new_seedling_mdd < 0.0_r8) then
