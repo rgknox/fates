@@ -1,5 +1,8 @@
 {
   "attributes": {"history": "05/11/25, First instantation, copied from: ../parameter_files/fates_params_default.cdl. "},
+  "comment": "Users can add comments in this file simply by creating a comment object like this. It cannot have any nested objects
+             (ie no curly brackets inside) only text, example below. JSON, as a standard, does not use any magic characters to  
+              ignore text in the file as a comment (as of 12/25).",
   "dimensions": {
     "fates_NCWD": 4,
     "fates_history_age_bins": 7,
@@ -13,7 +16,8 @@
     "fates_leafage_class": 1,
     "fates_litterclass": 6,
     "fates_pft": 14,
-    "fates_plant_organs": 4
+    "fates_plant_organs": 4,
+    "comment": "scalar is an implied dimension, it is conveys data that is non-array with a size of 1."
   },
   "parameters": {
     "fates_history_ageclass_bin_edges": {
