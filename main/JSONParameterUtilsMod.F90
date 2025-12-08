@@ -66,7 +66,7 @@ module JSONParameterUtilsMod
   integer, parameter :: c_1d_type     = 8
   integer, parameter :: c_2d_type     = 9
 
-  logical, parameter :: debug = .false.
+  logical, parameter :: debug = .true.
 
   integer, parameter :: max_ll = 2048          ! Maximum allowable line-length
   integer, parameter :: max_sl = 512           ! Maximum allowable symbol-length
@@ -153,7 +153,7 @@ contains
 
   ! ==============================================================================
   
-  subroutine ReadJSON(filename,file_unit,pstruct)
+  subroutine ReadJSON(filename,pstruct)
 
     ! This is esssentially the driver for reading through the input parameter file
     ! There should be two meaningful sections (not including attributes)
@@ -167,7 +167,7 @@ contains
     ! to rewind and go back to the top of the file
     
     character(len=*),intent(in) :: filename
-    integer,intent(in)          :: file_unit
+    integer                     :: file_unit
     type(params_type)           :: pstruct
     
     ! Local
@@ -182,7 +182,7 @@ contains
 
     ! Open the file, it is assumed that an open file unit has been identified
     ! and passed in as an argument
-    open(unit=file_unit, file=filename, status='old', &
+    open(newunit=file_unit, file=filename, status='old', &
         action='READ', iostat=io_status)
     
     if (io_status /= 0) THEN
@@ -371,15 +371,18 @@ contains
     i = 0
     beg_id = 1
     found_dims = .false.
-    do while(.not.found_dims)
+    count_dims: do while(.not.found_dims)
 
        sep_id = index(dimdata_str(beg_id:dimdata_len),':')
        if(sep_id==0)then
-          write(log_unit,*)'Expected more dimensions in the parameter file...'
-          call shr_sys_abort()
+          exit count_dims
        end if
 
-       i = i + 1
+       symb_str = dimdata_str(beg_id:sep_id-1)
+       
+       if(index(trim(CleanSymbol(symb_str)),'comment')==0)then
+          i = i + 1
+       end if
        
        end_id = index(dimdata_str(beg_id:dimdata_len),',')
        if(end_id==0)then
@@ -393,8 +396,8 @@ contains
 
        beg_id = beg_id + end_id
        
-    end do
-    
+    end do count_dims
+
     ! -----------------------------------------------------------------------------------
     ! Step 4: Allocate dimensions and fill the name and sizes
     !         add in the scalar dimension if it was not already defined
@@ -408,27 +411,37 @@ contains
     end if
     
     beg_id = 1
-    do i = 1,n_dims
-       sep_id = index(dimdata_str(beg_id:dimdata_len),':') + beg_id-1 ! Should be left most...
+    i = 0
+    found_dims = .false.
+    read_dims: do while(.not.found_dims)
+
+       sep_id = index(dimdata_str(beg_id:dimdata_len),':')
+       if(sep_id==0)then
+          exit read_dims
+       end if
+       sep_id = sep_id + beg_id-1 ! Should be left most...
+       
        end_id = index(dimdata_str(beg_id:dimdata_len),',')
        if(end_id==0)then
           end_id = index(dimdata_str(beg_id:dimdata_len),'}')
        end if
-       end_id = end_id + beg_id -1
+       end_id = end_id + beg_id-1
        symb_str = dimdata_str(beg_id:sep_id-1)
-       data_str = dimdata_str(sep_id+1:end_id-1)
-       call StringToStringOrReal(data_str,tmp_str,tmp_real,is_num=.true.)
-       pstruct%dimensions(i)%name = trim(CleanSymbol(symb_str)) !CleanSymbol left adjusts...
-       pstruct%dimensions(i)%size = int(tmp_real)
-       if(debug)write(log_unit,*) trim(pstruct%dimensions(i)%name),":",pstruct%dimensions(i)%size
+       if(index(trim(CleanSymbol(symb_str)),'comment')==0)then
+          i=i+1
+          data_str = dimdata_str(sep_id+1:end_id-1)
+          call StringToStringOrReal(data_str,tmp_str,tmp_real,is_num=.true.)
+          pstruct%dimensions(i)%name = trim(CleanSymbol(symb_str)) !CleanSymbol left adjusts...
+          pstruct%dimensions(i)%size = int(tmp_real)
+          if(debug)write(log_unit,*) trim(pstruct%dimensions(i)%name),":",pstruct%dimensions(i)%size
+       end if
        beg_id = end_id+1
-    end do
+    end do read_dims
 
     if(.not.found_scalar)then
        pstruct%dimensions(n_dims+1)%name = 'scalar'
        pstruct%dimensions(n_dims+1)%size = 1
     end if
-    
     
     return
   end subroutine GetDimensions
@@ -504,6 +517,14 @@ contains
 
     sep_id = index(group_str,':')
     symb_str = trim(CleanSymbol(group_str(1:sep_id-1)))
+
+    ! If this is just a comment,
+    ! find the end and move on without indexing
+
+    if(index(trim(CleanSymbol(symb_str)),'comment')==0)then
+       
+    end if
+       
     
     ! ---------------------------------------------------------------------------------
     ! Step 2: Advance through the file until the next closing bracket. Save
@@ -546,6 +567,9 @@ contains
        end if
     end do do_close
     vardata_len = i
+
+   
+
     
     if(phase==count_phase)then
        var_num = var_num + 1
