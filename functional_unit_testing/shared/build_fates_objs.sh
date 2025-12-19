@@ -25,7 +25,8 @@ ${FC} ${F_OPTS} ${INC_FLAG} ${MOD_FLAG} -o bld/dgesvMod.o f90_src/lapack-3.10/dg
 # Build the new file with constants
 
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesConstantsMod.o ../../main/FatesConstantsMod.F90
-${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/WrapShrMod.o ../leaf_biophys/f90_src/WrapShrMod.F90
+${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/WrapShrMod.o f90_src/WrapShrMod.F90
+${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/JSONParameterUtilsMod.o ../../main/JSONParameterUtilsMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesUtilsMod.o ../../main/FatesUtilsMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/LeafBiophysicsMod.o ../../biogeophys/LeafBiophysicsMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/LeafBiophysSuppMod.o  ../leaf_biophys/f90_src/LeafBiophysSuppMod.F90
@@ -35,6 +36,7 @@ ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/RadiationWrapMod.o ../radiation/f90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/PRTParametersMod.o ../../parteh/PRTParametersMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/EDParamsDerivedSupp.o f90_src/EDParamsDerivedSuppMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/AllometrySuppMod.o ../allometry/f90_src/AllometrySuppMod.F90
+${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/DamageMainMod.o ../../biogeochem/DamageMainMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesAllometryMod.o ../../biogeochem/FatesAllometryMod.F90
 
 

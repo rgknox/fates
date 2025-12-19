@@ -53,6 +53,30 @@ contains
     
   end subroutine Dealloc
 
+  function IsRadTypeAllocated() result(is_allocated)
+    
+    logical :: is_allocated 
+
+    if(allocated(twostream%n_col))then
+       is_allocated = .true.
+    else
+       is_allocated = .false.
+    end if
+    
+  end function IsRadTypeAllocated
+  
+  
+  function IsRadParamAllocated() result(is_allocated)
+    
+    logical :: is_allocated 
+
+    if(allocated(rad_params%rhol))then
+       is_allocated = .true.
+    else
+       is_allocated = .false.
+    end if
+       
+  end function IsRadParamAllocated
   
   subroutine SetRadParam(val,pft,ib,pname)
 
@@ -215,14 +239,26 @@ contains
     return
   end subroutine WrapGetIntensity
 
-  subroutine WrapGetAbsRad(ican,icol,ib,vai_top,vai_bot,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+  subroutine WrapGetAbsRad(ican,icol,ib,vai_top,vai_bot,Rd_abs,Rb_abs,Rd_abs_leaf, &
+       Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
 
     integer(c_int) :: ican, icol
     integer(c_int) :: ib
     real(r8)    :: vai_top,vai_bot
-    real(r8)    :: Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,Rb_abs,Rd_abs
+    real(r8)    :: Rd_abs_leaf,R_abs,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,Rb_abs,Rd_abs
+    logical     :: call_fail
 
-    call twostream%GetAbsRad(ican,icol,ib,vai_top,vai_bot,Rb_abs,Rd_abs,Rd_abs_leaf,Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac)
+    !subroutine GetAbsRad(this,ican,icol,ib,
+    !  vai_top,vai_bot, &
+    !  Rb_abs,Rd_abs,
+    !  Rd_abs_leaf,Rb_abs_leaf,
+    !  R_abs_stem,
+    !  R_abs_snow,
+    !  leaf_sun_frac)
+   
+    call twostream%GetAbsRad(ican,icol,ib,vai_top,vai_bot,Rb_abs,Rd_abs,Rd_abs_leaf, &
+         Rb_abs_leaf,R_abs_stem,R_abs_snow,leaf_sun_frac,call_fail)
+
     
     return
   end subroutine WrapGetAbsRad
