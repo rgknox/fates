@@ -24,6 +24,7 @@ contains
     allocate(lb_params%agross_btran_model(numpft))
     allocate(lb_params%medlyn_slope(numpft))
     allocate(lb_params%bb_slope(numpft))
+    allocate(lb_params%fnps(numpft))
     allocate(lb_params%stomatal_intercept(numpft))
     allocate(lb_params%maintresp_leaf_ryan1991_baserate(numpft))
     allocate(lb_params%maintresp_leaf_atkin2017_baserate(numpft))
@@ -47,6 +48,7 @@ contains
     deallocate(lb_params%agross_btran_model)
     deallocate(lb_params%medlyn_slope)
     deallocate(lb_params%bb_slope)
+    deallocate(lb_params%fnps)
     deallocate(lb_params%stomatal_intercept)
     deallocate(lb_params%maintresp_leaf_ryan1991_baserate)
     deallocate(lb_params%maintresp_leaf_atkin2017_baserate)
@@ -61,6 +63,21 @@ contains
     deallocate(lb_params%jmaxse)
     
   end subroutine DeallocLeafParam
+
+  ! =====================================================================================
+
+  function IsLeafParamAllocated() result(is_allocated)
+    
+    logical :: is_allocated 
+
+    ! use c3psn to test allocated/deallocated status
+    if(allocated(lb_params%c3psn))then
+       is_allocated = .true.
+    else
+       is_allocated = .false.
+    end if
+       
+  end function IsLeafParamAllocated
   
   ! =====================================================================================
   
@@ -71,6 +88,8 @@ contains
     integer(kind=c_int), intent(in) :: pft
 
     select case(trim(pname))
+    case('fates_electron_transport_model')
+       lb_params%electron_transport_model = nint(val)
     case('fates_daylength_factor_switch')
        lb_params%dayl_switch = nint(val)
     case('fates_leaf_stomatal_model')
@@ -85,6 +104,8 @@ contains
        lb_params%stomatal_btran_model(pft) = nint(val)
     case('fates_leaf_agross_btran_model')
        lb_params%agross_btran_model(pft) = nint(val)
+    case('fates_leaf_fnps')
+       lb_params%fnps(pft) = val
     case('fates_leaf_stomatal_slope_ballberry')
        lb_params%bb_slope(pft) = val
     case('fates_leaf_stomatal_slope_medlyn')
