@@ -83,10 +83,25 @@ class f90_modules:
         # Instantiate the F90 modules
         self.const_obj = ctypes.CDLL(mod_path+'FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)
         self.shr_obj = ctypes.CDLL(mod_path+'WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.twostr_obj = ctypes.CDLL(mod_path+'TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.glob_obj = ctypes.CDLL(mod_path+'FatesGlobals.o',mode=ctypes.RTLD_GLOBAL)
+        self.json_obj = ctypes.CDLL(mod_path+'JSONParameterUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.pint_obj = ctypes.CDLL(mod_path+'FatesParametersInterface.o',mode=ctypes.RTLD_GLOBAL)
+        self.intface_obj = ctypes.CDLL(mod_path+'FatesInterfaceTypesMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.prt_parameters_obj = ctypes.CDLL(mod_path+'PRTParametersMod.o',mode=ctypes.RTLD_GLOBAL)
         self.fatesutils_obj = ctypes.CDLL(mod_path+'FatesUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
         self.leaf_biophys_obj = ctypes.CDLL(mod_path+'LeafBiophysicsMod.o',mode=ctypes.RTLD_GLOBAL)
         self.leaf_biophys_supp_obj = ctypes.CDLL(mod_path+'LeafBiophysSuppMod.o',mode=ctypes.RTLD_GLOBAL)
-
+        self.edparams_obj       = ctypes.CDLL(mod_path+'EDParamsMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.pftparm_obj        = ctypes.CDLL(mod_path+'EDPftvarcon.o',mode=ctypes.RTLD_GLOBAL)
+        self.sfparam_obj        = ctypes.CDLL(mod_path+'SFParamsMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.fatesderived_obj = ctypes.CDLL(mod_path+'FatesParameterDerivedMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.paramsderived_obj = ctypes.CDLL(mod_path+'EDParamsDerivedSupp.o',mode=ctypes.RTLD_GLOBAL)
+        self.damage_obj = ctypes.CDLL(mod_path+'DamageMainMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.allometrysupp_obj = ctypes.CDLL(mod_path+'AllometrySuppMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.allometry_obj = ctypes.CDLL(mod_path+'FatesAllometryMod.o',mode=ctypes.RTLD_GLOBAL)
+        
+       
         # Identify subroutine objects, so we can call them
         self.set_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','setleafparam'))
         self.alloc_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','allocleafparam'))
@@ -113,10 +128,6 @@ class f90_modules:
         self.agross_rubpc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossRuBPC4'))
         self.agross_pepc4_fun  = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','AgrossPEPC4'))
        
-        self.ft1_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','ft1_f'))
-        self.fth_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','fth_f'))
-        self.fth25_fun = getattr(self.leaf_biophys_obj,GetModSymbol(mod_path+'LeafBiophysicsMod.o','fth25_f'))
-        
         # For functions, define the return value
         self.decaycoeffvcmax_fun.restype = c_double
         self.set_leaf_param_sub.argtypes = [POINTER(c_double),POINTER(c_int),c_char_p,c_long]
@@ -125,9 +136,6 @@ class f90_modules:
         self.agross_rubpc4_fun.restype = c_double
         self.agross_pepc4_fun.restype = c_double
         self.velotomolarcf_fun.restype = c_double
-        self.ft1_fun.restype = c_double
-        self.fth_fun.restype = c_double
-        self.fth25_fun.restype = c_double
 
         # RADIATION
         #----------------------------------------------------------------------------------------
@@ -135,7 +143,7 @@ class f90_modules:
         # Instantiate the F90 modules
         self.shr_obj = ctypes.CDLL(mod_path+'WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
         self.mem_obj = ctypes.CDLL(mod_path+'FatesRadiationMemMod.o',mode=ctypes.RTLD_GLOBAL)
-        self.twostr_obj = ctypes.CDLL(mod_path+'TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
+       
         self.rad_wrap_obj = ctypes.CDLL(mod_path+'RadiationWrapMod.o',mode=ctypes.RTLD_GLOBAL)
         
         # Create aliases for the calls and define arguments if it helps with clarity
@@ -166,20 +174,13 @@ class f90_modules:
 
         # Allometry (parameters via parteh)
 
-        # Instantiate objects
-        self.prt_parameters_obj = ctypes.CDLL(mod_path+'PRTParametersMod.o',mode=ctypes.RTLD_GLOBAL)
-        self.paramsderived_obj = ctypes.CDLL(mod_path+'EDParamsDerivedSupp.o',mode=ctypes.RTLD_GLOBAL)
-        self.allometrysupp_obj = ctypes.CDLL(mod_path+'AllometrySuppMod.o',mode=ctypes.RTLD_GLOBAL)
-        self.allometry_obj = ctypes.CDLL(mod_path+'FatesAllometryMod.o',mode=ctypes.RTLD_GLOBAL)
+       
 
         # Alias routines
         self.forceparam_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapforceparams'))
-
-        self.alloc_derived_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','AllocDerivedParam'))
-        self.isderivedalloced_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','IsDerivedParamAllocated'))
+        
+        self.alloc_derived_sub = getattr(self.fatesderived_obj,GetModSymbol(mod_path+'FatesParameterDerivedMod.o','InitAllocate'))
         self.setderived_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','SetDerivedParam'))
-        self.allocate_dincvai_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','AllocateDincVai'))
-        self.set_dincvai_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','SetDincVai'))
 
         self.alloc_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','AllocAllomParam'))
         self.dealloc_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','DeallocAllomParam'))
