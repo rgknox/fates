@@ -8,7 +8,8 @@ module WrapJSONParameterUtilsMod
   use iso_c_binding, only : c_char
   use iso_c_binding, only : c_int
   use iso_c_binding, only : r8 => c_double
-
+  use shr_sys_mod   , only: shr_sys_abort
+  
   implicit none
 
   private
