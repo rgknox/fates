@@ -211,7 +211,7 @@ module EDParamsMod
     ! Initialize all parameters to nan to ensure that we get valid
     ! values back from the host.
     
-    use shr_infnan_mod , only : nan => shr_infnan_nan, assignment(=)
+    use shr_infnan_mod , only : nan => shr_infnan_nan
 
     implicit none
 
