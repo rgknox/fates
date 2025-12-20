@@ -44,9 +44,9 @@ ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesFuelClassesMod.o ../../fire/Fa
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/SFParamsMod.o ../../fire/SFParamsMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesParameterDerivedMod.o ../../main/FatesParameterDerivedMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/EDParamsDerivedSupp.o f90_src/EDParamsDerivedSuppMod.F90
-#${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/AllometrySuppMod.o ../allometry/f90_src/AllometrySuppMod.F90
-#${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/DamageMainMod.o ../../biogeochem/DamageMainMod.F90
-#${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesAllometryMod.o ../../biogeochem/FatesAllometryMod.F90
+${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/AllometrySuppMod.o ../allometry/f90_src/AllometrySuppMod.F90
+${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/DamageMainMod.o ../../biogeochem/DamageMainMod.F90
+${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesAllometryMod.o ../../biogeochem/FatesAllometryMod.F90
 
 
 
