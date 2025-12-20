@@ -56,15 +56,15 @@ module JSONParameterUtilsMod
   integer, parameter :: r8 = selected_real_kind(12) ! 8 byte real
   
   ! Data types
-  integer, parameter :: r_scalar_type = 1
-  integer, parameter :: r_1d_type     = 2
-  integer, parameter :: r_2d_type     = 3
-  integer, parameter :: i_scalar_type = 4
-  integer, parameter :: i_1d_type     = 5
-  integer, parameter :: i_2d_type     = 6
-  integer, parameter :: c_solo_type   = 7
-  integer, parameter :: c_1d_type     = 8
-  integer, parameter :: c_2d_type     = 9
+  integer, public, parameter :: r_scalar_type = 1
+  integer, public, parameter :: r_1d_type     = 2
+  integer, public, parameter :: r_2d_type     = 3
+  integer, public, parameter :: i_scalar_type = 4
+  integer, public, parameter :: i_1d_type     = 5
+  integer, public, parameter :: i_2d_type     = 6
+  integer, public, parameter :: c_solo_type   = 7
+  integer, public, parameter :: c_1d_type     = 8
+  integer, public, parameter :: c_2d_type     = 9
 
   logical, parameter :: debug = .false.
 

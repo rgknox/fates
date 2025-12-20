@@ -71,6 +71,10 @@ class f90_modules:
 
     def __init__(self,mod_path):
 
+
+        json_modstr = mod_path+'JSONParameterUtilsMod.o'
+        wrapjson_modstr = mod_path+'WrapJSONParameterUtilsMod.o'
+        
         # Instantiate DGESV from lapack
         # ---------------------------------------------------------------------------------------
 
@@ -85,7 +89,7 @@ class f90_modules:
         self.shr_obj = ctypes.CDLL(mod_path+'WrapShrMod.o',mode=ctypes.RTLD_GLOBAL)
         self.twostr_obj = ctypes.CDLL(mod_path+'TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
         self.glob_obj = ctypes.CDLL(mod_path+'FatesGlobals.o',mode=ctypes.RTLD_GLOBAL)
-        self.json_obj = ctypes.CDLL(mod_path+'JSONParameterUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.json_obj = ctypes.CDLL(json_modstr,mode=ctypes.RTLD_GLOBAL)
         self.pint_obj = ctypes.CDLL(mod_path+'FatesParametersInterface.o',mode=ctypes.RTLD_GLOBAL)
         self.intface_obj = ctypes.CDLL(mod_path+'FatesInterfaceTypesMod.o',mode=ctypes.RTLD_GLOBAL)
         self.prt_parameters_obj = ctypes.CDLL(mod_path+'PRTParametersMod.o',mode=ctypes.RTLD_GLOBAL)
@@ -137,6 +141,16 @@ class f90_modules:
         self.agross_pepc4_fun.restype = c_double
         self.velotomolarcf_fun.restype = c_double
 
+        # JSON
+        self.json_setinval = getattr(self.json_obj,GetModSymbol(json_modstr,'JSONSetInvalid'))
+        self.json_setloginit = getattr(self.json_obj,GetModSymbol(json_modstr,'JSONSetLogInit'))
+        self.json_read  = getattr(self.json_obj,GetModSymbol(json_modstr,'JSONRead'))
+        self.json_dumpparam = getattr(self.json_obj,GetModSymbol(json_modstr,'JSONDumpParameter'))
+
+        # WrapJSON
+        self.wrapjson_read     = getattr(self.wrapjson_obj,GetModSymbol(wrapjson_modstr,'WrapJSONRead'))
+        self.wrapjson_setparam = getattr(self.wrapjson_obj,GetModSymbol(wrapjson_modstr,'WrapJSONSetParameter'))
+        
         # RADIATION
         #----------------------------------------------------------------------------------------
     
