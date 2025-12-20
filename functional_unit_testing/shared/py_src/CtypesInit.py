@@ -91,6 +91,8 @@ class f90_modules:
         self.glob_obj = ctypes.CDLL(mod_path+'FatesGlobals.o',mode=ctypes.RTLD_GLOBAL)
         self.json_obj = ctypes.CDLL(json_modstr,mode=ctypes.RTLD_GLOBAL)
         self.pint_obj = ctypes.CDLL(mod_path+'FatesParametersInterface.o',mode=ctypes.RTLD_GLOBAL)
+        self.wrapjson_obj = ctypes.CDLL(wrapjson_modstr,mode=ctypes.RTLD_GLOBAL)
+
         self.intface_obj = ctypes.CDLL(mod_path+'FatesInterfaceTypesMod.o',mode=ctypes.RTLD_GLOBAL)
         self.prt_parameters_obj = ctypes.CDLL(mod_path+'PRTParametersMod.o',mode=ctypes.RTLD_GLOBAL)
         self.fatesutils_obj = ctypes.CDLL(mod_path+'FatesUtilsMod.o',mode=ctypes.RTLD_GLOBAL)
