@@ -2,6 +2,7 @@ import re
 import subprocess
 import sys
 import ctypes
+import gc
 from ctypes import *
 from operator import add
 sys.path.append('../shared/py_src')
@@ -224,3 +225,29 @@ class f90_modules:
         self.VegAreaLayer_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','VegAreaLayer'))
         self.tree_lai_sai_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','tree_lai_sai'))
 
+    def Release(self):
+
+        del self.dgesv_obj
+        del self.const_obj
+        del self.shr_obj
+        del self.twostr_obj
+        del self.glob_obj
+        del self.json_obj
+        del self.pint_obj
+        del self.wrapjson_obj
+        del self.intface_obj
+        del self.prt_parameters_obj
+        del self.fatesutils_obj
+        del self.leaf_biophys_obj
+        del self.leaf_biophys_supp_obj
+        del self.edparams_obj
+        del self.pftparm_obj
+        del self.sfparam_obj
+        del self.fatesderived_obj
+        del self.paramsderived_obj
+        del self.damage_obj
+        del self.allometrysupp_obj
+        del self.allometry_obj
+
+        gc.collect()
+        
