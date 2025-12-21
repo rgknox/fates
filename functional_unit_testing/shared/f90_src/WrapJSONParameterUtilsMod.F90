@@ -14,6 +14,7 @@ module WrapJSONParameterUtilsMod
 
   private
   public :: WrapJSONSetParameter
+  public :: WrapJSONRead
   
 contains
   

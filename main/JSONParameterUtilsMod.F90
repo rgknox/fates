@@ -161,6 +161,7 @@ module JSONParameterUtilsMod
    contains
      procedure :: GetDimSizeFromName
      procedure :: GetParamFromName
+     procedure :: GetIndexFromName
      procedure :: ReportAccessCounts
      procedure :: Destroy
   end type params_type
@@ -1133,26 +1134,38 @@ contains
 
   ! =====================================================================================
 
-  function GetParamFromName(this,param_name) result(param_ptr)
+  function GetIndexFromName(this,param_name) result(i)
+    
+    class(params_type)       :: this
+    character(len=*)         :: param_name
+    integer                  :: i
+    
+    loop_params: do i = 1,size(this%parameters)
+       if(trim(param_name)==this%parameters(i)%name)then
+          this%parameters(i)%access_count = this%parameters(i)%access_count + 1
+          return
+       end if
+    end do loop_params
+    
+    write(log_unit,*)'Error finding parameter by name,scanned ',size(this%parameters),' parameters'
+    write(log_unit,*)'Cant find: ',trim(param_name)
+    call shr_sys_abort()
+    
+  end function GetIndexFromName
 
+  ! =============================================================================
+  
+  function GetParamFromName(this,param_name) result(param_ptr)
+    
     class(params_type)       :: this
     character(len=*)         :: param_name
     type(param_type),pointer :: param_ptr
     integer                  :: i
     
     nullify(param_ptr)
-    loop_params: do i = 1,size(this%parameters)
-       if(trim(param_name)==this%parameters(i)%name)then
-          param_ptr=>this%parameters(i)
-          this%parameters(i)%access_count = this%parameters(i)%access_count + 1
-          return
-       end if
-    end do loop_params
-
-    write(log_unit,*)'Error finding parameter by name,scanned ',size(this%parameters),' parameters'
-    write(log_unit,*)'Cant find: ',trim(param_name)
-    call shr_sys_abort()
-    
+    i = this%GetIndexFromName(param_name)
+    param_ptr=>this%parameters(i)
+        
   end function GetParamFromName
 
   ! =====================================================================================

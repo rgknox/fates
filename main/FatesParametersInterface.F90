@@ -15,6 +15,29 @@ module FatesParametersInterface
   
   type(params_type) :: pstruct
 
+  ! Parameter indexes
+  integer, public :: pid_allom_d2h1
+  integer, public :: pid_allom_d2h2
+  integer, public :: pid_allom_d2h3
+  integer, public :: pid_allom_agfr
+  integer, public :: pid_allom_d2l1
+  integer, public :: pid_allom_d2l2
+  integer, public :: pid_allom_d2l3
+  integer, public :: pid_allom_blca_exp_diff
+  integer, public :: pid_allom_d2ca_coef_max
+  integer, public :: pid_allom_d2ca_coef_min
+  integer, public :: pid_allom_agb1
+  integer, public :: pid_allom_agb2
+  integer, public :: pid_allom_agb3
+  integer, public :: pid_allom_agb4
+  integer, public :: pid_allom_h2cd1
+  integer, public :: pid_allom_h2cd2
+  integer, public :: pid_allom_zroot_maxd
+  integer, public :: pid_allom_zroot_maxz
+  integer, public :: pid_allom_zroot_mind
+  integer, public :: pid_allom_zroot_minz
+  integer, public :: pid_allom_zroot_k
+  
   public :: pstruct
   public :: Transp2dInt
   public :: Transp2dReal

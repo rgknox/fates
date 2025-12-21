@@ -250,89 +250,28 @@ contains
     allocate(prt_params%nfix_mresp_scfrac(num_pft))
     prt_params%nfix_mresp_scfrac(:) = param_p%r_data_1d(:)
     
-    param_p => pstruct%GetParamFromName('fates_allom_agb_frac')
-    allocate(prt_params%allom_agb_frac(num_pft))
-    prt_params%allom_agb_frac(:) = param_p%r_data_1d(:)
+    pid_allom_agfr = pstruct%GetIndexFromName('fates_allom_agb_frac')
+    pid_allom_d2h1 = pstruct%GetIndexFromName('fates_allom_d2h1')
+    pid_allom_d2h2 = pstruct%GetIndexFromName('fates_allom_d2h2')
+    pid_allom_d2h3 = pstruct%GetIndexFromName('fates_allom_d2h3')
+    pid_allom_d2l1 = pstruct%GetIndexFromName('fates_allom_d2bl1')
+    pid_allom_d2l2 = pstruct%GetIndexFromName('fates_allom_d2bl2')
+    pid_allom_d2l3 = pstruct%GetIndexFromName('fates_allom_d2bl3')
+    pid_allom_blca_exp_diff = pstruct%GetIndexFromName('fates_allom_blca_expnt_diff')
+    pid_allom_d2ca_coef_max = pstruct%GetIndexFromName('fates_allom_d2ca_coefficient_max')
+    pid_allom_d2ca_coef_min = pstruct%GetIndexFromName('fates_allom_d2ca_coefficient_min')
+    pid_allom_agb1 = pstruct%GetIndexFromName('fates_allom_agb1')
+    pid_allom_agb2 = pstruct%GetIndexFromName('fates_allom_agb2')
+    pid_allom_agb3 = pstruct%GetIndexFromName('fates_allom_agb3')
+    pid_allom_agb4 = pstruct%GetIndexFromName('fates_allom_agb4')
+    pid_allom_h2cd1 = pstruct%GetIndexFromName('fates_allom_h2cd1')
+    pid_allom_h2cd2 = pstruct%GetIndexFromName('fates_allom_h2cd2')
+    pid_allom_zroot_maxd = pstruct%GetIndexFromName('fates_allom_zroot_max_dbh')
+    pid_allom_zroot_maxz = pstruct%GetIndexFromName('fates_allom_zroot_max_z')
+    pid_allom_zroot_mind = pstruct%GetIndexFromName('fates_allom_zroot_min_dbh')
+    pid_allom_zroot_minz = pstruct%GetIndexFromName('fates_allom_zroot_min_z')
+    pid_allom_zroot_k = pstruct%GetIndexFromName('fates_allom_zroot_k')
 
-    param_p => pstruct%GetParamFromName('fates_allom_d2h1')
-    allocate(prt_params%allom_d2h1(num_pft))
-    prt_params%allom_d2h1(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_d2h2')
-    allocate(prt_params%allom_d2h2(num_pft))
-    prt_params%allom_d2h2(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_d2h3')
-    allocate(prt_params%allom_d2h3(num_pft))
-    prt_params%allom_d2h3(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_d2bl1')
-    allocate(prt_params%allom_d2bl1(num_pft))
-    prt_params%allom_d2bl1(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_d2bl2')
-    allocate(prt_params%allom_d2bl2(num_pft))
-    prt_params%allom_d2bl2(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_d2bl3')
-    allocate(prt_params%allom_d2bl3(num_pft))
-    prt_params%allom_d2bl3(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_blca_expnt_diff')
-    allocate(prt_params%allom_blca_expnt_diff(num_pft))
-    prt_params%allom_blca_expnt_diff(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_d2ca_coefficient_max')
-    allocate(prt_params%allom_d2ca_coefficient_max(num_pft))
-    prt_params%allom_d2ca_coefficient_max(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_d2ca_coefficient_min')
-    allocate(prt_params%allom_d2ca_coefficient_min(num_pft))
-    prt_params%allom_d2ca_coefficient_min(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_agb1')
-    allocate(prt_params%allom_agb1(num_pft))
-    prt_params%allom_agb1(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_agb2')
-    allocate(prt_params%allom_agb2(num_pft))
-    prt_params%allom_agb2(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_agb3')
-    allocate(prt_params%allom_agb3(num_pft))
-    prt_params%allom_agb3(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_agb4')
-    allocate(prt_params%allom_agb4(num_pft))
-    prt_params%allom_agb4(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_h2cd1')
-    allocate(prt_params%allom_h2cd1(num_pft))
-    prt_params%allom_h2cd1(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_h2cd2')
-    allocate(prt_params%allom_h2cd2(num_pft))
-    prt_params%allom_h2cd2(:) = param_p%r_data_1d(:)
-
-    param_p => pstruct%GetParamFromName('fates_allom_zroot_max_dbh')
-    allocate(prt_params%allom_zroot_max_dbh(num_pft))
-    prt_params%allom_zroot_max_dbh(:) = param_p%r_data_1d(:)
-    
-    param_p => pstruct%GetParamFromName('fates_allom_zroot_max_z')
-    allocate(prt_params%allom_zroot_max_z(num_pft))
-    prt_params%allom_zroot_max_z(:) = param_p%r_data_1d(:)
-    
-    param_p => pstruct%GetParamFromName('fates_allom_zroot_min_dbh')
-    allocate(prt_params%allom_zroot_min_dbh(num_pft))
-    prt_params%allom_zroot_min_dbh(:) = param_p%r_data_1d(:)
-    
-    param_p => pstruct%GetParamFromName('fates_allom_zroot_min_z')
-    allocate(prt_params%allom_zroot_min_z(num_pft))
-    prt_params%allom_zroot_min_z(:) = param_p%r_data_1d(:)
-    
-    param_p => pstruct%GetParamFromName('fates_allom_zroot_k')
-    allocate(prt_params%allom_zroot_k(num_pft))
-    prt_params%allom_zroot_k(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_turnover_branch')
     allocate(prt_params%branch_long(num_pft))

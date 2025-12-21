@@ -303,14 +303,14 @@ contains
     real(r8),intent(out)          :: d     ! plant diameter [cm]
     real(r8),intent(out),optional :: dddh  ! change in diameter per height [cm/m]
 
-    associate(  p1          => prt_params%allom_d2h1(ipft), &
+    associate(  p1          => pstruct%GetParamFromName('fates_allom_d2h1'), &
                 p2          => prt_params%allom_d2h2(ipft), &
                 p3          => prt_params%allom_d2h3(ipft), &
                 allom_hmode => prt_params%allom_hmode(ipft))
 
       select case(allom_hmode)
       case (1) ! O'Brien et al 1995, BCI
-         call h2d_obrien(h,p1,p2,d,dddh)
+         call h2d_obrien(h,p1%r_data_1d(ipft),p2,d,dddh)
       case (2)  ! poorter 2006
          call h2d_poorter2006(h,p1,p2,p3,d,dddh)
       case (3) ! 2 parameter power function
