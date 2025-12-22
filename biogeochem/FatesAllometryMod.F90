@@ -84,6 +84,8 @@ module FatesAllometryMod
   ! If this is a unit-test, these globals will be provided by a wrapper
 
   use PRTParametersMod, only  : prt_params
+  ! This contains the pstruct data structure, and anything pid_
+  use FatesParametersInterface
   use FatesConstantsMod, only : r8 => fates_r8
   use FatesConstantsMod, only : i4 => fates_int
   use FatesConstantsMod, only : g_per_kg 
@@ -303,14 +305,14 @@ contains
     real(r8),intent(out)          :: d     ! plant diameter [cm]
     real(r8),intent(out),optional :: dddh  ! change in diameter per height [cm/m]
 
-    associate(  p1          => pstruct%GetParamFromName('fates_allom_d2h1'), &
-                p2          => prt_params%allom_d2h2(ipft), &
-                p3          => prt_params%allom_d2h3(ipft), &
-                allom_hmode => prt_params%allom_hmode(ipft))
+    associate(p1          => pstruct%parameters(pid_allom_d2h1)%r_data_1d(ipft), &
+              p2          => pstruct%parameters(pid_allom_d2h2)%r_data_1d(ipft), &
+              p3          => pstruct%parameters(pid_allom_d2h3)%r_data_1d(ipft), &
+              allom_hmode => pstruct%parameters(pid_allom_hmode)%i_data_1d(ipft))
 
       select case(allom_hmode)
       case (1) ! O'Brien et al 1995, BCI
-         call h2d_obrien(h,p1%r_data_1d(ipft),p2,d,dddh)
+         call h2d_obrien(h,p1,p2,d,dddh)
       case (2)  ! poorter 2006
          call h2d_poorter2006(h,p1,p2,p3,d,dddh)
       case (3) ! 2 parameter power function
@@ -340,12 +342,12 @@ contains
     integer(i4),intent(in)  :: ipft  ! PFT index
     real(r8),intent(out)    :: h     ! plant height [m]
     real(r8),intent(out),optional :: dhdd  ! change in height per diameter [m/cm]
-    
-    associate( dbh_maxh => prt_params%allom_dbh_maxheight(ipft), &
-               p1       => prt_params%allom_d2h1(ipft), &
-               p2       => prt_params%allom_d2h2(ipft), &
-               p3       => prt_params%allom_d2h3(ipft), &
-               allom_hmode => prt_params%allom_hmode(ipft))
+
+    associate( dbh_maxh => pstruct%parameters(pid_allom_dbh_maxh)%r_data_1d(ipft), &
+               p1 => pstruct%parameters(pid_allom_d2h1)%r_data_1d(ipft), &
+               p2 => pstruct%parameters(pid_allom_d2h2)%r_data_1d(ipft), &
+               p3 => pstruct%parameters(pid_allom_d2h3)%r_data_1d(ipft), &
+               allom_hmode => pstruct%parameters(pid_allom_hmode)%i_data_1d(ipft))
       
       select case(allom_hmode)
       case (1)   ! "obrien"
@@ -388,15 +390,17 @@ contains
     real(r8)               :: dhdd    ! change in height wrt d
     real(r8)               :: crown_reduction  ! crown reduction from damage
     real(r8)               :: branch_frac ! fraction of aboveground woody biomass in branches
-   
-    associate( p1           => prt_params%allom_agb1(ipft), &
-               p2           => prt_params%allom_agb2(ipft), &
-               p3           => prt_params%allom_agb3(ipft), &
-               p4           => prt_params%allom_agb4(ipft), &
-               wood_density => prt_params%wood_density(ipft), &
-               c2b          => prt_params%c2b(ipft), &
-               agb_frac     => prt_params%allom_agb_frac(ipft), &
-               allom_amode  => prt_params%allom_amode(ipft))
+
+    !pstruct%parameters(pid_allom_hmode)%i_data_1d
+    
+    associate( p1           => pstruct%parameters(pid_allom_agb1)%r_data_1d(ipft), &
+               p2           => pstruct%parameters(pid_allom_agb2)%r_data_1d(ipft), &
+               p3           => pstruct%parameters(pid_allom_agb3)%r_data_1d(ipft), &
+               p4           => pstruct%parameters(pid_allom_agb4)%r_data_1d(ipft), &
+               wood_density => pstruct%parameters(pid_wood_density)%r_data_1d(ipft), &
+               c2b          => pstruct%parameters(pid_c2b)%r_data_1d(ipft), &
+               agb_frac     => pstruct%parameters(pid_allom_agbfrac)%r_data_1d(ipft), &
+               allom_amode  => pstruct%parameters(pid_allom_amode)%i_data_1d(ipft))
 
       branch_frac = param_derived%branch_frac(ipft)
       
@@ -456,15 +460,15 @@ contains
     real(r8)               :: h       ! height
     real(r8)               :: dhdd    ! change in height wrt d
 
-    associate( dbh_maxh    => prt_params%allom_dbh_maxheight(ipft), &
-               rho         => prt_params%wood_density(ipft), &
-               slatop      => prt_params%slatop(ipft),       &
-               c2b         => prt_params%c2b(ipft),          &
-               allom_lmode => prt_params%allom_lmode(ipft),  &
-               p1          => prt_params%allom_d2bl1(ipft),  &
-               p2          => prt_params%allom_d2bl2(ipft),  &
-               p3          => prt_params%allom_d2bl3(ipft))
-      
+    associate(dbh_maxh => pstruct%parameters(pid_allom_dbh_maxh)%r_data_1d(ipft), &
+              rho      => pstruct%parameters(pid_wood_density)%r_data_1d(ipft), &
+              slatop   => pstruct%parameters(pid_leaf_slatop)%r_data_1d(ipft), &
+              c2b      => pstruct%parameters(pid_c2b)%r_data_1d(ipft), &
+              allom_lmode => pstruct%parameters(pid_allom_lmode)%i_data_1d(ipft), &
+              p1 => pstruct%parameters(pid_allom_d2l1)%r_data_1d(ipft), &
+              p2 => pstruct%parameters(pid_allom_d2l2)%r_data_1d(ipft), &
+              p3 => pstruct%parameters(pid_allom_d2l3)%r_data_1d(ipft))
+        
       select case(allom_lmode)
       case(1) !"salda")
          call d2blmax_salda(d,p1,p2,p3,rho,dbh_maxh,c2b,blmax,dblmaxdd)
@@ -511,12 +515,12 @@ contains
                                             ! crown area at height, we need to make
                                             ! special considerations
      
-     associate( dbh_maxh    => prt_params%allom_dbh_maxheight(ipft), &
-                allom_lmode => prt_params%allom_lmode(ipft),  &
-                d2bl_p2     => prt_params%allom_d2bl2(ipft),  &
-                d2bl_ediff  => prt_params%allom_blca_expnt_diff(ipft), &
-                d2ca_min    => prt_params%allom_d2ca_coefficient_min(ipft), &
-                d2ca_max    => prt_params%allom_d2ca_coefficient_max(ipft))
+     associate( dbh_maxh    => pstruct%parameters(pid_ )%r_data_1dallom_dbh_maxheight(ipft), &
+                allom_lmode => pstruct%parameters(pid_ )%r_data_1dallom_lmode(ipft),  &
+                d2bl_p2     => pstruct%parameters(pid_ )%r_data_1dallom_d2bl2(ipft),  &
+                d2bl_ediff  => pstruct%parameters(pid_ )%r_data_1dallom_blca_expnt_diff(ipft), &
+                d2ca_min    => pstruct%parameters(pid_ )%r_data_1dallom_d2ca_coefficient_min(ipft), &
+                d2ca_max    => pstruct%parameters(pid_ )%r_data_1dallom_d2ca_coefficient_max(ipft))
        
        if( .not. present(inverse) ) then 
           do_inverse = .false.
@@ -704,7 +708,7 @@ contains
        call endrun(msg=errMsg(sourcefile, __LINE__))
     endif
 
-    slat = g_per_kg * prt_params%slatop(pft) ! m2/g to m2/kg
+    slat = g_per_kg * pstruct%parameters(pid_ )%r_data_1dslatop(pft) ! m2/g to m2/kg
     leafc_per_unitarea = leaf_c/(c_area/nplant) !KgC/m2
     
     if(leafc_per_unitarea > 0.0_r8)then
@@ -718,12 +722,12 @@ contains
 
        ! Coefficient for exponential decay of 1/sla with canopy depth:
        kn = DecayCoeffVcmax(vcmax25top, &
-                            prt_params%leafn_vert_scaler_coeff1(pft), &
-                            prt_params%leafn_vert_scaler_coeff2(pft))
+                            pstruct%parameters(pid_ )%r_data_1dleafn_vert_scaler_coeff1(pft), &
+                            pstruct%parameters(pid_ )%r_data_1dleafn_vert_scaler_coeff2(pft))
        
        ! take PFT-level maximum SLA value, even if under a thick canopy (which has units of m2/gC),
        ! and put into units of m2/kgC
-       sla_max = g_per_kg*prt_params%slamax(pft)
+       sla_max = g_per_kg*pstruct%parameters(pid_ )%r_data_1dslamax(pft)
        ! Leafc_per_unitarea at which sla_max is reached due to exponential sla profile in canopy:
        leafc_slamax = (slat - sla_max * exp(-1.0_r8 * kn * canopy_lai_above)) / &
             (-1.0_r8 * kn * slat * sla_max)
@@ -829,7 +833,7 @@ contains
     target_lai = tree_lai(target_bleaf, pft, c_area, nplant, cl,&
          canopy_lai, vcmax25top) 
 
-    tree_sai   =  elongf_stem * prt_params%allom_sai_scaler(pft) * target_lai
+    tree_sai   =  elongf_stem * pstruct%parameters(pid_ )%r_data_1dallom_sai_scaler(pft) * target_lai
 
     return
   end function tree_sai
@@ -876,8 +880,8 @@ contains
     ! Don't allow lai+sai to exceed the vertical discretization bounds
     if( do_vai_capping ) then
        if( (treelai + treesai) > (sum(dinc_vai)) )then
-          treelai = sum(dinc_vai) * (1._r8 - prt_params%allom_sai_scaler(pft)) - nearzero
-          treesai = sum(dinc_vai) * prt_params%allom_sai_scaler(pft) - nearzero
+          treelai = sum(dinc_vai) * (1._r8 - pstruct%parameters(pid_ )%r_data_1dallom_sai_scaler(pft)) - nearzero
+          treesai = sum(dinc_vai) * pstruct%parameters(pid_ )%r_data_1dallom_sai_scaler(pft) - nearzero
        end if
     end if
     
@@ -943,13 +947,13 @@ contains
     end if
     
     ! convert PFT-level canopy top and maximum SLA values and convert from m2/gC to m2/kgC
-    slat = g_per_kg * prt_params%slatop(pft)
-    sla_max = g_per_kg * prt_params%slamax(pft)
+    slat = g_per_kg * pstruct%parameters(pid_ )%r_data_1dslatop(pft)
+    sla_max = g_per_kg * pstruct%parameters(pid_ )%r_data_1dslamax(pft)
 
     ! Coefficient for exponential decay of 1/sla with canopy depth:
     kn = DecayCoeffVcmax(vcmax25top, &
-                         prt_params%leafn_vert_scaler_coeff1(pft), &
-                         prt_params%leafn_vert_scaler_coeff2(pft))
+                         pstruct%parameters(pid_ )%r_data_1dleafn_vert_scaler_coeff1(pft), &
+                         pstruct%parameters(pid_ )%r_data_1dleafn_vert_scaler_coeff2(pft))
 
     if(treelai > 0.0_r8)then 
        ! Leafc_per_unitarea at which sla_max is reached due to exponential sla profile in canopy:
@@ -1023,11 +1027,11 @@ contains
     ! X% of total woody/fibrous (ie non leaf/fineroot) tissues
     real(r8),parameter :: max_frac = 0.95_r8 
 
-    agb_frac = prt_params%allom_agb_frac(ipft)
+    agb_frac = pstruct%parameters(pid_ )%r_data_1dallom_agb_frac(ipft)
     branch_frac = param_derived%branch_frac(ipft)
       
     
-    select case(prt_params%allom_smode(ipft))
+    select case(pstruct%parameters(pid_ )%r_data_1dallom_smode(ipft))
        ! ---------------------------------------------------------------------
        ! Currently only one sapwood allometry model. the slope
        ! of the la:sa to diameter line is zero.
@@ -1098,7 +1102,7 @@ contains
 
     case DEFAULT
        write(fates_log(),*) 'An undefined sapwood allometry was specified: ', &
-            prt_params%allom_smode(ipft)
+            pstruct%parameters(pid_ )%r_data_1dallom_smode(ipft)
        write(fates_log(),*) 'Aborting'
        call endrun(msg=errMsg(sourcefile, __LINE__))
     end select
@@ -1122,7 +1126,7 @@ contains
     real(r8)    :: bagw       ! above ground biomass [kgC]
     real(r8)    :: dbagwdd    ! change in agb per diameter [kgC/cm]
     
-    select case(prt_params%allom_cmode(ipft))
+    select case(pstruct%parameters(pid_ )%r_data_1dallom_cmode(ipft))
     case(1) !"constant")
        ! bbgw not affected by damage so use target allometry no damage. But note that bbgw
        ! is affected by stem phenology (typically applied only to grasses). We do not need
@@ -1132,7 +1136,7 @@ contains
        call bbgw_const(d,bagw,dbagwdd,ipft,bbgw,dbbgwdd)
     case DEFAULT
        write(fates_log(),*) 'An undefined coarse root allometry was specified: ', &
-             prt_params%allom_cmode(ipft)
+             pstruct%parameters(pid_ )%r_data_1dallom_cmode(ipft)
        write(fates_log(),*) 'Aborting'
        call endrun(msg=errMsg(sourcefile, __LINE__))
     end select
@@ -1166,8 +1170,8 @@ contains
     real(r8) :: bfrmax
     real(r8) :: dbfrmaxdd
     real(r8) :: slascaler
-    
-    select case(prt_params%allom_fmode(ipft))
+
+    select case( pstruct%parameters(pid_allom_fmode)%i_data_1d(ipft) )
     case(1) ! "constant proportionality with TRIMMED target bleaf"
        
        call blmax_allom(d,ipft,blmax,dblmaxdd)
@@ -1189,7 +1193,7 @@ contains
 
     case DEFAULT 
        write(fates_log(),*) 'An undefined fine root allometry was specified: ', &
-            prt_params%allom_fmode(ipft)
+            pstruct%parameters(pid_ )%r_data_1dallom_fmode(ipft)
        write(fates_log(),*) 'Aborting'
        call endrun(msg=errMsg(sourcefile, __LINE__))
     end select
@@ -1201,10 +1205,8 @@ contains
        dbfrdd = elongf_fnrt * dbfrdd
     end if
 
-
     return
   end subroutine bfineroot
-
 
   ! ============================================================================
   ! Storage biomass interface
@@ -1225,8 +1227,8 @@ contains
      real(r8) :: dblmaxdd    ! Allometric target change in leaf biomass per cm (UNTRIMMED)
     
      
-     associate( allom_stmode => prt_params%allom_stmode(ipft), &
-                cushion      => prt_params%cushion(ipft) )
+     associate( allom_stmode => pstruct%parameters(pid_ )%r_data_1dallom_stmode(ipft), &
+                cushion      => pstruct%parameters(pid_ )%r_data_1dcushion(ipft) )
 
        select case(allom_stmode)
        case(1) ! Storage is constant proportionality of trimmed maximum leaf
@@ -1277,9 +1279,9 @@ contains
      ! bbgw. Therefore, it is not removed from AGB and BBGW in the calculation of dead mass.
 
     
-    associate( agb_fraction => prt_params%allom_agb_frac(ipft))
+    associate( agb_fraction => pstruct%parameters(pid_ )%r_data_1dallom_agb_frac(ipft))
 
-      select case(prt_params%allom_amode(ipft))
+      select case(pstruct%parameters(pid_ )%r_data_1dallom_amode(ipft))
       case(1) ! Saldariagga mass allometry originally calculated bdead directly.
               ! we assume proportionality between bdead and bagw
        
@@ -1299,7 +1301,7 @@ contains
       case DEFAULT
          
          write(fates_log(),*) 'An undefined AGB allometry was specified: ',&
-                              prt_params%allom_amode(ipft)
+                              pstruct%parameters(pid_ )%r_data_1dallom_amode(ipft)
          write(fates_log(),*) 'Aborting'
          call endrun(msg=errMsg(sourcefile, __LINE__))
        
@@ -1322,7 +1324,7 @@ contains
     real(r8),intent(out)   :: bbgw       ! coarse root biomass [kg]
     real(r8),intent(out),optional :: dbbgwdd    ! change croot bio per diam [kg/cm]
 
-    associate( agb_fraction => prt_params%allom_agb_frac(ipft) )
+    associate( agb_fraction => pstruct%parameters(pid_ )%r_data_1dallom_agb_frac(ipft) )
       
       bbgw = (1.0_r8/agb_fraction-1.0_r8)*bagw 
       
@@ -1377,12 +1379,12 @@ contains
     real(r8)               :: hbl2bsap   ! sapwood biomass per lineal height
     
     
-    associate ( la_per_sa_int => prt_params%allom_la_per_sa_int(ipft), &
-                la_per_sa_slp => prt_params%allom_la_per_sa_slp(ipft), &
-                slatop        => prt_params%slatop(ipft), &
-                wood_density  => prt_params%wood_density(ipft), &
-                c2b           => prt_params%c2b(ipft), & 
-                agb_fraction  => prt_params%allom_agb_frac(ipft) )
+    associate ( la_per_sa_int => pstruct%parameters(pid_ )%r_data_1dallom_la_per_sa_int(ipft), &
+                la_per_sa_slp => pstruct%parameters(pid_ )%r_data_1dallom_la_per_sa_slp(ipft), &
+                slatop        => pstruct%parameters(pid_ )%r_data_1dslatop(ipft), &
+                wood_density  => pstruct%parameters(pid_ )%r_data_1dwood_density(ipft), &
+                c2b           => pstruct%parameters(pid_ )%r_data_1dc2b(ipft), & 
+                agb_fraction  => pstruct%parameters(pid_ )%r_data_1dallom_agb_frac(ipft) )
 
 
       ! Calculate sapwood biomass per linear height and kgC of leaf [m-1]
@@ -2567,9 +2569,9 @@ contains
      integer ,intent(in)  :: ipft        ! functional type index
      real(r8),intent(out) :: crown_depth ! The depth of the crown    [m]
 
-     associate( p1          => prt_params%allom_h2cd1(ipft), &
-                p2          => prt_params%allom_h2cd2(ipft), &
-                allom_dmode => prt_params%allom_dmode(ipft))
+     associate( p1          => pstruct%parameters(pid_ )%r_data_1dallom_h2cd1(ipft), &
+                p2          => pstruct%parameters(pid_ )%r_data_1dallom_h2cd2(ipft), &
+                allom_dmode => pstruct%parameters(pid_ )%r_data_1dallom_dmode(ipft))
 
         select case (allom_dmode)
         case (1) ! Default, linear relationship with height
@@ -2830,14 +2832,14 @@ contains
        nlevroot = min(max_nlevroot,nlevroot)
     end if
     
-    select case(nint(prt_params%fnrt_prof_mode(ft)))
+    select case(nint(pstruct%parameters(pid_ )%r_data_1dfnrt_prof_mode(ft)))
     case ( exponential_1p_profile_type ) 
-       call exponential_1p_root_profile(root_fraction(1:nlevroot), zi(0:nlevroot), prt_params%fnrt_prof_a(ft)) 
+       call exponential_1p_root_profile(root_fraction(1:nlevroot), zi(0:nlevroot), pstruct%parameters(pid_ )%r_data_1dfnrt_prof_a(ft)) 
     case ( jackson_beta_profile_type )
-       call jackson_beta_root_profile(root_fraction(1:nlevroot), zi(0:nlevroot), prt_params%fnrt_prof_a(ft))
+       call jackson_beta_root_profile(root_fraction(1:nlevroot), zi(0:nlevroot), pstruct%parameters(pid_ )%r_data_1dfnrt_prof_a(ft))
     case ( exponential_2p_profile_type ) 
        call exponential_2p_root_profile(root_fraction(1:nlevroot), zi(0:nlevroot), & 
-             prt_params%fnrt_prof_a(ft),prt_params%fnrt_prof_b(ft))
+             pstruct%parameters(pid_ )%r_data_1dfnrt_prof_a(ft),pstruct%parameters(pid_ )%r_data_1dfnrt_prof_b(ft))
 
     case default
        write(fates_log(),*) 'An undefined root profile type was specified'
@@ -3031,7 +3033,7 @@ contains
   
      
      ! Do reduce "if" calls, we break this call into two parts
-     if ( prt_params%woody(ipft) == itrue ) then
+     if ( pstruct%parameters(pid_ )%r_data_1dwoody(ipft) == itrue ) then
 
         if(.not.present(bdead)) then
            write(fates_log(),*) 'woody plants must use structure for dbh reset'
@@ -3121,9 +3123,9 @@ contains
      call h_allom(d,ipft,h)
      if(counter>20)then
         write(fates_log(),*) 'dbh counter: ',counter,' is woody: ',&
-             (prt_params%woody(ipft) == itrue)
+             (pstruct%parameters(pid_ )%r_data_1dwoody(ipft) == itrue)
 
-        if(prt_params%woody(ipft)==itrue)then
+        if(pstruct%parameters(pid_ )%r_data_1dwoody(ipft)==itrue)then
            warn_msg = 'dbh counter: '//trim(I2S(counter))//' is woody'
         else
            warn_msg = 'dbh counter: '//trim(I2S(counter))//' is not woody'

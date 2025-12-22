@@ -44,7 +44,7 @@ module FatesParametersInterface
   integer, public :: pid_trs_repro_alloc_b
   integer, public :: pid_c2b
   integer, public :: pid_grperc
-  integer, public :: pid_allom_dbh_maxheight
+  integer, public :: pid_allom_dbh_maxh
   integer, public :: pid_allom_hmode
   integer, public :: pid_allom_lmode
   integer, public :: pid_allom_fmode
@@ -61,7 +61,6 @@ module FatesParametersInterface
   integer, public :: pid_cnp_kd
   integer, public :: pid_cnp_store_ovrflw_frac
   integer, public :: pid_cnp_nfix1
-  integer, public :: pid_allom_agfr
   integer, public :: pid_allom_d2h1
   integer, public :: pid_allom_d2h2
   integer, public :: pid_allom_d2h3
@@ -95,6 +94,7 @@ module FatesParametersInterface
   integer, public :: pid_cnp_phos_retrans
   
   public :: pstruct
+  public :: GetParameterIndices
   public :: Transp2dInt
   public :: Transp2dReal
 
@@ -136,7 +136,7 @@ contains
     pid_trs_repro_alloc_b = pstruct%GetIndexFromName('fates_trs_repro_alloc_b')
     pid_c2b = pstruct%GetIndexFromName('fates_c2b')
     pid_grperc = pstruct%GetIndexFromName('fates_grperc')
-    pid_allom_dbh_maxheight = pstruct%GetIndexFromName('fates_allom_dbh_maxheight')
+    pid_allom_dbh_maxh = pstruct%GetIndexFromName('fates_allom_dbh_maxheight')
     pid_allom_hmode = pstruct%GetIndexFromName('fates_allom_hmode')
     pid_allom_lmode = pstruct%GetIndexFromName('fates_allom_lmode')
     pid_allom_fmode = pstruct%GetIndexFromName('fates_allom_fmode')
@@ -153,7 +153,7 @@ contains
     pid_cnp_kd = pstruct%GetIndexFromName('fates_cnp_pid_kd')
     pid_cnp_store_ovrflw_frac = pstruct%GetIndexFromName('fates_cnp_store_ovrflw_frac')
     pid_cnp_nfix1 = pstruct%GetIndexFromName('fates_cnp_nfix1')
-    pid_allom_agfr = pstruct%GetIndexFromName('fates_allom_agb_frac')
+    pid_allom_agfrac = pstruct%GetIndexFromName('fates_allom_agb_frac')
     pid_allom_d2h1 = pstruct%GetIndexFromName('fates_allom_d2h1')
     pid_allom_d2h2 = pstruct%GetIndexFromName('fates_allom_d2h2')
     pid_allom_d2h3 = pstruct%GetIndexFromName('fates_allom_d2h3')

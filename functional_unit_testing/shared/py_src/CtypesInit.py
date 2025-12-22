@@ -75,6 +75,7 @@ class f90_modules:
 
         json_modstr = mod_path+'JSONParameterUtilsMod.o'
         wrapjson_modstr = mod_path+'WrapJSONParameterUtilsMod.o'
+        paramint_modstr = mod_path+'FatesParametersInterface.o'
         
         # Instantiate DGESV from lapack
         # ---------------------------------------------------------------------------------------
@@ -91,7 +92,7 @@ class f90_modules:
         self.twostr_obj = ctypes.CDLL(mod_path+'TwoStreamMLPEMod.o',mode=ctypes.RTLD_GLOBAL)
         self.glob_obj = ctypes.CDLL(mod_path+'FatesGlobals.o',mode=ctypes.RTLD_GLOBAL)
         self.json_obj = ctypes.CDLL(json_modstr,mode=ctypes.RTLD_GLOBAL)
-        self.pint_obj = ctypes.CDLL(mod_path+'FatesParametersInterface.o',mode=ctypes.RTLD_GLOBAL)
+        self.paramint_obj = ctypes.CDLL(paramint_modstr,mode=ctypes.RTLD_GLOBAL)
         self.wrapjson_obj = ctypes.CDLL(wrapjson_modstr,mode=ctypes.RTLD_GLOBAL)
 
         self.intface_obj = ctypes.CDLL(mod_path+'FatesInterfaceTypesMod.o',mode=ctypes.RTLD_GLOBAL)
@@ -153,6 +154,8 @@ class f90_modules:
         # WrapJSON
         self.wrapjson_read     = getattr(self.wrapjson_obj,GetModSymbol(wrapjson_modstr,'WrapJSONRead'))
         self.wrapjson_setparam = getattr(self.wrapjson_obj,GetModSymbol(wrapjson_modstr,'WrapJSONSetParameter'))
+
+        self.getparams = getattr(self.paramint_obj,GetModSymbol(paramint_modstr,'GetParameterIndices'))
         
         # RADIATION
         #----------------------------------------------------------------------------------------
