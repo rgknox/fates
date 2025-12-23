@@ -1236,7 +1236,7 @@ contains
   ! ============================================================================
   ! Dead biomass interface
   ! ============================================================================
-  
+
   subroutine bdead_allom(bagw,bbgw,bsap,ipft,bdead,dbagwdd,dbbgwdd,dbsapdd,dbdeaddd)
 
      real(r8),intent(in)  :: bagw      ! biomass above ground wood (agb) [kgC]

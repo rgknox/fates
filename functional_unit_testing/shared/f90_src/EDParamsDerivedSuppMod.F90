@@ -10,8 +10,15 @@ module EDParamsDerivedSuppMod
 
   private
   public :: SetDerivedParam
-  
+  public :: InitDerived
 contains
+
+
+  subroutine InitDerived()
+
+    call param_derived%Init()
+    
+  end subroutine InitDerived
   
   ! =====================================================================================
   

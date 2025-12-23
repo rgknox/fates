@@ -8,6 +8,7 @@ module FatesParametersInterface
   ! only uses shr libraries
 
   use JSONParameterUtilsMod, only: params_type
+  use JSONParameterUtilsMod, only: param_type
   use FatesConstantsMod, only : r8 => fates_r8
   
   implicit none
@@ -16,6 +17,11 @@ module FatesParametersInterface
   type(params_type) :: pstruct
 
   ! Parameter indexes
+  
+  integer, public :: pid_vcmax25top
+  integer, public :: pid_cwd_frac
+  integer, public :: pid_damage_frac
+  integer, public :: pid_damage_bins
   integer, public :: pid_alloc_organ_id
   integer, public :: pid_phen_leaf_habit
   integer, public :: pid_phen_stem_drop_frac
@@ -107,6 +113,13 @@ contains
     ! index of each, into a named integer constant. These
     ! integer constants will be used for retrieval.
     ! This assignment happens once, here.
+
+    ! Scalar Parameters
+    pid_damage_bins = pstruct%GetIndexFromName('fates_history_damage_bin_edges')
+    
+    pid_vcmax25top = pstruct%GetIndexFromName('fates_leaf_vcmax25top')
+    pid_cwd_frac = pstruct%GetIndexFromName('fates_frag_cwd_frac')
+    pid_damage_frac = pstruct%GetIndexFromName('fates_damage_frac')
     
     pid_alloc_organ_id = pstruct%GetIndexFromName('fates_alloc_organ_id')
     pid_phen_leaf_habit = pstruct%GetIndexFromName('fates_phen_leaf_habit')
@@ -187,6 +200,23 @@ contains
 
   end subroutine GetParameterIndices
 
+  subroutine CheckParameters
+
+    type(param_type), pointer :: param(:)
+    integer :: corr_id
+    real(r8) :: correction
+    
+    param => pstruct%parameters
+    
+    ! Apply correction to cwd fractions
+    correction = 1._r8 - sum(param(pid_cwd_frac)%r_data_1d(:),dim=1)
+    corr_id = maxloc(param(pid_cwd_frac)%r_data_1d(:),dim=1)
+    param(pid_cwd_frac)%r_data_1d(corr_id) = param(pid_cwd_frac)%r_data_1d(corr_id) + correction
+
+    
+  end subroutine CheckParameters
+
+  
   subroutine Transp2dInt(i_2d_in,i_2d_out)
 
     ! The FATES JSON parameter files have a legacy from the netcdf 

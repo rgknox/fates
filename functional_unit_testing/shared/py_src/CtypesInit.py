@@ -197,8 +197,9 @@ class f90_modules:
 
         # Alias routines
         self.forceparam_sub = getattr(self.rad_wrap_obj,GetModSymbol(mod_path+'RadiationWrapMod.o','wrapforceparams'))
-        
         self.alloc_derived_sub = getattr(self.fatesderived_obj,GetModSymbol(mod_path+'FatesParameterDerivedMod.o','InitAllocate'))
+        self.init_derived_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','InitDerived'))
+
         self.setderived_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','SetDerivedParam'))
 
         self.h2d_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','h2d_allom'))
