@@ -106,7 +106,6 @@ class f90_modules:
         self.fatesderived_obj = ctypes.CDLL(mod_path+'FatesParameterDerivedMod.o',mode=ctypes.RTLD_GLOBAL)
         self.paramsderived_obj = ctypes.CDLL(mod_path+'EDParamsDerivedSupp.o',mode=ctypes.RTLD_GLOBAL)
         self.damage_obj = ctypes.CDLL(mod_path+'DamageMainMod.o',mode=ctypes.RTLD_GLOBAL)
-        self.allometrysupp_obj = ctypes.CDLL(mod_path+'AllometrySuppMod.o',mode=ctypes.RTLD_GLOBAL)
         self.allometry_obj = ctypes.CDLL(mod_path+'FatesAllometryMod.o',mode=ctypes.RTLD_GLOBAL)
         
        
@@ -202,12 +201,6 @@ class f90_modules:
         self.alloc_derived_sub = getattr(self.fatesderived_obj,GetModSymbol(mod_path+'FatesParameterDerivedMod.o','InitAllocate'))
         self.setderived_sub = getattr(self.paramsderived_obj,GetModSymbol(mod_path+'EDParamsDerivedSupp.o','SetDerivedParam'))
 
-        self.alloc_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','AllocAllomParam'))
-        self.dealloc_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','DeallocAllomParam'))
-        self.isallom_alloced_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','IsAllomParamAllocated'))
-        self.isallom_alloced_sub.restype = c_bool
-        self.set_allomparam_sub = getattr(self.allometrysupp_obj,GetModSymbol(mod_path+'AllometrySuppMod.o','SetAllomParam'))
-
         self.h2d_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','h2d_allom'))
         self.h_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','h_allom'))
         self.bagw_allom_sub = getattr(self.allometry_obj,GetModSymbol(mod_path+'FatesAllometryMod.o','bagw_allom'))
@@ -249,7 +242,6 @@ class f90_modules:
         del self.fatesderived_obj
         del self.paramsderived_obj
         del self.damage_obj
-        del self.allometrysupp_obj
         del self.allometry_obj
 
         gc.collect()

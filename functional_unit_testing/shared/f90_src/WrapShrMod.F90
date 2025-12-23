@@ -39,7 +39,8 @@ module shr_infnan_mod
   use, intrinsic :: ieee_arithmetic
   private
   real(c_double), public :: shr_infnan_nan
-
+  public :: init_nan
+  
 contains
   subroutine init_nan
     shr_infnan_nan = ieee_value(shr_infnan_nan,ieee_quiet_nan)

@@ -32,12 +32,12 @@ module FatesParametersInterface
   integer, public :: pid_woody
   integer, public :: pid_wood_density
   integer, public :: pid_recruit_seed_dbh_thresh
-  integer, public :: pid_alloc_storage_cushion
-  integer, public :: pid_alloc_store_priority_frac
+  integer, public :: pid_storage_cushion
+  integer, public :: pid_store_priority_frac
   integer, public :: pid_turnover_senleaf_fdrought
   integer, public :: pid_turnover_fnrt
-  integer, public :: pid_leafn_vert_scaler_coeff1
-  integer, public :: pid_leafn_vert_scaler_coeff2
+  integer, public :: pid_leafn_vert_scaler1
+  integer, public :: pid_leafn_vert_scaler2
   integer, public :: pid_recruit_seed_alloc_mature
   integer, public :: pid_recruit_seed_alloc
   integer, public :: pid_trs_repro_alloc_a
@@ -64,13 +64,13 @@ module FatesParametersInterface
   integer, public :: pid_allom_d2h1
   integer, public :: pid_allom_d2h2
   integer, public :: pid_allom_d2h3
-  integer, public :: pid_allom_agfr
+  integer, public :: pid_allom_agbfrac
   integer, public :: pid_allom_d2l1
   integer, public :: pid_allom_d2l2
   integer, public :: pid_allom_d2l3
-  integer, public :: pid_allom_blca_exp_diff
-  integer, public :: pid_allom_d2ca_coef_max
-  integer, public :: pid_allom_d2ca_coef_min
+  integer, public :: pid_allom_blca_ediff
+  integer, public :: pid_allom_d2ca_max
+  integer, public :: pid_allom_d2ca_min
   integer, public :: pid_allom_agb1
   integer, public :: pid_allom_agb2
   integer, public :: pid_allom_agb3
@@ -124,12 +124,12 @@ contains
     pid_woody = pstruct%GetIndexFromName('fates_woody')
     pid_wood_density = pstruct%GetIndexFromName('fates_wood_density')
     pid_recruit_seed_dbh_thresh = pstruct%GetIndexFromName('fates_recruit_seed_dbh_repro_threshold')
-    pid_alloc_storage_cushion = pstruct%GetIndexFromName('fates_alloc_storage_cushion')
-    pid_alloc_store_priority_frac = pstruct%GetIndexFromName('fates_alloc_store_priority_frac')
+    pid_storage_cushion = pstruct%GetIndexFromName('fates_alloc_storage_cushion')
+    pid_store_priority_frac = pstruct%GetIndexFromName('fates_alloc_store_priority_frac')
     pid_turnover_senleaf_fdrought = pstruct%GetIndexFromName('fates_turnover_senleaf_fdrought')
     pid_turnover_fnrt = pstruct%GetIndexFromName('fates_turnover_fnrt')
-    pid_leafn_vert_scaler_coeff1 = pstruct%GetIndexFromName('fates_leafn_vert_scaler_coeff1')
-    pid_leafn_vert_scaler_coeff2 = pstruct%GetIndexFromName('fates_leafn_vert_scaler_coeff2')
+    pid_leafn_vert_scaler1 = pstruct%GetIndexFromName('fates_leafn_vert_scaler_coeff1')
+    pid_leafn_vert_scaler2 = pstruct%GetIndexFromName('fates_leafn_vert_scaler_coeff2')
     pid_recruit_seed_alloc_mature = pstruct%GetIndexFromName('fates_recruit_seed_alloc_mature')
     pid_recruit_seed_alloc = pstruct%GetIndexFromName('fates_recruit_seed_alloc')
     pid_trs_repro_alloc_a = pstruct%GetIndexFromName('fates_trs_repro_alloc_a')
@@ -153,16 +153,16 @@ contains
     pid_cnp_kd = pstruct%GetIndexFromName('fates_cnp_pid_kd')
     pid_cnp_store_ovrflw_frac = pstruct%GetIndexFromName('fates_cnp_store_ovrflw_frac')
     pid_cnp_nfix1 = pstruct%GetIndexFromName('fates_cnp_nfix1')
-    pid_allom_agfrac = pstruct%GetIndexFromName('fates_allom_agb_frac')
+    pid_allom_agbfrac = pstruct%GetIndexFromName('fates_allom_agb_frac')
     pid_allom_d2h1 = pstruct%GetIndexFromName('fates_allom_d2h1')
     pid_allom_d2h2 = pstruct%GetIndexFromName('fates_allom_d2h2')
     pid_allom_d2h3 = pstruct%GetIndexFromName('fates_allom_d2h3')
     pid_allom_d2l1 = pstruct%GetIndexFromName('fates_allom_d2bl1')
     pid_allom_d2l2 = pstruct%GetIndexFromName('fates_allom_d2bl2')
     pid_allom_d2l3 = pstruct%GetIndexFromName('fates_allom_d2bl3')
-    pid_allom_blca_exp_diff = pstruct%GetIndexFromName('fates_allom_blca_expnt_diff')
-    pid_allom_d2ca_coef_max = pstruct%GetIndexFromName('fates_allom_d2ca_coefficient_max')
-    pid_allom_d2ca_coef_min = pstruct%GetIndexFromName('fates_allom_d2ca_coefficient_min')
+    pid_allom_blca_ediff = pstruct%GetIndexFromName('fates_allom_blca_expnt_diff')
+    pid_allom_d2ca_max = pstruct%GetIndexFromName('fates_allom_d2ca_coefficient_max')
+    pid_allom_d2ca_min = pstruct%GetIndexFromName('fates_allom_d2ca_coefficient_min')
     pid_allom_agb1 = pstruct%GetIndexFromName('fates_allom_agb1')
     pid_allom_agb2 = pstruct%GetIndexFromName('fates_allom_agb2')
     pid_allom_agb3 = pstruct%GetIndexFromName('fates_allom_agb3')

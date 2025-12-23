@@ -2,9 +2,9 @@
 
 # Path to FATES src
 
-FC='gfortran'
-F_OPTS="-shared -fPIC -O3 -llapack -ffree-line-length-none"
-#F_OPTS="-shared -fPIC -O0 -g -ffpe-trap=zero,overflow,underflow -fbacktrace -fbounds-check -Wall"
+FC='gfortran -ffree-line-length-none'
+#F_OPTS="-shared -fPIC -O3 -llapack"
+F_OPTS="-shared -fPIC -O0 -g -ffpe-trap=zero,overflow,underflow -fbacktrace -fbounds-check -Wall"
 
 #FC='ifort'
 #F_OPTS="-shared -fPIC"
@@ -45,7 +45,6 @@ ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesFuelClassesMod.o ../../fire/Fa
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/SFParamsMod.o ../../fire/SFParamsMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesParameterDerivedMod.o ../../main/FatesParameterDerivedMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/EDParamsDerivedSupp.o f90_src/EDParamsDerivedSuppMod.F90
-${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/AllometrySuppMod.o ../allometry/f90_src/AllometrySuppMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/DamageMainMod.o ../../biogeochem/DamageMainMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesAllometryMod.o ../../biogeochem/FatesAllometryMod.F90
 
