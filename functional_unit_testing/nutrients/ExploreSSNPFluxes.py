@@ -204,3 +204,26 @@ ax.set_xlabel('Stem Diameter [cm]')
 ax.grid(True)
 plt.show()
 
+# Lets look at some of the soil dynamics
+# ------------------------------------------------
+# smin_nh4: minearlized nh4 in soil [g m-3 soil]
+# Bulk density of dry soil material [kg m-3 soil]
+# real(r8), parameter :: adsorp_nh4_eff = 2.76_r8
+# real(r8), parameter :: m3_per_liter = 1.e-3_r8   ! m3 per liter
+# Vol. Soil Water in each layer [m3 H2O/m3 soil]
+# solution_conc: concentration of available mineralized nutrient
+#                [gN / m3 H2O]
+
+
+solution_conc = smin_nh4 / (bd(j)*adsorp_nh4_eff*m3_per_liter + h2osoi_vol(j))
+
+compet_decomp = solution_conc / (km_decomp_nh4 * (1. + solution_conc/km_decomp_nh4 + e_km))
+
+compet_nit    = solution_conc / (km_nit * (1. + solution_conc/km_nit + e_km))
+
+compet_plant  = solution_conc / ( km_nh4_plant(ft) * (1._r8 + solution_conc/km_nh4_plant(ft) + e_km))
+
+sum_nh4_demand_scaled = sum_plant_nh4demand + potential_immob*compet_decomp + pot_f_nit*compet_nit
+
+actual_immob_nh4 = min(potential_immob,(smin_nh4/dt)* \
+                       (potential_immob*compet_decomp / sum_nh4_demand_scaled))
