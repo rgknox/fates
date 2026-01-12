@@ -82,9 +82,7 @@ class f90_modules:
 
         self.dgesv_obj = ctypes.CDLL(mod_path+'dgesvMod.o',mode=ctypes.RTLD_GLOBAL)
 
-        
-        # LEAF BIOPHYSICS
-        #----------------------------------------------------------------------------------------
+       
 
         # Instantiate the F90 modules
         self.const_obj = ctypes.CDLL(mod_path+'FatesConstantsMod.o',mode=ctypes.RTLD_GLOBAL)
@@ -107,8 +105,15 @@ class f90_modules:
         self.paramsderived_obj = ctypes.CDLL(mod_path+'EDParamsDerivedSupp.o',mode=ctypes.RTLD_GLOBAL)
         self.damage_obj = ctypes.CDLL(mod_path+'DamageMainMod.o',mode=ctypes.RTLD_GLOBAL)
         self.allometry_obj = ctypes.CDLL(mod_path+'FatesAllometryMod.o',mode=ctypes.RTLD_GLOBAL)
+        self.kinetics_obj = ctypes.CDLL(mod_path+'FatesKineticsMod.o',mode=ctypes.RTLD_GLOBAL)
+
+        # Kinetics
+        self.aqueous_uptake_mm_sub = getattr(self.kinetics_obj,GetModSymbol(mod_path+'FatesKineticsMod.o','AqueousUptakeMM'))
+        self.solveconc_nr_mm_sub = getattr(self.kinetics_obj,GetModSymbol(mod_path+'FatesKineticsMod.o','SolveConcNewtRaphMM'))
         
-       
+        # LEAF BIOPHYSICS
+        #----------------------------------------------------------------------------------------
+        
         # Identify subroutine objects, so we can call them
         self.set_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','setleafparam'))
         self.alloc_leaf_param_sub = getattr(self.leaf_biophys_supp_obj, GetModSymbol(mod_path+'LeafBiophysSuppMod.o','allocleafparam'))

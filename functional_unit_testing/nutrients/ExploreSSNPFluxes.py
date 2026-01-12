@@ -265,6 +265,23 @@ ax.set_xlabel('Stem Diameter [cm]')
 ax.grid(True)
 plt.show()
 
+
+# Sensitivity and Draw-down Analysis of MM Substrate:
+# subroutine AqueousUptakeMM (ncomp, s0, v_max, k_m, surf_exp, dt, theta, s_final, mass_flux)
+#  subroutine SolveConcNewtRaphMM(s0, vmax, km, dt, s_next)
+
+iret = f90.bstore_allom_sub(c8(d),ci(pft),c8(no_damage),c8(no_trim), \
+                                byref(cd_bstore),byref(cd_dbstoredd))
+
+iret = f90.aqueous_uptake_mm_sub(ci(ncomp),c8(s0),c8_arr(Vmax_arr), \
+                                 c8_arr(Km_arr),c8_arr(surf_exp), \
+                                 c8(dt),c8(theta), \
+                                 byref(cd_sfinal), \
+                                 byref(cd_mflux))
+
+iret = f90.solveconc_nr_mm_sub(c8(s0),c8(vmax),c8(km),c8(dt),byref(cd_sfinal))
+
+
 # Lets look at some of the soil dynamics
 # ------------------------------------------------
 # smin_nh4: minearlized nh4 in soil [g m-3 soil]
@@ -276,15 +293,15 @@ plt.show()
 #                [gN / m3 H2O]
 
 
-solution_conc = smin_nh4 / (bd(j)*adsorp_nh4_eff*m3_per_liter + h2osoi_vol(j))
+#solution_conc = smin_nh4 / (bd(j)*adsorp_nh4_eff*m3_per_liter + h2osoi_vol(j))
 
-compet_decomp = solution_conc / (km_decomp_nh4 * (1. + solution_conc/km_decomp_nh4 + e_km))
+#compet_decomp = solution_conc / (km_decomp_nh4 * (1. + solution_conc/km_decomp_nh4 + e_km))
 
-compet_nit    = solution_conc / (km_nit * (1. + solution_conc/km_nit + e_km))
+#compet_nit    = solution_conc / (km_nit * (1. + solution_conc/km_nit + e_km))
 
-compet_plant  = solution_conc / ( km_nh4_plant(ft) * (1._r8 + solution_conc/km_nh4_plant(ft) + e_km))
+#compet_plant  = solution_conc / ( km_nh4_plant(ft) * (1._r8 + solution_conc/km_nh4_plant(ft) + e_km))
 
-sum_nh4_demand_scaled = sum_plant_nh4demand + potential_immob*compet_decomp + pot_f_nit*compet_nit
+#sum_nh4_demand_scaled = sum_plant_nh4demand + potential_immob*compet_decomp + pot_f_nit*compet_nit
 
-actual_immob_nh4 = min(potential_immob,(smin_nh4/dt)* \
-                       (potential_immob*compet_decomp / sum_nh4_demand_scaled))
+#actual_immob_nh4 = min(potential_immob,(smin_nh4/dt)* \
+#                       (potential_immob*compet_decomp / sum_nh4_demand_scaled))

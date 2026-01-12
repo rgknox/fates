@@ -29,6 +29,7 @@ ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/TwoStreamMLPEMod.o  ../../radiation
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesGlobals.o ../../main/FatesGlobals.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/JSONParameterUtilsMod.o ../../main/JSONParameterUtilsMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesUtilsMod.o ../../main/FatesUtilsMod.F90
+${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesKineticsMod.o ../../biogeochem/FatesKineticsMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/FatesParametersInterface.o ../../main/FatesParametersInterface.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/WrapJSONParameterUtilsMod.o f90_src/WrapJSONParameterUtilsMod.F90
 ${FC} ${F_OPTS} $INC_FLAG ${MOD_FLAG} -o bld/LeafBiophysicsMod.o ../../biogeophys/LeafBiophysicsMod.F90
