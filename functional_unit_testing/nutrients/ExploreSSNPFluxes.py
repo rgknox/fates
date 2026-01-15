@@ -270,9 +270,30 @@ plt.show()
 # subroutine AqueousUptakeMM (ncomp, s0, v_max, k_m, surf_exp, dt, theta, s_final, mass_flux)
 #  subroutine SolveConcNewtRaphMM(s0, vmax, km, dt, s_next)
 
-iret = f90.bstore_allom_sub(c8(d),ci(pft),c8(no_damage),c8(no_trim), \
-                                byref(cd_bstore),byref(cd_dbstoredd))
 
+
+
+#iret = f90.bstore_allom_sub(c8(d),ci(pft),c8(no_damage),c8(no_trim), \
+#                                byref(cd_bstore),byref(cd_dbstoredd))
+
+
+nh4_conc = np.zeros(n_uptake)
+no3_conc = np.zeros(n_uptake)
+po4_conc = np.zeros(n_uptake)
+
+n_comp = 2
+
+Vmax_arr = [None]*n_comp
+Km_arr   = [None]*n_comp
+surf_exp = [None]*n_comp
+
+dt = 1800.0
+bd = 1.05     # g/cm3
+
+for i in range(n_uptake):
+
+
+    
 iret = f90.aqueous_uptake_mm_sub(ci(ncomp),c8(s0),c8_arr(Vmax_arr), \
                                  c8_arr(Km_arr),c8_arr(surf_exp), \
                                  c8(dt),c8(theta), \
@@ -280,6 +301,14 @@ iret = f90.aqueous_uptake_mm_sub(ci(ncomp),c8(s0),c8_arr(Vmax_arr), \
                                  byref(cd_mflux))
 
 iret = f90.solveconc_nr_mm_sub(c8(s0),c8(vmax),c8(km),c8(dt),byref(cd_sfinal))
+
+
+
+# From BCI:
+# NH4+ ranged from e-2   to  e-3.5 mg/cm3
+# NO3  ranged from e-2   to  e-3.5 mg/cm3
+# PO4  ranged from e-3.5 to  e-4.4 mg/cm3
+
 
 
 # Lets look at some of the soil dynamics
