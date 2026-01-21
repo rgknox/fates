@@ -1040,18 +1040,27 @@ contains
 
                                       ! Nutrients
                                       if(hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
+                                         
+                                         currentCohort%vmax_nh4 = (currentCohort%n*currentCohort%vmax_nh4 &
+                                              + nextc%n*nextc%vmax_nh4)/newn
+                                         
+                                         currentCohort%vmax_no3 = (currentCohort%n*currentCohort%vmax_no3 &
+                                              + nextc%n*nextc%vmax_no3)/newn
+                                         
+                                         currentCohort%vmax_po4 = (currentCohort%n*currentCohort%vmax_po4 &
+                                              + nextc%n*nextc%vmax_po4)/newn
 
-                                         currentCohort%l2fr = (currentCohort%n*currentCohort%l2fr &
-                                              + nextc%n*nextc%l2fr)/newn
+                                         currentCohort%sobj_nh4 = (currentCohort%n*currentCohort%sobj_nh4 &
+                                              + nextc%n*nextc%sobj_nh4)/newn
+                                         
+                                         currentCohort%sobj_no3 = (currentCohort%n*currentCohort%sobj_no3 &
+                                              + nextc%n*nextc%sobj_no3)/newn
+                                         
+                                         currentCohort%sobj_po4 = (currentCohort%n*currentCohort%sobj_po4 &
+                                              + nextc%n*nextc%sobj_po4)/newn
+                                         
                                          
                                          if(nextc%n > currentCohort%n) currentCohort%cnp_limiter = nextc%cnp_limiter
-
-                                         currentCohort%cx_int = (currentCohort%n*currentCohort%cx_int + &
-                                              nextc%n*nextc%cx_int)/newn
-                                         currentCohort%ema_dcxdt = (currentCohort%n*currentCohort%ema_dcxdt + &
-                                              nextc%n*nextc%ema_dcxdt)/newn
-                                         currentCohort%cx0 = (currentCohort%n*currentCohort%cx0 + &
-                                              nextc%n*nextc%cx0)/newn
 
                                          ! These variables do not need to be rescaled because they
                                          ! are written to history immediately after calculation
@@ -1437,7 +1446,7 @@ contains
       ! Target total dead (structrual) biomass [kgC]
       call bdead_allom( target_agw_c, target_bgw_c, target_sapw_c, ipft, target_struct_c)
       ! Target fine-root biomass according to allometry, trimming and phenology [kgC]
-      call bfineroot(dbh,ipft,canopy_trim,ccohort%l2fr, elongf_fnrt, target_fnrt_c)
+      call bfineroot(dbh,ipft,canopy_trim,EDPftvarcon_inst%l2fr, elongf_fnrt, target_fnrt_c)
       ! Target storage carbon [kgC]
       call bstore_allom(dbh,ipft,ccohort%crowndamage-1, canopy_trim,target_store_c)
       ! Target leaf biomass according to allometry, trimming and phenology [kgC]

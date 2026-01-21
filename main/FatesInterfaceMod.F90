@@ -238,9 +238,9 @@ contains
     type(bc_pconst_type), intent(inout) :: bc_pconst
     integer             , intent(in)    :: nlevdecomp 
 
-    allocate(bc_pconst%vmax_nh4(numpft))
-    allocate(bc_pconst%vmax_no3(numpft))    
-    allocate(bc_pconst%vmax_p(numpft))
+    !allocate(bc_pconst%vmax_nh4(numpft))
+    !allocate(bc_pconst%vmax_no3(numpft))    
+    !allocate(bc_pconst%vmax_p(numpft))
     allocate(bc_pconst%eca_km_nh4(numpft))
     allocate(bc_pconst%eca_km_no3(numpft))
     allocate(bc_pconst%eca_km_p(numpft))
@@ -261,9 +261,9 @@ contains
     integer             , intent(in)    :: nlevdecomp 
     integer                             :: j
     
-    bc_pconst%vmax_nh4(1:numpft)         = EDPftvarcon_inst%vmax_nh4(1:numpft)
-    bc_pconst%vmax_no3(1:numpft)         = EDPftvarcon_inst%vmax_no3(1:numpft)
-    bc_pconst%vmax_p(1:numpft)           = EDPftvarcon_inst%vmax_p(1:numpft)
+    !bc_pconst%vmax_nh4(1:numpft)         = EDPftvarcon_inst%vmax_nh4(1:numpft)
+    !bc_pconst%vmax_no3(1:numpft)         = EDPftvarcon_inst%vmax_no3(1:numpft)
+    !bc_pconst%vmax_p(1:numpft)           = EDPftvarcon_inst%vmax_p(1:numpft)
     
     bc_pconst%eca_km_nh4(1:numpft)       = EDPftvarcon_inst%eca_km_nh4(1:numpft)
     bc_pconst%eca_km_no3(1:numpft)       = EDPftvarcon_inst%eca_km_no3(1:numpft)
@@ -663,6 +663,9 @@ contains
       ! Used in both
       allocate(bc_out%veg_rootc(max_comp_per_site,nlevdecomp_in))
       allocate(bc_out%ft_index(max_comp_per_site))
+      allocate(bc_out%vmax_nh4(max_comp_per_site))
+      allocate(bc_out%vmax_no3(max_comp_per_site))
+      allocate(bc_out%vmax_po4(max_comp_per_site))
          
       if(trim(hlm_nu_com).eq.'ECA') then
          allocate(bc_out%decompmicc(nlevdecomp_in))

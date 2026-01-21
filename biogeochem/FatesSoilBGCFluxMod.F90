@@ -180,9 +180,9 @@ contains
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
                 ccohort%daily_n_demand = fnrt_c * &
-                     (EDPftvarcon_inst%vmax_nh4(pft)+EDPftvarcon_inst%vmax_no3(pft)) * sec_per_day
-                ccohort%daily_nh4_uptake = fnrt_c*EDPftvarcon_inst%vmax_nh4(pft)*EDPftvarcon_inst%prescribed_nuptake(pft)* sec_per_day
-                ccohort%daily_no3_uptake = fnrt_c*EDPftvarcon_inst%vmax_no3(pft)*EDPftvarcon_inst%prescribed_nuptake(pft)* sec_per_day
+                     (EDPftvarcon_inst%vmax0_nh4(pft)+EDPftvarcon_inst%vmax0_no3(pft)) * sec_per_day
+                ccohort%daily_nh4_uptake = fnrt_c*EDPftvarcon_inst%vmax0_nh4(pft)*EDPftvarcon_inst%prescribed_nuptake(pft)* sec_per_day
+                ccohort%daily_no3_uptake = fnrt_c*EDPftvarcon_inst%vmax0_no3(pft)*EDPftvarcon_inst%prescribed_nuptake(pft)* sec_per_day
                 ccohort => ccohort%shorter
              end do
              cpatch => cpatch%younger
@@ -199,7 +199,7 @@ contains
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
                 ccohort%daily_n_demand = fnrt_c * &
-                     (EDPftvarcon_inst%vmax_nh4(pft)+EDPftvarcon_inst%vmax_no3(pft)) * sec_per_day
+                     (ccohort%vmax_nh4+ccohort%vmax_no3) * sec_per_day
                 ! N Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_nh4_uptake = bc_in(s)%plant_nh4_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
                 ccohort%daily_no3_uptake = bc_in(s)%plant_no3_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
@@ -217,8 +217,8 @@ contains
              do while (associated(ccohort))
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
-                ccohort%daily_p_demand = fnrt_c * EDPftvarcon_inst%vmax_p(pft) * sec_per_day
-                ccohort%daily_p_gain   = fnrt_c * EDPftvarcon_inst%vmax_p(pft) * sec_per_day * EDPftvarcon_inst%prescribed_nuptake(pft)
+                ccohort%daily_p_demand = fnrt_c * EDPftvarcon_inst%vmax0_p(pft) * sec_per_day
+                ccohort%daily_p_gain   = fnrt_c * EDPftvarcon_inst%vmax0_p(pft) * sec_per_day * EDPftvarcon_inst%prescribed_nuptake(pft)
                 ccohort => ccohort%shorter
              end do
              cpatch => cpatch%younger
@@ -234,7 +234,7 @@ contains
                 icomp = icomp+1
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
-                ccohort%daily_p_demand = fnrt_c * EDPftvarcon_inst%vmax_p(pft) * sec_per_day
+                ccohort%daily_p_demand = fnrt_c * ccohort%vmax_p * sec_per_day
                 ! P Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_p_gain = bc_in(s)%plant_p_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
 
@@ -453,6 +453,9 @@ contains
     ! the following variables get initialized in the same way
     bc_out%veg_rootc(:,:) = 0._r8
     bc_out%ft_index(:)    = -1
+    bc_out%vmax_nh4(:)    = 0._r8
+    bc_out%vmax_no3(:)    = 0._r8
+    bc_out%vmax_po4(:)    = 0._r8
     if(trim(hlm_nu_com).eq.'ECA')then
        bc_out%decompmicc(:)  = 0._r8
        bc_out%cn_scalar(:)   = 1._r8
@@ -486,7 +489,10 @@ contains
 
           pft   = ccohort%pft
           bc_out%ft_index(icomp) = pft
-           
+          bc_out%vmax_nh4(icomp) = ccohort%vmax_nh4
+          bc_out%vmax_no3(icomp) = ccohort%vmax_no3
+          bc_out%vmax_po4(icomp) = ccohort%vmax_po4
+          
           call set_root_fraction(csite%rootfrac_scr, pft, csite%zi_soil, &
                bc_in%max_rooting_depth_index_col )
 

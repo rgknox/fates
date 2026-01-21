@@ -730,6 +730,9 @@ contains
 
   ! =====================================================================================
 
+  subroutine CNPAdjustVmax(this)
+
+  
   subroutine CNPAdjustFRootTargets(this, target_c, target_dcdd)
 
     class(cnp_allom_prt_vartypes) :: this

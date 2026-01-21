@@ -638,10 +638,8 @@ contains
             ! (keep as an example)
             ! Initialize running means
             !allocate(copyc%tveg_lpa)
-            !!allocate(copyc%l2fr_ema)
             !  Note, no need to give a starter value here,
             !  that will be taken care of in copy()
-            !!call copyc%l2fr_ema%InitRMean(ema_60day)
 
             ! Initialize the PARTEH object and point to the
             ! correct boundary condition fields

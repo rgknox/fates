@@ -813,9 +813,10 @@ module FatesInterfaceTypesMod
        
        integer           :: max_plant_comps
 
-       real(r8), pointer :: vmax_nh4(:)
-       real(r8), pointer :: vmax_no3(:)
-       real(r8), pointer :: vmax_p(:)
+       ! These are now dynamic
+       !real(r8), pointer :: vmax_nh4(:)
+       !real(r8), pointer :: vmax_no3(:)
+       !real(r8), pointer :: vmax_p(:)
        
        real(r8), pointer :: eca_km_nh4(:)
        real(r8), pointer :: eca_km_no3(:)

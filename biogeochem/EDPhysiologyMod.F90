@@ -161,9 +161,9 @@ module EDPhysiologyMod
   public :: PreDisturbanceIntegrateLitter
   public :: GenerateDamageAndLitterFluxes
   public :: SeedUpdate
-  public :: UpdateRecruitL2FR
+  public :: UpdateRecruitVmax
   public :: UpdateRecruitStoicH
-  public :: SetRecruitL2FR
+  public :: SetRecruitVmax
 
   logical, parameter :: debug  = .false. ! local debug flag
   character(len=*), parameter, private :: sourcefile = &
@@ -708,7 +708,7 @@ contains
           if ( int(prt_params%allom_fmode(ipft)) .eq. 1 ) then
              ! only query fine root biomass if using a fine root allometric model that takes leaf trim into account
              call bfineroot(currentcohort%dbh,ipft,currentcohort%canopy_trim, &
-                  currentcohort%l2fr,1.0_r8, tar_bfr)
+                  EDPftvarcon_inst%l2fr,1.0_r8, tar_bfr)
              bfr_per_bleaf = tar_bfr/tar_bl
           endif
 
@@ -1655,7 +1655,7 @@ contains
           call bleaf(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage, &
                currentCohort%canopy_trim,currentCohort%efleaf_coh,target_leaf_c)
           call bfineroot(currentCohort%dbh,currentCohort%pft, &
-               currentCohort%canopy_trim,currentCohort%l2fr,currentCohort%effnrt_coh,target_fnrt_c)
+               currentCohort%canopy_trim,EDPftvarcon_inst%l2fr,currentCohort%effnrt_coh,target_fnrt_c)
           call bsap_allom(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage, &
                currentCohort%canopy_trim,currentCohort%efstem_coh,sapw_area,target_sapw_c)
           call bagw_allom(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage,&
@@ -2549,7 +2549,7 @@ contains
             height             = EDPftvarcon_inst%hgt_min(ft)
             stem_drop_fraction = prt_params%phen_stem_drop_fraction(ft)
             fnrt_drop_fraction = prt_params%phen_fnrt_drop_fraction(ft)
-            l2fr               = currentSite%rec_l2fr(ft, currentPatch%NCL_p)
+            l2fr               = EDPftvarcon_inst%l2fr(ft)
             crowndamage        = 1 ! new recruits are undamaged
 
             ! calculate DBH from initial height
@@ -3305,11 +3305,10 @@ contains
 
   end subroutine CWDOut
 
-  subroutine UpdateRecruitL2FR(csite)
+  subroutine UpdateRecruitVmax(csite)
 
-
-    ! When CNP is active, the l2fr (target leaf to fine-root biomass multiplier)
-    ! is dynamic. We therefore update what the l2fr for recruits
+    ! When CNP is active, the maximum uptake capacity per tissue (vmax)
+    ! is dynamic. We therefore update what the vmax for recruits
     ! are, taking an exponential moving average of all plants that
     ! are within recruit size limitations (less than recruit size + delta)
     ! and less than the max_count cohort.
@@ -3319,7 +3318,9 @@ contains
     type(fates_cohort_type), pointer :: ccohort
 
     real(r8) :: rec_n(maxpft,nclmax)     ! plant count
-    real(r8) :: rec_l2fr0(maxpft,nclmax) ! mean l2fr for this day
+    real(r8) :: rec_vmax0_nh4(maxpft,nclmax)
+    real(r8) :: rec_vmax0_no3(maxpft,nclmax)
+    real(r8) :: rec_vmax0_po4(maxpft,nclmax)
     integer  :: rec_count(maxpft,nclmax) ! sample count
     integer  :: ft                       ! functional type index
     integer  :: cl                       ! canopy layer index
@@ -3333,7 +3334,9 @@ contains
     if(hlm_parteh_mode .ne. prt_cnp_flex_allom_hyp) return
 
     rec_n(1:numpft,1:nclmax) = 0._r8
-    rec_l2fr0(1:numpft,1:nclmax) = 0._r8
+    rec_vmax0_nh4(1:numpft,1:nclmax) = 0._r8
+    rec_vmax0_no3(1:numpft,1:nclmax) = 0._r8
+    rec_vmax0_po4(1:numpft,1:nclmax) = 0._r8
 
     cpatch => csite%youngest_patch
     do while(associated(cpatch))
@@ -3353,7 +3356,9 @@ contains
                   ccohort%dbh-dbh_min < max_delta ) then
                 rec_count(ft,cl) = rec_count(ft,cl) + 1
                 rec_n(ft,cl) = rec_n(ft,cl) + ccohort%n
-                rec_l2fr0(ft,cl) = rec_l2fr0(ft,cl) + ccohort%n*ccohort%l2fr
+                rec_vmax0_nh4(ft,cl) = rec_vmax0_nh4(ft,cl) + ccohort%n*ccohort%vmax_nh4
+                rec_vmax0_no3(ft,cl) = rec_vmax0_no3(ft,cl) + ccohort%n*ccohort%vmax_no3
+                rec_vmax0_po4(ft,cl) = rec_vmax0_po4(ft,cl) + ccohort%n*ccohort%vmax_po4
              end if
 
           end if
@@ -3368,15 +3373,23 @@ contains
     do cl = 1,nclmax
        do ft = 1,numpft
           if(rec_n(ft,cl)>nearzero)then
-             rec_l2fr0(ft,cl) = rec_l2fr0(ft,cl) / rec_n(ft,cl)
-             csite%rec_l2fr(ft,cl) = &
-                  (1._r8-smth_wgt)*csite%rec_l2fr(ft,cl) + smth_wgt*rec_l2fr0(ft,cl)
+             rec_vmax0_nh4(ft,cl) = rec_vmax0_nh4(ft,cl) / rec_n(ft,cl)
+             rec_vmax0_no3(ft,cl) = rec_vmax0_no3(ft,cl) / rec_n(ft,cl)
+             rec_vmax0_po4(ft,cl) = rec_vmax0_po4(ft,cl) / rec_n(ft,cl)
+             
+             csite%rec_vmax_nh4(ft,cl) = &
+                  (1._r8-smth_wgt)*csite%rec_vmax_nh4(ft,cl) + smth_wgt*rec_vmax0_nh4(ft,cl)
+             csite%rec_vmax_no3(ft,cl) = &
+                  (1._r8-smth_wgt)*csite%rec_vmax_no3(ft,cl) + smth_wgt*rec_vmax0_nh4(ft,cl)
+             csite%rec_vmax_nh4(ft,cl) = &
+                  (1._r8-smth_wgt)*csite%rec_vmax_nh4(ft,cl) + smth_wgt*rec_vmax0_nh4(ft,cl)
+             
           end if
        end do
     end do
 
     return
-  end subroutine UpdateRecruitL2FR
+  end subroutine UpdateRecruitVmax
 
   ! ======================================================================
 

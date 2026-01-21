@@ -166,14 +166,14 @@ module EDPftvarcon
      real(r8), allocatable :: decompmicc(:)             ! microbial decomposer biomass gC/m3
                                                         ! on root surface
 
-     real(r8), allocatable :: vmax_nh4(:) ! maximum production rate for plant NH4 uptake   [gN/gC/s]
-     real(r8), allocatable :: vmax_no3(:) ! maximum production rate for plant NO3 uptake   [gN/gC/s]
-                                          ! For ECA: these rates will be applied separately to
-                                          ! draw from mineralized nh4 and no3 pools independantly.
-                                          ! For RD: these rates will be added, to construct a total
-                                          ! N demand, which will be applied to NH4 and then NO3
-                                          ! sequentially
-     real(r8), allocatable :: vmax_p(:)   ! maximum production rate for plant p uptake     [gP/gC/s]
+     real(r8), allocatable :: vmax0_nh4(:) ! base maximum production rate for plant NH4 uptake   [gN/gC/s]
+     real(r8), allocatable :: vmax0_no3(:) ! base maximum production rate for plant NO3 uptake   [gN/gC/s]
+                                           ! For ECA: these rates will be applied separately to
+                                           ! draw from mineralized nh4 and no3 pools independantly.
+                                           ! For RD: these rates will be added, to construct a total
+                                           ! N demand, which will be applied to NH4 and then NO3
+                                           ! sequentially
+     real(r8), allocatable :: vmax0_p(:)   ! base maximum production rate for plant po4 uptake   [gP/gC/s]
 
      
 
@@ -634,24 +634,24 @@ contains
     EDPftvarcon_inst%eca_km_nh4(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_cnp_vmax_nh4')
-    allocate(EDPftvarcon_inst%vmax_nh4(numpft))
-    EDPftvarcon_inst%vmax_nh4(:) = param_p%r_data_1d(:)
+    allocate(EDPftvarcon_inst%vmax0_nh4(numpft))
+    EDPftvarcon_inst%vmax0_nh4(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_cnp_eca_km_no3')
     allocate(EDPftvarcon_inst%eca_km_no3(numpft))
     EDPftvarcon_inst%eca_km_no3(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_cnp_vmax_no3')
-    allocate(EDPftvarcon_inst%vmax_no3(numpft))
-    EDPftvarcon_inst%vmax_no3(:) = param_p%r_data_1d(:)
+    allocate(EDPftvarcon_inst%vmax0_no3(numpft))
+    EDPftvarcon_inst%vmax0_no3(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_cnp_eca_km_p')
     allocate(EDPftvarcon_inst%eca_km_p(numpft))
     EDPftvarcon_inst%eca_km_p(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_cnp_vmax_p')
-    allocate(EDPftvarcon_inst%vmax_p(numpft))
-    EDPftvarcon_inst%vmax_p(:) = param_p%r_data_1d(:)
+    allocate(EDPftvarcon_inst%vmax0_p(numpft))
+    EDPftvarcon_inst%vmax0_p(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_cnp_eca_km_ptase')
     allocate(EDPftvarcon_inst%eca_km_ptase(numpft))

@@ -39,8 +39,6 @@ module FatesCohortMod
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_netdc, acnp_bc_in_id_nc_repro
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_pc_repro, acnp_bc_in_id_cdamage
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_dbh, acnp_bc_inout_id_resp_excess
-  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_l2fr, acnp_bc_inout_id_cx_int
-  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_emadcxdt, acnp_bc_inout_id_cx0
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_netdn, acnp_bc_inout_id_netdp
   use PRTAllometricCNPMod,        only : acnp_bc_out_id_cefflux, acnp_bc_out_id_nefflux
   use PRTAllometricCNPMod,        only : acnp_bc_out_id_pefflux, acnp_bc_out_id_limiter
@@ -69,13 +67,13 @@ module FatesCohortMod
     ! Multi-species, multi-organ Plant Reactive Transport (PRT)
     ! Contains carbon and nutrient state variables for various plant organs
     class(prt_vartypes), pointer :: prt
-    real(r8)                     :: l2fr ! leaf to fineroot biomass ratio [kg root / kg leaf]
-                                            ! (this is constant in carbon only simulationss, and 
-                                            ! is set by the allom_l2fr parameter).  
-                                            ! For nutrient enabled simulations, this is dynamic.  
-                                            ! In cold-start simulations, the allom_l2fr 
-                                            ! parameter sets the starter value. 
-
+    real(r8)                     :: vmax_nh4 ! Maximum ammonium uptake capacity per fine-root [gN/gC/s]
+    real(r8)                     :: vmax_no3 ! Maximum nitrate uptake capacity per fine-root [gN/gC/s]
+    real(r8)                     :: vmax_po4 ! Maximum phosphate uptake capacity per fine-root [gP/gC/s]
+    real(r8)                     :: sobj_nh4 ! Smoothed ln-objective function driving vmax_nh4
+    real(r8)                     :: sobj_no3 ! Smoothed ln-objective function driving vmax_no3
+    real(r8)                     :: sobj_po4 ! Smoothed ln-objective function driving vmax_po4
+    
     !---------------------------------------------------------------------------
 
     ! VEGETATION STRUCTURE
@@ -171,10 +169,7 @@ module FatesCohortMod
 
     ! used for CNP
     integer  :: cnp_limiter               ! which element is limiting growth [0 = none, 1 = C, 2 = N, 3 = P]
-    real(r8) :: cx_int                    ! time integration of the log of the relative carbon storage over relative nutrient
-    real(r8) :: ema_dcxdt                 ! derivative of the log of the relative carbon storage over relative nutrient
-    real(r8) :: cx0                       !   value on the previous time-step of log of the relative carbon storage over 
-                                          !   relative nutrient
+
     real(r8) :: nc_repro                  ! N:C ratio of a new recruit, used also for defining reproductive stoich
     real(r8) :: pc_repro                  ! P:C ratio of a new recruit
 
@@ -355,7 +350,12 @@ module FatesCohortMod
       nullify(this%co_hydr)
    
       ! VEGETATION STRUCTURE
-      this%l2fr                    = nan 
+      this%vmax_nh4                = nan
+      this%vmax_no3                = nan
+      this%vmax_po4                = nan
+      this%sobj_nh4                = nan
+      this%sobj_no3                = nan
+      this%sobj_po4                = nan
       this%pft                     = fates_unset_int  
       this%n                       = nan
       this%dbh                     = nan
@@ -404,9 +404,6 @@ module FatesCohortMod
       this%year_net_uptake(:)      = nan 
       this%ts_net_uptake(:)        = nan
       this%cnp_limiter             = fates_unset_int
-      this%cx_int                  = nan
-      this%ema_dcxdt               = nan
-      this%cx0                     = nan
       this%nc_repro                = nan
       this%pc_repro                = nan
       this%daily_nh4_uptake        = nan
@@ -618,18 +615,16 @@ module FatesCohortMod
         call endrun(msg=errMsg(sourcefile, __LINE__))
       endif
 
-      ! Initialize the leaf to fineroot biomass ratio.
-      ! For C-only, this will stay constant, for nutrient-enabled this will be
-      ! dynamic.  In both cases, new cohorts are initialized with the minimum. 
-      ! This works in the nutrient enabled case because cohorts are also 
-      ! initialized with full stores, which match with minimum fineroot biomass
-      this%l2fr = prt_params%allom_l2fr(pft)
-
+      this%vmax_nh4 = EDPftvarcon_inst%vmax0_nh4
+      this%vmax_no3 = EDPftvarcon_inst%vmax0_no3
+      this%vmax_po4 = EDPftvarcon_inst%vmax0_po4
+      
       if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
-        this%cx_int      = 0._r8  ! Assume balanced N,P/C stores ie log(1) = 0
-        this%cx0         = 0._r8  ! Assume balanced N,P/C stores ie log(1) = 0
-        this%ema_dcxdt   = 0._r8  ! Assume unchanged dCX/dt
-        this%cnp_limiter = 0      ! Assume limitations are unknown
+         ! Set thes log-smoothed objective functions to neutral, ie ln(1) = 0
+         this%sobj_nh4 = 0._r8
+         this%sobj_no3 = 0._r8
+         this%sobj_po4 = 0._r8
+         this%cnp_limiter = 0      ! Assume limitations are unknown
       end if
 
       ! This sets things like vcmax25top, that depend on the leaf age fractions 
@@ -692,7 +687,6 @@ module FatesCohortMod
 
       ! PRT
       call copyCohort%prt%CopyPRTVartypes(this%prt)
-      copyCohort%l2fr                    = this%l2fr
       
       ! VEGETATION STRUCTURE
       copyCohort%pft                     = this%pft
@@ -744,9 +738,12 @@ module FatesCohortMod
       copyCohort%cnp_limiter             = this%cnp_limiter
 
       if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then 
-        copyCohort%cx_int                  = this%cx_int
-        copyCohort%ema_dcxdt               = this%ema_dcxdt
-        copyCohort%cx0                     = this%cx0
+         copyCohort%vmax_nh4 = this%vmax_nh4
+         copyCohort%vmax_no3 = this%vmax_no3
+         copyCohort%vmax_po4 = this%vmax_po4
+         copyCohort%sobj_nh4 = this%sobj_nh4
+         copyCohort%sobj_no3 = this%sobj_no3
+         copyCohort%sobj_po4 = this%sobj_po4
       end if 
 
       copyCohort%nc_repro                = this%nc_repro
@@ -905,10 +902,6 @@ module FatesCohortMod
         
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_dbh, bc_rval=this%dbh)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_resp_excess, bc_rval=this%resp_excess_hold)
-        call this%prt%RegisterBCInOut(acnp_bc_inout_id_l2fr, bc_rval=this%l2fr)
-        call this%prt%RegisterBCInOut(acnp_bc_inout_id_cx_int, bc_rval=this%cx_int)
-        call this%prt%RegisterBCInOut(acnp_bc_inout_id_emadcxdt, bc_rval=this%ema_dcxdt)
-        call this%prt%RegisterBCInOut(acnp_bc_inout_id_cx0, bc_rval=this%cx0)
         
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_netdn, bc_rval=this%daily_n_gain)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_netdp, bc_rval=this%daily_p_gain)
@@ -1081,7 +1074,6 @@ module FatesCohortMod
       write(fates_log(),*) 'cohort%height                 = ', this%height
       write(fates_log(),*) 'cohort%crowndamage            = ', this%crowndamage
       write(fates_log(),*) 'cohort%coage                  = ', this%coage
-      write(fates_log(),*) 'cohort%l2fr                   = ', this%l2fr
       write(fates_log(),*) 'leaf carbon                   = ', this%prt%GetState(leaf_organ,carbon12_element) 
       write(fates_log(),*) 'fineroot carbon               = ', this%prt%GetState(fnrt_organ,carbon12_element) 
       write(fates_log(),*) 'sapwood carbon                = ', this%prt%GetState(sapw_organ,carbon12_element) 
