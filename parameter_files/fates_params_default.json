@@ -12,6 +12,7 @@
     "fates_landuseclass": 5,
     "fates_leafage_class": 1,
     "fates_litterclass": 6,
+    "fates_aqueous_nutrient": 3,
     "fates_pft": 14,
     "fates_plant_organs": 4
   },
@@ -394,6 +395,20 @@
       "units": "ratio",
       "data": [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
     },
+    "fates_cnp_vmax_resp_factor":{
+	"dtype": "float",
+	"dims": ["fates_aqueous_nutrient"],
+	"long_name": "Fine-root respiration response scale from increase in vmax for each NH4,NO3 and PO4 respectively",
+	"units": "ratio",
+	"data": [0.333,0.333,0.333]
+    },
+      "fates_cnp_vmax_timescale":{
+	  "dtype": "float",
+	  "dims": ["fates_pft"],
+	  "long_name": "Number of days to smooth the objective function, and the number of days expected for doubling of of the the objective function (storage ratio) to double vmax",
+	  "units": "days",
+	  "data": [5,5,5,5,5,5,5,5,5,5,5,5,5,5],
+      },
     "fates_cnp_eca_alpha_ptase": {
       "dtype": "float",
       "dims": ["fates_pft"],
@@ -470,27 +485,6 @@
       "long_name": "storeable (labile) P, as a ratio compared to the P bound in cell structures of other organs (see code)",
       "units": "(gP/gP)",
       "data": [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
-    },
-    "fates_cnp_pid_kd": {
-      "dtype": "float",
-      "dims": ["fates_pft"],
-      "long_name": "derivative constant of the PID controller on adaptive fine-root biomass",
-      "units": "unknown",
-      "data": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    },
-    "fates_cnp_pid_ki": {
-      "dtype": "float",
-      "dims": ["fates_pft"],
-      "long_name": "integral constant of the PID controller on adaptive fine-root biomass",
-      "units": "unknown",
-      "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    },
-    "fates_cnp_pid_kp": {
-      "dtype": "float",
-      "dims": ["fates_pft"],
-      "long_name": "proportional constant of the PID controller on adaptive fine-root biomass",
-      "units": "unknown",
-      "data": [0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005]
     },
     "fates_cnp_prescribed_nuptake": {
       "dtype": "float",

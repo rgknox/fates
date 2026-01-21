@@ -38,6 +38,7 @@ contains
     real(r8), intent(out) :: mass_flux(ncomp)    ! Grams moved per competitor (g/m3 soil/s)
     
     real(r8) :: v_max_eff           ! Effective vmax of all competitors combined (sum)
+                                    ! (g/m3 h2o/s)
     real(r8) :: k_m_eff             ! Effective K_m of all competitors (harmonic mean)
     real(r8) :: mass_flux_tot       ! grams of nutrient moved (g/m3 soil/s)
     real(r8) :: initial_flux_total  ! total substrate flux at t0
@@ -45,7 +46,7 @@ contains
     integer  :: i                   ! competitor loop index
     
     ! 1. Calculate Effective Parameters
-    v_max_eff = sum(surf_exp * v_max)
+    v_max_eff = sum(surf_exp * v_max) 
     k_m_eff = v_max_eff / sum(v_max * surf_exp / k_m)
     
     ! 2. Solve for S_final using Newton's method
