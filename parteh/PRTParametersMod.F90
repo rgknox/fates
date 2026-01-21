@@ -174,12 +174,6 @@ module PRTParametersMod
      real(r8), allocatable :: allom_zroot_min_z(:)          ! the maximum rooting depth defined at dbh = fates_allom_zroot_min_dbh [m]
      real(r8), allocatable :: allom_zroot_k(:)              ! scale coefficient of logistic rooting depth model
      
-
-     ! PID controller parameters
-     real(r8), allocatable :: pid_kp(:)                     ! proportion constant in the PID controller for fine-root biomass
-     real(r8), allocatable :: pid_ki(:)                     ! integral constant in the PID controller for fine-root biomass
-     real(r8), allocatable :: pid_kd(:)                     ! derivative constant in the PID controller for fine-root biomass
-     
      real(r8), allocatable :: store_ovrflw_frac(:)          ! For a coupled nutrient enabled simulation with dynamic fine-root biomass,
                                                             ! there will be an excess of at least two of the three species C, N or P.
                                                             ! This specifies how much excess (overflow) is allowed to be retained in storage
@@ -189,6 +183,15 @@ module PRTParametersMod
 
      real(r8), allocatable :: nfix_mresp_scfrac(:)            ! Surcharge (as a fraction) to add to maintentance respiration
                                                             ! that is used to pay for N-Fixation
+
+     ! Fine-root respiration response scale from increase in vmax for each NH4, NO3 and PO4 respectively
+     real(r8), allocatable :: vmax_resp_factor(:)
+     
+     ! Number of days to smooth the objective function, and the
+     ! number of days expected for doubling of of the the objective
+     ! function (storage ratio) to double vmax",
+     real(r8), allocatable :: vmax_timescale(:)
+     
      
   end type prt_param_type
 
