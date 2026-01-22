@@ -169,7 +169,13 @@ contains
     call newCohort%Create(prt, pft, nn, height, coage, dbh, status, ctrim, carea,            &
       clayer, crowndamage, spread, patchptr%canopy_layer_tlai, elongf_leaf, elongf_fnrt,    &
       elongf_stem)
-      
+
+    if(hlm_parteh_mode.eq.prt_cnp_flex_allom_hyp)then
+       newCohort%vmax_nh4 = currentSite%rec_vmax_nh4(pft,clayer)
+       newCohort%vmax_no3 = currentSite%rec_vmax_no3(pft,clayer)
+       newCohort%vmax_po4 = currentSite%rec_vmax_po4(pft,clayer)
+    end if
+       
     ! Allocate running mean functions
 
     !  (Keeping as an example)
@@ -1040,6 +1046,7 @@ contains
 
                                       ! Nutrients
                                       if(hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
+
                                          
                                          currentCohort%vmax_nh4 = (currentCohort%n*currentCohort%vmax_nh4 &
                                               + nextc%n*nextc%vmax_nh4)/newn
@@ -1058,7 +1065,6 @@ contains
                                          
                                          currentCohort%sobj_po4 = (currentCohort%n*currentCohort%sobj_po4 &
                                               + nextc%n*nextc%sobj_po4)/newn
-                                         
                                          
                                          if(nextc%n > currentCohort%n) currentCohort%cnp_limiter = nextc%cnp_limiter
 
@@ -1446,7 +1452,7 @@ contains
       ! Target total dead (structrual) biomass [kgC]
       call bdead_allom( target_agw_c, target_bgw_c, target_sapw_c, ipft, target_struct_c)
       ! Target fine-root biomass according to allometry, trimming and phenology [kgC]
-      call bfineroot(dbh,ipft,canopy_trim,EDPftvarcon_inst%l2fr, elongf_fnrt, target_fnrt_c)
+      call bfineroot(dbh,ipft,canopy_trim,prt_params%allom_l2fr(ipft), elongf_fnrt, target_fnrt_c)
       ! Target storage carbon [kgC]
       call bstore_allom(dbh,ipft,ccohort%crowndamage-1, canopy_trim,target_store_c)
       ! Target leaf biomass according to allometry, trimming and phenology [kgC]

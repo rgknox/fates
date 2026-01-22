@@ -1009,10 +1009,21 @@ contains
 
                            call RootLayerNFixation(bc_in(s)%t_soisno_sl(j),ft,dtime,fnrt_mr_layer,fnrt_mr_nfix_layer,nfix_layer)
 
-                           currentCohort%froot_mr = currentCohort%froot_mr + fnrt_mr_nfix_layer + fnrt_mr_layer 
+                           currentCohort%froot_mr = currentCohort%froot_mr + fnrt_mr_nfix_layer
+
+                           ! With the CNP version of the code, we scale up and down fine-root respiration
+                           ! in coordination with scaling up and down vmax for the three aqueous species.
+                           case(hlm_parteh_mode)
+                           case (prt_carbon_allom_hyp)
+                              currentCohort%froot_mr = currentCohort%froot_mr + fnrt_mr_layer 
+                           case(prt_cnp_flex_allom_hyp)
+                              currentCohort%froot_mr = currentCohort%froot_mr + fnrt_mr_layer * (1._r8 + &
+                                   prt_params%vmax_resp_factor(1)*currentCohort%vmax_nh4/prt_params%vmax0_nh4 + &
+                                   prt_params%vmax_resp_factor(2)*currentCohort%vmax_no3/prt_params%vmax0_no3 + &
+                                   prt_params%vmax_resp_factor(3)*currentCohort%vmax_po4/prt_params%vmax0_po4)
+                           end do
 
                            currentCohort%sym_nfix_tstep = currentCohort%sym_nfix_tstep + nfix_layer
-
 
                         enddo
 

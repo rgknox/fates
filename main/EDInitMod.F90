@@ -233,11 +233,12 @@ contains
     allocate(site_in%use_this_pft(1:numpft))
     allocate(site_in%area_by_age(1:nlevage))
 
-    ! for CNP dynamics, track the mean l2fr of recruits
-    ! for different pfts and canopy positions
-    allocate(site_in%rec_l2fr(1:numpft,nclmax))
-
-
+    ! for CNP dynamics, track the mean vmax's
+    ! for recruit sized plants of different pfts and canopy positions
+    allocate(site_in%rec_vmax_nh4(1:numpft,nclmax))
+    allocate(site_in%rec_vmax_no3(1:numpft,nclmax))
+    allocate(site_in%rec_vmax_po4(1:numpft,nclmax))
+    
     ! SP mode
     allocate(site_in%sp_tlai(1:numpft))
     allocate(site_in%sp_tsai(1:numpft))
@@ -528,7 +529,9 @@ contains
           sites(s)%area_pft(:,:) = 0.0_r8
 
           do ft =  1,numpft
-             sites(s)%rec_l2fr(ft,:) = prt_params%allom_l2fr(ft)
+             sites(s)%rec_vmax_nh4(ft,:) = EDPftvarcon_inst%vmax0_nh4
+             sites(s)%rec_vmax_no3(ft,:) = EDPftvarcon_inst%vmax0_no3
+             sites(s)%rec_vmax_po4(ft,:) = EDPftvarcon_inst%vmax0_po4
           end do
 
           ! Its difficult to come up with a resonable starting smoothing value, so

@@ -40,6 +40,9 @@ module FatesCohortMod
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_pc_repro, acnp_bc_in_id_cdamage
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_dbh, acnp_bc_inout_id_resp_excess
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_netdn, acnp_bc_inout_id_netdp
+  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_nh4,acnp_bc_inout_id_vmax_no3
+  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_po4,acnp_bc_inout_id_sobj_nh4
+  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_sobj_no3,acnp_bc_inout_id_sobj_po4
   use PRTAllometricCNPMod,        only : acnp_bc_out_id_cefflux, acnp_bc_out_id_nefflux
   use PRTAllometricCNPMod,        only : acnp_bc_out_id_pefflux, acnp_bc_out_id_limiter
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_efleaf
@@ -902,9 +905,15 @@ module FatesCohortMod
         
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_dbh, bc_rval=this%dbh)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_resp_excess, bc_rval=this%resp_excess_hold)
-        
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_netdn, bc_rval=this%daily_n_gain)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_netdp, bc_rval=this%daily_p_gain)
+        call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_nh4, bc_rval=this%vmax_nh4)
+        call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_no3, bc_rval=this%vmax_no3)
+        call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_po4, bc_rval=this%vmax_po4)
+        call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_nh4, bc_rval=this%sobj_nh4)
+        call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_no3, bc_rval=this%sobj_no3)
+        call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_po4, bc_rval=this%sobj_po4)
+        
         
         call this%prt%RegisterBCOut(acnp_bc_out_id_cefflux, bc_rval=this%daily_c_efflux)
         call this%prt%RegisterBCOut(acnp_bc_out_id_nefflux, bc_rval=this%daily_n_efflux)

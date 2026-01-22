@@ -708,7 +708,7 @@ contains
           if ( int(prt_params%allom_fmode(ipft)) .eq. 1 ) then
              ! only query fine root biomass if using a fine root allometric model that takes leaf trim into account
              call bfineroot(currentcohort%dbh,ipft,currentcohort%canopy_trim, &
-                  EDPftvarcon_inst%l2fr,1.0_r8, tar_bfr)
+                  prt_params%allom_l2fr(ipft),1.0_r8, tar_bfr)
              bfr_per_bleaf = tar_bfr/tar_bl
           endif
 
@@ -1655,7 +1655,7 @@ contains
           call bleaf(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage, &
                currentCohort%canopy_trim,currentCohort%efleaf_coh,target_leaf_c)
           call bfineroot(currentCohort%dbh,currentCohort%pft, &
-               currentCohort%canopy_trim,EDPftvarcon_inst%l2fr,currentCohort%effnrt_coh,target_fnrt_c)
+               currentCohort%canopy_trim,prt_params%allom_l2fr(ipft),currentCohort%effnrt_coh,target_fnrt_c)
           call bsap_allom(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage, &
                currentCohort%canopy_trim,currentCohort%efstem_coh,sapw_area,target_sapw_c)
           call bagw_allom(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage,&
@@ -2549,7 +2549,6 @@ contains
             height             = EDPftvarcon_inst%hgt_min(ft)
             stem_drop_fraction = prt_params%phen_stem_drop_fraction(ft)
             fnrt_drop_fraction = prt_params%phen_fnrt_drop_fraction(ft)
-            l2fr               = EDPftvarcon_inst%l2fr(ft)
             crowndamage        = 1 ! new recruits are undamaged
 
             ! calculate DBH from initial height
@@ -2596,7 +2595,7 @@ contains
             ! calculate live pools
             call bleaf(dbh, ft, crowndamage, init_recruit_trim, efleaf_coh,    &
                c_leaf)
-            call bfineroot(dbh, ft, init_recruit_trim, l2fr, effnrt_coh, c_fnrt)
+            call bfineroot(dbh, ft, init_recruit_trim, prt_params%allom_l2fr(ft), effnrt_coh, c_fnrt)
             call bsap_allom(dbh, ft, crowndamage, init_recruit_trim,           &
                efstem_coh, a_sapw, c_sapw)
             call bagw_allom(dbh, ft, crowndamage, efstem_coh, c_agw)
@@ -3380,9 +3379,9 @@ contains
              csite%rec_vmax_nh4(ft,cl) = &
                   (1._r8-smth_wgt)*csite%rec_vmax_nh4(ft,cl) + smth_wgt*rec_vmax0_nh4(ft,cl)
              csite%rec_vmax_no3(ft,cl) = &
-                  (1._r8-smth_wgt)*csite%rec_vmax_no3(ft,cl) + smth_wgt*rec_vmax0_nh4(ft,cl)
-             csite%rec_vmax_nh4(ft,cl) = &
-                  (1._r8-smth_wgt)*csite%rec_vmax_nh4(ft,cl) + smth_wgt*rec_vmax0_nh4(ft,cl)
+                  (1._r8-smth_wgt)*csite%rec_vmax_no3(ft,cl) + smth_wgt*rec_vmax0_no3(ft,cl)
+             csite%rec_vmax_po4(ft,cl) = &
+                  (1._r8-smth_wgt)*csite%rec_vmax_po4(ft,cl) + smth_wgt*rec_vmax0_po4(ft,cl)
              
           end if
        end do
@@ -3400,10 +3399,6 @@ contains
     type(fates_cohort_type), pointer :: ccohort
     integer  :: ft                       ! functional type index
     integer  :: cl                       ! canopy layer index
-    real(r8) :: rec_l2fr_pft             ! Actual l2fr of a pft in it's patch
-
-    ! Update the total plant stoichiometry of a new recruit, based on the updated
-    ! L2FR values
 
     if(hlm_parteh_mode .ne. prt_cnp_flex_allom_hyp) return
 
@@ -3412,18 +3407,16 @@ contains
        cl = cpatch%ncl_p
 
        do ft = 1,numpft
-          rec_l2fr_pft = csite%rec_l2fr(ft,cl)
           cpatch%nitr_repro_stoich(ft) = &
-               NewRecruitTotalStoichiometry(ft,rec_l2fr_pft,nitrogen_element)
+               NewRecruitTotalStoichiometry(ft,prt_params%allom_l2fr(ft),nitrogen_element)
           cpatch%phos_repro_stoich(ft) = &
-               NewRecruitTotalStoichiometry(ft,rec_l2fr_pft,phosphorus_element)
+               NewRecruitTotalStoichiometry(ft,prt_params%allom_l2fr(ft),phosphorus_element)
        end do
 
        ccohort => cpatch%shortest
        cloop: do while(associated(ccohort))
-          rec_l2fr_pft = csite%rec_l2fr(ccohort%pft,cl)
-          ccohort%nc_repro = NewRecruitTotalStoichiometry(ccohort%pft,rec_l2fr_pft,nitrogen_element)
-          ccohort%pc_repro = NewRecruitTotalStoichiometry(ccohort%pft,rec_l2fr_pft,phosphorus_element)
+          ccohort%nc_repro = cpatch%nitr_repro_stoich(ccohort%pft)
+          ccohort%pc_repro = cpatch%phos_repro_stoich(ccohort%pft)
           ccohort => ccohort%taller
        end do cloop
 
@@ -3435,7 +3428,7 @@ contains
 
   ! ======================================================================
 
-  subroutine SetRecruitL2FR(csite)
+  subroutine SetRecruitVmax(csite)
 
 
     type(ed_site_type) :: csite
@@ -3449,11 +3442,12 @@ contains
     do while(associated(cpatch))
        ccohort => cpatch%shortest
        cloop: do while(associated(ccohort))
-
           if( ccohort%isnew ) then
              ft = ccohort%pft
              cl = ccohort%canopy_layer
-             ccohort%l2fr = csite%rec_l2fr(ft,cl)
+             ccohort%vmax_nh4 = csite%rec_vmax_nh4(ft,cl)
+             ccohort%vmax_no3 = csite%rec_vmax_no3(ft,cl)
+             ccohort%vmax_po4 = csite%rec_vmax_po4(ft,cl)
           end if
 
           ccohort => ccohort%taller
@@ -3463,6 +3457,6 @@ contains
     end do
 
     return
-  end subroutine SetRecruitL2FR
+  end subroutine SetRecruitVmax
 
 end module EDPhysiologyMod

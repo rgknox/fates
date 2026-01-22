@@ -181,7 +181,7 @@ module PRTParametersMod
                                                             ! maximum value is the target * (1+store_ovrflw_frac)
      
 
-     real(r8), allocatable :: nfix_mresp_scfrac(:)            ! Surcharge (as a fraction) to add to maintentance respiration
+     real(r8), allocatable :: nfix_mresp_scfrac(:)          ! Surcharge (as a fraction) to add to maintentance respiration
                                                             ! that is used to pay for N-Fixation
 
      ! Fine-root respiration response scale from increase in vmax for each NH4, NO3 and PO4 respectively

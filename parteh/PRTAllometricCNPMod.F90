@@ -156,16 +156,19 @@ module PRTAllometricCNPMod
   ! -------------------------------------------------------------------------------------
 
 
-  integer, public, parameter :: acnp_bc_inout_id_dbh        = 1  ! Plant DBH
+  integer, public, parameter :: acnp_bc_inout_id_dbh         = 1  ! Plant DBH
   integer, public, parameter :: acnp_bc_inout_id_resp_excess = 2  ! Respiration of excess storage
-  integer, public, parameter :: acnp_bc_inout_id_l2fr       = 3  ! leaf 2 fineroot scalar, this
-                                                                 ! is dynamic with CNP
-  integer, public, parameter :: acnp_bc_inout_id_netdn    = 4 ! Index for the net daily NH4 input BC
-  integer, public, parameter :: acnp_bc_inout_id_netdp    = 5 ! Index for the net daily P input BC
-  integer, public, parameter :: acnp_bc_inout_id_cx_int   = 6 ! Index for the EMA log storage ratio max(N,P)/C
-  integer, public, parameter :: acnp_bc_inout_id_cx0      = 7 ! Index for the previous step's log storage ratio max(N,P)/C
-  integer, public, parameter :: acnp_bc_inout_id_emadcxdt = 8 ! Index for the EMA log storage ratio derivative d max(NP)/C dt
-  integer, public, parameter :: num_bc_inout              = 8
+  integer, public, parameter :: acnp_bc_inout_id_netdn       = 3  ! Net daily N gain
+  integer, public, parameter :: acnp_bc_inout_id_netdp       = 4  ! Net daily P gain 
+
+  integer, public, parameter :: acnp_bc_inout_id_vmax_nh4    = 5
+  integer, public, parameter :: acnp_bc_inout_id_vmax_no3    = 6
+  integer, public, parameter :: acnp_bc_inout_id_vmax_po4    = 7
+  integer, public, parameter :: acnp_bc_inout_id_sobj_nh4    = 8
+  integer, public, parameter :: acnp_bc_inout_id_sobj_no3    = 9
+  integer, public, parameter :: acnp_bc_inout_id_sobj_po4    = 10
+  
+  integer, public, parameter :: num_bc_inout                 = 10
 
   ! -------------------------------------------------------------------------------------
   ! Input only Boundary Indices (These are public)
@@ -198,12 +201,11 @@ module PRTAllometricCNPMod
   ! Indices for parameters passed to the integrator
   integer,private, parameter :: intgr_parm_ctrim   = 1
   integer,private, parameter :: intgr_parm_pft     = 2
-  integer,private, parameter :: intgr_parm_l2fr    = 3
-  integer,private, parameter :: intgr_parm_cdamage = 4
-  integer,private, parameter :: intgr_parm_efleaf  = 5
-  integer,private, parameter :: intgr_parm_effnrt  = 6
-  integer,private, parameter :: intgr_parm_efstem  = 7
-  integer,private, parameter :: num_intgr_parm     = 7
+  integer,private, parameter :: intgr_parm_cdamage = 3
+  integer,private, parameter :: intgr_parm_efleaf  = 4
+  integer,private, parameter :: intgr_parm_effnrt  = 5
+  integer,private, parameter :: intgr_parm_efstem  = 6
+  integer,private, parameter :: num_intgr_parm     = 6
 
   ! -------------------------------------------------------------------------------------
   ! Define the size of the coorindate vector.  For this hypothesis, there is only
@@ -242,6 +244,7 @@ module PRTAllometricCNPMod
   ! reproductive tissues get balanced CNP
   logical, parameter :: prioritize_repro_nutr_growth = .true.
 
+  ! CURRENTLY UNUSED:
   ! If this parameter is true, then the fine-root l2fr optimization
   ! scheme will remove biomass from roots without restriction if the
   ! l2fr is getting smaller.
@@ -267,6 +270,7 @@ module PRTAllometricCNPMod
      procedure :: CNPAllocateRemainder
      procedure :: GetDeficit
      procedure :: TrimFineRoot
+     procedure :: UpdateVmax
   end type cnp_allom_prt_vartypes
 
 
@@ -384,7 +388,6 @@ contains
     ! Pointers to in-out bcs
     real(r8),pointer :: dbh          ! Diameter at breast height [cm]
     real(r8),pointer :: resp_excess   ! Respiration of any un-allocatable C
-    real(r8),pointer :: l2fr         ! Leaf to fineroot ratio of target biomass
 
     ! Input only bcs
     integer          :: ipft         ! Plant Functional Type index
@@ -441,7 +444,6 @@ contains
     resp_excess => this%bc_inout(acnp_bc_inout_id_resp_excess)%rval
     dbh         => this%bc_inout(acnp_bc_inout_id_dbh)%rval
     dbh0        =  dbh
-    l2fr        => this%bc_inout(acnp_bc_inout_id_l2fr)%rval
     n_gain      => this%bc_inout(acnp_bc_inout_id_netdn)%rval
     p_gain      => this%bc_inout(acnp_bc_inout_id_netdp)%rval
 
@@ -495,7 +497,7 @@ contains
     call bdead_allom(agw_c_target,bgw_c_target,target_c(sapw_organ),ipft,target_c(struct_organ), &
                      agw_dcdd_target,bgw_dcdd_target,target_dcdd(sapw_organ),target_dcdd(struct_organ))
     call bleaf(dbh,ipft,crown_damage,canopy_trim, elongf_leaf, target_c(leaf_organ), target_dcdd(leaf_organ))
-    call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_c(fnrt_organ), target_dcdd(fnrt_organ))
+    call bfineroot(dbh,ipft,canopy_trim,prt_params%allom_l2fr(ipft), elongf_fnrt, target_c(fnrt_organ), target_dcdd(fnrt_organ))
     call bstore_allom(dbh,ipft,crown_damage, canopy_trim, target_c(store_organ), target_dcdd(store_organ))
     target_c(repro_organ) = 0._r8
     target_dcdd(repro_organ) = 0._r8
@@ -705,8 +707,10 @@ contains
     ! If fine-roots are allocated above their
     ! target (perhaps with some buffer, but perhaps not)
     ! then
-    call this%TrimFineRoot()
+    !call this%TrimFineRoot()
 
+    call this%UpdateVmax(target_c(store_organ))
+    
     return
   end subroutine DailyPRTAllometricCNP
 
@@ -730,151 +734,91 @@ contains
 
   ! =====================================================================================
 
-  subroutine CNPAdjustVmax(this)
-
-  
-  subroutine CNPAdjustFRootTargets(this, target_c, target_dcdd)
+  subroutine UpdateVmax(this, target_c)
 
     class(cnp_allom_prt_vartypes) :: this
     real(r8)                      :: target_c(:)
-    real(r8)                      :: target_dcdd(:)
 
-    real(r8), pointer :: l2fr           ! leaf to fineroot target biomass scaler
-    integer           :: ipft           ! PFT index
-    real(r8), pointer :: dbh
-    real(r8)          :: canopy_trim
-    integer  :: leaf_status
-    integer, pointer :: limiter
-    real(r8) :: elongf_fnrt
     real(r8) :: store_c_max, store_c_act
     real(r8) :: store_nut_max, store_nut_act
-    real(r8) :: l2fr_delta
-    real(r8) :: cn_ratio, cp_ratio ! ratio of relative C storage over relative N or P storage
-    real(r8) :: dcxdt_ratio        ! log change (derivative) of the maximum of the N/C and P/C storage ratio
-    real(r8) :: cx_logratio        ! log Maximum of the C/N and C/P storage ratio
-    real(r8), pointer :: cx_int    ! Integration of the cx_logratio
-    real(r8), pointer :: cx0       ! The log of the cx ratio from previous time-step
-    real(r8), pointer :: ema_dcxdt ! the EMA of the change in log storage ratio
+    real(r8) :: zeta
+    logical, parameter :: use_carbon_objfunc = .false.
 
-    real(r8), parameter :: pid_drv_wgt = 1._r8/20._r8   ! n-day smoothing of the derivative
-                                                        ! of the process function in the PID controller
+    associate( &
+         ipft        => this%bc_in(acnp_bc_in_id_pft)%ival , &
+         elongf_fnrt => this%bc_in(acnp_bc_in_id_effnrt)%rval , &
+         canopy_trim => this%bc_in(acnp_bc_in_id_ctrim)%rval , &
+         leaf_status => this%bc_in(acnp_bc_in_id_lstat)%ival, &
+         dbh         => this%bc_inout(acnp_bc_inout_id_dbh)%rval , &
+         vmax_nh4    => this%bc_inout(acnp_bc_inout_id_vmax_nh4)%rval , &
+         vmax_no3    => this%bc_inout(acnp_bc_inout_id_vmax_no3)%rval , &
+         vmax_po4    => this%bc_inout(acnp_bc_inout_id_vmax_po4)%rval , &
+         sobj_nh4    => this%bc_inout(acnp_bc_inout_id_sobj_nh4)%rval , &
+         sobj_no3    => this%bc_inout(acnp_bc_inout_id_sobj_no3)%rval , &
+         sobj_po4    => this%bc_inout(acnp_bc_inout_id_sobj_po4)%rval)
 
-    leaf_status = this%bc_in(acnp_bc_in_id_lstat)%ival
-    ipft        = this%bc_in(acnp_bc_in_id_pft)%ival
-    elongf_fnrt = this%bc_in(acnp_bc_in_id_effnrt)%rval
-    l2fr        => this%bc_inout(acnp_bc_inout_id_l2fr)%rval
-    dbh         => this%bc_inout(acnp_bc_inout_id_dbh)%rval
-    canopy_trim =  this%bc_in(acnp_bc_in_id_ctrim)%rval
-    cx_int      => this%bc_inout(acnp_bc_inout_id_cx_int)%rval
-    cx0         => this%bc_inout(acnp_bc_inout_id_cx0)%rval
-    ema_dcxdt   => this%bc_inout(acnp_bc_inout_id_emadcxdt)%rval
-    limiter     => this%bc_out(acnp_bc_out_id_limiter)%ival
-    ! Abort if leaves are off
-    if(leaf_status.eq.leaves_off) return
+      zeta = 0.5_r8*(2._r8**(1._r8/prt_params%vmax_timescale(ipft)) - 1._r8)
 
 
-    ! Step 1: Determine the process function for the controller.  Generally, this is
-    ! some indicator about the relative health of the plant in terms of carbon versus
-    ! nutrient.  There are a few ways to cast this function, but right now we are using
-    ! the relative amount of Carbon storage (actual/maximum) divided by the relative amount
-    ! of nutrient (actual/maximum). We take the natural log of this ratio. And then we take
-    ! maximum of the two quotients that use nitrogen and phosphorus.
-    ! -----------------------------------------------------------------------------------
-
-    store_c_max = target_c(store_organ)
-
-    store_c_act = max(0.001_r8*store_c_max,this%GetState(store_organ, carbon12_element) + &
-         this%bc_in(acnp_bc_in_id_netdc)%rval)
-
-    if(n_uptake_mode.eq.prescribed_n_uptake)then
-       cn_ratio = -1._r8
-    else
-
-       ! Calculate the relative nitrogen storage fraction,
-       ! over the relative carbon storage fraction.
-
-       store_nut_max = this%GetNutrientTarget(nitrogen_element,store_organ,stoich_growth_min)
-
-       store_nut_act = max(0.001_r8*store_nut_max, &
-            this%GetState(store_organ, nitrogen_element) + &
-            this%bc_inout(acnp_bc_inout_id_netdn)%rval)
-
-       cn_ratio = (store_c_act/store_c_max)/(store_nut_act/store_nut_max)
-
-    end if
-
-    if(p_uptake_mode.eq.prescribed_p_uptake)then
-       cp_ratio = -1._r8
-    else
-
-       ! Calculate the relative phosphorus storage fraction,
-       ! over the relative carbon storage fraction.
-
-       store_nut_max = this%GetNutrientTarget(phosphorus_element,store_organ,stoich_growth_min)
-
-       store_nut_act = max(0.001_r8*store_nut_max, &
-            this%GetState(store_organ, phosphorus_element) + &
-            this%bc_inout(acnp_bc_inout_id_netdp)%rval)
-
-       cp_ratio = (store_c_act/store_c_max)/(store_nut_act/store_nut_max)
-
-    end if
-
-    ! Use the limiting nutrient species
-    if( (n_uptake_mode.eq.prescribed_n_uptake) .and. &
-         (p_uptake_mode.eq.prescribed_p_uptake) )then
-       cx_int = 0._r8
-       ema_dcxdt = 0._r8
-       cx0 = 0.0_r8
-       return
-    else
-
-       if (n_uptake_mode.eq.prescribed_n_uptake) then
-          cx_logratio = SafeLog(cp_ratio)
-       elseif (p_uptake_mode.eq.prescribed_p_uptake) then
-          cx_logratio = SafeLog(cn_ratio)
-       else
-          cx_logratio = SafeLog(max(cp_ratio,cn_ratio))
-       end if
-
-       ! If cx_logratio has just crossed zero, then
-       ! reset the integrator. This will be true if
-       ! the sign of the current ratio is different than
-       ! the sign of the previous
-
-       cx_int = cx_int + cx_logratio
-
-       ! Reset the integrator if its sign changes
-       if( abs(cx_logratio)>nearzero .and. abs(cx0)>nearzero) then
-          if( abs(cx_logratio/abs(cx_logratio) - cx0/abs(cx0)) > nearzero ) then
-             cx_int = cx_logratio
-          end if
-       end if
-
-       dcxdt_ratio = cx_logratio-cx0
-
-       ema_dcxdt = pid_drv_wgt*dcxdt_ratio + (1._r8-pid_drv_wgt)*ema_dcxdt
-
-       cx0 = cx_logratio
+      if(leaf_status.eq.leaves_off) return
 
 
-    end if
+      ! Step 1: Determine the current value of the objective function (storage ratio)
+      ! Step 2: Smooth the objective function with an exponential moving average
+      ! Step 3: Apply the update based on the smoothed objective function
+      ! -------------------------------------------------------------------------
 
-    l2fr_delta = prt_params%pid_kp(ipft)*cx_logratio + &
-         prt_params%pid_ki(ipft)*cx_int + &
-         prt_params%pid_kd(ipft)*ema_dcxdt
+      store_c_max = target_c(store_organ)
+      store_c_act = max(0.001_r8*store_c_max,this%GetState(store_organ, carbon12_element))
 
-    ! Apply the delta, also, avoid generating incredibly small l2fr's,
-    ! super small l2frs will occur in plants that perpetually get almost
-    ! now carbon gain, such as newly recruited plants in a dark understory
+      ! Dont uptake nitrogen uptake if we are in prescribed mode, or if the model is supplementing N...
+      if(n_uptake_mode.ne.prescribed_n_uptake .and. hlm_nitrogen_suppl.eq.ifalse)then
 
-    l2fr = max(l2fr_min, l2fr + l2fr_delta)
+         ! Calculate the relative nitrogen storage fraction,
+         ! over the relative carbon storage fraction.
 
-    ! Find the updated target fineroot biomass
-    call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_c(fnrt_organ),target_dcdd(fnrt_organ))
+         store_nut_max = this%GetNutrientTarget(nitrogen_element,store_organ,stoich_growth_min)
 
-    return
-  end subroutine CNPAdjustFRootTargets
+         store_nut_act = max(0.001_r8*store_nut_max, &
+              this%GetState(store_organ, nitrogen_element))
+
+         if(use_carb_objfunc)then
+            obj_ratio = (store_c_act/store_c_max)/(store_nut_act/store_nut_max)
+         else
+            obj_ratio = store_nut_max/store_nut_act
+         end if
+
+         sobj_nh4 = (sobj_nh4 * prt_params%vmax_timescale(ipft)) + log(obj_ratio))/(prt_params%vmax_timescale(ipft)+1._r8)
+         vmax_nh4 = vmax_nh4 * (1._r8 + zeta*exp(sobj_nh4))
+
+         ! Until we have source side limitations, both NH4 and NO3 react the same
+         ! because they have the same elemental sink imposed (nitrogen)
+
+         sobj_no3 = (sobj_no3 * prt_params%vmax_timescale(ipft) + log(obj_ratio))/(prt_params%vmax_timescale(ipft)+1._r8)
+         vmax_no3 = vmax_no3 * (1._r8 + zeta*exp(sobj_no3))
+
+      end if
+
+      if(p_uptake_mode.ne.prescribed_p_uptake .and. hlm_phosphorus_suppl.eq.ifalse)then
+
+         store_nut_max = this%GetNutrientTarget(phosphorus_element,store_organ,stoich_growth_min)
+
+         store_nut_act = max(0.001_r8*store_nut_max, &
+              this%GetState(store_organ, phosphorus_element)
+
+         if(use_carb_objfunc)then
+            obj_ratio = (store_c_act/store_c_max)/(store_nut_act/store_nut_max)
+         else
+            obj_ratio = store_nut_max/store_nut_act
+         end if
+
+         sobj_po4 = (sobj_po4 * prt_params%vmax_timescale(ipft) + log(obj_ratio))/(prt_params%vmax_timescale(ipft)+1._r8)
+         vmax_po4 = vmax_po4 * (1._r8 + zeta*exp(sobj_po4))
+
+      end if
+    end associate
+
+  end subroutine UpdateVmax
 
   ! =====================================================================================
 
@@ -904,13 +848,12 @@ contains
     if(.not.use_unrestricted_contraction)return
 
     associate( ipft         => this%bc_in(acnp_bc_in_id_pft)%ival,  &
-         l2fr         => this%bc_inout(acnp_bc_inout_id_l2fr)%rval, &
          dbh          => this%bc_inout(acnp_bc_inout_id_dbh)%rval,  &
          elongf_fnrt  => this%bc_in(acnp_bc_in_id_effnrt)%rval,     &
          canopy_trim  => this%bc_in(acnp_bc_in_id_ctrim)%rval)
 
       ! Find the updated target fineroot biomass
-      call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_fnrt_c)
+      call bfineroot(dbh,ipft,canopy_trim, prt_params%allom_l2fr(ipft), elongf_fnrt, target_fnrt_c)
 
       fnrt_flux_c = max(0._r8,this%variables(fnrt_c_id)%val(1)*(1._r8-nday_buffer*(years_per_day / prt_params%root_long(ipft))) - target_fnrt_c )
 
@@ -1308,7 +1251,6 @@ contains
     real(r8)          :: elongf_fnrt             ! Elongation factor (fine roots)
     real(r8)          :: elongf_stem             ! Elongation factor (woods)
     real(r8)          :: leaf_status             ! leaves on or off?
-    real(r8)          :: l2fr                    ! leaf to fineroot allometry multiplier
     integer  :: i, ii                            ! organ index loops (masked and unmasked)
     integer  :: i_org                            ! global organ index
     real(r8) :: total_dcostdd                    ! Total carbon transferred to all pools for unit growth
@@ -1386,8 +1328,6 @@ contains
     crown_damage = this%bc_in(acnp_bc_in_id_cdamage)%ival
     limiter     => this%bc_out(acnp_bc_out_id_limiter)%ival
     canopy_trim = this%bc_in(acnp_bc_in_id_ctrim)%rval
-    l2fr        = this%bc_inout(acnp_bc_inout_id_l2fr)%rval ! This variable is not updated in this
-                                                            ! routine, and is therefore not a pointer
 
     if( c_gain <= calloc_abs_error ) then
        limiter = c_limited
@@ -1418,7 +1358,6 @@ contains
     intgr_params(:)                  = fates_unset_r8
     intgr_params(intgr_parm_ctrim)   = this%bc_in(acnp_bc_in_id_ctrim)%rval
     intgr_params(intgr_parm_pft)     = real(this%bc_in(acnp_bc_in_id_pft)%ival,r8)
-    intgr_params(intgr_parm_l2fr)    = this%bc_inout(acnp_bc_inout_id_l2fr)%rval
     intgr_params(intgr_parm_cdamage) = real(this%bc_in(acnp_bc_in_id_cdamage)%ival,r8)
     intgr_params(intgr_parm_efleaf)  = this%bc_in(acnp_bc_in_id_efleaf)%rval
     intgr_params(intgr_parm_effnrt)  = this%bc_in(acnp_bc_in_id_effnrt)%rval
@@ -1649,7 +1588,7 @@ contains
             end do
 
             call CheckIntegratedAllometries(state_array_out(dbh_id),ipft,crown_damage,canopy_trim,  &
-                 elongf_leaf, elongf_fnrt, elongf_stem, l2fr, &
+                 elongf_leaf, elongf_fnrt, elongf_stem, prt_params%allom_l2fr(ipft), &
                  leafc_tp1, state_array_out(fnrt_id), state_array_out(sapw_id), &
                  state_array_out(store_id), state_array_out(struct_id), &
                  state_mask(leaf_id), state_mask(fnrt_id), state_mask(sapw_id), &
@@ -1730,7 +1669,7 @@ contains
                write(fates_log(),*) 'totalC',totalC,c_gain,neq_cgain,peq_cgain
                write(fates_log(),*) 'pft: ',ipft
                write(fates_log(),*) 'trim: ',canopy_trim
-               write(fates_log(),*) 'l2fr: ',l2fr
+               write(fates_log(),*) 'l2fr: ', prt_params%allom_l2fr(ipft)
                write(fates_log(),*) 'dbh: ',dbh
                write(fates_log(),*) 'elongf_leaf: ',elongf_leaf
                write(fates_log(),*) 'elongf_fnrt: ',elongf_fnrt
@@ -1749,7 +1688,7 @@ contains
                structc_tp1 = state_array_out(struct_id)
 
                call bleaf(dbh_tp1,ipft,crown_damage,canopy_trim, elongf_leaf, leaf_c_target_tp1)
-               call bfineroot(dbh_tp1,ipft,canopy_trim,l2fr, elongf_fnrt, fnrt_c_target_tp1)
+               call bfineroot(dbh_tp1,ipft,canopy_trim,prt_params%allom_l2fr(ipft), elongf_fnrt, fnrt_c_target_tp1)
                call bsap_allom(dbh_tp1,ipft,crown_damage,canopy_trim, elongf_stem, sapw_area,sapw_c_target_tp1)
                call bagw_allom(dbh_tp1,ipft,crown_damage, elongf_stem, agw_c_target_tp1)
                call bbgw_allom(dbh_tp1,ipft, elongf_stem, bgw_c_target_tp1)
@@ -1853,8 +1792,6 @@ contains
     real(r8), dimension(num_organs) :: deficit_p
     real(r8) :: target_n
     real(r8) :: target_p
-    logical  :: limiting_p
-    logical  :: limiting_n
     real(r8) :: store_c_target   ! Target amount of C in storage including "overflow" [kgC]
     real(r8) :: total_c_flux     ! Total C flux from gains into storage and growth R [kgC]
     real(r8), pointer :: dbh
@@ -1904,18 +1841,6 @@ contains
     ! Phosphorus
     call ProportionalNutrAllocation(this,deficit_p(1:num_organs), &
          p_gain, phosphorus_element, l2g_organ_list(1:num_organs))
-
-
-    ! This routine updates the l2fr (leaf 2 fine-root multiplier) variable
-    ! It will also update the target
-
-    ! turn on the dynamic L2FR if either nutrient in not being supplemented
-    limiting_p = ((p_uptake_mode .eq. coupled_p_uptake) .and. (hlm_phosphorus_suppl .eq. ifalse))
-    limiting_n = ((n_uptake_mode .eq. coupled_p_uptake) .and. (hlm_nitrogen_suppl .eq. ifalse))
-
-    if (limiting_p .or. limiting_n) then
-      call this%CNPAdjustFRootTargets(target_c,target_dcdd)
-    end if
 
     ! -----------------------------------------------------------------------------------
     ! If carbon is still available, lets cram some into storage overflow
@@ -2071,7 +1996,6 @@ contains
     real(r8)         :: target_c
     real(r8),pointer :: dbh
     real(r8)         :: canopy_trim
-    real(r8)         :: l2fr
     integer          :: ipft
     integer          :: i_cvar
     integer          :: crown_damage
@@ -2092,7 +2016,6 @@ contains
     elongf_fnrt = this%bc_in(acnp_bc_in_id_effnrt)%rval
     elongf_stem = this%bc_in(acnp_bc_in_id_efstem)%rval
     i_cvar      = prt_global%sp_organ_map(organ_id,carbon12_element)
-    l2fr        = this%bc_inout(acnp_bc_inout_id_l2fr)%rval
     nc_repro    = this%bc_in(acnp_bc_in_id_nc_repro)%rval
     pc_repro    = this%bc_in(acnp_bc_in_id_pc_repro)%rval
     crown_damage = this%bc_in(acnp_bc_in_id_cdamage)%ival
@@ -2109,7 +2032,7 @@ contains
       ! more details: https://github.com/NGEET/fates/pull/1348
 
       call bleaf(dbh,ipft,crown_damage,canopy_trim, 1.0_r8, leaf_c_target)
-      call bfineroot(dbh,ipft,canopy_trim,l2fr, 1.0_r8, fnrt_c_target)
+      call bfineroot(dbh,ipft,canopy_trim,prt_params%allom_l2fr(ipft), 1.0_r8, fnrt_c_target)
       call bsap_allom(dbh,ipft,crown_damage,canopy_trim, 1.0_r8, sapw_area,sapw_c_target)
       call bagw_allom(dbh,ipft,crown_damage, 1.0_r8, agw_c_target)
       call bbgw_allom(dbh,ipft, 1.0_r8, bgw_c_target)
@@ -2295,7 +2218,6 @@ contains
       integer  :: ipft             ! PFT index
       real(r8) :: canopy_trim      ! Canopy trimming function (boundary condition [0-1]
       integer  :: crown_damage     ! Damage class
-      real(r8) :: l2fr             ! leaf to fineroot biomass multiplier
       real(r8) :: leaf_c_target    ! target leaf biomass, dummy var (kgC)
       real(r8) :: fnrt_c_target    ! target fine-root biomass, dummy var (kgC)
       real(r8) :: sapw_c_target    ! target sapwood biomass, dummy var (kgC)
@@ -2335,14 +2257,13 @@ contains
 
         canopy_trim  = intgr_params(intgr_parm_ctrim)
         ipft         = int(intgr_params(intgr_parm_pft))
-        l2fr         = intgr_params(intgr_parm_l2fr)
         crown_damage = int(intgr_params(intgr_parm_cdamage))
         elongf_leaf  = intgr_params(intgr_parm_efleaf)
         elongf_fnrt  = intgr_params(intgr_parm_effnrt)
         elongf_stem  = intgr_params(intgr_parm_efstem)
 
         call bleaf(dbh,ipft,crown_damage,canopy_trim, elongf_leaf, leaf_c_target,leaf_dcdd_target)
-        call bfineroot(dbh,ipft,canopy_trim,l2fr, elongf_fnrt, fnrt_c_target,fnrt_dcdd_target)
+        call bfineroot(dbh,ipft,canopy_trim, prt_params%allom_l2fr(ipft), elongf_fnrt, fnrt_c_target,fnrt_dcdd_target)
         call bsap_allom(dbh,ipft,crown_damage,canopy_trim, elongf_stem, sapw_area,sapw_c_target,sapw_dcdd_target)
         call bagw_allom(dbh,ipft,crown_damage, elongf_stem,agw_c_target,agw_dcdd_target)
         call bbgw_allom(dbh,ipft, elongf_stem,bgw_c_target,bgw_dcdd_target)

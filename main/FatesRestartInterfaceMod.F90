@@ -123,13 +123,12 @@ module FatesRestartInterfaceMod
   integer :: ir_canopy_layer_yesterday_co
   integer :: ir_crowndamage_co
   integer :: ir_canopy_trim_co
-  integer :: ir_l2fr_co
-
   integer :: ir_year_net_up_co
 
-  integer :: ir_cx_int_co
-  integer :: ir_emadcxdt_co
-  integer :: ir_cx0_co
+  integer :: ir_vmax_nh4_co,ir_sobj_nh4_co
+  integer :: ir_vmax_no3_co,ir_sobj_no3_co
+  integer :: ir_vmax_po4_co,ir_sobj_po4_co
+  
   integer :: ir_cnplimiter_co
   integer :: ir_daily_nh4_uptake_co
   integer :: ir_daily_no3_uptake_co
@@ -239,7 +238,11 @@ module FatesRestartInterfaceMod
   integer :: ir_elong_factor_sift
   integer :: ir_liqvolmem_siwmft
   integer :: ir_smpmem_siwmft
-  integer :: ir_recl2fr_sipfcl
+
+  integer :: ir_rec_vmaxnh4_sipfcl
+  integer :: ir_rec_vmaxno3_sipfcl
+  integer :: ir_rec_vmaxpo4_sipfcl
+  
   integer :: ir_vegtempmem_sitm
   integer :: ir_seed_bank_sift
   integer :: ir_spread_si
@@ -832,23 +835,31 @@ contains
          long_name='ed cohort - canopy_trim', units='fraction', flushval = flushzero, &
          hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_canopy_trim_co )
 
-    call this%set_restart_var(vname='fates_l2fr', vtype=cohort_r8, &
-         long_name='ed cohort - l2fr', units='fraction', flushval = flushzero, &
-         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_l2fr_co )
-
     if(hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
     
-       call this%set_restart_var(vname='fates_cx_int', vtype=cohort_r8, &
-            long_name='ed cohort - emacx', units='fraction', flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_cx_int_co )
-
-       call this%set_restart_var(vname='fates_emadcxdt', vtype=cohort_r8, &
-            long_name='ed cohort - emadcxdt', units='fraction', flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_emadcxdt_co )
+       call this%set_restart_var(vname='fates_vmax_nh4', vtype=cohort_r8, &
+            long_name='ed cohort - vmax_nh4', units='', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_vmax_nh4_co )
        
-       call this%set_restart_var(vname='fates_cx0', vtype=cohort_r8, &
-            long_name='ed cohort - cx0', units='fraction', flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_cx0_co )
+       call this%set_restart_var(vname='fates_vmax_no3', vtype=cohort_r8, &
+            long_name='ed cohort - vmax_no3', units='', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_vmax_no3_co )
+       
+       call this%set_restart_var(vname='fates_vmax_po4', vtype=cohort_r8, &
+            long_name='ed cohort - vmax_po4', units='', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_vmax_po4_co )
+
+       call this%set_restart_var(vname='fates_sobj_nh4', vtype=cohort_r8, &
+            long_name='ed cohort - sobj_nh4', units='', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_sobj_nh4_co )
+       
+       call this%set_restart_var(vname='fates_sobj_no3', vtype=cohort_r8, &
+            long_name='ed cohort - sobj_no3', units='', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_sobj_no3_co )
+       
+       call this%set_restart_var(vname='fates_sobj_po4', vtype=cohort_r8, &
+            long_name='ed cohort - sobj_po4', units='', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_sobj_po4_co )
        
        call this%set_restart_var(vname='fates_cnplimiter', vtype=cohort_r8, &
             long_name='ed cohort - cnp limiter index', units='index', flushval = flushzero, &
@@ -1375,11 +1386,21 @@ contains
          long_name='leaf elongation factor (0 - completely abscissed; 1 - completely flushed)', units='unitless', flushval = flushinvalid, &
          hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_elong_factor_sift )
 
-    call this%set_restart_var(vname='fates_recruit_l2fr', vtype=cohort_r8, &
-         long_name='site-level mean recruit l2frs, by pft x canopy layer', &
+    call this%set_restart_var(vname='fates_recruit_vmax_nh4', vtype=cohort_r8, &
+         long_name='site-level mean recruit vmax_nh4, by pft x canopy layer', &
          units='-', flushval = flushzero, &
-         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_recl2fr_sipfcl)
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_vmaxnh4_sipfcl)
 
+    call this%set_restart_var(vname='fates_recruit_vmax_no3', vtype=cohort_r8, &
+         long_name='site-level mean recruit vmax_no3, by pft x canopy layer', &
+         units='-', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_vmaxno3_sipfcl)
+
+    call this%set_restart_var(vname='fates_recruit_vmax_po4', vtype=cohort_r8, &
+         long_name='site-level mean recruit vmax_po4, by pft x canopy layer', &
+         units='-', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_vmaxpo4_sipfcl)
+    
     call this%set_restart_var(vname='fates_liqvol_memory', vtype=cohort_r8, &
          long_name='last 10 days of volumetric soil water, by site x day-index', &
          units='m3/m3', flushval = flushzero, &
@@ -2303,7 +2324,6 @@ contains
            rio_canopy_layer_yesterday_co    => this%rvars(ir_canopy_layer_yesterday_co)%r81d, &
            rio_crowndamage_co          => this%rvars(ir_crowndamage_co)%int1d, &
            rio_canopy_trim_co          => this%rvars(ir_canopy_trim_co)%r81d, &
-           rio_l2fr_co                 => this%rvars(ir_l2fr_co)%r81d, &
            rio_seed_prod_co            => this%rvars(ir_seed_prod_co)%r81d, &
            rio_size_class_lasttimestep => this%rvars(ir_size_class_lasttimestep_co)%int1d, &
            rio_dbh_co                  => this%rvars(ir_dbh_co)%r81d, &
@@ -2354,7 +2374,9 @@ contains
            rio_elong_factor_sift       => this%rvars(ir_elong_factor_sift)%r81d, &
            rio_liqvolmem_siwmft        => this%rvars(ir_liqvolmem_siwmft)%r81d, &
            rio_smpmem_siwmft           => this%rvars(ir_smpmem_siwmft)%r81d, &
-           rio_recl2fr_sipfcl          => this%rvars(ir_recl2fr_sipfcl)%r81d, &
+           rio_rec_vmaxnh4_sipfcl      => this%rvars(ir_rec_vmaxnh4_sipfcl)%r81d, &
+           rio_rec_vmaxno3_sipfcl      => this%rvars(ir_rec_vmaxno3_sipfcl)%r81d, &
+           rio_rec_vmaxpo4_sipfcl      => this%rvars(ir_rec_vmaxpo4_sipfcl)%r81d, &
            rio_vegtempmem_sitm         => this%rvars(ir_vegtempmem_sitm)%r81d, &
            rio_recrate_sift            => this%rvars(ir_recrate_sift)%r81d, &
            rio_use_this_pft_sift       => this%rvars(ir_use_this_pft_sift)%int1d, &
@@ -2675,8 +2697,6 @@ contains
 
                 call this%SetCohortRealVector(ccohort%year_net_uptake,nlevleaf,ir_year_net_up_co,io_idx_co)
 
-                rio_l2fr_co(io_idx_co)         = ccohort%l2fr
-                
                 if(hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
                    this%rvars(ir_cx_int_co)%r81d(io_idx_co)       = ccohort%cx_int
                    this%rvars(ir_emadcxdt_co)%r81d(io_idx_co)     = ccohort%ema_dcxdt
@@ -2994,7 +3014,9 @@ contains
 
           do i = 1,nclmax
              do i_pft = 1, numpft
-                rio_recl2fr_sipfcl(io_idx_si_pfcl ) = sites(s)%rec_l2fr(i_pft,i)
+                rio_rec_vmaxnh4_sipfcl(io_idx_si_pfcl ) = sites(s)%rec_vmax_nh4(i_pft,i)
+                rio_rec_vmaxno3_sipfcl(io_idx_si_pfcl ) = sites(s)%rec_vmax_no3(i_pft,i)
+                rio_rec_vmaxpo4_sipfcl(io_idx_si_pfcl ) = sites(s)%rec_vmax_po4(i_pft,i)
                 io_idx_si_pfcl = io_idx_si_pfcl + 1
              end do
           end do
@@ -3364,7 +3386,6 @@ contains
           rio_canopy_layer_yesterday_co         => this%rvars(ir_canopy_layer_yesterday_co)%r81d, &
           rio_crowndamage_co          => this%rvars(ir_crowndamage_co)%int1d, &
           rio_canopy_trim_co          => this%rvars(ir_canopy_trim_co)%r81d, &
-          rio_l2fr_co                 => this%rvars(ir_l2fr_co)%r81d, &
           rio_seed_prod_co            => this%rvars(ir_seed_prod_co)%r81d, &
           rio_size_class_lasttimestep => this%rvars(ir_size_class_lasttimestep_co)%int1d, &
           rio_dbh_co                  => this%rvars(ir_dbh_co)%r81d, &
@@ -3415,7 +3436,9 @@ contains
           rio_elong_factor_sift       => this%rvars(ir_elong_factor_sift)%r81d, &
           rio_liqvolmem_siwmft        => this%rvars(ir_liqvolmem_siwmft)%r81d, &
           rio_smpmem_siwmft           => this%rvars(ir_smpmem_siwmft)%r81d, &
-          rio_recl2fr_sipfcl          => this%rvars(ir_recl2fr_sipfcl)%r81d, &
+          rio_rec_vmaxnh4_sipfcl      => this%rvars(ir_rec_vmaxnh4_sipfcl)%r81d, &
+          rio_rec_vmaxno3_sipfcl      => this%rvars(ir_rec_vmaxno3_sipfcl)%r81d, &
+          rio_rec_vmaxpo4_sipfcl      => this%rvars(ir_rec_vmaxpo4_sipfcl)%r81d, &
           rio_vegtempmem_sitm         => this%rvars(ir_vegtempmem_sitm)%r81d, &
           rio_recrate_sift            => this%rvars(ir_recrate_sift)%r81d, &
           rio_use_this_pft_sift       => this%rvars(ir_use_this_pft_sift)%int1d, &
@@ -3957,7 +3980,9 @@ contains
 
           do i = 1,nclmax
              do i_pft = 1, numpft
-                sites(s)%rec_l2fr(i_pft,i) = rio_recl2fr_sipfcl(io_idx_si_pfcl)
+                sites(s)%rec_vmax_nh4(i_pft,i) = rio_rec_vmaxnh4_sipfcl(io_idx_si_pfcl )
+                sites(s)%rec_vmax_no3(i_pft,i) = rio_rec_vmaxno3_sipfcl(io_idx_si_pfcl )
+                sites(s)%rec_vmax_po4(i_pft,i) = rio_rec_vmaxpo4_sipfcl(io_idx_si_pfcl )
                 io_idx_si_pfcl = io_idx_si_pfcl + 1
              end do
           end do

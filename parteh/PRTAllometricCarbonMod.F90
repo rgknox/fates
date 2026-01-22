@@ -1050,10 +1050,9 @@ module PRTAllometricCarbonMod
         elongf_fnrt = intgr_params(ac_bc_in_id_effnrt)
         elongf_stem = intgr_params(ac_bc_in_id_efstem)
         crowndamage = int(intgr_params(ac_bc_in_id_cdamage))
-        l2fr        = prt_params%allom_l2fr(ipft)
 
         call bleaf(dbh,ipft,crowndamage,canopy_trim, elongf_leaf, ct_leaf, dbldd=ct_dleafdd)
-        call bfineroot(dbh,ipft,canopy_trim,l2fr, elongf_fnrt, ct_fnrt,ct_dfnrtdd)
+        call bfineroot(dbh,ipft,canopy_trim,prt_params%allom_l2fr(ipft), elongf_fnrt, ct_fnrt,ct_dfnrtdd)
         call bsap_allom(dbh,ipft, crowndamage, canopy_trim, elongf_stem, sapw_area,ct_sap,ct_dsapdd)
         call bagw_allom(dbh,ipft,crowndamage, elongf_stem, ct_agw,ct_dagwdd)
         call bbgw_allom(dbh,ipft, elongf_stem, ct_bgw, ct_dbgwdd)
