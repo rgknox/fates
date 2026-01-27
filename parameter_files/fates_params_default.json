@@ -407,7 +407,7 @@
 	  "dims": ["fates_pft"],
 	  "long_name": "Number of days to smooth the objective function, and the number of days expected for doubling of of the the objective function (storage ratio) to double vmax",
 	  "units": "days",
-	  "data": [5,5,5,5,5,5,5,5,5,5,5,5,5,5],
+	  "data": [5,5,5,5,5,5,5,5,5,5,5,5,5,5]
       },
     "fates_cnp_eca_alpha_ptase": {
       "dtype": "float",

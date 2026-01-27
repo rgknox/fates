@@ -266,7 +266,7 @@ module PRTAllometricCNPMod
      procedure :: CNPPrioritizedReplacement
      procedure :: CNPStatureGrowth
      procedure :: EstimateGrowthNC
-     procedure :: CNPAdjustFRootTargets
+     !procedure :: CNPAdjustFRootTargets
      procedure :: CNPAllocateRemainder
      procedure :: GetDeficit
      procedure :: TrimFineRoot
@@ -709,7 +709,7 @@ contains
     ! then
     !call this%TrimFineRoot()
 
-    call this%UpdateVmax(target_c(store_organ))
+    call this%UpdateVmax(target_c)
     
     return
   end subroutine DailyPRTAllometricCNP
@@ -742,6 +742,7 @@ contains
     real(r8) :: store_c_max, store_c_act
     real(r8) :: store_nut_max, store_nut_act
     real(r8) :: zeta
+    real(r8) :: obj_ratio
     logical, parameter :: use_carbon_objfunc = .false.
 
     associate( &
@@ -782,13 +783,13 @@ contains
          store_nut_act = max(0.001_r8*store_nut_max, &
               this%GetState(store_organ, nitrogen_element))
 
-         if(use_carb_objfunc)then
+         if(use_carbon_objfunc)then
             obj_ratio = (store_c_act/store_c_max)/(store_nut_act/store_nut_max)
          else
             obj_ratio = store_nut_max/store_nut_act
          end if
 
-         sobj_nh4 = (sobj_nh4 * prt_params%vmax_timescale(ipft)) + log(obj_ratio))/(prt_params%vmax_timescale(ipft)+1._r8)
+         sobj_nh4 = (sobj_nh4 * prt_params%vmax_timescale(ipft) + log(obj_ratio))/(prt_params%vmax_timescale(ipft)+1._r8)
          vmax_nh4 = vmax_nh4 * (1._r8 + zeta*exp(sobj_nh4))
 
          ! Until we have source side limitations, both NH4 and NO3 react the same
@@ -804,9 +805,9 @@ contains
          store_nut_max = this%GetNutrientTarget(phosphorus_element,store_organ,stoich_growth_min)
 
          store_nut_act = max(0.001_r8*store_nut_max, &
-              this%GetState(store_organ, phosphorus_element)
+              this%GetState(store_organ, phosphorus_element))
 
-         if(use_carb_objfunc)then
+         if(use_carbon_objfunc)then
             obj_ratio = (store_c_act/store_c_max)/(store_nut_act/store_nut_max)
          else
             obj_ratio = store_nut_max/store_nut_act

@@ -1,6 +1,7 @@
 module FatesInterfaceTypesMod
   
   use FatesConstantsMod   , only : r8 => fates_r8
+  use FatesConstantsMod   , only : fates_unset_r8
   use FatesConstantsMod   , only : itrue,ifalse
   use FatesGlobals        , only : fates_global_verbose
   use FatesGlobals        , only : fates_log
@@ -709,8 +710,9 @@ module FatesInterfaceTypesMod
                                              ! kinetics (exact meaning differs between
                                              ! soil BGC hypotheses)
 
-
-
+      real(r8), pointer :: vmax_nh4(:)       ! Vmax for NH4 of each competitor (gN/gC/s)
+      real(r8), pointer :: vmax_no3(:)       ! Vmax for NO3 of each competitor (gN/gC/s)
+      real(r8), pointer :: vmax_po4(:)       ! Vmax for PO4 of each competitor (gP/gC/s)
 
       ! RD Nutrient Boundary Conditions
       ! ---------------------------------------------------------------------------------
@@ -846,8 +848,8 @@ module FatesInterfaceTypesMod
     ! !ARGUMENTS
     type(bc_out_type), intent(inout)   :: bc_out
 
-    bc_out%grazing_closs_to_atm_si = nan    ! set via site_mass%burn_flux
-    bc_out%fire_closs_to_atm_si    = nan    ! set via site_mass%herbivory_flux_out
+    bc_out%grazing_closs_to_atm_si = fates_unset_r8    ! set via site_mass%burn_flux
+    bc_out%fire_closs_to_atm_si    = fates_unset_r8    ! set via site_mass%herbivory_flux_out
     bc_out%gpp_site                = 0._r8
     bc_out%ar_site                 = 0._r8
 

@@ -2698,9 +2698,12 @@ contains
                 call this%SetCohortRealVector(ccohort%year_net_uptake,nlevleaf,ir_year_net_up_co,io_idx_co)
 
                 if(hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
-                   this%rvars(ir_cx_int_co)%r81d(io_idx_co)       = ccohort%cx_int
-                   this%rvars(ir_emadcxdt_co)%r81d(io_idx_co)     = ccohort%ema_dcxdt
-                   this%rvars(ir_cx0_co)%r81d(io_idx_co)          = ccohort%cx0
+                   this%rvars(ir_vmax_nh4_co)%r81d(io_idx_co)   = ccohort%vmax_nh4
+                   this%rvars(ir_sobj_nh4_co)%r81d(io_idx_co)   = ccohort%sobj_nh4
+                   this%rvars(ir_vmax_no3_co)%r81d(io_idx_co)   = ccohort%vmax_no3
+                   this%rvars(ir_sobj_no3_co)%r81d(io_idx_co)   = ccohort%sobj_no3
+                   this%rvars(ir_vmax_po4_co)%r81d(io_idx_co)   = ccohort%vmax_po4
+                   this%rvars(ir_sobj_po4_co)%r81d(io_idx_co)   = ccohort%sobj_po4
                    this%rvars(ir_cnplimiter_co)%r81d(io_idx_co)   = real(ccohort%cnp_limiter,r8)
                    this%rvars(ir_daily_no3_uptake_co)%r81d(io_idx_co) = ccohort%daily_no3_uptake
                    this%rvars(ir_daily_nh4_uptake_co)%r81d(io_idx_co) = ccohort%daily_nh4_uptake
@@ -3736,14 +3739,16 @@ contains
                 ccohort%canopy_layer_yesterday = rio_canopy_layer_yesterday_co(io_idx_co)
                 ccohort%crowndamage  = rio_crowndamage_co(io_idx_co)
                 ccohort%canopy_trim  = rio_canopy_trim_co(io_idx_co)
-                ccohort%l2fr         = rio_l2fr_co(io_idx_co)
 
                 call this%GetCohortRealVector(ccohort%year_net_uptake,nlevleaf,ir_year_net_up_co,io_idx_co)
 
                 if(hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
-                   ccohort%cx_int       = this%rvars(ir_cx_int_co)%r81d(io_idx_co)
-                   ccohort%ema_dcxdt    = this%rvars(ir_emadcxdt_co)%r81d(io_idx_co)
-                   ccohort%cx0          = this%rvars(ir_cx0_co)%r81d(io_idx_co)
+                   ccohort%vmax_nh4 = this%rvars(ir_vmax_nh4_co)%r81d(io_idx_co)
+                   ccohort%sobj_nh4 = this%rvars(ir_sobj_nh4_co)%r81d(io_idx_co)
+                   ccohort%vmax_no3 = this%rvars(ir_vmax_no3_co)%r81d(io_idx_co)
+                   ccohort%sobj_no3 = this%rvars(ir_sobj_no3_co)%r81d(io_idx_co)
+                   ccohort%vmax_po4 = this%rvars(ir_vmax_po4_co)%r81d(io_idx_co)
+                   ccohort%sobj_po4 = this%rvars(ir_sobj_po4_co)%r81d(io_idx_co)
                    ccohort%cnp_limiter  = int(this%rvars(ir_cnplimiter_co)%r81d(io_idx_co))
                    ccohort%daily_nh4_uptake = this%rvars(ir_daily_nh4_uptake_co)%r81d(io_idx_co)
                    ccohort%daily_no3_uptake = this%rvars(ir_daily_no3_uptake_co)%r81d(io_idx_co)

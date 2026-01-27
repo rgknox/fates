@@ -50,9 +50,9 @@ module EDMainMod
  
   use EDPhysiologyMod          , only : PreDisturbanceLitterFluxes
   use EDPhysiologyMod          , only : PreDisturbanceIntegrateLitter
-  use EDPhysiologyMod          , only : UpdateRecruitL2FR
+  use EDPhysiologyMod          , only : UpdateRecruitVmax
   use EDPhysiologyMod          , only : UpdateRecruitStoich
-  use EDPhysiologyMod          , only : SetRecruitL2FR
+  use EDPhysiologyMod          , only : SetRecruitVmax
   use EDPhysiologyMod          , only : GenerateDamageAndLitterFluxes
   use FatesSoilBGCFluxMod      , only : FluxIntoLitterPools
   use FatesSoilBGCFluxMod      , only : EffluxIntoLitterPools
@@ -734,7 +734,7 @@ contains
    ! pfts and canopy layer. We use this mean to
    ! set the L2FRs of newly recruited plants
    
-   call UpdateRecruitL2FR(currentSite)
+   call UpdateRecruitVmax(currentSite)
 
    ! Update history diagnostics related to Nutrients (if any)
    ! -----------------------------------------------------------------------------
@@ -861,7 +861,7 @@ contains
     call TotalBalanceCheck(currentSite,final_check_id,is_restarting=is_restarting)
 
     ! Update recruit L2FRs based on new canopy position
-    call SetRecruitL2FR(currentSite)
+    call SetRecruitVmax(currentSite)
     
     currentSite%area_by_age(:) = 0._r8
     

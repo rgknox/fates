@@ -618,9 +618,9 @@ module FatesCohortMod
         call endrun(msg=errMsg(sourcefile, __LINE__))
       endif
 
-      this%vmax_nh4 = EDPftvarcon_inst%vmax0_nh4
-      this%vmax_no3 = EDPftvarcon_inst%vmax0_no3
-      this%vmax_po4 = EDPftvarcon_inst%vmax0_po4
+      this%vmax_nh4 = EDPftvarcon_inst%vmax0_nh4(pft)
+      this%vmax_no3 = EDPftvarcon_inst%vmax0_no3(pft)
+      this%vmax_po4 = EDPftvarcon_inst%vmax0_po4(pft)
       
       if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
          ! Set thes log-smoothed objective functions to neutral, ie ln(1) = 0
@@ -659,7 +659,7 @@ module FatesCohortMod
 
       call tree_lai_sai(leaf_c, this%pft, this%c_area, this%n,           &
            this%canopy_layer, can_tlai, this%vcmax25top, this%dbh, this%crowndamage,          &
-           this%canopy_trim, this%efstem_coh, 2, this%treelai, treesai)
+           this%canopy_trim, this%efstem_coh, this%treelai, treesai)
 
       if (hlm_use_sp .eq. ifalse) then
          this%treesai = treesai

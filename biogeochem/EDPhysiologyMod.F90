@@ -694,7 +694,7 @@ contains
           call  tree_lai_sai(leaf_c, currentCohort%pft, currentCohort%c_area, currentCohort%n,           &
                currentCohort%canopy_layer, currentPatch%canopy_layer_tlai, currentCohort%vcmax25top,   &
                currentCohort%dbh, currentCohort%crowndamage, currentCohort%canopy_trim, &
-               currentCohort%efstem_coh, 0, currentCohort%treelai, currentCohort%treesai )
+               currentCohort%efstem_coh, currentCohort%treelai, currentCohort%treesai )
 
           currentCohort%nv = GetNVegLayers(currentCohort%treelai+currentCohort%treesai)
 
@@ -1938,7 +1938,7 @@ contains
     ! standard calculation of treelai from leafc. Maybe can delete eventually?
 
     call tree_lai_sai(leaf_c, pft, c_area, cohort_n, canopy_layer, canopylai, vcmax25top, &
-                          dbh, crown_damage, 1.0_r8, 1.0_r8, 11, check_treelai, dummy_treesai)
+                          dbh, crown_damage, 1.0_r8, 1.0_r8, check_treelai, dummy_treesai)
 
     if (abs(tlai - check_treelai) > area_error_2) then !this is not as precise as nearzero
       write(fates_log(),*) 'error in validate treelai', tlai, check_treelai, tlai - check_treelai

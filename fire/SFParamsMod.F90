@@ -3,6 +3,7 @@ module SFParamsMod
    ! module that deals with reading the SF parameter file
    !
    use FatesConstantsMod,        only : r8 => fates_r8
+   use FatesConstantsMod,        only : fates_unset_r8
    use FatesConstantsMod,        only : fates_check_param_set
    use FatesFuelClassesMod,      only : num_fuel_classes
    use FatesLitterMod,           only : ncwd
@@ -126,41 +127,41 @@ contains
     ! Initialize all parameters to nan to ensure that we get valid
     ! values back from the host.
     
-    use shr_infnan_mod , only : nan => shr_infnan_nan
+    !use shr_infnan_mod , only : nan => shr_infnan_nan
 
     implicit none
 
-    SF_val_fdi_alpha = nan
-    SF_val_miner_total = nan
-    SF_val_fuel_energy = nan
-    SF_val_part_dens = nan
-    SF_val_miner_damp = nan
-    SF_val_max_durat = nan
-    SF_val_durat_slope = nan
-    SF_val_drying_ratio = nan
-    SF_val_fire_threshold = nan
-    SF_val_CWD_frac(:) = nan
-    SF_val_max_decomp(:) = nan
-    SF_val_SAV(:) = nan
-    SF_val_FBD(:) = nan
-    SF_val_min_moisture(:) = nan
-    SF_val_mid_moisture(:) = nan
-    SF_val_low_moisture_Coeff(:) = nan
-    SF_val_low_moisture_Slope(:) = nan
-    SF_val_mid_moisture_Coeff(:) = nan
-    SF_val_mid_moisture_Slope(:) = nan
-    SF_val_rxfire_tpup = nan
-    SF_val_rxfire_tplw = nan
-    SF_val_rxfire_rhup = nan
-    SF_val_rxfire_rhlw = nan
-    SF_val_rxfire_wdup = nan
-    SF_val_rxfire_wdlw = nan
-    SF_val_rxfire_AB   = nan
-    SF_val_rxfire_min_threshold = nan
-    SF_val_rxfire_max_threshold = nan
-    SF_val_rxfire_fuel_min = nan
-    SF_val_rxfire_fuel_max = nan
-    SF_val_rxfire_min_frac = nan
+    SF_val_fdi_alpha = fates_unset_r8
+    SF_val_miner_total = fates_unset_r8
+    SF_val_fuel_energy = fates_unset_r8
+    SF_val_part_dens = fates_unset_r8
+    SF_val_miner_damp = fates_unset_r8
+    SF_val_max_durat = fates_unset_r8
+    SF_val_durat_slope = fates_unset_r8
+    SF_val_drying_ratio = fates_unset_r8
+    SF_val_fire_threshold = fates_unset_r8
+    SF_val_CWD_frac(:) = fates_unset_r8
+    SF_val_max_decomp(:) = fates_unset_r8
+    SF_val_SAV(:) = fates_unset_r8
+    SF_val_FBD(:) = fates_unset_r8
+    SF_val_min_moisture(:) = fates_unset_r8
+    SF_val_mid_moisture(:) = fates_unset_r8
+    SF_val_low_moisture_Coeff(:) = fates_unset_r8
+    SF_val_low_moisture_Slope(:) = fates_unset_r8
+    SF_val_mid_moisture_Coeff(:) = fates_unset_r8
+    SF_val_mid_moisture_Slope(:) = fates_unset_r8
+    SF_val_rxfire_tpup = fates_unset_r8
+    SF_val_rxfire_tplw = fates_unset_r8
+    SF_val_rxfire_rhup = fates_unset_r8
+    SF_val_rxfire_rhlw = fates_unset_r8
+    SF_val_rxfire_wdup = fates_unset_r8
+    SF_val_rxfire_wdlw = fates_unset_r8
+    SF_val_rxfire_AB   = fates_unset_r8
+    SF_val_rxfire_min_threshold = fates_unset_r8
+    SF_val_rxfire_max_threshold = fates_unset_r8
+    SF_val_rxfire_fuel_min = fates_unset_r8
+    SF_val_rxfire_fuel_max = fates_unset_r8
+    SF_val_rxfire_min_frac = fates_unset_r8
 
   end subroutine SpitFireParamsInit
 

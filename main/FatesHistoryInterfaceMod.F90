@@ -268,10 +268,10 @@ module FatesHistoryInterfaceMod
   integer :: ih_storeptfrac_canopy_scpf
   integer :: ih_storeptfrac_understory_scpf
 
-  integer :: ih_l2fr_si
-  integer :: ih_l2fr_clscpf
-  integer :: ih_recl2fr_canopy_pf
-  integer :: ih_recl2fr_ustory_pf
+  !integer :: ih_l2fr_si
+  !integer :: ih_l2fr_clscpf
+  !integer :: ih_recl2fr_canopy_pf
+  !integer :: ih_recl2fr_ustory_pf
   
   integer :: ih_nh4uptake_scpf
   integer :: ih_no3uptake_scpf
@@ -2836,15 +2836,15 @@ contains
                      hio_agb_si(io_si) = hio_agb_si(io_si) + n_perm2 *            &
                           ( leaf_m + (sapw_m + struct_m + store_m) * prt_params%allom_agb_frac(ccohort%pft) )
 
-                     if( hlm_parteh_mode == prt_cnp_flex_allom_hyp) then
-                        this%hvars(ih_l2fr_si)%r81d(io_si) = &
-                             this%hvars(ih_l2fr_si)%r81d(io_si) + &
-                             ccohort%l2fr *ccohort%n * fnrt_m / m2_per_ha
-                     else
-                        this%hvars(ih_l2fr_si)%r81d(io_si) = &
-                             this%hvars(ih_l2fr_si)%r81d(io_si) + &
-                             prt_params%allom_l2fr(ft) *ccohort%n * fnrt_m / m2_per_ha
-                     end if
+                     !if( hlm_parteh_mode == prt_cnp_flex_allom_hyp) then
+                     !   this%hvars(ih_l2fr_si)%r81d(io_si) = &
+                     !        this%hvars(ih_l2fr_si)%r81d(io_si) + &
+                     !        ccohort%l2fr *ccohort%n * fnrt_m / m2_per_ha
+                     !else
+                     !   this%hvars(ih_l2fr_si)%r81d(io_si) = &
+                     !        this%hvars(ih_l2fr_si)%r81d(io_si) + &
+                     !        prt_params%allom_l2fr(ft) *ccohort%n * fnrt_m / m2_per_ha
+                     !end if
 
                   elseif(element_list(el).eq.nitrogen_element)then
 
@@ -3042,12 +3042,12 @@ contains
          end do elloop2
 
 
-         if(this%hvars(ih_fnrtc_si)%r81d(io_si)>nearzero)then
-            this%hvars(ih_l2fr_si)%r81d(io_si) = this%hvars(ih_l2fr_si)%r81d(io_si) / &
-                 this%hvars(ih_fnrtc_si)%r81d(io_si)
-         else
-            this%hvars(ih_l2fr_si)%r81d(io_si) = hlm_hio_ignore_val
-         end if
+         !if(this%hvars(ih_fnrtc_si)%r81d(io_si)>nearzero)then
+         !   this%hvars(ih_l2fr_si)%r81d(io_si) = this%hvars(ih_l2fr_si)%r81d(io_si) / &
+         !        this%hvars(ih_fnrtc_si)%r81d(io_si)
+         !else
+         !   this%hvars(ih_l2fr_si)%r81d(io_si) = hlm_hio_ignore_val
+         !end if
          
          ! zero the site-level termination carbon flux variable
          sites(s)%term_carbonflux_canopy(:,:) = 0._r8
@@ -4731,10 +4731,10 @@ contains
 
              end do
              
-             do ft = 1,numpft
-                this%hvars(ih_recl2fr_canopy_pf)%r82d(io_si,ft) = sites(s)%rec_l2fr(ft,1)
-                this%hvars(ih_recl2fr_ustory_pf)%r82d(io_si,ft) = sites(s)%rec_l2fr(ft,2)
-             end do
+             !do ft = 1,numpft
+             !   this%hvars(ih_recl2fr_canopy_pf)%r82d(io_si,ft) = sites(s)%rec_l2fr(ft,1)
+             !   this%hvars(ih_recl2fr_ustory_pf)%r82d(io_si,ft) = sites(s)%rec_l2fr(ft,2)
+             !end do
              
           enddo siteloop ! site loop
 
@@ -6725,11 +6725,11 @@ contains
 
 
        ! Output specific to the chemical species dynamics used (parteh)
-       call this%set_history_var(vname='FATES_L2FR', units='kg kg-1',                   &
-            long='The leaf to fineroot biomass multiplier for target allometry', & 
-            use_default='active', &
-            avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_simple,    &
-            ivar=ivar, initialize=initialize_variables, index = ih_l2fr_si)
+       !call this%set_history_var(vname='FATES_L2FR', units='kg kg-1',                   &
+       !     long='The leaf to fineroot biomass multiplier for target allometry', & 
+       !     use_default='active', &
+       !     avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_simple,    &
+       !     ivar=ivar, initialize=initialize_variables, index = ih_l2fr_si)
 
        nitrogen_active_if0: if(any(element_list(:)==nitrogen_element)) then
 
@@ -7585,17 +7585,17 @@ contains
 
 
           ! Output specific to the chemical species dynamics used (parteh)
-          call this%set_history_var(vname='FATES_L2FR_CANOPY_REC_PF', units='kg kg-1', &
-               long='The leaf to fineroot biomass multiplier for recruits (canopy)',   & 
-               use_default='active', &
-               avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
-               ivar=ivar, initialize=initialize_variables, index = ih_recl2fr_canopy_pf)
+          !call this%set_history_var(vname='FATES_L2FR_CANOPY_REC_PF', units='kg kg-1', &
+          !     long='The leaf to fineroot biomass multiplier for recruits (canopy)',   & 
+          !     use_default='active', &
+          !     avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
+          !     ivar=ivar, initialize=initialize_variables, index = ih_recl2fr_canopy_pf)
           
-          call this%set_history_var(vname='FATES_L2FR_USTORY_REC_PF', units='kg kg-1',                   &
-               long='The leaf to fineroot biomass multiplier for recruits (understory)', & 
-               use_default='active', &
-               avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
-               ivar=ivar, initialize=initialize_variables, index = ih_recl2fr_ustory_pf)
+          !call this%set_history_var(vname='FATES_L2FR_USTORY_REC_PF', units='kg kg-1',                   &
+          !     long='The leaf to fineroot biomass multiplier for recruits (understory)', & 
+          !     use_default='active', &
+          !     avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
+          !     ivar=ivar, initialize=initialize_variables, index = ih_recl2fr_ustory_pf)
           
              !call this%set_history_var(vname='FATES_L2FR_CLSZPF', units='kg kg-1',                   &
              !     long='The leaf to fineroot biomass multiplier for target allometry', & 

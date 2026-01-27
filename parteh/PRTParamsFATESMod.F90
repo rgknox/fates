@@ -243,11 +243,11 @@ contains
     prt_params%nfix_mresp_scfrac(:) = param_p%r_data_1d(:)
 
     param_p => pstruct%GetParamFromName('fates_cnp_vmax_resp_factor')
-    allocate(prt_params%vmax_resp_factor(num_aqueous_nutrients)
+    allocate(prt_params%vmax_resp_factor(num_aqueous_nutrients))
     prt_params%vmax_resp_factor(:) = param_p%r_data_1d(:)
 
     param_p=> pstruct%GetParamFromName('fates_cnp_vmax_timescale')
-    allocate(prt_params%vmax_timescale(num_pft)
+    allocate(prt_params%vmax_timescale(num_pft))
     prt_params%vmax_timescale(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_allom_agb_frac')

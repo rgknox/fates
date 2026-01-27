@@ -1714,7 +1714,7 @@ contains
    ! Note that tree_lai has an internal check on the canopy location
    call  tree_lai_sai(leaf_c, currentCohort%pft, currentCohort%c_area, currentCohort%n,           &
           currentCohort%canopy_layer, canopy_layer_tlai, currentCohort%vcmax25top, currentCohort%dbh, currentCohort%crowndamage,          &
-          currentCohort%canopy_trim, currentCohort%efstem_coh, 4, currentCohort%treelai, treesai )
+          currentCohort%canopy_trim, currentCohort%efstem_coh, currentCohort%treelai, treesai )
 
    ! Do not update stem area index of SP vegetation
    if (hlm_use_sp .eq. ifalse) then

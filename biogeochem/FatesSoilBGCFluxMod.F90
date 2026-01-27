@@ -217,8 +217,8 @@ contains
              do while (associated(ccohort))
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
-                ccohort%daily_p_demand = fnrt_c * EDPftvarcon_inst%vmax0_p(pft) * sec_per_day
-                ccohort%daily_p_gain   = fnrt_c * EDPftvarcon_inst%vmax0_p(pft) * sec_per_day * EDPftvarcon_inst%prescribed_nuptake(pft)
+                ccohort%daily_p_demand = fnrt_c * EDPftvarcon_inst%vmax0_po4(pft) * sec_per_day
+                ccohort%daily_p_gain   = fnrt_c * EDPftvarcon_inst%vmax0_po4(pft) * sec_per_day * EDPftvarcon_inst%prescribed_nuptake(pft)
                 ccohort => ccohort%shorter
              end do
              cpatch => cpatch%younger
@@ -234,7 +234,7 @@ contains
                 icomp = icomp+1
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
-                ccohort%daily_p_demand = fnrt_c * ccohort%vmax_p * sec_per_day
+                ccohort%daily_p_demand = fnrt_c * ccohort%vmax_po4 * sec_per_day
                 ! P Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_p_gain = bc_in(s)%plant_p_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
 

@@ -920,7 +920,7 @@ contains
 
 
                         select case(hlm_parteh_mode)
-                        case (prt_carbon_allom_hyp)
+                        case(prt_carbon_allom_hyp)
 
                            live_stem_n = sapw_c_agw * prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ))
 
@@ -1013,15 +1013,15 @@ contains
 
                            ! With the CNP version of the code, we scale up and down fine-root respiration
                            ! in coordination with scaling up and down vmax for the three aqueous species.
-                           case(hlm_parteh_mode)
-                           case (prt_carbon_allom_hyp)
+                           select case(hlm_parteh_mode)
+                           case(prt_carbon_allom_hyp)
                               currentCohort%froot_mr = currentCohort%froot_mr + fnrt_mr_layer 
                            case(prt_cnp_flex_allom_hyp)
                               currentCohort%froot_mr = currentCohort%froot_mr + fnrt_mr_layer * (1._r8 + &
-                                   prt_params%vmax_resp_factor(1)*currentCohort%vmax_nh4/prt_params%vmax0_nh4 + &
-                                   prt_params%vmax_resp_factor(2)*currentCohort%vmax_no3/prt_params%vmax0_no3 + &
-                                   prt_params%vmax_resp_factor(3)*currentCohort%vmax_po4/prt_params%vmax0_po4)
-                           end do
+                                   prt_params%vmax_resp_factor(1)*currentCohort%vmax_nh4/EDPftvarcon_inst%vmax0_nh4(ft) + &
+                                   prt_params%vmax_resp_factor(2)*currentCohort%vmax_no3/EDPftvarcon_inst%vmax0_no3(ft) + &
+                                   prt_params%vmax_resp_factor(3)*currentCohort%vmax_po4/EDPftvarcon_inst%vmax0_po4(ft))
+                           end select
 
                            currentCohort%sym_nfix_tstep = currentCohort%sym_nfix_tstep + nfix_layer
 
