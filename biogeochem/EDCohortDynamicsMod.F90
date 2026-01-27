@@ -174,6 +174,9 @@ contains
        newCohort%vmax_nh4 = currentSite%rec_vmax_nh4(pft,clayer)
        newCohort%vmax_no3 = currentSite%rec_vmax_no3(pft,clayer)
        newCohort%vmax_po4 = currentSite%rec_vmax_po4(pft,clayer)
+       newCohort%sobj_nh4 = 0
+       newCohort%sobj_no3 = 0
+       newCohort%sobj_po4 = 0
     end if
        
     ! Allocate running mean functions

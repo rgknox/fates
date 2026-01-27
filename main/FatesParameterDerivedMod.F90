@@ -93,8 +93,6 @@ contains
     integer  :: iage               ! leaf age class index
     integer  :: numpft
 
-    pid_vcmax25top = pstruct%GetIndexFromName('fates_leaf_vcmax25top')
-    
     associate( vcmax25top => pstruct%parameters(pid_vcmax25top)%r_data_2d )
 
       numpft = size(vcmax25top,dim=2)

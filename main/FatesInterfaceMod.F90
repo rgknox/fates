@@ -120,7 +120,7 @@ module FatesInterfaceMod
    use JSONParameterUtilsMod     , only : JSONSetInvalid
    use JSONParameterUtilsMod     , only : JSONSetLogInit
    use JSONParameterUtilsMod     , only : JSONDumpParameter
-   
+   use FatesParametersInterface
    
    ! CIME Globals
    use shr_log_mod               , only : errMsg => shr_log_errMsg
@@ -824,6 +824,10 @@ contains
             end do
             write(fates_log(),*) '============ End FATES Parameter Info ========='
          end if
+
+         ! This call assigns a global named integer index to each parameter
+         ! so that we can access the datasets quickly without performing a lookup
+         call SetParameterIndices()
          
          ! This call transfers parameters from the pstruct data-structure
          ! into the specific datastructures where parameters have there

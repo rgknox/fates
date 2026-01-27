@@ -62,9 +62,6 @@ module FatesParametersInterface
   integer, public :: pid_allom_lapersa_int
   integer, public :: pid_allom_lapersa_slp
   integer, public :: pid_allom_l2fr
-  integer, public :: pid_cnp_kp
-  integer, public :: pid_cnp_ki
-  integer, public :: pid_cnp_kd
   integer, public :: pid_cnp_store_ovrflw_frac
   integer, public :: pid_cnp_nfix1
   integer, public :: pid_allom_d2h1
@@ -100,13 +97,13 @@ module FatesParametersInterface
   integer, public :: pid_cnp_phos_retrans
   
   public :: pstruct
-  public :: GetParameterIndices
+  public :: SetParameterIndices
   public :: Transp2dInt
   public :: Transp2dReal
 
 contains
 
-  subroutine GetParameterIndices()
+  subroutine SetParameterIndices()
 
     ! Query the parameter data structure for the names
     ! of known parameters, and identify the data-structure
@@ -161,9 +158,6 @@ contains
     pid_allom_lapersa_int = pstruct%GetIndexFromName('fates_allom_la_per_sa_int')
     pid_allom_lapersa_slp = pstruct%GetIndexFromName('fates_allom_la_per_sa_slp')
     pid_allom_l2fr = pstruct%GetIndexFromName('fates_allom_l2fr')
-    pid_cnp_kp = pstruct%GetIndexFromName('fates_cnp_pid_kp')
-    pid_cnp_ki = pstruct%GetIndexFromName('fates_cnp_pid_ki')
-    pid_cnp_kd = pstruct%GetIndexFromName('fates_cnp_pid_kd')
     pid_cnp_store_ovrflw_frac = pstruct%GetIndexFromName('fates_cnp_store_ovrflw_frac')
     pid_cnp_nfix1 = pstruct%GetIndexFromName('fates_cnp_nfix1')
     pid_allom_agbfrac = pstruct%GetIndexFromName('fates_allom_agb_frac')
@@ -198,7 +192,7 @@ contains
     pid_cnp_nitr_retrans = pstruct%GetIndexFromName('fates_cnp_turnover_nitr_retrans')
     pid_cnp_phos_retrans = pstruct%GetIndexFromName('fates_cnp_turnover_phos_retrans')
 
-  end subroutine GetParameterIndices
+  end subroutine SetParameterIndices
 
   subroutine CheckParameters
 

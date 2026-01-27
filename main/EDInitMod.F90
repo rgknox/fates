@@ -529,9 +529,9 @@ contains
           sites(s)%area_pft(:,:) = 0.0_r8
 
           do ft =  1,numpft
-             sites(s)%rec_vmax_nh4(ft,:) = EDPftvarcon_inst%vmax0_nh4
-             sites(s)%rec_vmax_no3(ft,:) = EDPftvarcon_inst%vmax0_no3
-             sites(s)%rec_vmax_po4(ft,:) = EDPftvarcon_inst%vmax0_po4
+             sites(s)%rec_vmax_nh4(ft,:) = EDPftvarcon_inst%vmax0_nh4(ft)
+             sites(s)%rec_vmax_no3(ft,:) = EDPftvarcon_inst%vmax0_no3(ft)
+             sites(s)%rec_vmax_po4(ft,:) = EDPftvarcon_inst%vmax0_po4(ft)
           end do
 
           ! Its difficult to come up with a resonable starting smoothing value, so
