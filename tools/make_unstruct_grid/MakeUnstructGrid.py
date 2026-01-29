@@ -9,6 +9,9 @@ import argparse
 import math
 from scipy.io import netcdf as nc
 import xml.etree.ElementTree as et
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import numpy as np
 
 # The user specifies a couplet of domain/surface files
 # from which they want to base their new unstructured grid. Then they provide
@@ -110,7 +113,8 @@ def TransferData(da_key,ds_base,ds_unst,minis,minjs,dset_type):
             i = minis[k]
             j = minjs[k]
             ds_unst[da_key].loc[0,k,:] = ds_base[da_key].data[j,i,:]
-                
+
+            
     elif(any([dim==xname for dim in dimlist]) and len(dimlist)==3):
 
         # This has dim==3, surface file and contains coordinates (x,lsmlat, lsmlon)
@@ -200,39 +204,53 @@ def main(argv):
         print('Could not find xml entry: {}'.format('surface_unst'))
         exit(2)
 
+    # Use bounding boxes
+    if(xmlroot.find('minlat') is not None):
 
-        
-    # Get a list of lon coordinates (force them into 0-360 convention)
-    try:
-        lon_subset_text = xmlroot.find('lon_list').text.strip().split(',')
-        lon_subset = []
-        for txt in lon_subset_text:
-            lon = float(txt)
-            if(lon<0.0):
-                lon = 360.0+lon
-            lon_subset.append(lon)
+        bbox = True
+        minlat = float(xmlroot.find('minlat').text.strip())
+        maxlat = float(xmlroot.find('maxlat').text.strip())
+        minlon = float(xmlroot.find('minlon').text.strip())
+        maxlon = float(xmlroot.find('maxlon').text.strip())
 
-    except:
-        print('Could not find xml entry: {}'.format('lon_list'))
-        exit(2)
-        
-    # Get a list of lat coordinates
-    try:
-        lat_subset_text = xmlroot.find('lat_list').text.strip().split(',')
-        lat_subset = [float(txt) for txt in lat_subset_text]
+        if(minlon<0.0):
+            minlon = 360.0+minlon
+        if(maxlon<0.0):
+            maxlon = 360.0+maxlon
 
-    except:
-        print('Could not find xml entry: {}'.format('lat_list'))
-        exit(2)
-
-    # Check to make sure that the lat and lons are same length
-
-    if( len(lat_subset) != len(lon_subset) ):
-        print('number of latitude subset points must match number of longitude subsets')
-        exit(2)
     else:
-        nj = len(lat_subset)
-        print('  Found N={} lat/lon coordinates'.format(nj))
+        bbox = False
+        # Get a list of lon coordinates (force them into 0-360 convention)
+        try:
+            lon_subset_text = xmlroot.find('lon_list').text.strip().split(',')
+            lon_subset = []
+            for txt in lon_subset_text:
+                lon = float(txt)
+                if(lon<0.0):
+                    lon = 360.0+lon
+                lon_subset.append(lon)
+
+        except:
+            print('Could not find xml entry: {}'.format('lon_list'))
+            exit(2)
+        
+        # Get a list of lat coordinates
+        try:
+            lat_subset_text = xmlroot.find('lat_list').text.strip().split(',')
+            lat_subset = [float(txt) for txt in lat_subset_text]
+
+        except:
+            print('Could not find xml entry: {}'.format('lat_list'))
+            exit(2)
+
+        # Check to make sure that the lat and lons are same length
+
+        if( len(lat_subset) != len(lon_subset) ):
+            print('number of latitude subset points must match number of longitude subsets')
+            exit(2)
+        else:
+            nj = len(lat_subset)
+            print('  Found N={} lat/lon coordinates'.format(nj))
         
     
     #code.interact(local=dict(globals(), **locals()))
@@ -249,22 +267,32 @@ def main(argv):
     #    xc       (nj, ni) float64 0.0 2.5 5.0 7.5 10.0 ... 350.0 352.5 355.0 357.5
     #    yc       (nj, ni) float64 -90.0 -90.0 -90.0 -90.0 ... 90.0 90.0 90.0 90.0
     # ------------------------------------------------------------------------------
-
-    lon_subset_faux_2d = np.reshape(lon_subset, (-1, 1))
-    lat_subset_faux_2d = np.reshape(lat_subset, (-1, 1))
     
     ds_domain_base = xr.open_dataset(domain_base)
     
     # Lets find the indices for xc and yc that most closely match our coordinates
-    minis = []
-    minjs = []
-    for j in range(nj):
-        lat = lat_subset[j]
-        lon = lon_subset[j]
-        delt = (ds_domain_base['xc'].data-lon)**2.0 +  (ds_domain_base['yc'].data-lat)**2.0
-        minj,mini = np.unravel_index(delt.argmin(), delt.shape)
-        minis.append(mini)
-        minjs.append(minj)
+
+    if(bbox):
+        id_pairs = np.argwhere((ds_domain_base['xc'].data >= minlon) & \
+                               (ds_domain_base['xc'].data <= maxlon) & \
+                               (ds_domain_base['yc'].data >= minlat) & \
+                               (ds_domain_base['yc'].data <= maxlat))
+        minis = []
+        minjs = []
+        for j in range(len(id_pairs)):
+            minis.append(id_pairs[j][1])
+            minjs.append(id_pairs[j][0])
+            
+    else:
+        minis = []
+        minjs = []
+        for j in range(nj):
+            lat = lat_subset[j]
+            lon = lon_subset[j]
+            delt = (ds_domain_base['xc'].data-lon)**2.0 +  (ds_domain_base['yc'].data-lat)**2.0
+            minj,mini = np.unravel_index(delt.argmin(), delt.shape)
+            minis.append(mini)
+            minjs.append(minj)
 
     # Domain Processing
     # ===========================================================================================
@@ -287,6 +315,36 @@ def main(argv):
     print('\n  Writing: {}'.format(domain_unst))
     ds_domain_unst.to_netcdf(domain_unst)  #,mode='a')
 
+    if(False):
+            
+        plt.figure(figsize=(12, 7))
+        ax = plt.axes(projection=ccrs.PlateCarree())
+
+        plt.scatter(ds_domain_unst.xc.values.flatten(), 
+                    ds_domain_unst.yc.values.flatten(), 
+                    c=ds_domain_unst.mask.values.flatten(), 
+                    cmap='viridis', 
+                    s=50,       # Size of the dots
+                    edgecolors='grey')
+        
+        ax.add_feature(cfeature.COASTLINE, linewidth=1.5, edgecolor='black')
+        ax.add_feature(cfeature.LAND, facecolor='lightgray', alpha=0.3)
+        ax.add_feature(cfeature.OCEAN, facecolor='azure')
+        plt.xlabel('Longitude (xc)')
+        plt.ylabel('Latitude (yc)')
+
+        buffer = 5
+        ax.set_extent([ds_domain_unst.xc.min() - buffer, ds_domain_unst.xc.max() + buffer, 
+                       ds_domain_unst.yc.min() - buffer, ds_domain_unst.yc.max() + buffer], 
+                      crs=ccrs.PlateCarree())
+        
+        plt.title(f'Domain Spatial Mask Verification')
+        plt.legend()
+        plt.grid(True, linestyle=':', alpha=0.5)
+        plt.show()
+
+
+    
     # Surface Processing
     # ===========================================================================================
     
@@ -298,17 +356,53 @@ def main(argv):
     )
     ds_surface_unst.attrs["modification"]="Modified with SurfToVec.py, based on {}.".format(surface_base_file)
 
-    
-    # Loop through existing datasets, allocate new arrays
-    # and transfer over point data
-    for da_key in ds_surface_base.data_vars:
-        ds_surface_unst = TransferData(da_key,ds_surface_base,ds_surface_unst,minis,minjs,'surface')
+    if 'gridcell' in ds_surface_base.dims:
+        mask = (ds_surface_base.LATIXY >= minlat) & (ds_surface_base.LATIXY <= maxlat) & \
+            (ds_surface_base.LONGXY >= minlon) & (ds_surface_base.LONGXY <= maxlon)
 
-    for da_key in ds_surface_base.coords:
-        ds_surface_unst = TransferData(da_key,ds_surface_base,ds_surface_unst,minis,minjs,'surface')
+        # This returns ONLY the True indices. 
+        # No 'drop' argument needed because .sel implies selection.
+        ds_surface_unst = ds_surface_base.sel(gridcell=mask)
+    else:
+        # Loop through existing datasets, allocate new arrays
+        # and transfer over point data
+        for da_key in ds_surface_base.data_vars:
+            ds_surface_unst = TransferData(da_key,ds_surface_base,ds_surface_unst,minis,minjs,'surface')
+
+        for da_key in ds_surface_base.coords:
+            ds_surface_unst = TransferData(da_key,ds_surface_base,ds_surface_unst,minis,minjs,'surface')
         
     print('\n  Writing: {}'.format(surface_unst))
     ds_surface_unst.to_netcdf(surface_unst)  #,mode='a')
+
+    if(True):
+        plt.figure(figsize=(12, 7))
+        ax = plt.axes(projection=ccrs.PlateCarree())
+
+        plt.scatter(ds_surface_unst.LONGXY.values.flatten(),
+                    ds_surface_unst.LATIXY.values.flatten(),
+                    c=ds_surface_unst.LANDFRAC_PFT.values.flatten(),
+                    cmap='viridis',
+                    s=50,       # Size of the dots
+                    edgecolors='grey')
+        
+        ax.add_feature(cfeature.COASTLINE, linewidth=1.5, edgecolor='black')
+        ax.add_feature(cfeature.LAND, facecolor='lightgray', alpha=0.3)
+        ax.add_feature(cfeature.OCEAN, facecolor='azure')
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+
+        buffer = 5
+        ax.set_extent([ds_surface_unst.LONGXY.min() - buffer, ds_surface_unst.LONGXY.max() + buffer,
+                       ds_surface_unst.LATIXY.min() - buffer, ds_surface_unst.LATIXY.max() + buffer],
+                      crs=ccrs.PlateCarree())
+
+        plt.title(f'Surface Spatial Mask Verification')
+        plt.legend()
+        plt.grid(True, linestyle=':', alpha=0.5)
+        plt.show()
+
+
     
     print('\n')
 
