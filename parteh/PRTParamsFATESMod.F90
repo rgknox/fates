@@ -12,7 +12,9 @@ module PRTInitParamsFatesMod
   use PRTGenericMod,     only : num_organ_types
   use PRTGenericMod,     only : leaf_organ, fnrt_organ, store_organ
   use PRTGenericMod,     only : sapw_organ, struct_organ, repro_organ
-  use PRTGenericMod,     only : nitrogen_element, phosphorus_element
+  use PRTGenericMod,     only : nitrogen_element
+  use PRTGenericMod,     only : phosphorus_element
+  use PRTGenericMod,     only : carbon12_element
   use FatesGlobals,      only : endrun => fates_endrun
   use FatesGlobals,      only : fates_log 
   use shr_log_mod,       only : errMsg => shr_log_errMsg
@@ -69,7 +71,310 @@ contains
     num_ageclass = pstruct%GetDimSizeFromName('fates_leafage_class')
     num_organ = pstruct%GetDimSizeFromName('fates_plant_organs')
     num_pft   = pstruct%GetDimSizeFromName('fates_pft')
+    
+    param_p => pstruct%GetParamFromName('fates_alloc_organ_id')
+    allocate(prt_params%organ_id(num_organ))
+    prt_params%organ_id(:) = param_p%i_data_1d(:)
 
+    param_p => pstruct%GetParamFromName('fates_phen_leaf_habit')
+    allocate(prt_params%phen_leaf_habit(num_pft))
+    prt_params%phen_leaf_habit(:) = param_p%i_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_phen_stem_drop_fraction')
+    allocate(prt_params%phen_stem_drop_fraction(num_pft))
+    prt_params%phen_stem_drop_fraction(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_phen_fnrt_drop_fraction')
+    allocate(prt_params%phen_fnrt_drop_fraction(num_pft))
+    prt_params%phen_fnrt_drop_fraction(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_phen_mindaysoff')
+    allocate(prt_params%phen_doff_time(num_pft))
+    prt_params%phen_doff_time(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_phen_drought_threshold')
+    allocate(prt_params%phen_drought_threshold(num_pft))
+    prt_params%phen_drought_threshold(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_phen_moist_threshold')
+    allocate(prt_params%phen_moist_threshold(num_pft))
+    prt_params%phen_moist_threshold(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_leaf_slamax')
+    allocate(prt_params%slamax(num_pft))
+    prt_params%slamax(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_leaf_slatop')
+    allocate(prt_params%slatop(num_pft))
+    prt_params%slatop(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_sai_scaler')
+    allocate(prt_params%allom_sai_scaler(num_pft))
+    prt_params%allom_sai_scaler(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_fnrt_prof_a')
+    allocate(prt_params%fnrt_prof_a(num_pft))
+    prt_params%fnrt_prof_a(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_fnrt_prof_b')
+    allocate(prt_params%fnrt_prof_b(num_pft))
+    prt_params%fnrt_prof_b(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_fnrt_prof_mode')
+    allocate(prt_params%fnrt_prof_mode(num_pft))
+    prt_params%fnrt_prof_mode(:) = param_p%i_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_woody')
+    allocate(prt_params%woody(num_pft))
+    prt_params%woody(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_wood_density')
+    allocate(prt_params%wood_density(num_pft))
+    prt_params%wood_density(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_recruit_seed_dbh_repro_threshold')
+    allocate(prt_params%dbh_repro_threshold(num_pft))
+    prt_params%dbh_repro_threshold(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_alloc_storage_cushion')
+    allocate(prt_params%cushion(num_pft))
+    prt_params%cushion(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_alloc_store_priority_frac')
+    allocate(prt_params%leaf_stor_priority(num_pft))
+    prt_params%leaf_stor_priority(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_turnover_senleaf_fdrought')
+    allocate(prt_params%senleaf_long_fdrought(num_pft))
+    prt_params%senleaf_long_fdrought(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_turnover_fnrt')
+    allocate(prt_params%root_long(num_pft))
+    prt_params%root_long(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_leafn_vert_scaler_coeff1')
+    allocate(prt_params%leafn_vert_scaler_coeff1(num_pft))
+    prt_params%leafn_vert_scaler_coeff1(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_leafn_vert_scaler_coeff2')
+    allocate(prt_params%leafn_vert_scaler_coeff2(num_pft))
+    prt_params%leafn_vert_scaler_coeff2(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_recruit_seed_alloc_mature')
+    allocate(prt_params%seed_alloc_mature(num_pft))
+    prt_params%seed_alloc_mature(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_recruit_seed_alloc')
+    allocate(prt_params%seed_alloc(num_pft))
+    prt_params%seed_alloc(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_trs_repro_alloc_a')
+    allocate(prt_params%repro_alloc_a(num_pft))
+    prt_params%repro_alloc_a(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_trs_repro_alloc_b')
+    allocate(prt_params%repro_alloc_b(num_pft))
+    prt_params%repro_alloc_b(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_c2b')
+    allocate(prt_params%c2b(num_pft))
+    prt_params%c2b(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_grperc')
+    allocate(prt_params%grperc(num_pft))
+    prt_params%grperc(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_dbh_maxheight')
+    allocate(prt_params%allom_dbh_maxheight(num_pft))
+    prt_params%allom_dbh_maxheight(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_hmode')
+    allocate(prt_params%allom_hmode(num_pft))
+    prt_params%allom_hmode(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_lmode')
+    allocate(prt_params%allom_lmode(num_pft))
+    prt_params%allom_lmode(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_fmode')
+    allocate(prt_params%allom_fmode(num_pft))
+    prt_params%allom_fmode(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_amode')
+    allocate(prt_params%allom_amode(num_pft))
+    prt_params%allom_amode(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_stmode')
+    allocate(prt_params%allom_stmode(num_pft))
+    prt_params%allom_stmode(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_cmode')
+    allocate(prt_params%allom_cmode(num_pft))
+    prt_params%allom_cmode(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_smode')
+    allocate(prt_params%allom_smode(num_pft))
+    prt_params%allom_smode(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_dmode')
+    allocate(prt_params%allom_dmode(num_pft))
+    prt_params%allom_dmode(:) = param_p%i_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_la_per_sa_int')
+    allocate(prt_params%allom_la_per_sa_int(num_pft))
+    prt_params%allom_la_per_sa_int(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_la_per_sa_slp')
+    allocate(prt_params%allom_la_per_sa_slp(num_pft))
+    prt_params%allom_la_per_sa_slp(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_l2fr')
+    allocate(prt_params%allom_l2fr(num_pft))
+    prt_params%allom_l2fr(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_cnp_pid_kp')
+    allocate(prt_params%pid_kp(num_pft))
+    prt_params%pid_kp(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_cnp_pid_ki')
+    allocate(prt_params%pid_ki(num_pft))
+    prt_params%pid_ki(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_cnp_pid_kd')
+    allocate(prt_params%pid_kd(num_pft))
+    prt_params%pid_kd(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_cnp_store_ovrflw_frac')
+    allocate(prt_params%store_ovrflw_frac(num_pft))
+    prt_params%store_ovrflw_frac(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_cnp_nfix1')
+    allocate(prt_params%nfix_mresp_scfrac(num_pft))
+    prt_params%nfix_mresp_scfrac(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_agb_frac')
+    allocate(prt_params%allom_agb_frac(num_pft))
+    prt_params%allom_agb_frac(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_d2h1')
+    allocate(prt_params%allom_d2h1(num_pft))
+    prt_params%allom_d2h1(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_d2h2')
+    allocate(prt_params%allom_d2h2(num_pft))
+    prt_params%allom_d2h2(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_d2h3')
+    allocate(prt_params%allom_d2h3(num_pft))
+    prt_params%allom_d2h3(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_d2bl1')
+    allocate(prt_params%allom_d2bl1(num_pft))
+    prt_params%allom_d2bl1(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_d2bl2')
+    allocate(prt_params%allom_d2bl2(num_pft))
+    prt_params%allom_d2bl2(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_d2bl3')
+    allocate(prt_params%allom_d2bl3(num_pft))
+    prt_params%allom_d2bl3(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_blca_expnt_diff')
+    allocate(prt_params%allom_blca_expnt_diff(num_pft))
+    prt_params%allom_blca_expnt_diff(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_d2ca_coefficient_max')
+    allocate(prt_params%allom_d2ca_coefficient_max(num_pft))
+    prt_params%allom_d2ca_coefficient_max(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_d2ca_coefficient_min')
+    allocate(prt_params%allom_d2ca_coefficient_min(num_pft))
+    prt_params%allom_d2ca_coefficient_min(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_agb1')
+    allocate(prt_params%allom_agb1(num_pft))
+    prt_params%allom_agb1(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_agb2')
+    allocate(prt_params%allom_agb2(num_pft))
+    prt_params%allom_agb2(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_agb3')
+    allocate(prt_params%allom_agb3(num_pft))
+    prt_params%allom_agb3(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_agb4')
+    allocate(prt_params%allom_agb4(num_pft))
+    prt_params%allom_agb4(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_h2cd1')
+    allocate(prt_params%allom_h2cd1(num_pft))
+    prt_params%allom_h2cd1(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_h2cd2')
+    allocate(prt_params%allom_h2cd2(num_pft))
+    prt_params%allom_h2cd2(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_allom_zroot_max_dbh')
+    allocate(prt_params%allom_zroot_max_dbh(num_pft))
+    prt_params%allom_zroot_max_dbh(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_zroot_max_z')
+    allocate(prt_params%allom_zroot_max_z(num_pft))
+    prt_params%allom_zroot_max_z(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_zroot_min_dbh')
+    allocate(prt_params%allom_zroot_min_dbh(num_pft))
+    prt_params%allom_zroot_min_dbh(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_zroot_min_z')
+    allocate(prt_params%allom_zroot_min_z(num_pft))
+    prt_params%allom_zroot_min_z(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_allom_zroot_k')
+    allocate(prt_params%allom_zroot_k(num_pft))
+    prt_params%allom_zroot_k(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_turnover_branch')
+    allocate(prt_params%branch_long(num_pft))
+    prt_params%branch_long(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_cnp_nitr_store_ratio')
+    allocate(prt_params%nitr_store_ratio(num_pft))
+    prt_params%nitr_store_ratio(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_cnp_phos_store_ratio')
+    allocate(prt_params%phos_store_ratio(num_pft))
+    prt_params%phos_store_ratio(:) = param_p%r_data_1d(:)
+    
+    param_p => pstruct%GetParamFromName('fates_turnover_leaf_canopy')
+    allocate(prt_params%leaf_long(num_pft,num_ageclass))
+    call Transp2dReal(param_p%r_data_2d,prt_params%leaf_long)
+
+    param_p => pstruct%GetParamFromName('fates_turnover_leaf_ustory')
+    allocate(prt_params%leaf_long_ustory(num_pft,num_ageclass))
+    call Transp2dReal(param_p%r_data_2d,prt_params%leaf_long_ustory)
+
+    param_p => pstruct%GetParamFromName('fates_stoich_nitr')
+    allocate(prt_params%nitr_stoich_p1(num_pft,num_organ))
+    call Transp2dReal(param_p%r_data_2d,prt_params%nitr_stoich_p1)
+    
+    param_p => pstruct%GetParamFromName('fates_stoich_phos')
+    allocate(prt_params%phos_stoich_p1(num_pft,num_organ))
+    call Transp2dReal(param_p%r_data_2d,prt_params%phos_stoich_p1)
+    
+    param_p => pstruct%GetParamFromName('fates_alloc_organ_priority')
+    allocate(prt_params%alloc_priority(num_pft,num_organ))
+    call Transp2dInt(param_p%i_data_2d,prt_params%alloc_priority)
+    
+    param_p => pstruct%GetParamFromName('fates_cnp_turnover_nitr_retrans')
+    allocate(prt_params%turnover_nitr_retrans(num_pft,num_organ))
+    call Transp2dReal(param_p%r_data_2d,prt_params%turnover_nitr_retrans)
+    
+    param_p => pstruct%GetParamFromName('fates_cnp_turnover_phos_retrans')
+    allocate(prt_params%turnover_phos_retrans(num_pft,num_organ))
+    call Transp2dReal(param_p%r_data_2d,prt_params%turnover_phos_retrans)
 
     return
   end subroutine TransferParamsPRT
@@ -1027,6 +1332,10 @@ contains
 
      ! Total nutrient in a newly recruited plant
      select case(element_id)
+     case(carbon12_element)
+        
+        nutr_total = c_total
+        
      case(nitrogen_element)
 
         nutr_total = &
