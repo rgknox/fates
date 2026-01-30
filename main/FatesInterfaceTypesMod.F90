@@ -6,7 +6,7 @@ module FatesInterfaceTypesMod
   use FatesGlobals        , only : fates_log
   use FatesGlobals        , only : endrun => fates_endrun
   use shr_log_mod         , only : errMsg => shr_log_errMsg
-  use shr_infnan_mod      , only : nan => shr_infnan_nan
+  use shr_infnan_mod      , only : nan => shr_infnan_nan, assignment(=)
   
   implicit none
 
