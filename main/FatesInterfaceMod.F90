@@ -821,11 +821,15 @@ contains
             end do
             write(fates_log(),*) '============ End FATES Parameter Info ========='
          end if
+
+         ! This assigns named constants to the indices of each
+         ! parameter datastructure, allowing data to be accessed
+         ! directly from the structure
+         call SetParameterIndices()
          
          ! This call transfers parameters from the pstruct data-structure
          ! into the specific datastructures where parameters have there
          ! own primitive arrays
-
          call FatesTransferParameters()
          
          fates_numpft = size(prt_params%wood_density,dim=1)
