@@ -75,6 +75,10 @@ def main():
         for param_name,data_list in batch_data['parameters']['non_pft_parameters'].items():
             base_data['parameters'][param_name]['data'] = data_list
 
+    time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    change_log = time_str+': batch_patch_params.py'+' '.join(sys.argv[1:])
+    base_data["attributes"]["history"] = base_data["attributes"]["history"]+'  '+change_log
+            
     with open(new_file, 'w') as outfile:
         write_json.traverse_data(outfile,base_data)
     
