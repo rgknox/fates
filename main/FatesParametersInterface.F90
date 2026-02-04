@@ -13,9 +13,23 @@ module FatesParametersInterface
   
   implicit none
   private
-  
-  type(params_type) :: pstruct
 
+
+  type, extends(params_type_ext) :: params
+     real,dimension(:,:) :: pointer :: vcmax25top => null
+  end type params
+
+  type(params_type_ext), public :: pstruct
+
+  !.... OR
+
+  type, public :: fates_params_type
+     real(r8),dimension(:,:) :: pointer :: vcmax25top => null
+  end type fates_params_type
+
+  type(fates_params_type), protected, public :: params
+  
+  
   ! Parameter indexes
   
   integer, public :: pid_vcmax25top
@@ -99,7 +113,6 @@ module FatesParametersInterface
   integer, public :: pid_cnp_nitr_retrans
   integer, public :: pid_cnp_phos_retrans
   
-  public :: pstruct
   public :: GetParameterIndices
   public :: Transp2dInt
   public :: Transp2dReal
@@ -114,10 +127,19 @@ contains
     ! integer constants will be used for retrieval.
     ! This assignment happens once, here.
 
-    ! Scalar Parameters
     pid_damage_bins = pstruct%GetIndexFromName('fates_history_damage_bin_edges')
     
     pid_vcmax25top = pstruct%GetIndexFromName('fates_leaf_vcmax25top')
+    
+    pstruct%vcmax25top => pstruct%GetParamFromName('fates_leaf_vcmax25top')
+
+    ! or
+
+    params%vcmax25top => pstruct%GetParamFromName('fates_leaf_vcmax25top')
+    
+    ! Apply correction to cwd fractions
+    correction = 1._r8 - sum(param(pid_cwd_frac)%r_data_1d(:)
+    
     pid_cwd_frac = pstruct%GetIndexFromName('fates_frag_cwd_frac')
     pid_damage_frac = pstruct%GetIndexFromName('fates_damage_frac')
     
