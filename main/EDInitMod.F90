@@ -1238,7 +1238,6 @@ contains
       pft_loop: do pft =  1, numpft
          if_use_this_pft: if (use_pft_local(pft) .eq. itrue) then
             l2fr         = prt_params%allom_l2fr(pft)
-            init_recruit_trim  = 1.0_r8
             crown_damage = 1  ! Assume no damage to begin with
             c_area       = fates_unset_r8
             
