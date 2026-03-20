@@ -43,7 +43,7 @@ module EDTypesMod
   private               ! By default everything is private
   save
               
-  real(r8), parameter, public :: init_recruit_trim = 0.8_r8    ! This is the initial trimming value that
+  real(r8), parameter, public :: init_recruit_trim = 1.0_r8    ! This is the initial trimming value that
                                                                ! new recruits start with
 
   ! -------------------------------------------------------------------------------------
