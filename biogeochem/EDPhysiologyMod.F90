@@ -683,7 +683,13 @@ contains
           ! Save off the incoming trim
           initial_trim = currentCohort%canopy_trim
 
-
+          if( abs(EDPftvarcon_inst%trim_inc(ipft))<nearzero) then
+             ! Reset activity for the cohort for the start of the next year
+             currentCohort%year_net_uptake(:) = 999.0_r8
+             currentCohort => currentCohort%shorter
+             cycle
+          end if
+          
           ! Add debug diagnostic output to determine which cohort
           if (debug) then
              write(fates_log(),*) 'Starting canopy trim:', initial_trim
