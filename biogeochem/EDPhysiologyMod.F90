@@ -680,6 +680,8 @@ contains
        currentCohort => currentPatch%tallest
        do while (associated(currentCohort))
 
+          ipft = currentCohort%pft
+          
           ! Save off the incoming trim
           initial_trim = currentCohort%canopy_trim
 
@@ -696,7 +698,7 @@ contains
           endif
 
           trimmed = .false.
-          ipft = currentCohort%pft
+          
           call carea_allom(currentCohort%dbh,currentCohort%n,currentSite%spread,currentCohort%pft,&
                currentCohort%crowndamage, currentCohort%c_area)
 
