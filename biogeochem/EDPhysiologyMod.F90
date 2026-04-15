@@ -20,6 +20,7 @@ module EDPhysiologyMod
   use FatesInterfaceTypesMod, only    : hlm_use_nocomp
   use EDParamsMod           , only    : crop_lu_pft_vector
   use EDParamsMod           , only    : GetNVegLayers
+  use EDParamsMod           , only    : cwd_hr_frag_frac
   use FatesInterfaceTypesMod, only    : hlm_use_tree_damage
   use FatesInterfaceTypesMod, only : hlm_use_ed_prescribed_phys
   use FatesConstantsMod, only    : r8 => fates_r8
@@ -490,6 +491,9 @@ contains
               sum(litt%leaf_fines_frag) + sum(litt%root_fines_frag) + &
               sum(litt%seed_decay) + sum(litt%seed_germ_decay))
 
+         site_mass%funghr_out = site_mass%funghr_out + currentPatch%area * &
+              (sum(litt%ag_cwd_funghr) + sum(litt%bg_cwd_funghr))
+
          ! Track total seed decay diagnostic in [kg/m2/day]
          diag%tot_seed_turnover = diag%tot_seed_turnover + &
               (sum(litt%seed_decay) + sum(litt%seed_germ_decay))*currentPatch%area*area_inv
@@ -562,11 +566,12 @@ contains
        ! -----------------------------------------------------------------------------------
        nlevsoil = size(litt%bg_cwd,dim=2)
        do c = 1,ncwd
-          litt%ag_cwd(c) = litt%ag_cwd(c)  + litt%ag_cwd_in(c) - litt%ag_cwd_frag(c)
+          litt%ag_cwd(c) = litt%ag_cwd(c)  + litt%ag_cwd_in(c) - litt%ag_cwd_frag(c) - litt%ag_cwd_funghr(c)
           do ilyr=1,nlevsoil
              litt%bg_cwd(c,ilyr) = litt%bg_cwd(c,ilyr) &
                   + litt%bg_cwd_in(c,ilyr) &
-                  - litt%bg_cwd_frag(c,ilyr)
+                  - litt%bg_cwd_frag(c,ilyr) &
+                  - litt%bg_cwd_funghr(c,ilyr)
           enddo
        end do
 
@@ -675,17 +680,25 @@ contains
        currentCohort => currentPatch%tallest
        do while (associated(currentCohort))
 
+          ipft = currentCohort%pft
+          
           ! Save off the incoming trim
           initial_trim = currentCohort%canopy_trim
 
-
+          if( abs(EDPftvarcon_inst%trim_inc(ipft))<nearzero) then
+             ! Reset activity for the cohort for the start of the next year
+             currentCohort%year_net_uptake(:) = 999.0_r8
+             currentCohort => currentCohort%shorter
+             cycle
+          end if
+          
           ! Add debug diagnostic output to determine which cohort
           if (debug) then
              write(fates_log(),*) 'Starting canopy trim:', initial_trim
           endif
 
           trimmed = .false.
-          ipft = currentCohort%pft
+          
           call carea_allom(currentCohort%dbh,currentCohort%n,currentSite%spread,currentCohort%pft,&
                currentCohort%crowndamage, currentCohort%c_area)
 
@@ -2549,6 +2562,7 @@ contains
             height             = EDPftvarcon_inst%hgt_min(ft)
             stem_drop_fraction = prt_params%phen_stem_drop_fraction(ft)
             fnrt_drop_fraction = prt_params%phen_fnrt_drop_fraction(ft)
+
             crowndamage        = 1 ! new recruits are undamaged
 
             ! calculate DBH from initial height
@@ -2781,7 +2795,7 @@ contains
                call create_cohort(currentSite, currentPatch, ft, cohort_n,     &
                   height, 0.0_r8, dbh, prt, efleaf_coh, effnrt_coh, efstem_coh,  &
                   leaf_status, recruitstatus, init_recruit_trim, 0.0_r8,       &
-                  currentPatch%NCL_p, crowndamage, currentSite%spread, bc_in)
+                  currentPatch%ncl, crowndamage, currentSite%spread, bc_in)
 
                ! Note that if hydraulics is on, the number of cohorts may have
                ! changed due to hydraulic constraints.
@@ -3268,6 +3282,9 @@ contains
     integer :: ilyr                    ! Soil layer index
     integer :: dcmpy                   ! Decomposibility pool indexer
     integer :: soil_layer_index = 1    ! Soil layer index associated with above ground litter
+    real(r8) :: decomp_rate            ! per-mass per-day loss rate due to fragmentation AND fungal HR
+    real(r8) :: cwd_hr_frag_frac_eff   ! Effective (element specific) proportion of
+                                       ! losses due to HR
     !----------------------------------------------------------------------
 
 
@@ -3275,14 +3292,25 @@ contains
     ! moisture scalars and fragmentation scalar associated with specified index value
     ! is used for ag_cwd_frag and root_fines_frag calculations.
 
+
+    ! Heterotrophic respiration can only be applied to the carbon pool!
+    if( litt%element_id.eq.carbon12_element) then
+       cwd_hr_frag_frac_eff = cwd_hr_frag_frac
+    else
+       cwd_hr_frag_frac_eff = 0._r8
+    end if
+    
+    
     do c = 1,ncwd
 
-       litt%ag_cwd_frag(c)   = litt%ag_cwd(c) * SF_val_max_decomp(c) * &
-             years_per_day * fragmentation_scaler(soil_layer_index)
-
+       decomp_rate = SF_val_max_decomp(c) * years_per_day * fragmentation_scaler(soil_layer_index)
+       litt%ag_cwd_frag(c)   = litt%ag_cwd(c) * decomp_rate * (1._r8-cwd_hr_frag_frac_eff)
+       litt%ag_cwd_funghr(c) = litt%ag_cwd(c) * decomp_rate * cwd_hr_frag_frac_eff
+       
        do ilyr = 1,nlev_eff_decomp
-           litt%bg_cwd_frag(c,ilyr) = litt%bg_cwd(c,ilyr) * SF_val_max_decomp(c) * &
-                years_per_day * fragmentation_scaler(ilyr)
+          decomp_rate = SF_val_max_decomp(c) * years_per_day * fragmentation_scaler(ilyr)
+          litt%bg_cwd_frag(c,ilyr)   = litt%bg_cwd(c,ilyr) * decomp_rate * (1._r8-cwd_hr_frag_frac_eff)
+          litt%bg_cwd_funghr(c,ilyr) = litt%bg_cwd(c,ilyr) * decomp_rate * cwd_hr_frag_frac_eff
        enddo
     end do
 
@@ -3404,7 +3432,7 @@ contains
 
     cpatch => csite%youngest_patch
     do while(associated(cpatch))
-       cl = cpatch%ncl_p
+       cl = cpatch%ncl
 
        do ft = 1,numpft
           cpatch%nitr_repro_stoich(ft) = &

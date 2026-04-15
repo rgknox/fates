@@ -7,6 +7,7 @@ module EDParamsMod
   use FatesConstantsMod, only : r8 => fates_r8
   use FatesConstantsMod, only : nearzero
   use FatesConstantsMod, only : itrue
+  use FatesConstantsMod, only : tfrz => t_water_freeze_k_1atm
   use FatesGlobals        , only : fates_log
   use FatesGlobals        , only : endrun => fates_endrun
   use FatesConstantsMod,    only : fates_unset_r8
@@ -44,6 +45,8 @@ module EDParamsMod
    real(r8),protected, public :: comp_excln_exp                       ! weighting factor (exponent) for canopy layer exclusion and promotion
    real(r8),protected, public :: ED_val_nignitions                    ! number of annual ignitions per square km
    real(r8),protected, public :: ED_val_understorey_death             ! fraction of plants in understorey cohort impacted by overstorey tree-fall
+   real(r8),protected, public :: cwd_hr_frag_frac                     ! fraction of losses from CWD pool that are due to
+                                                                      ! fungal heterotrophic respiration as opposed to fragmentation
    real(r8),protected, public :: ED_val_cwd_fcel                      ! Cellulose fraction for CWD
    real(r8),protected, public :: ED_val_cwd_flig                      ! Lignin fraction of coarse woody debris
    real(r8),protected, public :: maintresp_nonleaf_baserate           ! Base maintenance respiration rate for plant tissues
@@ -93,6 +96,9 @@ module EDParamsMod
    real(r8),protected,public  :: q10_mr     ! Q10 for respiration rate (for soil fragmenation and plant respiration)    (unitless)
    real(r8),protected,public  :: q10_froz   ! Q10 for frozen-soil respiration rates (for soil fragmentation)            (unitless)
 
+   real(r8),protected,public  :: log_q10_mr_div10      != log(q10_mr)/10.0_r8
+   real(r8),protected,public  :: log_q10_froz_div10    !
+   
    ! grazing parameters
    real(r8),protected,public :: landuse_grazing_carbon_use_eff
    real(r8),protected,public :: landuse_grazing_maxheight
@@ -191,11 +197,12 @@ module EDParamsMod
    public :: TransferParamsGeneric
    public :: FatesReportParams
    public :: GetNVegLayers
-
    
  contains
 
 
+   ! ====================================================================================
+  
    function GetNVegLayers(treevai) result(nv)
 
      real(r8) :: treevai  ! The LAI+SAI of the cohort (m2/m2)
@@ -211,36 +218,38 @@ module EDParamsMod
     ! Initialize all parameters to nan to ensure that we get valid
     ! values back from the host.
     
-    !use shr_infnan_mod , only : nan => shr_infnan_nan
+    use shr_infnan_mod , only : nan => shr_infnan_nan
 
     implicit none
 
-    vai_top_bin_width                     = fates_unset_r8
-    vai_width_increase_factor             = fates_unset_r8
-    photo_temp_acclim_timescale           = fates_unset_r8
-    sdlng_emerg_h2o_timescale             = fates_unset_r8
-    sdlng_mort_par_timescale              = fates_unset_r8
-    sdlng_mdd_timescale                   = fates_unset_r8
-    sdlng2sap_par_timescale               = fates_unset_r8
-    photo_temp_acclim_thome_time          = fates_unset_r8
-    mortality_disturbance_fraction        = fates_unset_r8
-    comp_excln_exp                        = fates_unset_r8
-    ED_val_nignitions                     = fates_unset_r8
-    ED_val_understorey_death              = fates_unset_r8
-    ED_val_cwd_fcel                       = fates_unset_r8
-    ED_val_cwd_flig                       = fates_unset_r8
-    maintresp_nonleaf_baserate            = fates_unset_r8
-    ED_val_phen_a                         = fates_unset_r8
-    ED_val_phen_b                         = fates_unset_r8
-    ED_val_phen_c                         = fates_unset_r8
-    ED_val_phen_chiltemp                  = fates_unset_r8
-    ED_val_phen_mindayson                 = fates_unset_r8
-    ED_val_phen_ncolddayslim              = fates_unset_r8
-    ED_val_phen_coldtemp                  = fates_unset_r8
-    ED_val_cohort_size_fusion_tol         = fates_unset_r8
-    ED_val_cohort_age_fusion_tol          = fates_unset_r8
-    ED_val_patch_fusion_tol               = fates_unset_r8
-    ED_val_canopy_closure_thresh          = fates_unset_r8
+    vai_top_bin_width                     = nan
+    vai_width_increase_factor             = nan
+    photo_temp_acclim_timescale           = nan
+    sdlng_emerg_h2o_timescale             = nan
+    sdlng_mort_par_timescale              = nan
+    sdlng_mdd_timescale                   = nan
+    sdlng2sap_par_timescale               = nan
+    photo_temp_acclim_thome_time          = nan
+    mortality_disturbance_fraction        = nan
+    comp_excln_exp                        = nan
+    ED_val_nignitions                     = nan
+    ED_val_understorey_death              = nan
+    cwd_hr_frag_frac                      = nan
+    ED_val_cwd_fcel                       = nan
+    ED_val_cwd_flig                       = nan
+    maintresp_nonleaf_baserate            = nan
+    ED_val_phen_a                         = nan
+    ED_val_phen_b                         = nan
+    ED_val_phen_c                         = nan
+    ED_val_phen_chiltemp                  = nan
+    ED_val_phen_mindayson                 = nan
+    ED_val_phen_ncolddayslim              = nan
+    ED_val_phen_coldtemp                  = nan
+    ED_val_cohort_size_fusion_tol         = nan
+    ED_val_cohort_age_fusion_tol          = nan
+    ED_val_patch_fusion_tol               = nan
+    ED_val_canopy_closure_thresh          = nan
+
     max_cohort_per_patch                  = -9
     hydr_kmax_rsurf1                      = fates_unset_r8
     hydr_kmax_rsurf2                      = fates_unset_r8
@@ -339,6 +348,9 @@ module EDParamsMod
     
     param_p => pstruct%GetParamFromName("fates_frag_cwd_flig")
     ED_val_cwd_flig = param_p%r_data_scalar
+
+    param_p => pstruct%GetParamFromName("fates_cwd_hrfrag_frac")
+    cwd_hr_frag_frac = param_p%r_data_scalar
     
     param_p => pstruct%GetParamFromName("fates_maintresp_nonleaf_baserate")
     maintresp_nonleaf_baserate = param_p%r_data_scalar
@@ -381,6 +393,10 @@ module EDParamsMod
     
     param_p => pstruct%GetParamFromName("fates_q10_froz")
     q10_froz = param_p%r_data_scalar
+
+    ! pre-logged for computational efficiency
+    log_q10_mr_div10 = log(q10_mr)/10.0_r8
+    log_q10_froz_div10 = log(q10_froz)/10.0_r8
     
     param_p => pstruct%GetParamFromName("fates_history_sizeclass_bin_edges")
     allocate(ED_val_history_sizeclass_bin_edges(size(param_p%r_data_1d,dim=1)))
@@ -514,6 +530,7 @@ module EDParamsMod
         write(fates_log(),fmt0) 'comp_excln_exp = ',comp_excln_exp
         write(fates_log(),fmt0) 'ED_val_nignitions = ',ED_val_nignitions
         write(fates_log(),fmt0) 'ED_val_understorey_death = ',ED_val_understorey_death
+        write(fates_log(),fmt0) 'cwd_hr_frag_frac= ', cwd_hr_frag_frac
         write(fates_log(),fmt0) 'ED_val_cwd_fcel = ',ED_val_cwd_fcel
         write(fates_log(),fmt0) 'ED_val_cwd_flig = ',ED_val_cwd_flig
         write(fates_log(),fmt0) 'fates_maintresp_nonleaf_baserate = ', maintresp_nonleaf_baserate

@@ -32,6 +32,7 @@ module EDInitMod
   use FatesInterfaceTypesMod    , only : hlm_day_of_year
   use FatesRadiationMemMod      , only : num_swb
   use EDTypesMod                , only : ed_site_type
+  use EDTypesMod                , only : init_recruit_trim
   use FatesPatchMod             , only : fates_patch_type
   use FatesCohortMod            , only : fates_cohort_type
   use EDTypesMod                , only : numWaterMem
@@ -67,6 +68,7 @@ module EDInitMod
   use FatesInterfaceTypesMod         , only : nlevdamage
   use FatesInterfaceTypesMod         , only : hlm_use_nocomp
   use FatesInterfaceTypesMod         , only : nlevage
+  use EDParamsMod                    , only : maxpatch_total
   use FatesAllometryMod         , only : h2d_allom
   use FatesAllometryMod         , only : h_allom
   use FatesAllometryMod         , only : bagw_allom
@@ -164,6 +166,9 @@ contains
     allocate(site_in%mass_balance(1:num_elements))
     allocate(site_in%iflux_balance(1:num_elements))
 
+    ! Patch type vector
+    allocate(site_in%pa_vec(maxpatch_total))
+    
     if (hlm_use_tree_damage .eq. itrue) then 
        allocate(site_in%term_nindivs_canopy_damage(1:nlevdamage, 1:nlevsclass, 1:numpft))
        allocate(site_in%term_nindivs_ustory_damage(1:nlevdamage, 1:nlevsclass, 1:numpft))
@@ -1172,7 +1177,6 @@ contains
       integer                          :: use_pft_local(numpft) ! determine whether this PFT is used for this patch and site
       integer                          :: crown_damage          ! crown damage class of the cohort [1 = undamaged, >1 = damaged] 
       real(r8)                         :: l2fr                  ! leaf to fineroot biomass ratio [kg kg-1]
-      real(r8)                         :: canopy_trim           ! fraction of the maximum leaf biomass that we are targeting [0-1]
       real(r8)                         :: cohort_n              ! cohort density
       real(r8)                         :: dbh                   ! cohort dbh [cm]
       real(r8)                         :: height                ! cohort height [m]
@@ -1241,7 +1245,6 @@ contains
       pft_loop: do pft =  1, numpft
          if_use_this_pft: if (use_pft_local(pft) .eq. itrue) then
             l2fr         = prt_params%allom_l2fr(pft)
-            canopy_trim  = 1.0_r8
             crown_damage = 1  ! Assume no damage to begin with
             c_area       = fates_unset_r8
             
@@ -1314,7 +1317,7 @@ contains
                ! calculate the plant diameter from height
                call h2d_allom(height, pft, dbh)
 
-               call bleaf(dbh, pft, crown_damage, canopy_trim, efleaf_coh, c_leaf)
+               call bleaf(dbh, pft, crown_damage, init_recruit_trim, efleaf_coh, c_leaf)
                
             else ! We are in a nocomp simulation 
 
@@ -1354,7 +1357,7 @@ contains
                
                ! Calculate the leaf biomass from allometry
                ! (calculates a maximum first, then applies canopy trim)
-               call bleaf(dbh, pft, crown_damage, canopy_trim, efleaf_coh, c_leaf)
+               call bleaf(dbh, pft, crown_damage, init_recruit_trim, efleaf_coh, c_leaf)
                
                ! If we are in SP mode we ignore the initial values and read in height,
                ! which is used to calcualte n.
@@ -1380,14 +1383,14 @@ contains
 
             ! Calculate fine root biomass from allometry
             ! (calculates a maximum and then trimming value)
-            call bfineroot(dbh, pft, canopy_trim, l2fr, effnrt_coh, c_fnrt)
+            call bfineroot(dbh, pft, init_recruit_trim, l2fr, effnrt_coh, c_fnrt)
 
             ! Calculate sapwood biomass
-            call bsap_allom(dbh, pft, crown_damage, canopy_trim, efstem_coh,   &
+            call bsap_allom(dbh, pft, crown_damage, init_recruit_trim, efstem_coh,   &
                a_sapw, c_sapw)
 
             call bdead_allom(c_agw, c_bgw, c_sapw, pft, c_struct)
-            call bstore_allom(dbh, pft, crown_damage, canopy_trim, c_store)
+            call bstore_allom(dbh, pft, crown_damage, init_recruit_trim, c_store)
 
             if (debug) write(fates_log(),*) 'EDInitMod.F90 call create_cohort '
 
@@ -1453,7 +1456,7 @@ contains
             call create_cohort(site_in, patch_in, pft, cohort_n,               &
                height, zero_co_age, dbh, prt, efleaf_coh,                      &
                effnrt_coh, efstem_coh, leaf_status, recruitstatus,             &
-               canopy_trim, c_area, 1, crown_damage, site_in%spread, bc_in)
+               init_recruit_trim, c_area, 1, crown_damage, site_in%spread, bc_in)
 
          endif if_use_this_pft
       enddo pft_loop

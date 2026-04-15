@@ -286,7 +286,6 @@ integer, parameter, public :: isemi_stress_decid = 4 ! Flag that indicates that 
 
   ! Conversion: megajoules per joule
   real(fates_r8), parameter, public :: megajoules_per_joule = 1.0E-6_fates_r8
- 
   
   ! Conversion: days per second
   real(fates_r8), parameter, public :: days_per_sec = 1.0_fates_r8/86400.0_fates_r8
@@ -322,10 +321,13 @@ integer, parameter, public :: isemi_stress_decid = 4 ! Flag that indicates that 
 
   ! freezing point of water at 1 atm (K)
   real(fates_r8), parameter, public :: t_water_freeze_k_1atm   = 273.15_fates_r8
-
+  
   ! freezing point of water at triple point (K)
   real(fates_r8), parameter, public :: t_water_freeze_k_triple = 273.16_fates_r8
 
+  ! Reference temperature (at 25C) used in various physiology calculations (K)
+  real(fates_r8), parameter, public :: t_ref298 = 298.15_fates_r8
+  
   ! Density of fresh liquid water (kg/m3)
   real(fates_r8), parameter, public :: dens_fresh_liquid_water = 1.0E3_fates_r8
 

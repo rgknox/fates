@@ -31,6 +31,7 @@ module EDTypesMod
   use FatesInterfaceTypesMod,only : bc_out_type
   use FatesConstantsMod    , only : n_landuse_cats
   use FatesInterfaceTypesMod,only : hlm_parteh_mode
+  use EDParamsMod,           only : maxpatch_total
   use FatesCohortMod,        only : fates_cohort_type
   use FatesPatchMod,         only : fates_patch_type
   use EDParamsMod,           only : nclmax, nlevleaf, maxpft
@@ -42,7 +43,7 @@ module EDTypesMod
   private               ! By default everything is private
   save
               
-  real(r8), parameter, public :: init_recruit_trim = 0.8_r8    ! This is the initial trimming value that
+  real(r8), parameter, public :: init_recruit_trim = 1.0_r8    ! This is the initial trimming value that
                                                                ! new recruits start with
 
   ! -------------------------------------------------------------------------------------
@@ -294,11 +295,13 @@ module EDTypesMod
 
      real(r8) :: frag_out         ! Litter and coarse woody debris fragmentation flux [kg/site/day]
 
+     real(r8) :: funghr_out       ! Losses to fungal respiration [kg/site/day]
+     
      real(r8) :: wood_product_harvest(maxpft)    ! Total mass exported as wood product from wood harvest [kg/site/day]
 
      real(r8) :: wood_product_landusechange(maxpft)    ! Total mass exported as wood product from land use change [kg/site/day]
 
-     real(r8) :: burn_flux_to_atm      ! Total mass burned and exported to the atmosphere [kg/site/day]
+     real(r8) :: burn_flux_to_atm(n_dist_types)      ! Total mass burned and exported to the atmosphere [kg/site/day]
 
      real(r8) :: flux_generic_in       ! Used for prescribed or artificial input fluxes
                                        ! and initialization [kg/site/day]
@@ -308,7 +311,7 @@ module EDTypesMod
                                        ! due to re-sizing patches when area math starts to lose
                                        ! precision
 
-     real(r8) :: herbivory_flux_out    ! loss of element due to grazing (and/or browsing) by herbivores
+     real(r8) :: herbivory_flux_out    ! loss of element due to grazing (and/or browsing) by herbivores [kg/site/day]
      
    contains
 
@@ -318,15 +321,33 @@ module EDTypesMod
   end type site_massbal_type
   
 
+  type :: fates_patch_vec_type
+
+     ! This is a scratch array for patch pointers
+     ! this is useful if you want to loop over patches
+     ! in order by index. This should be updated
+     ! upon canopy summarization, and should
+     ! facilitate coupling with the host
+     
+     type(fates_patch_type), pointer :: p => null()
+     
+  end type fates_patch_vec_type
+
+  
   !************************************
   !** Site type structure           **
   !************************************
 
+
+
+  
   type, public :: ed_site_type
      
      ! POINTERS  
      type (fates_patch_type), pointer :: oldest_patch => null()   ! pointer to oldest patch at the site  
      type (fates_patch_type), pointer :: youngest_patch => null() ! pointer to yngest patch at the site
+
+     type (fates_patch_vec_type), allocatable :: pa_vec(:)      ! Patch vector by patch no
      
      ! Resource management
      type (ed_resources_management_type) :: resources_management ! resources_management at the site 
@@ -625,13 +646,18 @@ contains
     ! Special case: For no-comp runs, we treat the bare-ground
     ! patch as index 0.
     
-    type(ed_site_type),intent(in) :: currentSite
+    type(ed_site_type),intent(inout) :: currentSite
     logical,intent(in) :: check     ! If true, we are checking order, not setting
     integer,intent(in) :: call_id   ! An index used for testing
     type(fates_patch_type), pointer :: currentPatch
     integer patchno
-
+    
     !---------------------------------------------------------------------
+
+    ! Flush the patch pointers
+    do patchno = 1,maxpatch_total
+       currentSite%pa_vec(patchno)%p => null()
+    end do
     
     patchno = 1
     currentPatch => currentSite%oldest_patch
@@ -649,6 +675,7 @@ contains
              call endrun(msg=errMsg(sourcefile, __LINE__))
           end if
           currentPatch%patchno = patchno
+          currentSite%pa_vec(patchno)%p => currentPatch
           patchno = patchno + 1
        endif
        currentPatch => currentPatch%younger
@@ -717,9 +744,10 @@ contains
       this%seed_in           = 0._r8
       this%seed_out          = 0._r8
       this%frag_out          = 0._r8
+      this%funghr_out        = 0._r8
       this%wood_product_harvest(:)        = 0._r8
       this%wood_product_landusechange(:)  = 0._r8
-      this%burn_flux_to_atm  = 0._r8
+      this%burn_flux_to_atm(:)            = 0._r8
       this%flux_generic_in   = 0._r8
       this%flux_generic_out  = 0._r8
       this%patch_resize_err  = 0._r8
