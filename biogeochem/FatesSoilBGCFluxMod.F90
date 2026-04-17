@@ -30,7 +30,7 @@ module FatesSoilBGCFluxMod
   use PRTGenericMod     , only : repro_organ
   use PRTGenericMod     , only : struct_organ
   use PRTGenericMod     , only : SetState
-  use PRTAllometricCNPMod,only : stoich_max
+  use PRTAllometricCNPMod,only : stoich_max,stoich_growth_min
   use FatesAllometryMod, only : set_root_fraction
   use FatesAllometryMod , only : h_allom
   use FatesAllometryMod , only : h2d_allom
@@ -132,7 +132,8 @@ contains
     type(fates_patch_type), pointer  :: cpatch        ! current patch pointer
     type(fates_cohort_type), pointer :: ccohort       ! current cohort pointer
     real(r8) :: fnrt_c                             ! fine-root carbon [kg]
-
+    real(r8) :: store_c_target                   
+    
     ! FATES needs to know the supplementation status of N and P in the soils
     ! If both are supplemented, then FATES doesn't activate dynamic roots
     ! even if we are in CNP mode.
@@ -165,12 +166,29 @@ contains
 
     do s = 1, nsites
 
+       sites(s)%dnh4 = 0._r8
+       sites(s)%dno3 = 0._r8
+       sites(s)%dpo4 = 0._r8
+       do j = 1,bc_in(s)%nlevsoil
+          sites(s)%dnh4_prof(j) = bc_in(s)%nh4_prof(j)-sites(s)%nh4_prof_prev(j)
+          sites(s)%dno3_prof(j) = bc_in(s)%no3_prof(j)-sites(s)%no3_prof_prev(j)
+          sites(s)%dpo4_prof(j) = bc_in(s)%po4_prof(j)-sites(s)%po4_prof_prev(j)
+
+          sites(s)%dnh4 = sites(s)%dnh4 + sites(s)%dnh4_prof(j) * sites(s)%dz_soil(j)
+          sites(s)%dno3 = sites(s)%dno3 + sites(s)%dno3_prof(j) * sites(s)%dz_soil(j)
+          sites(s)%dpo4 = sites(s)%dpo4 + sites(s)%dpo4_prof(j) * sites(s)%dz_soil(j)
+          
+          sites(s)%nh4_prof_prev(j) = bc_in(s)%nh4_prof(j)
+          sites(s)%no3_prof_prev(j) = bc_in(s)%no3_prof(j)
+          sites(s)%po4_prof_prev(j) = bc_in(s)%po4_prof(j)
+       end do
+       
        ! If the plant is in "prescribed uptake mode"
        ! then we are not coupling with the soil bgc model.
        ! In this case, the bc_in structure is meaningless.
        ! Instead, we give the plants a parameterized fraction
        ! of their demand.
-
+       
        if (n_uptake_mode.eq.prescribed_n_uptake) then
 
           cpatch => sites(s)%oldest_patch
@@ -194,12 +212,24 @@ contains
           cpatch => sites(s)%oldest_patch
           do while (associated(cpatch))
              ccohort => cpatch%tallest
+             if(associated(cpatch,sites(s)%oldest_patch))then
+
+                call bstore_allom(ccohort%dbh,ccohort%pft,ccohort%crowndamage,ccohort%canopy_trim,store_c_target)
+                
+                print*,"tallest vmax: ",ccohort%vmax_nh4,ccohort%vmax_no3,ccohort%prt%GetState(store_organ, carbon12_element)/store_c_target , &
+                     ccohort%prt%GetState(store_organ, nitrogen_element)/ccohort%prt%GetNutrientTarget(nitrogen_element,store_organ,stoich_growth_min), &
+                     ccohort%prt%GetState(store_organ, phosphorus_element)/ccohort%prt%GetNutrientTarget(phosphorus_element,store_organ,stoich_growth_min)
+             end if
              do while (associated(ccohort))
                 icomp = icomp+1
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
+                
                 ccohort%daily_n_demand = fnrt_c * &
                      (ccohort%vmax_nh4+ccohort%vmax_no3) * sec_per_day
+
+                !print*,ccohort%daily_n_demand
+                
                 ! N Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_nh4_uptake = bc_in(s)%plant_nh4_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
                 ccohort%daily_no3_uptake = bc_in(s)%plant_no3_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n

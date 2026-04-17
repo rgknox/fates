@@ -166,6 +166,13 @@ contains
     allocate(site_in%mass_balance(1:num_elements))
     allocate(site_in%iflux_balance(1:num_elements))
 
+    allocate(site_in%dnh4_prof(site_in%nlevsoil))
+    allocate(site_in%dno3_prof(site_in%nlevsoil))
+    allocate(site_in%dpo4_prof(site_in%nlevsoil))
+    allocate(site_in%nh4_prof_prev(site_in%nlevsoil))
+    allocate(site_in%no3_prof_prev(site_in%nlevsoil))
+    allocate(site_in%po4_prof_prev(site_in%nlevsoil))
+     
     ! Patch type vector
     allocate(site_in%pa_vec(maxpatch_total))
     
@@ -329,6 +336,16 @@ contains
     site_in%disturbance_rates(:,:,:) = 0.0_r8
     site_in%landuse_transition_matrix(:,:) = 0.0_r8
 
+    site_in%dnh4 = fates_unset_r8
+    site_in%dno3 = fates_unset_r8
+    site_in%dpo4 = fates_unset_r8
+    site_in%dnh4_prof(:)  = fates_unset_r8
+    site_in%dno3_prof(:)  = fates_unset_r8
+    site_in%dpo4_prof(:)  = fates_unset_r8
+    site_in%nh4_prof_prev(:) = 0._r8
+    site_in%no3_prof_prev(:) = 0._r8
+    site_in%po4_prof_prev(:) = 0._r8
+          
     ! FIRE
     site_in%FDI              = 0.0_r8     ! daily fire danger index (0-1)
     site_in%NF               = 0.0_r8     ! daily lightning strikes per km2

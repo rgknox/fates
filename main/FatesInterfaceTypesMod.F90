@@ -455,7 +455,10 @@ module FatesInterfaceTypesMod
       real(r8), pointer :: plant_p_uptake_flux(:,:)   ! Phosphorus input flux for
                                                       ! each competitor [gP/m2/day]
 
-
+      real(r8), pointer :: nh4_prof(:)  ! Ammonium profile (used for optimization) [gN/m3]
+      real(r8), pointer :: no3_prof(:)  ! Nitrate profile (used for optimization) [gN/m3]
+      real(r8), pointer :: po4_prof(:)  ! Phosphate profile (used for optimization) [gN/m3]
+      
       ! Photosynthesis variables
       ! ---------------------------------------------------------------------------------
 

@@ -798,8 +798,16 @@ contains
     real(r8) :: store_nut_max, store_nut_act
     real(r8) :: zeta
     real(r8) :: obj_ratio
-    logical, parameter :: use_carbon_objfunc = .false.
-
+    logical, parameter :: use_carbon_objfunc = .true.
+    integer, parameter :: obj_type = 3
+    real(r8), parameter :: sobj_timescale = 5._r8
+    real(r8), parameter :: minmax_vmax_mult = 100._r8
+    
+    real(r8), parameter :: min_vmax = 1.e-12_r8
+    real(r8), parameter :: vmax0_nh4 = 2.e-7_r8
+    real(r8), parameter :: vmax0_no3 = 2.e-7_r8
+    real(r8), parameter :: vmax0_po4 = 5.e-7_r8
+    
     associate( &
          ipft        => this%bc_in(acnp_bc_in_id_pft)%ival , &
          elongf_fnrt => this%bc_in(acnp_bc_in_id_effnrt)%rval , &
@@ -813,12 +821,16 @@ contains
          sobj_no3    => this%bc_inout(acnp_bc_inout_id_sobj_no3)%rval , &
          sobj_po4    => this%bc_inout(acnp_bc_inout_id_sobj_po4)%rval)
 
-      zeta = 0.5_r8*(2._r8**(1._r8/prt_params%vmax_timescale(ipft)) - 1._r8)
-
-
+      
+      
       if(leaf_status.eq.leaves_off) return
 
-
+      if(obj_type>1)then
+         zeta = (2._r8**(1._r8/prt_params%vmax_timescale(ipft))-1._r8)/log(2._r8)
+      else
+         zeta = 0.5 * 2._r8**(1._r8/prt_params%vmax_timescale(ipft))
+      end if
+      
       ! Step 1: Determine the current value of the objective function (storage ratio)
       ! Step 2: Smooth the objective function with an exponential moving average
       ! Step 3: Apply the update based on the smoothed objective function
@@ -844,14 +856,28 @@ contains
             obj_ratio = store_nut_max/store_nut_act
          end if
 
-         sobj_nh4 = (sobj_nh4 * prt_params%vmax_timescale(ipft) + log(obj_ratio))/(prt_params%vmax_timescale(ipft)+1._r8)
-         vmax_nh4 = vmax_nh4 * (1._r8 + zeta*exp(sobj_nh4))
-
+         obj_ratio = min(2._r8,max(0.5_r8,obj_ratio))
+         
+         sobj_nh4 = (sobj_nh4 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
+         if(obj_type==1) then
+            vmax_nh4 = max(min_vmax,vmax_nh4 * zeta*exp(sobj_nh4))
+         elseif(obj_type==2) then
+            vmax_nh4 = max(min_vmax,vmax_nh4 * (1._r8 + zeta*sobj_nh4))
+         else
+            vmax_nh4 = max(min_vmax, vmax_nh4 + vmax0_nh4*zeta*sobj_nh4)
+         end if
+         
          ! Until we have source side limitations, both NH4 and NO3 react the same
          ! because they have the same elemental sink imposed (nitrogen)
 
-         sobj_no3 = (sobj_no3 * prt_params%vmax_timescale(ipft) + log(obj_ratio))/(prt_params%vmax_timescale(ipft)+1._r8)
-         vmax_no3 = vmax_no3 * (1._r8 + zeta*exp(sobj_no3))
+         sobj_no3 = (sobj_no3 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
+         if(obj_type==1) then
+            vmax_no3 = max(min_vmax,vmax_no3 * zeta*exp(sobj_no3))
+         elseif(obj_type==2) then
+            vmax_no3 = max(min_vmax,vmax_no3 * (1._r8 + zeta*sobj_no3))
+         else
+            vmax_no3 = max(min_vmax, vmax_no3 + vmax0_no3*zeta*sobj_no3)
+         end if
 
       end if
 
@@ -868,9 +894,16 @@ contains
             obj_ratio = store_nut_max/store_nut_act
          end if
 
-         sobj_po4 = (sobj_po4 * prt_params%vmax_timescale(ipft) + log(obj_ratio))/(prt_params%vmax_timescale(ipft)+1._r8)
-         vmax_po4 = vmax_po4 * (1._r8 + zeta*exp(sobj_po4))
-
+         obj_ratio = min(2._r8,max(0.5_r8,obj_ratio))
+         sobj_po4 = (sobj_po4 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
+         if(obj_type==1) then
+            vmax_po4 = max(min_vmax, vmax_po4 * zeta*exp(sobj_po4))
+         elseif(obj_type==2) then
+            vmax_po4 = max(min_vmax, vmax_po4 * (1._r8 + zeta*sobj_po4))
+         else
+            vmax_po4 = max(min_vmax, vmax_po4 + vmax0_po4*zeta*sobj_po4)
+         end if
+         
       end if
     end associate
 

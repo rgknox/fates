@@ -78,7 +78,7 @@ contains
 
   ! =====================================================================================
  
-  subroutine Init(this,numpft)
+  subroutine Init(this)
 
     use FatesLitterMod, only : ncwd
     
@@ -87,9 +87,11 @@ contains
     ! local variables
     integer  :: ft                 ! pft index
     integer  :: iage               ! leaf age class index
-    integer,intent(in)  :: numpft
+    integer  :: numpft
 
     associate( vcmax25top => pstruct%parameters(pid_vcmax25top)%r_data_2d )
+
+      numpft = size(vcmax25top,dim=2)
 
       call this%InitAllocate(numpft)
       call this%InitDamageTransitions(numpft)
@@ -109,8 +111,8 @@ contains
             ! jmax25top(ft) =  &
             ! (2.59_r8 - 0.035_r8*min(max((t10(p)-tfrzc),11._r8),35._r8)) * vcmax25top(ft)
             
-            this%jmax25top(ft,iage) = 1.67_r8   * vcmax25top(ft,iage)
-            this%kp25top(ft,iage)   = 20000._r8 * vcmax25top(ft,iage)
+            this%jmax25top(ft,iage) = 1.67_r8   * vcmax25top(iage,ft)
+            this%kp25top(ft,iage)   = 20000._r8 * vcmax25top(iage,ft)
          
          end do
 

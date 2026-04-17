@@ -352,8 +352,11 @@ contains
        fates%bc_out(s)%litt_flux_cel_n_si(:) = 0._r8
        fates%bc_out(s)%litt_flux_lig_n_si(:) = 0._r8
        fates%bc_out(s)%litt_flux_lab_n_si(:) = 0._r8
-    case(prt_cnp_flex_allom_hyp) 
+    case(prt_cnp_flex_allom_hyp)
        
+       fates%bc_in(s)%nh4_prof(:) = fates_unset_r8
+       fates%bc_in(s)%no3_prof(:) = fates_unset_r8
+       fates%bc_in(s)%po4_prof(:) = fates_unset_r8
        fates%bc_in(s)%plant_nh4_uptake_flux(:,:) = 0._r8
        fates%bc_in(s)%plant_no3_uptake_flux(:,:) = 0._r8
        fates%bc_in(s)%plant_p_uptake_flux(:,:) = 0._r8
@@ -497,6 +500,9 @@ contains
          allocate(bc_in%plant_nh4_uptake_flux(max_comp_per_site,1))
          allocate(bc_in%plant_no3_uptake_flux(max_comp_per_site,1))
          allocate(bc_in%plant_p_uptake_flux(max_comp_per_site,1))
+         allocate(bc_in%nh4_prof(nlevdecomp_in))
+         allocate(bc_in%no3_prof(nlevdecomp_in))
+         allocate(bc_in%po4_prof(nlevdecomp_in))
       else
          allocate(bc_in%plant_nh4_uptake_flux(1,1))
          allocate(bc_in%plant_no3_uptake_flux(1,1))
