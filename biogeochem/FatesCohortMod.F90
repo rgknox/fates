@@ -38,6 +38,7 @@ module FatesCohortMod
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_lstat, acnp_bc_in_id_netdc
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_netdc, acnp_bc_in_id_nc_repro
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_pc_repro, acnp_bc_in_id_cdamage
+  use PRTAllometricCNPMod,        only : acnp_bc_in_id_dnh4,acnp_bc_in_id_dno3,acnp_bc_in_id_dpo4
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_dbh, acnp_bc_inout_id_resp_excess
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_netdn, acnp_bc_inout_id_netdp
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_nh4,acnp_bc_inout_id_vmax_no3
@@ -826,7 +827,7 @@ module FatesCohortMod
 
     !===========================================================================
   
-    subroutine InitPRTBoundaryConditions(this)      
+    subroutine InitPRTBoundaryConditions(this,site)      
       !
       ! DESCRIPTION:
       ! Set the boundary conditions that flow in an out of the PARTEH
@@ -849,6 +850,7 @@ module FatesCohortMod
       
       ! ARGUMENTS:
       class(fates_cohort_type), intent(inout), target :: this
+      type(fates_site_type), intent(in) :: site
       
       select case(hlm_parteh_mode)
       case (prt_carbon_allom_hyp)
@@ -880,6 +882,10 @@ module FatesCohortMod
         call this%prt%RegisterBCIn(acnp_bc_in_id_nc_repro, bc_rval=this%nc_repro)
         call this%prt%RegisterBCIn(acnp_bc_in_id_pc_repro, bc_rval=this%pc_repro)
         call this%prt%RegisterBCIn(acnp_bc_in_id_cdamage, bc_ival=this%crowndamage)
+
+        call this%prt%RegisterBCIn(acnp_bc_in_id_dnh4, bc_rval=site%dnh4)
+        call this%prt%RegisterBCIn(acnp_bc_in_id_dno3, bc_rval=site%dno3)
+        call this%prt%RegisterBCIn(acnp_bc_in_id_dpo4, bc_rval=site%dpo4)
         
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_dbh, bc_rval=this%dbh)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_resp_excess, bc_rval=this%resp_excess_hold)
