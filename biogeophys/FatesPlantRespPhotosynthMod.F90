@@ -954,6 +954,8 @@ contains
     real(r8) :: fnrt_mr_layer                    ! fine root maintenance respiation per layer [kgC/plant/s]
     integer  :: ft, cl, j                        ! indices: pft, canopy layer, soil layer
     real(r8) :: fnrtfrac_ftz(numpft,bc_in%nlevsoil)
+    real(r8) :: vmax_scaler                      ! how much is fnrt MR scaled up or down due to
+                                                 ! investment or de-investment in aqueous nutrient uptake
     integer  :: ico
     
     patch => site%pa_vec(ifp)%p
@@ -1018,6 +1020,8 @@ contains
           live_croot_n = sapw_c_bgw * prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(sapw_organ))
           
           fnrt_n = cohort%prt%fnrt_c * prt_params%nitr_stoich_p1(ft,prt_params%organ_param_id(fnrt_organ))
+
+          vmax_scaler = 1._r8
           
        case(prt_cnp_flex_allom_hyp)
           
@@ -1028,7 +1032,12 @@ contains
                cohort%prt%sapw_n
           
           fnrt_n = cohort%prt%fnrt_n
-          
+
+          vmax_scaler = 1._r8 + &
+               prt_params%vmax_resp_factor(1) * (cohort%vmax_nh4/prt_params%vmax0_nh4(ft)-1._r8) + & 
+               prt_params%vmax_resp_factor(2) * (cohort%vmax_no3/prt_params%vmax0_no3(ft)-1._r8) + & 
+               prt_params%vmax_resp_factor(3) * (cohort%vmax_po4/prt_params%vmax0_po4(ft)-1._r8)
+
           if (hlm_use_tree_damage .eq. itrue) then
              
              sapw_n_undamaged = cohort%prt%sapw_n / &
@@ -1063,24 +1072,31 @@ contains
        ! and 1 as additional increment of root respiration used for N fixation
        ! ------------------------------------------------------------------
        cohort%froot_mr = 0._r8
+       cohort%froot_mr_vmax = 0._r8
        cohort%sym_nfix_tstep = 0._r8
        
        ! n_fixation is integrated over the course of the day
        ! this variable is zeroed at the end of the FATES dynamics sequence
+
        
        do j = 1,bc_in%nlevsoil
 
-          fnrt_mr_layer = fnrt_n * maintresp_nonleaf_baserate * tcsoi(j) * fnrtfrac_ftz(ft,j) * patch%coarrays%mr_reduction_factor(ico)
+          fnrt_mr_layer = fnrt_n * maintresp_nonleaf_baserate * &
+               tcsoi(j) * fnrtfrac_ftz(ft,j) * patch%coarrays%mr_reduction_factor(ico)
           
           ! calculate the cost of carbon for N fixation in each soil layer and calculate N fixation rate based on that [kgC / kgN]
           
           call RootLayerNFixation(bc_in%t_soisno_sl(j),ft,dtime,fnrt_mr_layer,fnrt_mr_nfix_layer,nfix_layer)
           
-          cohort%froot_mr = cohort%froot_mr + fnrt_mr_nfix_layer + fnrt_mr_layer 
+          cohort%froot_mr = cohort%froot_mr + fnrt_mr_nfix_layer + fnrt_mr_layer * vmax_scaler 
+          cohort%froot_mr_vmax = cohort%froot_mr_vmax + fnrt_mr_layer * (vmax_scaler - 1._r8)
           
           cohort%sym_nfix_tstep = cohort%sym_nfix_tstep + nfix_layer
           
        enddo
+
+       
+
        
        ! Coarse Root MR (kgC/plant/s) (below ground sapwood)
        ! ------------------------------------------------------------------

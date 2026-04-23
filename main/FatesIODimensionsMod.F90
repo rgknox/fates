@@ -29,6 +29,7 @@ module FatesIODimensionsMod
     character(*), parameter, public  :: levclscpf = 'fates_levclscpf'   
     character(*), parameter, public  :: levcdsc = 'fates_levcdsc' ! matches histFileMod
     character(*), parameter, public  :: levcdpf = 'fates_levcdpf' ! matches histFileMod
+    character(*), parameter, public  :: levclpf = 'fates_levclpf'
     character(*), parameter, public  :: levcdam = 'fates_levcdam' ! matches histFileMod
     character(*), parameter, public  :: levagefuel = 'fates_levagefuel' ! matches histFileMod
     character(*), parameter, public  :: levelem =  'fates_levelem'
@@ -169,6 +170,8 @@ module FatesIODimensionsMod
        integer :: cdsc_end
        integer :: cdpf_begin
        integer :: cdpf_end
+       integer :: clpf_begin
+       integer :: clpf_end
        integer :: cdam_begin
        integer :: cdam_end
        integer :: elem_begin

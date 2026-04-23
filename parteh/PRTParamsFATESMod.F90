@@ -242,6 +242,18 @@ contains
     allocate(prt_params%nfix_mresp_scfrac(num_pft))
     prt_params%nfix_mresp_scfrac(:) = param_p%r_data_1d(:)
 
+    param_p => pstruct%GetParamFromName('fates_cnp_vmax_nh4')
+    allocate(prt_params%vmax0_nh4(num_pft))
+    prt_params%vmax0_nh4(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_cnp_vmax_no3')
+    allocate(prt_params%vmax0_no3(num_pft))
+    prt_params%vmax0_no3(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_cnp_vmax_p')
+    allocate(prt_params%vmax0_po4(num_pft))
+    prt_params%vmax0_po4(:) = param_p%r_data_1d(:)
+    
     param_p => pstruct%GetParamFromName('fates_cnp_vmax_resp_factor')
     allocate(prt_params%vmax_resp_factor(num_aqueous_nutrients))
     prt_params%vmax_resp_factor(:) = param_p%r_data_1d(:)

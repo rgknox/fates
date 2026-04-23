@@ -77,6 +77,9 @@ module FatesCohortMod
     real(r8)                     :: sobj_nh4 ! Smoothed ln-objective function driving vmax_nh4
     real(r8)                     :: sobj_no3 ! Smoothed ln-objective function driving vmax_no3
     real(r8)                     :: sobj_po4 ! Smoothed ln-objective function driving vmax_po4
+    real(r8)                     :: dnh4     ! Root profile weighted change in NH4 [g/m2/day]
+    real(r8)                     :: dno3     ! Root profile weighted change in NO3 [g/m2/day]
+    real(r8)                     :: dpo4     ! Root profile weighted change in PO4 [g/m2/day]
     
     !---------------------------------------------------------------------------
 
@@ -211,7 +214,8 @@ module FatesCohortMod
     real(r8) :: livestem_mr      ! aboveground live stem maintenance respiration [kgC/indiv/s]
     real(r8) :: livecroot_mr     ! belowground live stem maintenance respiration [kgC/indiv/s]
     real(r8) :: froot_mr         ! live fine root maintenance respiration [kgC/indiv/s]
-
+    real(r8) :: froot_mr_vmax    ! Net maintenance respiration due to change in Vmax [kgC/indiv/s]
+    
     !---------------------------------------------------------------------------
 
     ! DAMAGE
@@ -419,7 +423,8 @@ module FatesCohortMod
       this%livestem_mr             = nan 
       this%livecroot_mr            = nan 
       this%froot_mr                = nan 
-   
+      this%froot_mr_vmax           = nan
+      
       ! DAMAGE
       this%branch_frac             = nan 
    
@@ -524,7 +529,8 @@ module FatesCohortMod
       this%livestem_mr             = 0._r8
       this%livecroot_mr            = 0._r8
       this%froot_mr                = 0._r8
-   
+      this%froot_mr                = 0._r8
+      
       this%dmort                   = 0._r8
       this%lmort_direct            = 0._r8
       this%lmort_collateral        = 0._r8
@@ -604,9 +610,9 @@ module FatesCohortMod
         call endrun(msg=errMsg(sourcefile, __LINE__))
       endif
 
-      this%vmax_nh4 = EDPftvarcon_inst%vmax0_nh4(pft)
-      this%vmax_no3 = EDPftvarcon_inst%vmax0_no3(pft)
-      this%vmax_po4 = EDPftvarcon_inst%vmax0_po4(pft)
+      this%vmax_nh4 = prt_params%vmax0_nh4(pft)
+      this%vmax_no3 = prt_params%vmax0_no3(pft)
+      this%vmax_po4 = prt_params%vmax0_po4(pft)
       
       if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
          ! Set thes log-smoothed objective functions to neutral, ie ln(1) = 0
@@ -719,11 +725,11 @@ module FatesCohortMod
       copyCohort%kp25top                 = this%kp25top
       copyCohort%year_net_uptake         = this%year_net_uptake
       copyCohort%cnp_limiter             = this%cnp_limiter
+      copyCohort%vmax_nh4 = this%vmax_nh4
+      copyCohort%vmax_no3 = this%vmax_no3
+      copyCohort%vmax_po4 = this%vmax_po4
 
       if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then 
-         copyCohort%vmax_nh4 = this%vmax_nh4
-         copyCohort%vmax_no3 = this%vmax_no3
-         copyCohort%vmax_po4 = this%vmax_po4
          copyCohort%sobj_nh4 = this%sobj_nh4
          copyCohort%sobj_no3 = this%sobj_no3
          copyCohort%sobj_po4 = this%sobj_po4
@@ -749,7 +755,8 @@ module FatesCohortMod
       copyCohort%livestem_mr             = this%livestem_mr
       copyCohort%livecroot_mr            = this%livecroot_mr
       copyCohort%froot_mr                = this%froot_mr
-
+      copyCohort%froot_mr_vmax           = this%froot_mr_vmax
+      
       ! DAMAGE
       copyCohort%branch_frac             = this%branch_frac
 
@@ -827,7 +834,7 @@ module FatesCohortMod
 
     !===========================================================================
   
-    subroutine InitPRTBoundaryConditions(this,site)      
+    subroutine InitPRTBoundaryConditions(this)      
       !
       ! DESCRIPTION:
       ! Set the boundary conditions that flow in an out of the PARTEH
@@ -850,7 +857,6 @@ module FatesCohortMod
       
       ! ARGUMENTS:
       class(fates_cohort_type), intent(inout), target :: this
-      type(fates_site_type), intent(in) :: site
       
       select case(hlm_parteh_mode)
       case (prt_carbon_allom_hyp)
@@ -883,9 +889,9 @@ module FatesCohortMod
         call this%prt%RegisterBCIn(acnp_bc_in_id_pc_repro, bc_rval=this%pc_repro)
         call this%prt%RegisterBCIn(acnp_bc_in_id_cdamage, bc_ival=this%crowndamage)
 
-        call this%prt%RegisterBCIn(acnp_bc_in_id_dnh4, bc_rval=site%dnh4)
-        call this%prt%RegisterBCIn(acnp_bc_in_id_dno3, bc_rval=site%dno3)
-        call this%prt%RegisterBCIn(acnp_bc_in_id_dpo4, bc_rval=site%dpo4)
+        call this%prt%RegisterBCIn(acnp_bc_in_id_dnh4, bc_rval=this%dnh4)
+        call this%prt%RegisterBCIn(acnp_bc_in_id_dno3, bc_rval=this%dno3)
+        call this%prt%RegisterBCIn(acnp_bc_in_id_dpo4, bc_rval=this%dpo4)
         
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_dbh, bc_rval=this%dbh)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_resp_excess, bc_rval=this%resp_excess_hold)
@@ -1096,6 +1102,7 @@ module FatesCohortMod
       write(fates_log(),*) 'cohort%livestem_mr            = ', this%livestem_mr
       write(fates_log(),*) 'cohort%livecroot_mr           = ', this%livecroot_mr
       write(fates_log(),*) 'cohort%froot_mr               = ', this%froot_mr
+      write(fates_log(),*) 'cohort%froot_mr_vmax          = ', this%froot_mr_vmax
       write(fates_log(),*) 'cohort%dgmort                 = ', this%dgmort
       write(fates_log(),*) 'cohort%treelai                = ', this%treelai
       write(fates_log(),*) 'cohort%treesai                = ', this%treesai

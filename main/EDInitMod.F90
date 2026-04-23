@@ -144,6 +144,8 @@ contains
     !----------------------------------------------------------------------
     integer :: el
 
+    site_in%nlevsoil   = bc_in%nlevsoil
+    
     !
     allocate(site_in%term_nindivs_canopy(1:n_term_mort_types,1:nlevsclass,1:numpft))
     allocate(site_in%term_nindivs_ustory(1:n_term_mort_types,1:nlevsclass,1:numpft))
@@ -233,7 +235,7 @@ contains
     allocate(site_in%rx_fmort_abg_flux(1:nlevsclass,1:numpft))
 
 
-    site_in%nlevsoil   = bc_in%nlevsoil
+    
     allocate(site_in%rootfrac_scr(site_in%nlevsoil))
     allocate(site_in%zi_soil(0:site_in%nlevsoil))
     allocate(site_in%dz_soil(site_in%nlevsoil))
@@ -336,9 +338,6 @@ contains
     site_in%disturbance_rates(:,:,:) = 0.0_r8
     site_in%landuse_transition_matrix(:,:) = 0.0_r8
 
-    site_in%dnh4 = fates_unset_r8
-    site_in%dno3 = fates_unset_r8
-    site_in%dpo4 = fates_unset_r8
     site_in%dnh4_prof(:)  = fates_unset_r8
     site_in%dno3_prof(:)  = fates_unset_r8
     site_in%dpo4_prof(:)  = fates_unset_r8
@@ -551,9 +550,9 @@ contains
           sites(s)%area_pft(:,:) = 0.0_r8
 
           do ft =  1,numpft
-             sites(s)%rec_vmax_nh4(ft,:) = EDPftvarcon_inst%vmax0_nh4(ft)
-             sites(s)%rec_vmax_no3(ft,:) = EDPftvarcon_inst%vmax0_no3(ft)
-             sites(s)%rec_vmax_po4(ft,:) = EDPftvarcon_inst%vmax0_po4(ft)
+             sites(s)%rec_vmax_nh4(ft,:) = prt_params%vmax0_nh4(ft)
+             sites(s)%rec_vmax_no3(ft,:) = prt_params%vmax0_no3(ft)
+             sites(s)%rec_vmax_po4(ft,:) = prt_params%vmax0_po4(ft)
           end do
 
           ! Its difficult to come up with a resonable starting smoothing value, so

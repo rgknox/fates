@@ -129,10 +129,12 @@ contains
     integer                       :: s             ! site loop index
     integer                       :: icomp         ! competitor index
     integer                       :: pft           ! pft index
+    integer                       :: j
     type(fates_patch_type), pointer  :: cpatch        ! current patch pointer
     type(fates_cohort_type), pointer :: ccohort       ! current cohort pointer
     real(r8) :: fnrt_c                             ! fine-root carbon [kg]
     real(r8) :: store_c_target                   
+    integer                       :: nlevsoil      ! number of soil layers
     
     ! FATES needs to know the supplementation status of N and P in the soils
     ! If both are supplemented, then FATES doesn't activate dynamic roots
@@ -151,7 +153,7 @@ contains
     end if
     
     nsites = size(sites,dim=1)
-
+    
     ! We can exit if this is a c-only simulation
     select case (hlm_parteh_mode)
     case (prt_carbon_allom_hyp)
@@ -166,18 +168,12 @@ contains
 
     do s = 1, nsites
 
-       sites(s)%dnh4 = 0._r8
-       sites(s)%dno3 = 0._r8
-       sites(s)%dpo4 = 0._r8
-       do j = 1,bc_in(s)%nlevsoil
+       nlevsoil = bc_in(s)%nlevsoil
+       
+       do j = 1,nlevsoil
           sites(s)%dnh4_prof(j) = bc_in(s)%nh4_prof(j)-sites(s)%nh4_prof_prev(j)
           sites(s)%dno3_prof(j) = bc_in(s)%no3_prof(j)-sites(s)%no3_prof_prev(j)
           sites(s)%dpo4_prof(j) = bc_in(s)%po4_prof(j)-sites(s)%po4_prof_prev(j)
-
-          sites(s)%dnh4 = sites(s)%dnh4 + sites(s)%dnh4_prof(j) * sites(s)%dz_soil(j)
-          sites(s)%dno3 = sites(s)%dno3 + sites(s)%dno3_prof(j) * sites(s)%dz_soil(j)
-          sites(s)%dpo4 = sites(s)%dpo4 + sites(s)%dpo4_prof(j) * sites(s)%dz_soil(j)
-          
           sites(s)%nh4_prof_prev(j) = bc_in(s)%nh4_prof(j)
           sites(s)%no3_prof_prev(j) = bc_in(s)%no3_prof(j)
           sites(s)%po4_prof_prev(j) = bc_in(s)%po4_prof(j)
@@ -198,9 +194,9 @@ contains
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
                 ccohort%daily_n_demand = fnrt_c * &
-                     (EDPftvarcon_inst%vmax0_nh4(pft)+EDPftvarcon_inst%vmax0_no3(pft)) * sec_per_day
-                ccohort%daily_nh4_uptake = fnrt_c*EDPftvarcon_inst%vmax0_nh4(pft)*EDPftvarcon_inst%prescribed_nuptake(pft)* sec_per_day
-                ccohort%daily_no3_uptake = fnrt_c*EDPftvarcon_inst%vmax0_no3(pft)*EDPftvarcon_inst%prescribed_nuptake(pft)* sec_per_day
+                     (prt_params%vmax0_nh4(pft)+prt_params%vmax0_no3(pft)) * sec_per_day
+                ccohort%daily_nh4_uptake = fnrt_c*prt_params%vmax0_nh4(pft)*EDPftvarcon_inst%prescribed_nuptake(pft)* sec_per_day
+                ccohort%daily_no3_uptake = fnrt_c*prt_params%vmax0_no3(pft)*EDPftvarcon_inst%prescribed_nuptake(pft)* sec_per_day
                 ccohort => ccohort%shorter
              end do
              cpatch => cpatch%younger
@@ -212,29 +208,32 @@ contains
           cpatch => sites(s)%oldest_patch
           do while (associated(cpatch))
              ccohort => cpatch%tallest
-             if(associated(cpatch,sites(s)%oldest_patch))then
-
-                call bstore_allom(ccohort%dbh,ccohort%pft,ccohort%crowndamage,ccohort%canopy_trim,store_c_target)
-                
-                print*,"tallest vmax: ",ccohort%vmax_nh4,ccohort%vmax_no3,ccohort%prt%GetState(store_organ, carbon12_element)/store_c_target , &
-                     ccohort%prt%GetState(store_organ, nitrogen_element)/ccohort%prt%GetNutrientTarget(nitrogen_element,store_organ,stoich_growth_min), &
-                     ccohort%prt%GetState(store_organ, phosphorus_element)/ccohort%prt%GetNutrientTarget(phosphorus_element,store_organ,stoich_growth_min)
-             end if
              do while (associated(ccohort))
                 icomp = icomp+1
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
+                call set_root_fraction(sites(s)%rootfrac_scr, ccohort%pft, sites(s)%zi_soil, &
+                     bc_in(s)%max_rooting_depth_index_col )
+                
+                ccohort%dnh4 = sum(sites(s)%dnh4_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
+                ccohort%dno3 = sum(sites(s)%dno3_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
                 
                 ccohort%daily_n_demand = fnrt_c * &
                      (ccohort%vmax_nh4+ccohort%vmax_no3) * sec_per_day
-
-                !print*,ccohort%daily_n_demand
                 
                 ! N Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_nh4_uptake = bc_in(s)%plant_nh4_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
                 ccohort%daily_no3_uptake = bc_in(s)%plant_no3_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
                 ccohort => ccohort%shorter
              end do
+             !if(associated(cpatch,sites(s)%oldest_patch))then
+             !   ccohort => cpatch%tallest
+             !   call bstore_allom(ccohort%dbh,ccohort%pft,ccohort%crowndamage,ccohort%canopy_trim,store_c_target)
+             !   print*,"tallest vmax: ",ccohort%vmax_nh4,ccohort%prt%GetState(store_organ, carbon12_element)/store_c_target , &
+             !        ccohort%prt%GetState(store_organ, nitrogen_element)/ccohort%prt%GetNutrientTarget(nitrogen_element,store_organ,stoich_growth_min), &
+             !        ccohort%dnh4
+             !end if
+             
              cpatch => cpatch%younger
           end do
              
@@ -247,8 +246,8 @@ contains
              do while (associated(ccohort))
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
-                ccohort%daily_p_demand = fnrt_c * EDPftvarcon_inst%vmax0_po4(pft) * sec_per_day
-                ccohort%daily_p_gain   = fnrt_c * EDPftvarcon_inst%vmax0_po4(pft) * sec_per_day * EDPftvarcon_inst%prescribed_nuptake(pft)
+                ccohort%daily_p_demand = fnrt_c * prt_params%vmax0_po4(pft) * sec_per_day
+                ccohort%daily_p_gain   = fnrt_c * prt_params%vmax0_po4(pft) * sec_per_day * EDPftvarcon_inst%prescribed_nuptake(pft)
                 ccohort => ccohort%shorter
              end do
              cpatch => cpatch%younger
@@ -264,6 +263,11 @@ contains
                 icomp = icomp+1
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
+                call set_root_fraction(sites(s)%rootfrac_scr, ccohort%pft, sites(s)%zi_soil, &
+                     bc_in(s)%max_rooting_depth_index_col )
+                
+                ccohort%dpo4 = sum(sites(s)%dpo4_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
+                
                 ccohort%daily_p_demand = fnrt_c * ccohort%vmax_po4 * sec_per_day
                 ! P Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_p_gain = bc_in(s)%plant_p_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n

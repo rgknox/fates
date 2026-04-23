@@ -386,16 +386,13 @@ module EDTypesMod
      real(r8), allocatable :: rec_vmax_nh4(:,:) ! A running mean of the Vmax for NH4 in the recuit class
      real(r8), allocatable :: rec_vmax_no3(:,:) ! A running mean of the Vmax for NO3 in the recuit class
      real(r8), allocatable :: rec_vmax_po4(:,:) ! A running mean of the Vmax for PO4 in the recuit class
-
-     real(r8) :: dnh4
-     real(r8) :: dno3
-     real(r8) :: dpo4
-     real(r8), allocatable :: dnh4_prof(:)      ! Change in NH4 profile [g/m3/timestep]
-     real(r8), allocatable :: dno3_prof(:)
-     real(r8), allocatable :: dpo4_prof(:)
-     real(r8), allocatable :: nh4_prof_prev(:)
-     real(r8), allocatable :: no3_prof_prev(:)
-     real(r8), allocatable :: po4_prof_prev(:)
+     
+     real(r8), allocatable :: dnh4_prof(:)      ! Change in NH4 profile [g/m3/day]
+     real(r8), allocatable :: dno3_prof(:)      ! Change in NH4 profile [g/m3/day]
+     real(r8), allocatable :: dpo4_prof(:)      ! Change in NH4 profile [g/m3/day]
+     real(r8), allocatable :: nh4_prof_prev(:)  ! NH4 content [g/m3]
+     real(r8), allocatable :: no3_prof_prev(:)  ! NO3 content [g/m3]
+     real(r8), allocatable :: po4_prof_prev(:)  ! PO4 content [g/m3]
      
      ! Two-stream scratch arrays
      real(r8), allocatable :: omega_2str(:,:)   ! This is the matrix that is inverted to solve

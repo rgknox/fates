@@ -31,6 +31,7 @@ module FatesSizeAgeTypeIndicesMod
   public :: get_coage_class_index
   public :: get_agefuel_class_index
   public :: get_layersizetype_class_index
+  public :: get_layertype_class_index
   
 contains
 
@@ -73,6 +74,22 @@ contains
     
   end function get_layersizetype_class_index
 
+  ! =====================================================================================
+  
+  function get_layertype_class_index(layer,pft) result(iclpf)
+
+    ! Get the 1D index for a canopy layer x pft couplet
+    
+    ! Arguments
+    integer,intent(in) :: layer
+    integer,intent(in) :: pft
+
+    integer :: iclpf
+     
+    iclpf = (pft-1)*nclmax + layer
+    
+  end function get_layertype_class_index
+  
   ! =====================================================================================
 
   function get_sizeage_class_index(dbh,age) result(size_by_age_class)

@@ -82,6 +82,7 @@ module FatesHistoryInterfaceMod
   use FatesIOVariableKindMod, only : site_elcwd_r8, site_elage_r8, site_clscpf_r8
   use FatesIOVariableKindMod, only : site_cdpf_r8, site_cdsc_r8, site_cdam_r8
   use FatesIOVariableKindMod, only : site_landuse_r8, site_lulu_r8, site_lupft_r8
+  use FatesIOVariableKindMod, only : site_clpf_r8
   use FatesConstantsMod   , only : n_landuse_cats
   use FatesAllometryMod             , only : CrownDepth
   use FatesAllometryMod             , only : bstore_allom, bsap_allom
@@ -138,6 +139,7 @@ module FatesHistoryInterfaceMod
   use FatesSizeAgeTypeIndicesMod, only : sizetype_class_index
   use FatesSizeAgeTypeIndicesMod, only : get_cdamagesize_class_index
   use FatesSizeAgeTypeIndicesMod, only : get_cdamagesizepft_class_index
+  use FatesSizeAgeTypeIndicesMod, only : get_layertype_class_index
   use FatesSizeAgeTypeIndicesMod, only : coagetype_class_index
 
   implicit none
@@ -269,7 +271,14 @@ module FatesHistoryInterfaceMod
   integer :: ih_storeptfrac_canopy_scpf
   integer :: ih_storeptfrac_understory_scpf
 
-  !integer :: ih_l2fr_si
+  integer :: ih_vmaxnh4_si
+  integer :: ih_vmaxno3_si
+  integer :: ih_vmaxpo4_si
+  integer :: ih_vmaxnh4_clpf
+  integer :: ih_vmaxno3_clpf
+  integer :: ih_vmaxpo4_clpf
+  integer :: ih_l2fr_si
+  
   !integer :: ih_l2fr_clscpf
   !integer :: ih_recl2fr_canopy_pf
   !integer :: ih_recl2fr_ustory_pf
@@ -433,6 +442,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_npp_stor_si
   integer :: ih_leaf_mr_si
   integer :: ih_froot_mr_si
+  integer :: ih_froot_mr_netvmax_si
   integer :: ih_livestem_mr_si
   integer :: ih_livecroot_mr_si
   integer :: ih_h2oveg_si
@@ -842,7 +852,8 @@ module FatesHistoryInterfaceMod
      integer, private :: levcacls_index_, levcapf_index_
      integer, private :: levclscpf_index_
      integer, private :: levlanduse_index_, levlulu_index_, levlupft_index_
-
+     integer, private :: levclpf_index_
+     
    contains
 
      procedure :: Init
@@ -891,6 +902,7 @@ module FatesHistoryInterfaceMod
      procedure :: levelage_index
      procedure :: levagefuel_index
      procedure :: levclscpf_index
+     procedure :: levclpf_index
      procedure :: levlanduse_index
      procedure :: levlulu_index
      procedure :: levlupft_index
@@ -923,6 +935,7 @@ module FatesHistoryInterfaceMod
      procedure, private :: set_levheight_index
      procedure, private :: set_levagefuel_index
      procedure, private :: set_levclscpf_index
+     procedure, private :: set_levclpf_index
      procedure, private :: set_levlanduse_index
      procedure, private :: set_levlulu_index
      procedure, private :: set_levlupft_index
@@ -964,6 +977,7 @@ contains
     use FatesIODimensionsMod, only : levelcwd, levelage, levclscpf
     use FatesIODimensionsMod, only : levcdpf, levcdsc, levcdam
     use FatesIODimensionsMod, only : levlanduse, levlulu, levlupft
+    use FatesIODimensionsMod, only : levclpf
 
     implicit none
 
@@ -1038,6 +1052,11 @@ contains
     call this%dim_bounds(dim_count)%Init(levcnlfpft, num_threads, &
          fates_bounds%cnlfpft_begin, fates_bounds%cnlfpft_end)
 
+    dim_count = dim_count + 1
+    call this%set_levclpf_index(dim_count)
+    call this%dim_bounds(dim_count)%Init(levclpf, num_threads, &
+         fates_bounds%clpf_begin, fates_bounds%clpf_end)    
+    
     dim_count = dim_count + 1
     call this%set_levcdpf_index(dim_count)
     call this%dim_bounds(dim_count)%Init(levcdpf, num_threads, &
@@ -1186,6 +1205,10 @@ contains
     call this%dim_bounds(index)%SetThreadBounds(thread_index, &
          thread_bounds%cnlfpft_begin, thread_bounds%cnlfpft_end)
 
+    index = this%levclpf_index()
+    call this%dim_bounds(index)%SetThreadBounds(thread_index, &
+         thread_bounds%clpf_begin, thread_bounds%clpf_end)
+    
     index = this%levcdpf_index()
     call this%dim_bounds(index)%SetThreadBounds(thread_index, &
          thread_bounds%cdpf_begin, thread_bounds%cdpf_end)
@@ -1256,8 +1279,6 @@ contains
   ! ===================================================================================
   subroutine assemble_history_output_types(this)
 
-
-
     implicit none
 
     class(fates_history_interface_type), intent(inout) :: this
@@ -1302,9 +1323,12 @@ contains
     call this%set_dim_indices(site_cnlfpft_r8, 1, this%column_index())
     call this%set_dim_indices(site_cnlfpft_r8, 2, this%levcnlfpft_index())
 
+    call this%set_dim_indices(site_clpf_r8, 1, this%column_index())
+    call this%set_dim_indices(site_clpf_r8, 2, this%levclpf_index())
+    
     call this%set_dim_indices(site_cdpf_r8, 1, this%column_index())
     call this%set_dim_indices(site_cdpf_r8, 2, this%levcdpf_index())
-
+    
     call this%set_dim_indices(site_cdsc_r8, 1, this%column_index())
     call this%set_dim_indices(site_cdsc_r8, 2, this%levcdsc_index())
 
@@ -1574,6 +1598,21 @@ contains
     levcnlfpft_index = this%levcnlfpft_index_
   end function levcnlfpft_index
 
+  ! =======================================================================
+
+  subroutine set_levclpf_index(this, index)
+    implicit none
+    class(fates_history_interface_type), intent(inout) :: this
+    integer, intent(in) :: index
+    this%levclpf_index_ = index
+  end subroutine set_levclpf_index
+
+  integer function levclpf_index(this)
+    implicit none
+    class(fates_history_interface_type), intent(in) :: this
+    levclpf_index = this%levclpf_index_
+  end function levclpf_index
+  
   ! =======================================================================
   subroutine set_levcdpf_index(this, index)
     implicit none
@@ -1986,7 +2025,8 @@ contains
     use FatesIOVariableKindMod, only : site_elem_r8, site_elpft_r8
     use FatesIOVariableKindMod, only : site_elcwd_r8, site_elage_r8, site_clscpf_r8
     use FatesIOVariableKindMod, only : site_cdpf_r8, site_cdsc_r8, site_cdam_r8
-
+    use FatesIOVariableKindMod, only : site_clpf_r8
+    
     implicit none
 
     ! Arguments
@@ -2047,10 +2087,14 @@ contains
     index = index + 1
     call this%dim_kinds(index)%Init(site_cnlfpft_r8, 2)
 
+    ! site x crown layer x pft
+    index = index + 1
+    call this%dim_kinds(index)%Init(site_clpf_r8, 2)
+    
     ! site x crown damage x pft x size class 
     index = index + 1
     call this%dim_kinds(index)%Init(site_cdpf_r8, 2)
-
+    
     ! site x crown damage x size class
     index = index + 1
     call this%dim_kinds(index)%Init(site_cdsc_r8, 2)
@@ -2146,11 +2190,14 @@ contains
     integer :: iclscpf   ! layer x size x pft class index
     integer :: iscpf     ! Size x pft class index
     integer :: io_si     ! site's global index in the history vector
+    integer :: iclpf     ! canopy-layer x pft
     integer :: el        ! element loop index
     integer :: ft        ! pft loop index
-    real(r8):: uconv     ! combined unit conversion factor
+    real(r8) :: uconv    ! combined unit conversion factor
     real(r8) :: fnrt_c   ! cohort fine-root c
 
+    real(r8) :: fnrt_c_clpf(nclmax*numpft)
+    
     ! Process variables with time-space dimensions only
     ! ---------------------------------------------------------------------------------------------
 
@@ -2253,6 +2300,8 @@ contains
          io_si  = csite%h_gid
 
          call this%zero_site_hvars(csite,upfreq_in=group_nflx_complx)
+
+         fnrt_c_clpf(:) = 0._r8
          
          cpatch => csite%youngest_patch
          do while(associated(cpatch))
@@ -2266,6 +2315,10 @@ contains
                   cycle
                end if
 
+               fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
+               iclpf  = get_layertype_class_index(ccohort%canopy_layer,ccohort%pft)
+               fnrt_c_clpf(iclpf) = fnrt_c_clpf(iclpf) + ccohort%n * fnrt_c / m2_per_ha
+               
                ! size class index
                iscpf = ccohort%size_by_pft_class
 
@@ -2275,13 +2328,25 @@ contains
                ! unit conversion factor to get x/plant/day -> x/m2/sec
                uconv = ccohort%n * ha_per_m2 * days_per_sec
 
+!               this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) = &
+!                    this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) + &
+!                    ccohort%vmax_nh4 *ccohort%n * fnrt_c / m2_per_ha
+               
+!               this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) = &
+!                    this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) + &
+!                    ccohort%vmax_no3 *ccohort%n * fnrt_c / m2_per_ha
+
+!               this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) = &
+!                    this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) + &
+!                    ccohort%vmax_po4 *ccohort%n * fnrt_c / m2_per_ha
+               
                ! Loop over the different elements. 
                do el = 1, num_elements
 
                   select case (element_list(el))
 
                   case (nitrogen_element) 
-
+                     
                      ! Mineralized uptake of NH4, NO3
                      fates_hist%hvars(ih_nh4uptake_scpf)%r82d(io_si,iscpf) =           &
                           fates_hist%hvars(ih_nh4uptake_scpf)%r82d(io_si,iscpf) +      &
@@ -2307,7 +2372,7 @@ contains
                           ccohort%daily_n_demand*uconv
                      
                   case (phosphorus_element)
-
+                     
                      ! Mineralized uptake of PO4
                      fates_hist%hvars(ih_puptake_scpf)%r82d(io_si,iscpf) =             &
                           fates_hist%hvars(ih_puptake_scpf)%r82d(io_si,iscpf) +        &
@@ -2332,6 +2397,25 @@ contains
             cpatch => cpatch%older
          end do
 
+!         do iclpf = 1,nclmax*numpft
+!            if(fnrt_c_clpf(iclpf)>nearzero)then
+!               this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) = &
+!                    this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) / &
+!                    fnrt_c_clpf(iclpf)
+!               this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) = &
+!                    this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) / &
+!                    fnrt_c_clpf(iclpf)
+!               this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) = &
+!                    this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) / &
+!                    fnrt_c_clpf(iclpf)
+!            else
+!               this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) = hlm_hio_ignore_val
+!               this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) = hlm_hio_ignore_val
+!               this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) = hlm_hio_ignore_val
+!            end if
+!         end do
+         
+         
     end if if_dynam2
     
     return
@@ -2848,15 +2932,34 @@ contains
                      hio_agb_si(io_si) = hio_agb_si(io_si) + n_perm2 *            &
                           ( leaf_m + (sapw_m + struct_m + store_m) * prt_params%allom_agb_frac(ccohort%pft) )
 
-                     !if( hlm_parteh_mode == prt_cnp_flex_allom_hyp) then
-                     !   this%hvars(ih_l2fr_si)%r81d(io_si) = &
-                     !        this%hvars(ih_l2fr_si)%r81d(io_si) + &
-                     !        ccohort%l2fr *ccohort%n * fnrt_m / m2_per_ha
-                     !else
-                     !   this%hvars(ih_l2fr_si)%r81d(io_si) = &
-                     !        this%hvars(ih_l2fr_si)%r81d(io_si) + &
-                     !        prt_params%allom_l2fr(ft) *ccohort%n * fnrt_m / m2_per_ha
-                     !end if
+                     if(ccohort%vmax_nh4.ne.ccohort%vmax_nh4 .or. &
+                          ccohort%vmax_no3.ne.ccohort%vmax_no3 .or. &
+                          ccohort%vmax_po4.ne.ccohort%vmax_po4 ) then
+
+                        write(fates_log(),*)'bad vmaxs'
+                        write(fates_log(),*) ccohort%vmax_nh4
+                        write(fates_log(),*) ccohort%vmax_no3
+                        write(fates_log(),*) ccohort%vmax_po4
+                        call endrun(msg=errMsg(sourcefile, __LINE__))
+                     end if
+                     
+                     this%hvars(ih_vmaxnh4_si)%r81d(io_si) = &
+                          this%hvars(ih_vmaxnh4_si)%r81d(io_si) + &
+                          ccohort%vmax_nh4 *ccohort%n * fnrt_m / m2_per_ha
+
+                     this%hvars(ih_vmaxno3_si)%r81d(io_si) = &
+                          this%hvars(ih_vmaxno3_si)%r81d(io_si) + &
+                          ccohort%vmax_no3 *ccohort%n * fnrt_m / m2_per_ha
+
+                     this%hvars(ih_vmaxpo4_si)%r81d(io_si) = &
+                          this%hvars(ih_vmaxpo4_si)%r81d(io_si) + &
+                          ccohort%vmax_po4 *ccohort%n * fnrt_m / m2_per_ha
+
+                     this%hvars(ih_l2fr_si)%r81d(io_si) = &
+                          this%hvars(ih_l2fr_si)%r81d(io_si) + &
+                          prt_params%allom_l2fr(ft) *ccohort%n * fnrt_m / m2_per_ha
+
+
 
                   elseif(element_list(el).eq.nitrogen_element)then
 
@@ -3072,12 +3175,31 @@ contains
          end do elloop2
 
 
-         !if(this%hvars(ih_fnrtc_si)%r81d(io_si)>nearzero)then
-         !   this%hvars(ih_l2fr_si)%r81d(io_si) = this%hvars(ih_l2fr_si)%r81d(io_si) / &
-         !        this%hvars(ih_fnrtc_si)%r81d(io_si)
-         !else
-         !   this%hvars(ih_l2fr_si)%r81d(io_si) = hlm_hio_ignore_val
-         !end if
+         ! Normalize site-level diagnostics that were weighted by fine-root mass
+         if(this%hvars(ih_fnrtc_si)%r81d(io_si)>nearzero)then
+
+            this%hvars(ih_l2fr_si)%r81d(io_si) = &
+                 this%hvars(ih_l2fr_si)%r81d(io_si) / &
+                 this%hvars(ih_fnrtc_si)%r81d(io_si)
+            
+            this%hvars(ih_vmaxnh4_si)%r81d(io_si) = &
+                 this%hvars(ih_vmaxnh4_si)%r81d(io_si) / &
+                 this%hvars(ih_fnrtc_si)%r81d(io_si)
+            
+            this%hvars(ih_vmaxno3_si)%r81d(io_si) = &
+                 this%hvars(ih_vmaxno3_si)%r81d(io_si) / &
+                 this%hvars(ih_fnrtc_si)%r81d(io_si)
+            
+            this%hvars(ih_vmaxpo4_si)%r81d(io_si) = &
+                 this%hvars(ih_vmaxpo4_si)%r81d(io_si) / &
+                 this%hvars(ih_fnrtc_si)%r81d(io_si)
+            
+         else
+            this%hvars(ih_l2fr_si)%r81d(io_si) = hlm_hio_ignore_val
+            this%hvars(ih_vmaxnh4_si)%r81d(io_si) = hlm_hio_ignore_val
+            this%hvars(ih_vmaxno3_si)%r81d(io_si) = hlm_hio_ignore_val
+            this%hvars(ih_vmaxpo4_si)%r81d(io_si) = hlm_hio_ignore_val
+         end if
          
          ! zero the site-level termination carbon flux variable
          sites(s)%term_carbonflux_canopy(:,:) = 0._r8
@@ -3151,6 +3273,7 @@ contains
     integer  :: elcwd, i_cwd            ! combined index of element and pft or cwd
     integer  :: i_scpf,i_pft,i_scls     ! iterators for scpf, pft, and scls dims
     integer  :: i_cacls, i_capf      ! iterators for cohort age and cohort age x pft
+    
     integer  :: i_fuel            ! iterators for fuel dims
     integer  :: i_heightbin  ! iterator for height bins
     integer  :: ilyr      ! Soil index for nlevsoil
@@ -3497,7 +3620,7 @@ contains
                 cohortloop: do while(associated(ccohort))
 
                    ft = ccohort%pft
-
+                   
                    ! get indices for size class x pft and cohort age x pft
                    ! size class is the fastest changing dimension
                    call sizetype_class_index(ccohort%dbh, ccohort%pft,                &
@@ -3676,6 +3799,10 @@ contains
                               + ccohort%npp_acc_hold * n_perm2 / (days_per_year*sec_per_day)
                       end if
 
+                      
+
+                      
+                      
                       ! Turnover pools [kgC/day] * [day/yr] = [kgC/yr]
                       sapw_m_turnover   = ccohort%prt%GetTurnover(sapw_organ, carbon12_element) * days_per_year
                       store_m_turnover  = ccohort%prt%GetTurnover(store_organ, carbon12_element) * days_per_year
@@ -3691,7 +3818,7 @@ contains
                       struct_m_net_alloc = ccohort%prt%GetNetAlloc(struct_organ, carbon12_element) * days_per_year
                       repro_m_net_alloc  = ccohort%prt%GetNetAlloc(repro_organ, carbon12_element) * days_per_year
 
-
+                      
 
                       associate( scpf => ccohort%size_by_pft_class,                   &
                            scls => ccohort%size_class,                          &
@@ -3786,9 +3913,6 @@ contains
                            hio_m10_si_cacls(io_si,cacls) = hio_m10_si_cacls(io_si,cacls)+ &
                                 ccohort%asmort*ccohort%n / m2_per_ha
                         end if
-
-
-
 
                         hio_m1_si_scls(io_si,scls) = hio_m1_si_scls(io_si,scls) + ccohort%bmort*ccohort%n / m2_per_ha
                         hio_m2_si_scls(io_si,scls) = hio_m2_si_scls(io_si,scls) + ccohort%hmort*ccohort%n / m2_per_ha
@@ -5206,6 +5330,7 @@ contains
          hio_ar_understory_si         => this%hvars(ih_ar_understory_si)%r81d, &
          hio_leaf_mr_si               => this%hvars(ih_leaf_mr_si)%r81d, &
          hio_froot_mr_si              => this%hvars(ih_froot_mr_si)%r81d, &
+         hio_froot_mr_netvmax_si      => this%hvars(ih_froot_mr_netvmax_si)%r81d, &
          hio_livecroot_mr_si          => this%hvars(ih_livecroot_mr_si)%r81d, &
          hio_livestem_mr_si           => this%hvars(ih_livestem_mr_si)%r81d, &
          hio_maint_resp_unreduced_si  => this%hvars(ih_maint_resp_unreduced_si)%r81d, &
@@ -5358,6 +5483,8 @@ contains
                      hio_leaf_mr_si(io_si) = hio_leaf_mr_si(io_si) + cpatch%coarrays%rdark(ico) &
                           * n_perm2
                      hio_froot_mr_si(io_si) = hio_froot_mr_si(io_si) + ccohort%froot_mr &
+                          * n_perm2
+                     hio_froot_mr_netvmax_si(io_si) = hio_froot_mr_netvmax_si(io_si) + ccohort%froot_mr_vmax &
                           * n_perm2
                      hio_livecroot_mr_si(io_si) = hio_livecroot_mr_si(io_si) + ccohort%livecroot_mr &
                           * n_perm2
@@ -6360,7 +6487,7 @@ contains
     use FatesIOVariableKindMod, only : site_cdsc_r8, site_cdpf_r8, site_cdam_r8
     use FatesIOVariableKindMod, only : site_scagpft_r8, site_agepft_r8
     use FatesIOVariableKindMod, only : site_elem_r8, site_elpft_r8, site_clscpf_r8
-    use FatesIOVariableKindMod, only : site_elcwd_r8, site_elage_r8
+    use FatesIOVariableKindMod, only : site_elcwd_r8, site_elage_r8,site_clpf_r8
 
 
     implicit none
@@ -6766,13 +6893,30 @@ contains
             upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index = ih_growth_resp_si)
 
+       call this%set_history_var(vname='FATES_VMAXNH4', units='kg m-2 s-1',  &
+            long='maximum ammonium uptake rate by plants in kg N per m2 per second', &
+            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,              &
+            index = ih_vmaxnh4_si)
 
+       call this%set_history_var(vname='FATES_VMAXNO3', units='kg m-2 s-1',  &
+            long='maximum nitrate uptake rate by plants in kg N per m2 per second', &
+            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,              &
+            index = ih_vmaxno3_si)
+       
+       call this%set_history_var(vname='FATES_VMAXPO4', units='kg m-2 s-1',  &
+            long='maximum phosphate uptake rate by plants in kg P per m2 per second', &
+            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,              &
+            index = ih_vmaxpo4_si)
+       
        ! Output specific to the chemical species dynamics used (parteh)
-       !call this%set_history_var(vname='FATES_L2FR', units='kg kg-1',                   &
-       !     long='The leaf to fineroot biomass multiplier for target allometry', & 
-       !     use_default='active', &
-       !     avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_simple,    &
-       !     ivar=ivar, initialize=initialize_variables, index = ih_l2fr_si)
+       call this%set_history_var(vname='FATES_L2FR', units='kg kg-1',                   &
+            long='The leaf to fineroot biomass multiplier for target allometry', & 
+            use_default='active', &
+            avgflag='A', vtype=site_r8, hlms='CLM:ALM', upfreq=group_dyna_simple,    &
+            ivar=ivar, initialize=initialize_variables, index = ih_l2fr_si)
 
        nitrogen_active_if0: if(any(element_list(:)==nitrogen_element)) then
 
@@ -7362,9 +7506,28 @@ contains
                units='1',                                                               &
                long='PFT-level mean elongation factor (partial flushing/abscission)',   &
                use_default='active', avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM',    &
-               upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables,                    &
+               upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables,    &
                index=ih_elong_factor_si_pft)
 
+!          call this%set_history_var(vname='FATES_VMAXNH4_CLPF', units='kg m-2 s-1',     &
+!               long='maximum ammonium uptake rate by plants in kg N per m2 per second', &
+!               use_default='active', avgflag='A', vtype=site_clpf_r8, hlms='CLM:ALM',   &
+!               upfreq=group_nflx_complx, ivar=ivar, initialize=initialize_variables,    &
+!               index = ih_vmaxnh4_clpf)
+          
+!          call this%set_history_var(vname='FATES_VMAXNO3_CLPF', units='kg m-2 s-1',     &
+!               long='maximum nitrate uptake rate by plants in kg N per m2 per second',  &
+!               use_default='active', avgflag='A', vtype=site_clpf_r8, hlms='CLM:ALM',   &
+!               upfreq=group_nflx_complx, ivar=ivar, initialize=initialize_variables,    &
+!               index = ih_vmaxno3_clpf)
+          
+!          call this%set_history_var(vname='FATES_VMAXPO4_CLPF', units='kg m-2 s-1',      &
+!               long='maximum phosphate uptake rate by plants in kg P per m2 per second', &
+!               use_default='active', avgflag='A', vtype=site_clpf_r8, hlms='CLM:ALM',    &
+!               upfreq=group_nflx_complx, ivar=ivar, initialize=initialize_variables,     &
+!               index = ih_vmaxpo4_clpf)
+
+       
           nocomp_if: if (hlm_use_nocomp .eq. itrue) then
              call this%set_history_var(vname='FATES_NOCOMP_NPATCHES_PF', units='',      &
                   long='number of patches per PFT (nocomp-mode-only)',                  &
@@ -9099,6 +9262,13 @@ contains
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',    &
             upfreq=group_hifr_simple, ivar=ivar, initialize=initialize_variables,                &
             index = ih_froot_mr_si)
+
+       call this%set_history_var(vname='FATES_FROOTMAINTAR_NETVMAX',             &
+            units = 'kg m-2 s-1',                                                &
+            long='fine root maintenance autotrophic due to fluxtuation in vmax', &
+            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',    &
+            upfreq=group_hifr_simple, ivar=ivar, initialize=initialize_variables,                &
+            index = ih_froot_mr_netvmax_si)
 
        call this%set_history_var(vname='FATES_CROOTMAINTAR',                      &
             units = 'kg m-2 s-1',                                                &

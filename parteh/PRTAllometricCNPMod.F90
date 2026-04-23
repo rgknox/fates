@@ -184,7 +184,11 @@ module PRTAllometricCNPMod
   integer, public, parameter :: acnp_bc_in_id_efleaf   =  8 ! Leaf elongation factor
   integer, public, parameter :: acnp_bc_in_id_effnrt   =  9 ! Fine-root "elongation factor"
   integer, public, parameter :: acnp_bc_in_id_efstem   = 10 ! Stem "elongation factor"
-  integer, parameter         :: num_bc_in              = 10
+  integer, public, parameter :: acnp_bc_in_id_dnh4     = 11 ! change in available NH4
+  integer, public, parameter :: acnp_bc_in_id_dno3     = 12 ! change in available NO3
+  integer, public, parameter :: acnp_bc_in_id_dpo4     = 13 ! change in available PO4
+  
+  integer, parameter         :: num_bc_in              = 13
 
   ! -------------------------------------------------------------------------------------
   ! Output Boundary Indices (These are public)
@@ -798,16 +802,14 @@ contains
     real(r8) :: store_nut_max, store_nut_act
     real(r8) :: zeta
     real(r8) :: obj_ratio
+    real(r8) :: sobj_nh4_eff,sobj_no3_eff,sobj_po4_eff
     logical, parameter :: use_carbon_objfunc = .true.
     integer, parameter :: obj_type = 3
     real(r8), parameter :: sobj_timescale = 5._r8
     real(r8), parameter :: minmax_vmax_mult = 100._r8
     
-    real(r8), parameter :: min_vmax = 1.e-12_r8
-    real(r8), parameter :: vmax0_nh4 = 2.e-7_r8
-    real(r8), parameter :: vmax0_no3 = 2.e-7_r8
-    real(r8), parameter :: vmax0_po4 = 5.e-7_r8
-    
+    real(r8), parameter :: min_vmax = 1.e-13_r8
+
     associate( &
          ipft        => this%bc_in(acnp_bc_in_id_pft)%ival , &
          elongf_fnrt => this%bc_in(acnp_bc_in_id_effnrt)%rval , &
@@ -819,7 +821,10 @@ contains
          vmax_po4    => this%bc_inout(acnp_bc_inout_id_vmax_po4)%rval , &
          sobj_nh4    => this%bc_inout(acnp_bc_inout_id_sobj_nh4)%rval , &
          sobj_no3    => this%bc_inout(acnp_bc_inout_id_sobj_no3)%rval , &
-         sobj_po4    => this%bc_inout(acnp_bc_inout_id_sobj_po4)%rval)
+         sobj_po4    => this%bc_inout(acnp_bc_inout_id_sobj_po4)%rval,  &
+         dnh4        => this%bc_in(acnp_bc_in_id_dnh4)%rval, &
+         dno3        => this%bc_in(acnp_bc_in_id_dno3)%rval, &
+         dpo4        => this%bc_in(acnp_bc_in_id_dpo4)%rval )
 
       
       
@@ -857,26 +862,44 @@ contains
          end if
 
          obj_ratio = min(2._r8,max(0.5_r8,obj_ratio))
-         
+
+         ! use an exponential smoother on the objective function
          sobj_nh4 = (sobj_nh4 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
-         if(obj_type==1) then
-            vmax_nh4 = max(min_vmax,vmax_nh4 * zeta*exp(sobj_nh4))
-         elseif(obj_type==2) then
-            vmax_nh4 = max(min_vmax,vmax_nh4 * (1._r8 + zeta*sobj_nh4))
+
+         ! Source side constraint. We only allow upregulation
+         ! if there is an increase in availability
+         if (sobj_nh4 > 0._r8 .and. dnh4 < 0._r8)then
+            sobj_nh4_eff = 0._r8
          else
-            vmax_nh4 = max(min_vmax, vmax_nh4 + vmax0_nh4*zeta*sobj_nh4)
+            sobj_nh4_eff = sobj_nh4
+         end if
+         
+         if(obj_type==1) then
+            !vmax_nh4 = max(min_vmax, vmax_nh4 * zeta*exp(sobj_nh4_eff))
+         elseif(obj_type==2) then
+            vmax_nh4 = max(min_vmax, vmax_nh4 * (1._r8 + zeta*sobj_nh4_eff))
+         else
+            vmax_nh4 = max(min_vmax, vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta*sobj_nh4_eff)
          end if
          
          ! Until we have source side limitations, both NH4 and NO3 react the same
          ! because they have the same elemental sink imposed (nitrogen)
 
          sobj_no3 = (sobj_no3 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
-         if(obj_type==1) then
-            vmax_no3 = max(min_vmax,vmax_no3 * zeta*exp(sobj_no3))
-         elseif(obj_type==2) then
-            vmax_no3 = max(min_vmax,vmax_no3 * (1._r8 + zeta*sobj_no3))
+
+         if (sobj_no3 > 0._r8 .and. dno3 < 0._r8)then
+            sobj_no3_eff = 0._r8
          else
-            vmax_no3 = max(min_vmax, vmax_no3 + vmax0_no3*zeta*sobj_no3)
+            sobj_no3_eff = sobj_no3
+         end if
+         
+         
+         if(obj_type==1) then
+            !vmax_no3 = max(min_vmax,vmax_no3 * zeta*exp(sobj_no3_eff))
+         elseif(obj_type==2) then
+            vmax_no3 = max(min_vmax,vmax_no3 * (1._r8 + zeta*sobj_no3_eff))
+         else
+            vmax_no3 = max(min_vmax, vmax_no3 + prt_params%vmax0_no3(ipft)*zeta*sobj_no3_eff)
          end if
 
       end if
@@ -896,12 +919,19 @@ contains
 
          obj_ratio = min(2._r8,max(0.5_r8,obj_ratio))
          sobj_po4 = (sobj_po4 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
-         if(obj_type==1) then
-            vmax_po4 = max(min_vmax, vmax_po4 * zeta*exp(sobj_po4))
-         elseif(obj_type==2) then
-            vmax_po4 = max(min_vmax, vmax_po4 * (1._r8 + zeta*sobj_po4))
+
+         if (sobj_po4 > 0._r8 .and. dpo4 < 0._r8)then
+            sobj_po4_eff = 0._r8
          else
-            vmax_po4 = max(min_vmax, vmax_po4 + vmax0_po4*zeta*sobj_po4)
+            sobj_po4_eff = sobj_po4
+         end if
+         
+         if(obj_type==1) then
+            !vmax_po4 = max(min_vmax, vmax_po4 * zeta*exp(sobj_po4_eff))
+         elseif(obj_type==2) then
+            vmax_po4 = max(min_vmax, vmax_po4 * (1._r8 + zeta*sobj_po4_eff))
+         else
+            vmax_po4 = max(min_vmax, vmax_po4 + prt_params%vmax0_po4(ipft)*zeta*sobj_po4_eff)
          end if
          
       end if

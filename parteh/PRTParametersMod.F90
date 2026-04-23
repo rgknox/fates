@@ -191,6 +191,15 @@ module PRTParametersMod
      ! number of days expected for doubling of of the the objective
      ! function (storage ratio) to double vmax",
      real(r8), allocatable :: vmax_timescale(:)
+
+     real(r8), allocatable :: vmax0_nh4(:) ! base maximum production rate for plant NH4 uptake   [gN/gC/s]
+     real(r8), allocatable :: vmax0_no3(:) ! base maximum production rate for plant NO3 uptake   [gN/gC/s]
+                                           ! For ECA: these rates will be applied separately to
+                                           ! draw from mineralized nh4 and no3 pools independantly.
+                                           ! For RD: these rates will be added, to construct a total
+                                           ! N demand, which will be applied to NH4 and then NO3
+                                           ! sequentially
+     real(r8), allocatable :: vmax0_po4(:) ! base maximum production rate for plant po4 uptake   [gP/gC/s]
      
      
   end type prt_param_type
