@@ -187,8 +187,11 @@ module PRTAllometricCNPMod
   integer, public, parameter :: acnp_bc_in_id_dnh4     = 11 ! change in available NH4
   integer, public, parameter :: acnp_bc_in_id_dno3     = 12 ! change in available NO3
   integer, public, parameter :: acnp_bc_in_id_dpo4     = 13 ! change in available PO4
+  integer, public, parameter :: acnp_bc_in_id_nh4frac  = 14
+  integer, public, parameter :: acnp_bc_in_id_no3frac  = 15
+  integer, public, parameter :: acnp_bc_in_id_po4frac  = 16
   
-  integer, parameter         :: num_bc_in              = 13
+  integer, parameter         :: num_bc_in              = 16
 
   ! -------------------------------------------------------------------------------------
   ! Output Boundary Indices (These are public)
@@ -824,7 +827,11 @@ contains
          sobj_po4    => this%bc_inout(acnp_bc_inout_id_sobj_po4)%rval,  &
          dnh4        => this%bc_in(acnp_bc_in_id_dnh4)%rval, &
          dno3        => this%bc_in(acnp_bc_in_id_dno3)%rval, &
-         dpo4        => this%bc_in(acnp_bc_in_id_dpo4)%rval )
+         dpo4        => this%bc_in(acnp_bc_in_id_dpo4)%rval, &
+         nh4frac     => this%bc_in(acnp_bc_in_id_nh4frac)%rval, &
+         no3frac     => this%bc_in(acnp_bc_in_id_no3frac)%rval, &
+         po4frac     => this%bc_in(acnp_bc_in_id_po4frac)%rval &
+         )
 
       
       
@@ -868,7 +875,7 @@ contains
 
          ! Source side constraint. We only allow upregulation
          ! if there is an increase in availability
-         if (sobj_nh4 > 0._r8 .and. dnh4 < 0._r8)then
+         if (sobj_nh4 > 0._r8 .and. (dnh4 < 0._r8 .or. nh4frac<0.5_r8))then
             sobj_nh4_eff = 0._r8
          else
             sobj_nh4_eff = sobj_nh4
@@ -887,7 +894,7 @@ contains
 
          sobj_no3 = (sobj_no3 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
 
-         if (sobj_no3 > 0._r8 .and. dno3 < 0._r8)then
+         if (sobj_no3 > 0._r8 .and. (dno3 < 0._r8 .or. no3frac<0.5_r8))then
             sobj_no3_eff = 0._r8
          else
             sobj_no3_eff = sobj_no3
@@ -916,11 +923,11 @@ contains
          else
             obj_ratio = store_nut_max/store_nut_act
          end if
-
+         
          obj_ratio = min(2._r8,max(0.5_r8,obj_ratio))
          sobj_po4 = (sobj_po4 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
 
-         if (sobj_po4 > 0._r8 .and. dpo4 < 0._r8)then
+         if (sobj_po4 > 0._r8 .and. (dpo4 < 0._r8 .or. po4frac<0.5_r8))then
             sobj_po4_eff = 0._r8
          else
             sobj_po4_eff = sobj_po4

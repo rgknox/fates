@@ -214,16 +214,20 @@ contains
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
                 call set_root_fraction(sites(s)%rootfrac_scr, ccohort%pft, sites(s)%zi_soil, &
                      bc_in(s)%max_rooting_depth_index_col )
-                
-                ccohort%dnh4 = sum(sites(s)%dnh4_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
-                ccohort%dno3 = sum(sites(s)%dno3_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
-                
+
                 ccohort%daily_n_demand = fnrt_c * &
                      (ccohort%vmax_nh4+ccohort%vmax_no3) * sec_per_day
                 
                 ! N Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_nh4_uptake = bc_in(s)%plant_nh4_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
                 ccohort%daily_no3_uptake = bc_in(s)%plant_no3_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
+
+                ! Used for uptake regulation
+                ccohort%dnh4 = sum(sites(s)%dnh4_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
+                ccohort%dno3 = sum(sites(s)%dno3_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
+                ccohort%nh4_demandfrac =  ccohort%daily_nh4_uptake / ( fnrt_c * ccohort%vmax_nh4 * sec_per_day)
+                ccohort%no3_demandfrac =  ccohort%daily_no3_uptake / ( fnrt_c * ccohort%vmax_no3 * sec_per_day)
+                
                 ccohort => ccohort%shorter
              end do
              !if(associated(cpatch,sites(s)%oldest_patch))then
@@ -266,12 +270,16 @@ contains
                 call set_root_fraction(sites(s)%rootfrac_scr, ccohort%pft, sites(s)%zi_soil, &
                      bc_in(s)%max_rooting_depth_index_col )
                 
-                ccohort%dpo4 = sum(sites(s)%dpo4_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
+                
                 
                 ccohort%daily_p_demand = fnrt_c * ccohort%vmax_po4 * sec_per_day
                 ! P Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_p_gain = bc_in(s)%plant_p_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
 
+                ! Used for uptake regulation
+                ccohort%po4_demandfrac =  ccohort%daily_p_gain / ( fnrt_c * ccohort%vmax_po4 * sec_per_day)
+                ccohort%dpo4 = sum(sites(s)%dpo4_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
+                
                 ccohort => ccohort%shorter
              end do
              cpatch => cpatch%younger

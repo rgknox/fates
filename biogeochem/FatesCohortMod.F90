@@ -39,6 +39,7 @@ module FatesCohortMod
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_netdc, acnp_bc_in_id_nc_repro
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_pc_repro, acnp_bc_in_id_cdamage
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_dnh4,acnp_bc_in_id_dno3,acnp_bc_in_id_dpo4
+  use PRTAllometricCNPMod,        only : acnp_bc_in_id_nh4frac,acnp_bc_in_id_no3frac,acnp_bc_in_id_po4frac
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_dbh, acnp_bc_inout_id_resp_excess
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_netdn, acnp_bc_inout_id_netdp
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_nh4,acnp_bc_inout_id_vmax_no3
@@ -80,7 +81,9 @@ module FatesCohortMod
     real(r8)                     :: dnh4     ! Root profile weighted change in NH4 [g/m2/day]
     real(r8)                     :: dno3     ! Root profile weighted change in NO3 [g/m2/day]
     real(r8)                     :: dpo4     ! Root profile weighted change in PO4 [g/m2/day]
-    
+    real(r8)                     :: nh4_demandfrac
+    real(r8)                     :: no3_demandfrac
+    real(r8)                     :: po4_demandfrac
     !---------------------------------------------------------------------------
 
     ! VEGETATION STRUCTURE
@@ -414,6 +417,12 @@ module FatesCohortMod
       this%daily_p_efflux          = nan
       this%daily_n_demand          = nan
       this%daily_p_demand          = nan
+      this%dnh4 = nan
+      this%dno3 = nan
+      this%dpo4 = nan
+      this%nh4_demandfrac = nan
+      this%no3_demandfrac = nan
+      this%po4_demandfrac = nan
       this%seed_prod               = nan
    
       ! RESPIRATION COMPONENTS
@@ -892,6 +901,9 @@ module FatesCohortMod
         call this%prt%RegisterBCIn(acnp_bc_in_id_dnh4, bc_rval=this%dnh4)
         call this%prt%RegisterBCIn(acnp_bc_in_id_dno3, bc_rval=this%dno3)
         call this%prt%RegisterBCIn(acnp_bc_in_id_dpo4, bc_rval=this%dpo4)
+        call this%prt%RegisterBCIn(acnp_bc_in_id_nh4frac, bc_rval=this%nh4_demandfrac)
+        call this%prt%RegisterBCIn(acnp_bc_in_id_no3frac, bc_rval=this%no3_demandfrac)
+        call this%prt%RegisterBCIn(acnp_bc_in_id_po4frac, bc_rval=this%po4_demandfrac)
         
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_dbh, bc_rval=this%dbh)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_resp_excess, bc_rval=this%resp_excess_hold)
