@@ -111,7 +111,11 @@ module PRTAllometricCNPMod
   ! Total number of state variables
   integer, parameter :: num_vars    = 18
 
+  ! Smoothing time-scale [days] for vmax update functions
+  ! this effects both the source and sink controls
+  real(r8),public, parameter :: sobj_timescale = 5._r8
 
+  
   ! Global identifiers for the two stoichiometry values
   integer,public, parameter :: stoich_growth_min = 1     ! Flag for stoichiometry associated with
                                                          ! minimum needed for growth
@@ -808,11 +812,10 @@ contains
     real(r8) :: sobj_nh4_eff,sobj_no3_eff,sobj_po4_eff
     logical, parameter :: use_carbon_objfunc = .true.
     integer, parameter :: obj_type = 3
-    real(r8), parameter :: sobj_timescale = 5._r8
     real(r8), parameter :: minmax_vmax_mult = 100._r8
-    
     real(r8), parameter :: min_vmax = 1.e-13_r8
-
+    real(r8), parameter :: minfrac  = 0.001_r8   
+    
     associate( &
          ipft        => this%bc_in(acnp_bc_in_id_pft)%ival , &
          elongf_fnrt => this%bc_in(acnp_bc_in_id_effnrt)%rval , &
@@ -875,7 +878,7 @@ contains
 
          ! Source side constraint. We only allow upregulation
          ! if there is an increase in availability
-         if (sobj_nh4 > 0._r8 .and. (dnh4 < 0._r8 .or. nh4frac<0.5_r8))then
+         if (sobj_nh4 > 0._r8 .and. (dnh4 < 0._r8 .or. nh4frac<minfrac))then
             sobj_nh4_eff = 0._r8
          else
             sobj_nh4_eff = sobj_nh4
@@ -894,7 +897,7 @@ contains
 
          sobj_no3 = (sobj_no3 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
 
-         if (sobj_no3 > 0._r8 .and. (dno3 < 0._r8 .or. no3frac<0.5_r8))then
+         if (sobj_no3 > 0._r8 .and. (dno3 < 0._r8 .or. no3frac<minfrac))then
             sobj_no3_eff = 0._r8
          else
             sobj_no3_eff = sobj_no3
@@ -927,7 +930,7 @@ contains
          obj_ratio = min(2._r8,max(0.5_r8,obj_ratio))
          sobj_po4 = (sobj_po4 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
 
-         if (sobj_po4 > 0._r8 .and. (dpo4 < 0._r8 .or. po4frac<0.5_r8))then
+         if (sobj_po4 > 0._r8 .and. (dpo4 < 0._r8 .or. po4frac<minfrac))then
             sobj_po4_eff = 0._r8
          else
             sobj_po4_eff = sobj_po4

@@ -31,6 +31,7 @@ module FatesSoilBGCFluxMod
   use PRTGenericMod     , only : struct_organ
   use PRTGenericMod     , only : SetState
   use PRTAllometricCNPMod,only : stoich_max,stoich_growth_min
+  use PRTAllometricCNPMod,only : sobj_timescale
   use FatesAllometryMod, only : set_root_fraction
   use FatesAllometryMod , only : h_allom
   use FatesAllometryMod , only : h2d_allom
@@ -171,9 +172,18 @@ contains
        nlevsoil = bc_in(s)%nlevsoil
        
        do j = 1,nlevsoil
-          sites(s)%dnh4_prof(j) = bc_in(s)%nh4_prof(j)-sites(s)%nh4_prof_prev(j)
-          sites(s)%dno3_prof(j) = bc_in(s)%no3_prof(j)-sites(s)%no3_prof_prev(j)
-          sites(s)%dpo4_prof(j) = bc_in(s)%po4_prof(j)-sites(s)%po4_prof_prev(j)
+
+          sites(s)%dnh4_prof(j) = (sites(s)%dnh4_prof(j)*sobj_timescale + &
+               (bc_in(s)%nh4_prof(j)-sites(s)%nh4_prof_prev(j)) )/(sobj_timescale+1._r8)
+
+          sites(s)%dno3_prof(j) = (sites(s)%dno3_prof(j)*sobj_timescale + &
+               (bc_in(s)%no3_prof(j)-sites(s)%no3_prof_prev(j)) )/(sobj_timescale+1._r8)
+           
+          sites(s)%dpo4_prof(j) = (sites(s)%dpo4_prof(j)*sobj_timescale + &
+               (bc_in(s)%po4_prof(j)-sites(s)%po4_prof_prev(j)) )/(sobj_timescale+1._r8)
+          
+          !sites(s)%dno3_prof(j) = bc_in(s)%no3_prof(j)-sites(s)%no3_prof_prev(j)
+          !sites(s)%dpo4_prof(j) = bc_in(s)%po4_prof(j)-sites(s)%po4_prof_prev(j)
           sites(s)%nh4_prof_prev(j) = bc_in(s)%nh4_prof(j)
           sites(s)%no3_prof_prev(j) = bc_in(s)%no3_prof(j)
           sites(s)%po4_prof_prev(j) = bc_in(s)%po4_prof(j)

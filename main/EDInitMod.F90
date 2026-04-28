@@ -338,9 +338,9 @@ contains
     site_in%disturbance_rates(:,:,:) = 0.0_r8
     site_in%landuse_transition_matrix(:,:) = 0.0_r8
 
-    site_in%dnh4_prof(:)  = fates_unset_r8
-    site_in%dno3_prof(:)  = fates_unset_r8
-    site_in%dpo4_prof(:)  = fates_unset_r8
+    site_in%dnh4_prof(:)  = 0._r8
+    site_in%dno3_prof(:)  = 0._r8
+    site_in%dpo4_prof(:)  = 0._r8
     site_in%nh4_prof_prev(:) = 0._r8
     site_in%no3_prof_prev(:) = 0._r8
     site_in%po4_prof_prev(:) = 0._r8
