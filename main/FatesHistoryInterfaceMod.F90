@@ -299,7 +299,9 @@ module FatesHistoryInterfaceMod
   integer :: ih_ndemand_scpf
   integer :: ih_pdemand_si
   integer :: ih_pdemand_scpf
-  
+  integer :: ih_nh4demandfrac_si
+  integer :: ih_no3demandfrac_si
+  integer :: ih_po4demandfrac_si
   integer :: ih_trimming_si
   integer :: ih_fracarea_plant_si
   integer :: ih_fracarea_trees_si
@@ -2195,7 +2197,7 @@ contains
     integer :: ft        ! pft loop index
     real(r8) :: uconv    ! combined unit conversion factor
     real(r8) :: fnrt_c   ! cohort fine-root c
-
+    real(r8) :: site_fnrt_c ! site total fnrt c mass [kg]
     real(r8) :: fnrt_c_clpf(nclmax*numpft)
     
     ! Process variables with time-space dimensions only
@@ -2208,6 +2210,8 @@ contains
 
          ! zero nutrient fluxes
          call this%zero_site_hvars(csite,upfreq_in=group_nflx_simple)
+
+         site_fnrt_c = 0._r8
          
          cpatch => csite%youngest_patch
          do while(associated(cpatch))
@@ -2225,7 +2229,8 @@ contains
                uconv = ccohort%n * ha_per_m2 * days_per_sec
 
                fnrt_c   = ccohort%prt%GetState(fnrt_organ, carbon12_element)
-
+               site_fnrt_c = site_fnrt_c + fnrt_c*ccohort%n
+               
                ! Loop over the different elements. 
                do el = 1, num_elements
 
@@ -2262,7 +2267,15 @@ contains
                      this%hvars(ih_ndemand_si)%r81d(io_si) = &
                           this%hvars(ih_ndemand_si)%r81d(io_si) + &
                           ccohort%daily_n_demand*uconv
-                     
+
+                     this%hvars(ih_nh4demandfrac_si)%r81d(io_si) = &
+                          this%hvars(ih_nh4demandfrac_si)%r81d(io_si) + &
+                          ccohort%nh4_demandfrac*fnrt_c*ccohort%n
+
+                     this%hvars(ih_no3demandfrac_si)%r81d(io_si) = &
+                          this%hvars(ih_no3demandfrac_si)%r81d(io_si) + &
+                          ccohort%no3_demandfrac*fnrt_c*ccohort%n
+
                   case (phosphorus_element)
 
                      ! Mineralized uptake of PO4
@@ -2280,6 +2293,10 @@ contains
                           this%hvars(ih_pdemand_si)%r81d(io_si) + & 
                           ccohort%daily_p_demand*uconv
                      
+                     this%hvars(ih_po4demandfrac_si)%r81d(io_si) = &
+                          this%hvars(ih_po4demandfrac_si)%r81d(io_si) + &
+                          ccohort%po4_demandfrac*fnrt_c*ccohort%n
+                      
                   end select
                end do
 
@@ -2289,6 +2306,18 @@ contains
             cpatch => cpatch%older
          end do
 
+         if(any(element_list(:)==nitrogen_element))then
+            this%hvars(ih_nh4demandfrac_si)%r81d(io_si) = &
+                 this%hvars(ih_nh4demandfrac_si)%r81d(io_si)/site_fnrt_c
+            
+            this%hvars(ih_no3demandfrac_si)%r81d(io_si) = &
+                 this%hvars(ih_no3demandfrac_si)%r81d(io_si)/site_fnrt_c
+         end if
+         if(any(element_list(:)==phosphorus_element))then
+            this%hvars(ih_po4demandfrac_si)%r81d(io_si) = &
+                 this%hvars(ih_po4demandfrac_si)%r81d(io_si)/site_fnrt_c
+         end if
+         
     end if if_dynam1
 
     ! Process multiplexed variables
@@ -6943,6 +6972,18 @@ contains
                use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
                upfreq=group_nflx_simple, ivar=ivar, initialize=initialize_variables,              &
                index = ih_ndemand_si)
+
+          call this%set_history_var(vname='FATES_NH4DEMANDFRAC', units='1',      &
+               long='plant NH4 acquisition / demand', &
+               use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+               upfreq=group_nflx_simple, ivar=ivar, initialize=initialize_variables,              &
+               index = ih_nh4demandfrac_si)
+
+          call this%set_history_var(vname='FATES_NO3DEMANDFRAC', units='1',      &
+               long='plant NO3 acquisition / demand', &
+               use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+               upfreq=group_nflx_simple, ivar=ivar, initialize=initialize_variables,              &
+               index = ih_no3demandfrac_si)
           
           call this%set_history_var(vname='FATES_NFIX_SYM', units='kg m-2 s-1',      &
                long='symbiotic dinitrogen fixation in kg N per m2 per second', &
@@ -7046,6 +7087,12 @@ contains
                use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
                upfreq=group_nflx_simple, ivar=ivar, initialize=initialize_variables,              &
                index = ih_pdemand_si)
+
+          call this%set_history_var(vname='FATES_PO4DEMANDFRAC', units='1',      &
+               long='plant PO4 acquisition / demand', &
+               use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+               upfreq=group_nflx_simple, ivar=ivar, initialize=initialize_variables,              &
+               index = ih_po4demandfrac_si)
           
        end if phosphorus_active_if0
 

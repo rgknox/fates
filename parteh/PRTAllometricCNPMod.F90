@@ -113,7 +113,7 @@ module PRTAllometricCNPMod
 
   ! Smoothing time-scale [days] for vmax update functions
   ! this effects both the source and sink controls
-  real(r8),public, parameter :: sobj_timescale = 5._r8
+  real(r8),public, parameter :: sobj_timescale = 1._r8
 
   
   ! Global identifiers for the two stoichiometry values
@@ -814,7 +814,7 @@ contains
     integer, parameter :: obj_type = 3
     real(r8), parameter :: minmax_vmax_mult = 100._r8
     real(r8), parameter :: min_vmax = 1.e-13_r8
-    real(r8), parameter :: minfrac  = 0.001_r8   
+    real(r8), parameter :: minfrac  = 0.0001_r8   
     
     associate( &
          ipft        => this%bc_in(acnp_bc_in_id_pft)%ival , &

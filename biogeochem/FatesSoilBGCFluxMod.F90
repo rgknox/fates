@@ -240,17 +240,18 @@ contains
                 
                 ccohort => ccohort%shorter
              end do
-             !if(associated(cpatch,sites(s)%oldest_patch))then
-             !   ccohort => cpatch%tallest
-             !   call bstore_allom(ccohort%dbh,ccohort%pft,ccohort%crowndamage,ccohort%canopy_trim,store_c_target)
-             !   print*,"tallest vmax: ",ccohort%vmax_nh4,ccohort%prt%GetState(store_organ, carbon12_element)/store_c_target , &
-             !        ccohort%prt%GetState(store_organ, nitrogen_element)/ccohort%prt%GetNutrientTarget(nitrogen_element,store_organ,stoich_growth_min), &
-             !        ccohort%dnh4
-             !end if
+
+     !        if(associated(cpatch,sites(s)%oldest_patch))then
+     !           ccohort => cpatch%tallest
+     !           print*,"tallest demandfrac: ",ccohort%nh4_demandfrac,ccohort%no3_demandfrac
+     !           ccohort => cpatch%shortest
+     !           print*,"shortest demandfrac: ",ccohort%nh4_demandfrac,ccohort%no3_demandfrac
+     !        end if
              
              cpatch => cpatch%younger
           end do
-             
+
+          
        end if
        
        if (p_uptake_mode.eq.prescribed_p_uptake) then
@@ -278,9 +279,7 @@ contains
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
                 call set_root_fraction(sites(s)%rootfrac_scr, ccohort%pft, sites(s)%zi_soil, &
-                     bc_in(s)%max_rooting_depth_index_col )
-                
-                
+                     bc_in(s)%max_rooting_depth_index_col )                
                 
                 ccohort%daily_p_demand = fnrt_c * ccohort%vmax_po4 * sec_per_day
                 ! P Uptake:  Convert g/m2/day -> kg/plant/day

@@ -737,6 +737,9 @@ module FatesCohortMod
       copyCohort%vmax_nh4 = this%vmax_nh4
       copyCohort%vmax_no3 = this%vmax_no3
       copyCohort%vmax_po4 = this%vmax_po4
+      copyCohort%nh4_demandfrac = this%nh4_demandfrac
+      copyCohort%no3_demandfrac = this%no3_demandfrac
+      copyCohort%po4_demandfrac = this%po4_demandfrac
 
       if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then 
          copyCohort%sobj_nh4 = this%sobj_nh4
