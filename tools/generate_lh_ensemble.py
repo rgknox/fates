@@ -3,7 +3,14 @@
 # lot of files!
 # It uses the scipy Quasi Monte Carlo (QMC) library
 
-
+import os
+import argparse
+import sys
+import datetime
+import time
+import math
+import code  # For development: code.interact(local=dict(globals(), **locals()))
+import json
 import numpy as np
 from scipy.stats import qmc
 
@@ -17,7 +24,8 @@ from scipy.stats import qmc
 # KM_DEN = 0.11
 
 default_config  = {
-    "files_input": ["file1.json","file2.nc"],
+    "files_input": ["../fates_params_2BTE_tryv1_LongoKowalczyk_corrSLA_vcmax4055.json",
+                    "/home/rgknox/Models/InputDatasets/e3sm_input_datasets//lnd/clm2/paramdata/clm_params.cbgc.c07292018.nc"],
     "files_output_pref":["fatesparams_lh","elmparams_lh"],
     "n_samples": 20,
     "parameters":{
@@ -40,34 +48,86 @@ default_config  = {
     }
 }
 
-
-config = default_config
-
-n_dims = len(config['parameters'])
-n_samples = config['n_samples']
-
-l_bounds = []
-u_bounds = []
-
-for pname, pobj in config['parameters'].items():
-    l_bounds.append(float(pobj["min"]))
-    u_bounds.append(float(pobj["max"]))
-
-sampler = qmc.LatinHypercube(d=n_dims)
-lh_norm_sample = sampler.random(n=n_samples)
-lh_sample = qmc.scale(lh_norm_sample, l_bounds, u_bounds)
-
-print(f"LH Simulations: {len(lh_sample)}")
-print(f"Sampler Shape: {lh_sample.shape}")
-#print(lh_sample)
+def main():
 
 
-# Step 3
-# Create copies of the original file, and replace parameters with sample
+    time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    change_log = time_str+': modify_fates_paramfile_json.py'+' '.join(sys.argv[1:])
+    
+    parser = argparse.ArgumentParser(description='Parse command line arguments to this script.')
 
-for i in range(n_samples):
+    parser.add_argument('--config', dest='input_config', \
+                        type=str, help="Input filename.  Required.", required=False)
 
-    for j,file_in in enumerate(config['files_input']):
+    args = parser.parse_args()
 
-        file_out_base = config['files_output_pref'][j]
-        print(f"{file_in}, {file_out_base}")
+    if(args.input_config is None):
+        config = default_config
+        print(f'\nUsing Default config file from script\n')
+    else:
+        print(f'\nOpening config file:{args.input_config}\n')
+        with open(args.input_config, 'r') as file:
+            config = json.load(file)
+
+            
+            
+    n_dims = len(config['parameters'])
+    n_samples = config['n_samples']
+
+    l_bounds = []
+    u_bounds = []
+
+    for pname, pobj in config['parameters'].items():
+        l_bounds.append(float(pobj["min"]))
+        u_bounds.append(float(pobj["max"]))
+
+    sampler = qmc.LatinHypercube(d=n_dims)
+    lh_norm_sample = sampler.random(n=n_samples)
+    lh_sample = qmc.scale(lh_norm_sample, l_bounds, u_bounds)
+
+    print(f"LH Simulations: {len(lh_sample)}")
+    print(f"Sampler Shape: {lh_sample.shape}")
+    #print(lh_sample)
+
+
+    # Step 3
+    # Create copies of the original file, and replace parameters with sample
+
+    for i in range(n_samples):
+
+        for j,file_in in enumerate(config['files_input']):
+
+            
+            file_out_base = config['files_output_pref'][j]
+
+            if file_in.endswith('.nc'):
+                print("Found a NetCDF file.")
+                new_file_out = file_out_base+f"_{i+1:04d}"+".nc"
+
+
+                
+                
+            elif file_in.endswith('.json'):
+                print("Found a JSON file.")
+                new_file_out = file_out_base+f"_{i+1:04d}"+".json"
+
+
+
+                
+            else:
+                print("File extension not recognized.")
+                exit(2)
+                
+            code.interact(local=dict(globals(), **locals()))
+
+            
+            
+            
+            print(f"{file_in}, {file_out_base}")
+
+
+# =======================================================================================
+# This is the actual call to main
+
+if __name__ == "__main__":
+    main()
