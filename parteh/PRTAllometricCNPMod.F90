@@ -282,7 +282,7 @@ module PRTAllometricCNPMod
      procedure :: CNPAllocateRemainder
      procedure :: GetDeficit
      procedure :: TrimFineRoot
-     procedure :: UpdateVmax
+     procedure :: UpdateVmaxL2FR
   end type cnp_allom_prt_vartypes
 
 
@@ -807,7 +807,8 @@ contains
 
     real(r8) :: store_c_max, store_c_act
     real(r8) :: store_nut_max, store_nut_act
-    real(r8) :: zeta
+    real(r8) :: zeta_vmax
+    real(r8) :: zeta_l2fr
     real(r8) :: obj_ratio
     real(r8) :: sobj_nh4_eff,sobj_no3_eff,sobj_po4_eff
     logical, parameter :: use_carbon_objfunc = .true.
@@ -822,6 +823,7 @@ contains
          canopy_trim => this%bc_in(acnp_bc_in_id_ctrim)%rval , &
          leaf_status => this%bc_in(acnp_bc_in_id_lstat)%ival, &
          dbh         => this%bc_inout(acnp_bc_inout_id_dbh)%rval , &
+         l2fr        => this%bc_inout(acnp_bc_inout_id_dbh)%rval , &
          vmax_nh4    => this%bc_inout(acnp_bc_inout_id_vmax_nh4)%rval , &
          vmax_no3    => this%bc_inout(acnp_bc_inout_id_vmax_no3)%rval , &
          vmax_po4    => this%bc_inout(acnp_bc_inout_id_vmax_po4)%rval , &
@@ -835,16 +837,16 @@ contains
          no3frac     => this%bc_in(acnp_bc_in_id_no3frac)%rval, &
          po4frac     => this%bc_in(acnp_bc_in_id_po4frac)%rval &
          )
-
-      
       
       if(leaf_status.eq.leaves_off) return
 
       if(obj_type>1)then
-         zeta = (2._r8**(1._r8/prt_params%vmax_timescale(ipft))-1._r8)/log(2._r8)
+         zeta_vmax = (2._r8**(1._r8/prt_params%vmax_timescale(ipft))-1._r8)/log(2._r8)
       else
-         zeta = 0.5 * 2._r8**(1._r8/prt_params%vmax_timescale(ipft))
+         zeta_vmax = 0.5 * 2._r8**(1._r8/prt_params%vmax_timescale(ipft))
       end if
+
+      zeta_l2fr = (2._r8**(1._r8/prt_params%l2fr_timescale(ipft))-1._r8)/log(2._r8)
       
       ! Step 1: Determine the current value of the objective function (storage ratio)
       ! Step 2: Smooth the objective function with an exponential moving average
@@ -885,11 +887,11 @@ contains
          end if
          
          if(obj_type==1) then
-            !vmax_nh4 = max(min_vmax, vmax_nh4 * zeta*exp(sobj_nh4_eff))
+            !vmax_nh4 = max(min_vmax, vmax_nh4 * zeta_vmax*exp(sobj_nh4_eff))
          elseif(obj_type==2) then
-            vmax_nh4 = max(min_vmax, vmax_nh4 * (1._r8 + zeta*sobj_nh4_eff))
+            vmax_nh4 = max(min_vmax, vmax_nh4 * (1._r8 + zeta_vmax*sobj_nh4_eff))
          else
-            vmax_nh4 = max(min_vmax, vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta*sobj_nh4_eff)
+            vmax_nh4 = max(min_vmax, vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta_vmax*sobj_nh4_eff)
          end if
          
          ! Until we have source side limitations, both NH4 and NO3 react the same
@@ -905,11 +907,11 @@ contains
          
          
          if(obj_type==1) then
-            !vmax_no3 = max(min_vmax,vmax_no3 * zeta*exp(sobj_no3_eff))
+            !vmax_no3 = max(min_vmax,vmax_no3 * zeta_vmax*exp(sobj_no3_eff))
          elseif(obj_type==2) then
-            vmax_no3 = max(min_vmax,vmax_no3 * (1._r8 + zeta*sobj_no3_eff))
+            vmax_no3 = max(min_vmax,vmax_no3 * (1._r8 + zeta_vmax*sobj_no3_eff))
          else
-            vmax_no3 = max(min_vmax, vmax_no3 + prt_params%vmax0_no3(ipft)*zeta*sobj_no3_eff)
+            vmax_no3 = max(min_vmax, vmax_no3 + prt_params%vmax0_no3(ipft)*zeta_vmax*sobj_no3_eff)
          end if
 
       end if
@@ -937,14 +939,32 @@ contains
          end if
          
          if(obj_type==1) then
-            !vmax_po4 = max(min_vmax, vmax_po4 * zeta*exp(sobj_po4_eff))
+            !vmax_po4 = max(min_vmax, vmax_po4 * zeta_vmax*exp(sobj_po4_eff))
          elseif(obj_type==2) then
-            vmax_po4 = max(min_vmax, vmax_po4 * (1._r8 + zeta*sobj_po4_eff))
+            vmax_po4 = max(min_vmax, vmax_po4 * (1._r8 + zeta_vmax*sobj_po4_eff))
          else
-            vmax_po4 = max(min_vmax, vmax_po4 + prt_params%vmax0_po4(ipft)*zeta*sobj_po4_eff)
+            vmax_po4 = max(min_vmax, vmax_po4 + prt_params%vmax0_po4(ipft)*zeta_vmax*sobj_po4_eff)
          end if
          
       end if
+
+      ! Update L2FR
+      obj_ratio = 0._r8
+      if(n_uptake_mode.ne.prescribed_n_uptake .and. hlm_nitrogen_suppl.eq.ifalse)then
+         obj_ratio = max(vmax_no3/prt_params%vmax0_no3(ipft),vmax_nh4/prt_params%vmax0_nh4(ipft))
+      end if
+      if(p_uptake_mode.ne.prescribed_p_uptake .and. hlm_phosphorus_suppl.eq.ifalse)then
+         obj_ratio = max(obj_ratio, vmax_po4/prt_params%vmax0_po4(ipft))
+      end if
+
+      if(obj_ratio > nearzero) then
+
+         l2fr = l2fr + prt_params%l2fr0(ipft)*zeta_l2fr*obj_ratio
+
+      end if
+      
+
+      
     end associate
 
   end subroutine UpdateVmax
