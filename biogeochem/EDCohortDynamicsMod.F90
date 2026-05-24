@@ -1050,6 +1050,8 @@ contains
                                       ! Nutrients
                                       if(hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
 
+                                         currentCohort%l2fr = (currentCohort%n*currentCohort%l2fr &
+                                              + nextc%n*nextc%l2fr)/newn
                                          
                                          currentCohort%vmax_nh4 = (currentCohort%n*currentCohort%vmax_nh4 &
                                               + nextc%n*nextc%vmax_nh4)/newn
@@ -1455,7 +1457,7 @@ contains
       ! Target total dead (structrual) biomass [kgC]
       call bdead_allom( target_agw_c, target_bgw_c, target_sapw_c, ipft, target_struct_c)
       ! Target fine-root biomass according to allometry, trimming and phenology [kgC]
-      call bfineroot(dbh,ipft,canopy_trim,prt_params%allom_l2fr(ipft), elongf_fnrt, target_fnrt_c)
+      call bfineroot(dbh,ipft,canopy_trim,ccohort%l2fr, elongf_fnrt, target_fnrt_c)
       ! Target storage carbon [kgC]
       call bstore_allom(dbh,ipft,ccohort%crowndamage-1, canopy_trim,target_store_c)
       ! Target leaf biomass according to allometry, trimming and phenology [kgC]

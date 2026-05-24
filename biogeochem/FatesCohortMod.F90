@@ -42,6 +42,7 @@ module FatesCohortMod
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_nh4frac,acnp_bc_in_id_no3frac,acnp_bc_in_id_po4frac
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_dbh, acnp_bc_inout_id_resp_excess
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_netdn, acnp_bc_inout_id_netdp
+  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_l2fr
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_nh4,acnp_bc_inout_id_vmax_no3
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_po4,acnp_bc_inout_id_sobj_nh4
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_sobj_no3,acnp_bc_inout_id_sobj_po4
@@ -92,6 +93,7 @@ module FatesCohortMod
     real(r8) :: dbh                     ! diameter at breast height [cm]
     real(r8) :: coage                   ! age [years]
     real(r8) :: height                  ! height [m]
+    real(r8) :: l2fr                    ! leaf to fineroot multiplier (ie m_fnrt/m_leaf) [-]
     integer  :: canopy_layer            ! canopy status of cohort [1 = canopy, 2 = understorey, etc.]
     real(r8) :: canopy_layer_yesterday  ! recent canopy status of cohort [1 = canopy, 2 = understorey, etc.]
                                         !   real to be conservative during fusion
@@ -355,6 +357,7 @@ module FatesCohortMod
       nullify(this%co_hydr)
    
       ! VEGETATION STRUCTURE
+      this%l2fr                    = nan
       this%vmax_nh4                = nan
       this%vmax_no3                = nan
       this%vmax_po4                = nan
@@ -619,6 +622,13 @@ module FatesCohortMod
         call endrun(msg=errMsg(sourcefile, __LINE__))
       endif
 
+      ! Initialize the leaf to fineroot biomass ratio.
+      ! For C-only, this will stay constant, for nutrient-enabled this will be
+      ! dynamic.  In both cases, new cohorts are initialized with the minimum. 
+      ! This works in the nutrient enabled case because cohorts are also 
+      ! initialized with full stores, which match with minimum fineroot biomass
+      this%l2fr = prt_params%allom_l2fr(pft)
+      
       this%vmax_nh4 = prt_params%vmax0_nh4(pft)
       this%vmax_no3 = prt_params%vmax0_no3(pft)
       this%vmax_po4 = prt_params%vmax0_po4(pft)
@@ -689,6 +699,7 @@ module FatesCohortMod
 
       ! PRT
       call copyCohort%prt%CopyPRTVartypes(this%prt)
+      copyCohort%l2fr                    = this%2lfr
       
       ! VEGETATION STRUCTURE
       copyCohort%pft                     = this%pft
@@ -912,6 +923,7 @@ module FatesCohortMod
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_resp_excess, bc_rval=this%resp_excess_hold)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_netdn, bc_rval=this%daily_n_gain)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_netdp, bc_rval=this%daily_p_gain)
+        call this%prt%RegisterBCInOut(acnp_bc_inout_id_l2fr, bc_rval=this%l2fr)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_nh4, bc_rval=this%vmax_nh4)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_no3, bc_rval=this%vmax_no3)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_po4, bc_rval=this%vmax_po4)
