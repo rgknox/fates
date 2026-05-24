@@ -402,13 +402,20 @@
 	"units": "ratio",
 	"data": [0.333,0.333,0.333]
     },
-      "fates_cnp_vmax_timescale":{
-	  "dtype": "float",
-	  "dims": ["fates_pft"],
-	  "long_name": "Number of days to smooth the objective function, and the number of days expected for doubling of of the the objective function (storage ratio) to double vmax",
-	  "units": "days",
-	  "data": [5,5,5,5,5,5,5,5,5,5,5,5,5,5]
-      },
+    "fates_cnp_l2fr_timescale":{
+	"dtype": "float",
+	"dims": ["fates_pft"],
+	"long_name": "Number of days expected to double L2FR given a doubling of the the objective function",
+	"units": "days",
+	"data": [50,50,50,50,50,50,50,50,50,50,50,50,50,50]
+    },
+    "fates_cnp_vmax_timescale":{
+	"dtype": "float",
+	"dims": ["fates_pft"],
+	"long_name": "Number of days expected to double Vmax given a doubling of the objective function (storage ratio)",
+	"units": "days",
+	"data": [5,5,5,5,5,5,5,5,5,5,5,5,5,5]
+    },
     "fates_cnp_eca_alpha_ptase": {
       "dtype": "float",
       "dims": ["fates_pft"],

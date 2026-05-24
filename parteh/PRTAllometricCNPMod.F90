@@ -171,8 +171,8 @@ module PRTAllometricCNPMod
   integer, public, parameter :: acnp_bc_inout_id_sobj_nh4    = 8
   integer, public, parameter :: acnp_bc_inout_id_sobj_no3    = 9
   integer, public, parameter :: acnp_bc_inout_id_sobj_po4    = 10
-  
-  integer, public, parameter :: num_bc_inout                 = 10
+  integer, public, parameter :: acnp_bc_inout_id_l2fr        = 11
+  integer, public, parameter :: num_bc_inout                 = 11
 
   ! -------------------------------------------------------------------------------------
   ! Input only Boundary Indices (These are public)
@@ -216,7 +216,8 @@ module PRTAllometricCNPMod
   integer,private, parameter :: intgr_parm_efleaf  = 4
   integer,private, parameter :: intgr_parm_effnrt  = 5
   integer,private, parameter :: intgr_parm_efstem  = 6
-  integer,private, parameter :: num_intgr_parm     = 6
+  integer,private, parameter :: intgr_parm_l2fr    = 7
+  integer,private, parameter :: num_intgr_parm     = 7
 
   ! -------------------------------------------------------------------------------------
   ! Define the size of the coorindate vector.  For this hypothesis, there is only
@@ -278,7 +279,6 @@ module PRTAllometricCNPMod
      procedure :: CNPPrioritizedReplacement
      procedure :: CNPStatureGrowth
      procedure :: EstimateGrowthNC
-     !procedure :: CNPAdjustFRootTargets
      procedure :: CNPAllocateRemainder
      procedure :: GetDeficit
      procedure :: TrimFineRoot
@@ -512,7 +512,7 @@ contains
     dbh0        =  dbh
     n_gain      => this%bc_inout(acnp_bc_inout_id_netdn)%rval
     p_gain      => this%bc_inout(acnp_bc_inout_id_netdp)%rval
-
+    l2fr        => this%bc_inout(acnp_bc_inout_id_l2fr)%rval
 
     ! Assume that there is no other source of excess respiration
     ! so it is safe to zero it. In the third stage we will
@@ -563,7 +563,7 @@ contains
     call bdead_allom(agw_c_target,bgw_c_target,target_c(sapw_organ),ipft,target_c(struct_organ), &
                      agw_dcdd_target,bgw_dcdd_target,target_dcdd(sapw_organ),target_dcdd(struct_organ))
     call bleaf(dbh,ipft,crown_damage,canopy_trim, elongf_leaf, target_c(leaf_organ), target_dcdd(leaf_organ))
-    call bfineroot(dbh,ipft,canopy_trim,prt_params%allom_l2fr(ipft), elongf_fnrt, target_c(fnrt_organ), target_dcdd(fnrt_organ))
+    call bfineroot(dbh,ipft,canopy_trim,l2fr, elongf_fnrt, target_c(fnrt_organ), target_dcdd(fnrt_organ))
     call bstore_allom(dbh,ipft,crown_damage, canopy_trim, target_c(store_organ), target_dcdd(store_organ))
     target_c(repro_organ) = 0._r8
     target_dcdd(repro_organ) = 0._r8
@@ -769,13 +769,12 @@ contains
     end if
 
 
-
+    !call this%UpdateVmax(target_c)
     ! If fine-roots are allocated above their
     ! target (perhaps with some buffer, but perhaps not)
     ! then
-    !call this%TrimFineRoot()
-
-    call this%UpdateVmax(target_c)
+    call this%TrimFineRoot()
+    
     
     return
   end subroutine DailyPRTAllometricCNP
@@ -800,10 +799,11 @@ contains
 
   ! =====================================================================================
 
-  subroutine UpdateVmax(this, target_c)
+  subroutine UpdateVmaxL2FR(this, target_c, target_dcdd)
 
     class(cnp_allom_prt_vartypes) :: this
     real(r8)                      :: target_c(:)
+    real(r8)                      :: target_dcdd(:)
 
     real(r8) :: store_c_max, store_c_act
     real(r8) :: store_nut_max, store_nut_act
@@ -812,10 +812,18 @@ contains
     real(r8) :: obj_ratio
     real(r8) :: sobj_nh4_eff,sobj_no3_eff,sobj_po4_eff
     logical, parameter :: use_carbon_objfunc = .true.
-    integer, parameter :: obj_type = 3
     real(r8), parameter :: minmax_vmax_mult = 100._r8
     real(r8), parameter :: min_vmax = 1.e-13_r8
     real(r8), parameter :: minfrac  = 0.0001_r8   
+
+    integer, parameter :: vmax_dyn_on  = 1
+    integer, parameter :: vmax_dyn_off = 2
+    integer, parameter :: vmax_dyn = vmax_dyn_on
+    
+    integer, parameter :: l2fr_dyn_vmax  = 1
+    integer, parameter :: l2fr_dyn_store = 2
+    integer, parameter :: l2fr_dyn_off   = 3
+    integer, parameter :: l2fr_dyn = l2fr_dyn_off
     
     associate( &
          ipft        => this%bc_in(acnp_bc_in_id_pft)%ival , &
@@ -823,7 +831,7 @@ contains
          canopy_trim => this%bc_in(acnp_bc_in_id_ctrim)%rval , &
          leaf_status => this%bc_in(acnp_bc_in_id_lstat)%ival, &
          dbh         => this%bc_inout(acnp_bc_inout_id_dbh)%rval , &
-         l2fr        => this%bc_inout(acnp_bc_inout_id_dbh)%rval , &
+         l2fr        => this%bc_inout(acnp_bc_inout_id_l2fr)%rval , &
          vmax_nh4    => this%bc_inout(acnp_bc_inout_id_vmax_nh4)%rval , &
          vmax_no3    => this%bc_inout(acnp_bc_inout_id_vmax_no3)%rval , &
          vmax_po4    => this%bc_inout(acnp_bc_inout_id_vmax_po4)%rval , &
@@ -840,12 +848,8 @@ contains
       
       if(leaf_status.eq.leaves_off) return
 
-      if(obj_type>1)then
-         zeta_vmax = (2._r8**(1._r8/prt_params%vmax_timescale(ipft))-1._r8)/log(2._r8)
-      else
-         zeta_vmax = 0.5 * 2._r8**(1._r8/prt_params%vmax_timescale(ipft))
-      end if
-
+      zeta_vmax = (2._r8**(1._r8/prt_params%vmax_timescale(ipft))-1._r8)/log(2._r8)
+      
       zeta_l2fr = (2._r8**(1._r8/prt_params%l2fr_timescale(ipft))-1._r8)/log(2._r8)
       
       ! Step 1: Determine the current value of the objective function (storage ratio)
@@ -856,6 +860,11 @@ contains
       store_c_max = target_c(store_organ)
       store_c_act = max(0.001_r8*store_c_max,this%GetState(store_organ, carbon12_element))
 
+      ! Initialize the log objective function to "no change", which is zero
+      nh4_log_obj_ratio = 0._r8
+      no3_log_obj_ratio = 0._r8
+      po4_log_obj_ratio = 0._r8
+      
       ! Dont uptake nitrogen uptake if we are in prescribed mode, or if the model is supplementing N...
       if(n_uptake_mode.ne.prescribed_n_uptake .and. hlm_nitrogen_suppl.eq.ifalse)then
 
@@ -872,54 +881,43 @@ contains
          else
             obj_ratio = store_nut_max/store_nut_act
          end if
-
-         obj_ratio = min(2._r8,max(0.5_r8,obj_ratio))
-
-         ! use an exponential smoother on the objective function
-         sobj_nh4 = (sobj_nh4 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
-
-         ! Source side constraint. We only allow upregulation
-         ! if there is an increase in availability
-         if (sobj_nh4 > 0._r8 .and. (dnh4 < 0._r8 .or. nh4frac<minfrac))then
-            sobj_nh4_eff = 0._r8
-         else
-            sobj_nh4_eff = sobj_nh4
-         end if
          
-         if(obj_type==1) then
-            !vmax_nh4 = max(min_vmax, vmax_nh4 * zeta_vmax*exp(sobj_nh4_eff))
-         elseif(obj_type==2) then
-            vmax_nh4 = max(min_vmax, vmax_nh4 * (1._r8 + zeta_vmax*sobj_nh4_eff))
-         else
-            vmax_nh4 = max(min_vmax, vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta_vmax*sobj_nh4_eff)
+         nh4_log_obj_ratio = log(min(2._r8,max(0.5_r8,obj_ratio)))
+
+         ! source side constraint (no increase in aquisition affinity if
+         ! resource is either low or in decline
+         
+         if( dnh4 < 0._r8  .or. nh4frac<minfrac) then
+            nh4_log_obj_ratio = min(0._r8, log_obj_ratio)
+         end if
+
+         if (vmax_dyn == vmax_dyn_on)then
+            vmax_nh4 = max(min_vmax, vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta_vmax*nh4_log_obj_ratio)
          end if
          
          ! Until we have source side limitations, both NH4 and NO3 react the same
          ! because they have the same elemental sink imposed (nitrogen)
-
-         sobj_no3 = (sobj_no3 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
-
-         if (sobj_no3 > 0._r8 .and. (dno3 < 0._r8 .or. no3frac<minfrac))then
-            sobj_no3_eff = 0._r8
-         else
-            sobj_no3_eff = sobj_no3
-         end if
+         ! (recalculate non-source-limited objective function)
          
+         no3_log_obj_ratio = log(min(2._r8,max(0.5_r8,obj_ratio)))
+
+         ! source side constraint (no increase in aquisition affinity if
+         ! resource is either low or in decline
          
-         if(obj_type==1) then
-            !vmax_no3 = max(min_vmax,vmax_no3 * zeta_vmax*exp(sobj_no3_eff))
-         elseif(obj_type==2) then
-            vmax_no3 = max(min_vmax,vmax_no3 * (1._r8 + zeta_vmax*sobj_no3_eff))
-         else
-            vmax_no3 = max(min_vmax, vmax_no3 + prt_params%vmax0_no3(ipft)*zeta_vmax*sobj_no3_eff)
+         if( dno3 < 0._r8  .or. no3frac<minfrac) then
+            no3_log_obj_ratio = min(0._r8, log_obj_ratio)
          end if
 
+         if(vmax_dyn == vmax_dyn_on)then
+            vmax_no3 = max(min_vmax, vmax_no3 + prt_params%vmax0_no3(ipft)*zeta_vmax*no3_log_obj_ratio)
+         end if
+         
       end if
 
       if(p_uptake_mode.ne.prescribed_p_uptake .and. hlm_phosphorus_suppl.eq.ifalse)then
 
          store_nut_max = this%GetNutrientTarget(phosphorus_element,store_organ,stoich_growth_min)
-
+         
          store_nut_act = max(0.001_r8*store_nut_max, &
               this%GetState(store_organ, phosphorus_element))
 
@@ -929,45 +927,51 @@ contains
             obj_ratio = store_nut_max/store_nut_act
          end if
          
-         obj_ratio = min(2._r8,max(0.5_r8,obj_ratio))
-         sobj_po4 = (sobj_po4 * sobj_timescale + log(obj_ratio))/(sobj_timescale+1._r8)
+         po4_log_obj_ratio = log(min(2._r8,max(0.5_r8,obj_ratio)))
 
-         if (sobj_po4 > 0._r8 .and. (dpo4 < 0._r8 .or. po4frac<minfrac))then
-            sobj_po4_eff = 0._r8
-         else
-            sobj_po4_eff = sobj_po4
-         end if
+         ! source side constraint (no increase in aquisition affinity if
+         ! resource is either low or in decline
          
-         if(obj_type==1) then
-            !vmax_po4 = max(min_vmax, vmax_po4 * zeta_vmax*exp(sobj_po4_eff))
-         elseif(obj_type==2) then
-            vmax_po4 = max(min_vmax, vmax_po4 * (1._r8 + zeta_vmax*sobj_po4_eff))
-         else
-            vmax_po4 = max(min_vmax, vmax_po4 + prt_params%vmax0_po4(ipft)*zeta_vmax*sobj_po4_eff)
+         if( dpo4 < 0._r8  .or. po4frac<minfrac) then
+            po4_log_obj_ratio = min(0._r8, log_obj_ratio)
+         end if
+
+         if(vmax_dyn==vmax_dyn_on)then
+            vmax_po4 = max(min_vmax, vmax_po4 + prt_params%vmax0_po4(ipft)*zeta_vmax*po4_log_obj_ratio)
          end if
          
       end if
 
       ! Update L2FR
-      obj_ratio = 0._r8
-      if(n_uptake_mode.ne.prescribed_n_uptake .and. hlm_nitrogen_suppl.eq.ifalse)then
-         obj_ratio = max(vmax_no3/prt_params%vmax0_no3(ipft),vmax_nh4/prt_params%vmax0_nh4(ipft))
-      end if
-      if(p_uptake_mode.ne.prescribed_p_uptake .and. hlm_phosphorus_suppl.eq.ifalse)then
-         obj_ratio = max(obj_ratio, vmax_po4/prt_params%vmax0_po4(ipft))
-      end if
+      ! Three strategies allowed: can react to storage, or to vmax, or turn it off
 
-      if(obj_ratio > nearzero) then
-
-         l2fr = l2fr + prt_params%l2fr0(ipft)*zeta_l2fr*obj_ratio
-
-      end if
+      log_obj_ratio = 0._r8
       
+      if(l2fr_dyn == l2fr_dyn_vmax) then
 
+         ! if l2fr is based off of vmax, then we use the vmax for the ion
+         ! that is largest.  Note we don't need to filter out supplementation
+         ! period etc, because we already vilter vmax on that logic
+         
+         log_obj_ratio = log(max(vmax_no3/prt_params%vmax0_no3(ipft), &
+                                 vmax_nh4/prt_params%vmax0_nh4(ipft), &
+                                 vmax_po4/prt_params%vmax0_po4(ipft)))
+                  
+      elseif(l2fr_dyn == l2fr_dyn_store) then
+         
+         log_obj_ratio = max(nh4_log_obj_ratio,no3_log_obj_ratio,po4_log_obj_ratio)
+
+      end if
+
+      ! Update L2FR
+      if(abs(log_obj_ratio) > nearzero) then
+         l2fr = l2fr + prt_params%l2fr0(ipft)*zeta_l2fr*log_obj_ratio
+         call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_c(fnrt_organ),target_dcdd(fnrt_organ))
+      end if
       
     end associate
 
-  end subroutine UpdateVmax
+  end subroutine UpdateVmaxL2FR
 
   ! =====================================================================================
 
@@ -999,12 +1003,16 @@ contains
     associate( ipft         => this%bc_in(acnp_bc_in_id_pft)%ival,  &
          dbh          => this%bc_inout(acnp_bc_inout_id_dbh)%rval,  &
          elongf_fnrt  => this%bc_in(acnp_bc_in_id_effnrt)%rval,     &
-         canopy_trim  => this%bc_in(acnp_bc_in_id_ctrim)%rval)
+         canopy_trim  => this%bc_in(acnp_bc_in_id_ctrim)%rval, &
+         l2fr         => this%bc_inout(acnp_bc_inout_id_l2fr)%rval)
 
       ! Find the updated target fineroot biomass
-      call bfineroot(dbh,ipft,canopy_trim, prt_params%allom_l2fr(ipft), elongf_fnrt, target_fnrt_c)
+      call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_fnrt_c)
 
-      fnrt_flux_c = max(0._r8,this%variables(fnrt_c_id)%val(1)*(1._r8-nday_buffer*(years_per_day / prt_params%root_long(ipft))) - target_fnrt_c )
+      ! We can set the nday_buffer > 0 if we want reduce the amount of
+      ! fineroot that we turnover.  Dropping functional roots is wasteful
+      fnrt_flux_c = max(0._r8,this%variables(fnrt_c_id)%val(1)* &
+                              (1._r8-nday_buffer*(years_per_day / prt_params%root_long(ipft))) - target_fnrt_c )
 
       if(fnrt_flux_c>nearzero) then
 
@@ -1084,7 +1092,6 @@ contains
                                  ! the total number organs plus 1, which allows
                                  ! each organ to have its own level, and ignore
                                  ! the specialized priority 1
-
 
     leaf_status     = this%bc_in(acnp_bc_in_id_lstat)%ival
     elongf_leaf     = this%bc_in(acnp_bc_in_id_efleaf)%rval
@@ -1225,6 +1232,10 @@ contains
     call ProportionalNutrAllocation(this,deficit_p(1:n_curpri_org), &
          p_gain, phosphorus_element, curpri_org(1:n_curpri_org))
 
+
+
+
+    
     ! -----------------------------------------------------------------------------------
     ! IV. if carbon balance is negative, re-coup the losses from storage
     !       if it is positive, give some love to storage carbon
@@ -1392,6 +1403,7 @@ contains
 
 
     real(r8), pointer :: dbh
+    real(r8), pointer :: l2fr
     integer           :: ipft
     integer, pointer  :: limiter                 ! Integer flagging which (C,N,P) is limiting
     real(r8)          :: canopy_trim             ! fraction of crown trimmed
@@ -1473,11 +1485,13 @@ contains
     elongf_fnrt = this%bc_in(acnp_bc_in_id_effnrt)%rval
     elongf_stem = this%bc_in(acnp_bc_in_id_efstem)%rval
     dbh         => this%bc_inout(acnp_bc_inout_id_dbh)%rval
+    l2fr        => this%bc_inout(acnp_bc_inout_id_l2fr)%rval
     ipft        = this%bc_in(acnp_bc_in_id_pft)%ival
     crown_damage = this%bc_in(acnp_bc_in_id_cdamage)%ival
     limiter     => this%bc_out(acnp_bc_out_id_limiter)%ival
     canopy_trim = this%bc_in(acnp_bc_in_id_ctrim)%rval
 
+    
     if( c_gain <= calloc_abs_error ) then
        limiter = c_limited
        if((n_gain <= 0.1_r8*calloc_abs_error) .or. &
@@ -1507,6 +1521,7 @@ contains
     intgr_params(:)                  = fates_unset_r8
     intgr_params(intgr_parm_ctrim)   = this%bc_in(acnp_bc_in_id_ctrim)%rval
     intgr_params(intgr_parm_pft)     = real(this%bc_in(acnp_bc_in_id_pft)%ival,r8)
+    intgr_params(intgr_parm_l2fr)    = this%bc_inout(acnp_bc_inout_id_l2fr)%rval
     intgr_params(intgr_parm_cdamage) = real(this%bc_in(acnp_bc_in_id_cdamage)%ival,r8)
     intgr_params(intgr_parm_efleaf)  = this%bc_in(acnp_bc_in_id_efleaf)%rval
     intgr_params(intgr_parm_effnrt)  = this%bc_in(acnp_bc_in_id_effnrt)%rval
@@ -1737,7 +1752,7 @@ contains
             end do
 
             call CheckIntegratedAllometries(state_array_out(dbh_id),ipft,crown_damage,canopy_trim,  &
-                 elongf_leaf, elongf_fnrt, elongf_stem, prt_params%allom_l2fr(ipft), &
+                 elongf_leaf, elongf_fnrt, elongf_stem, l2fr, &
                  leafc_tp1, state_array_out(fnrt_id), state_array_out(sapw_id), &
                  state_array_out(store_id), state_array_out(struct_id), &
                  state_mask(leaf_id), state_mask(fnrt_id), state_mask(sapw_id), &
@@ -1818,7 +1833,7 @@ contains
                write(fates_log(),*) 'totalC',totalC,c_gain,neq_cgain,peq_cgain
                write(fates_log(),*) 'pft: ',ipft
                write(fates_log(),*) 'trim: ',canopy_trim
-               write(fates_log(),*) 'l2fr: ', prt_params%allom_l2fr(ipft)
+               write(fates_log(),*) 'l2fr: ', l2fr
                write(fates_log(),*) 'dbh: ',dbh
                write(fates_log(),*) 'elongf_leaf: ',elongf_leaf
                write(fates_log(),*) 'elongf_fnrt: ',elongf_fnrt
@@ -1837,7 +1852,7 @@ contains
                structc_tp1 = state_array_out(struct_id)
 
                call bleaf(dbh_tp1,ipft,crown_damage,canopy_trim, elongf_leaf, leaf_c_target_tp1)
-               call bfineroot(dbh_tp1,ipft,canopy_trim,prt_params%allom_l2fr(ipft), elongf_fnrt, fnrt_c_target_tp1)
+               call bfineroot(dbh_tp1,ipft,canopy_trim, l2fr, elongf_fnrt, fnrt_c_target_tp1)
                call bsap_allom(dbh_tp1,ipft,crown_damage,canopy_trim, elongf_stem, sapw_area,sapw_c_target_tp1)
                call bagw_allom(dbh_tp1,ipft,crown_damage, elongf_stem, agw_c_target_tp1)
                call bbgw_allom(dbh_tp1,ipft, elongf_stem, bgw_c_target_tp1)
@@ -1933,7 +1948,7 @@ contains
     real(r8), intent(inout) :: c_efflux
     real(r8), intent(inout) :: n_efflux
     real(r8), intent(inout) :: p_efflux
-    real(r8)  :: target_c(:)
+    real(r8) :: target_c(:)
     real(r8) :: target_dcdd(:)
 
     integer  :: i
@@ -1949,6 +1964,8 @@ contains
     integer, pointer  :: limiter
     real(r8)          :: canopy_trim
     integer           :: crown_damage
+    logical           :: limiting_p
+    logical           :: limiting_n
 
     dbh         => this%bc_inout(acnp_bc_inout_id_dbh)%rval
     canopy_trim = this%bc_in(acnp_bc_in_id_ctrim)%rval
@@ -1991,6 +2008,16 @@ contains
     call ProportionalNutrAllocation(this,deficit_p(1:num_organs), &
          p_gain, phosphorus_element, l2g_organ_list(1:num_organs))
 
+    
+    ! turn on the dynamic vmvax and/or L2FR if either nutrient in not being supplemented
+    limiting_p = ((p_uptake_mode .eq. coupled_p_uptake) .and. (hlm_phosphorus_suppl .eq. ifalse))
+    limiting_n = ((n_uptake_mode .eq. coupled_n_uptake) .and. (hlm_nitrogen_suppl .eq. ifalse))
+    
+    if (limiting_p .or. limiting_n) then
+       call this%UpdateVmaxL2FR(target_c,target_dcdd)
+    end if
+
+    
     ! -----------------------------------------------------------------------------------
     ! If carbon is still available, lets cram some into storage overflow
     ! We will do this last, because we wanted the non-overflow storage
@@ -2144,6 +2171,7 @@ contains
 
     real(r8)         :: target_c
     real(r8),pointer :: dbh
+    real(r8),pointer :: l2fr
     real(r8)         :: canopy_trim
     integer          :: ipft
     integer          :: i_cvar
@@ -2159,6 +2187,7 @@ contains
 
 
     dbh         => this%bc_inout(acnp_bc_inout_id_dbh)%rval
+    l2fr        => this%bc_inout(acnp_bc_inout_id_l2fr)%rval
     canopy_trim = this%bc_in(acnp_bc_in_id_ctrim)%rval
     ipft        = this%bc_in(acnp_bc_in_id_pft)%ival
     elongf_leaf = this%bc_in(acnp_bc_in_id_efleaf)%rval
@@ -2181,7 +2210,7 @@ contains
       ! more details: https://github.com/NGEET/fates/pull/1348
 
       call bleaf(dbh,ipft,crown_damage,canopy_trim, 1.0_r8, leaf_c_target)
-      call bfineroot(dbh,ipft,canopy_trim,prt_params%allom_l2fr(ipft), 1.0_r8, fnrt_c_target)
+      call bfineroot(dbh,ipft,canopy_trim, l2fr, 1.0_r8, fnrt_c_target)
       call bsap_allom(dbh,ipft,crown_damage,canopy_trim, 1.0_r8, sapw_area,sapw_c_target)
       call bagw_allom(dbh,ipft,crown_damage, 1.0_r8, agw_c_target)
       call bbgw_allom(dbh,ipft, 1.0_r8, bgw_c_target)
@@ -2365,6 +2394,7 @@ contains
 
       ! locals
       integer  :: ipft             ! PFT index
+      real(r8) :: l2fr
       real(r8) :: canopy_trim      ! Canopy trimming function (boundary condition [0-1]
       integer  :: crown_damage     ! Damage class
       real(r8) :: leaf_c_target    ! target leaf biomass, dummy var (kgC)
@@ -2406,13 +2436,14 @@ contains
 
         canopy_trim  = intgr_params(intgr_parm_ctrim)
         ipft         = int(intgr_params(intgr_parm_pft))
+        l2fr         = intgr_params(intgr_parm_l2fr)
         crown_damage = int(intgr_params(intgr_parm_cdamage))
         elongf_leaf  = intgr_params(intgr_parm_efleaf)
         elongf_fnrt  = intgr_params(intgr_parm_effnrt)
         elongf_stem  = intgr_params(intgr_parm_efstem)
 
         call bleaf(dbh,ipft,crown_damage,canopy_trim, elongf_leaf, leaf_c_target,leaf_dcdd_target)
-        call bfineroot(dbh,ipft,canopy_trim, prt_params%allom_l2fr(ipft), elongf_fnrt, fnrt_c_target,fnrt_dcdd_target)
+        call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, fnrt_c_target,fnrt_dcdd_target)
         call bsap_allom(dbh,ipft,crown_damage,canopy_trim, elongf_stem, sapw_area,sapw_c_target,sapw_dcdd_target)
         call bagw_allom(dbh,ipft,crown_damage, elongf_stem,agw_c_target,agw_dcdd_target)
         call bbgw_allom(dbh,ipft, elongf_stem,bgw_c_target,bgw_dcdd_target)

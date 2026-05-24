@@ -189,9 +189,10 @@ module PRTParametersMod
      
      ! Number of days to smooth the objective function, and the
      ! number of days expected for doubling of of the the objective
-     ! function (storage ratio) to double vmax",
+     ! function (storage ratio) to double vmax and L2FR
      real(r8), allocatable :: vmax_timescale(:)
-
+     real(r8), allocatable :: l2fr_timescale(:)
+     
      real(r8), allocatable :: vmax0_nh4(:) ! base maximum production rate for plant NH4 uptake   [gN/gC/s]
      real(r8), allocatable :: vmax0_no3(:) ! base maximum production rate for plant NO3 uptake   [gN/gC/s]
                                            ! For ECA: these rates will be applied separately to

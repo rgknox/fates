@@ -249,9 +249,10 @@ contains
 
     ! for CNP dynamics, track the mean vmax's
     ! for recruit sized plants of different pfts and canopy positions
-    allocate(site_in%rec_vmax_nh4(1:numpft,nclmax))
-    allocate(site_in%rec_vmax_no3(1:numpft,nclmax))
-    allocate(site_in%rec_vmax_po4(1:numpft,nclmax))
+    allocate(site_in%rec_l2fr(numpft,nclmax))
+    allocate(site_in%rec_vmax_nh4(numpft,nclmax))
+    allocate(site_in%rec_vmax_no3(numpft,nclmax))
+    allocate(site_in%rec_vmax_po4(numpft,nclmax))
     
     ! SP mode
     allocate(site_in%sp_tlai(1:numpft))
@@ -550,6 +551,7 @@ contains
           sites(s)%area_pft(:,:) = 0.0_r8
 
           do ft =  1,numpft
+             sites(s)%rec_l2fr(ft,:)     = prt_params%allom_l2fr(ft)
              sites(s)%rec_vmax_nh4(ft,:) = prt_params%vmax0_nh4(ft)
              sites(s)%rec_vmax_no3(ft,:) = prt_params%vmax0_no3(ft)
              sites(s)%rec_vmax_po4(ft,:) = prt_params%vmax0_po4(ft)

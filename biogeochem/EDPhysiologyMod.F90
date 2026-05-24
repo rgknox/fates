@@ -162,9 +162,9 @@ module EDPhysiologyMod
   public :: PreDisturbanceIntegrateLitter
   public :: GenerateDamageAndLitterFluxes
   public :: SeedUpdate
-  public :: UpdateRecruitVmax
+  public :: UpdateRecruitVmaxL2FR
   public :: UpdateRecruitStoicH
-  public :: SetRecruitVmax
+  public :: SetRecruitVmaxL2FR
 
   logical, parameter :: debug  = .false. ! local debug flag
   character(len=*), parameter, private :: sourcefile = &
@@ -721,7 +721,7 @@ contains
           if ( int(prt_params%allom_fmode(ipft)) .eq. 1 ) then
              ! only query fine root biomass if using a fine root allometric model that takes leaf trim into account
              call bfineroot(currentcohort%dbh,ipft,currentcohort%canopy_trim, &
-                  prt_params%allom_l2fr(ipft),1.0_r8, tar_bfr)
+                  currentCohort%l2fr,1.0_r8, tar_bfr)
              bfr_per_bleaf = tar_bfr/tar_bl
           endif
 
@@ -1668,7 +1668,7 @@ contains
           call bleaf(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage, &
                currentCohort%canopy_trim,currentCohort%efleaf_coh,target_leaf_c)
           call bfineroot(currentCohort%dbh,currentCohort%pft, &
-               currentCohort%canopy_trim,prt_params%allom_l2fr(ipft),currentCohort%effnrt_coh,target_fnrt_c)
+               currentCohort%canopy_trim,currentCohort%l2fr,currentCohort%effnrt_coh,target_fnrt_c)
           call bsap_allom(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage, &
                currentCohort%canopy_trim,currentCohort%efstem_coh,sapw_area,target_sapw_c)
           call bagw_allom(currentCohort%dbh,currentCohort%pft,currentCohort%crowndamage,&
@@ -2524,6 +2524,7 @@ contains
       real(r8)                          :: mass_avail         ! mass of each nutrient/carbon available in the seed_germination pool [kg]
       real(r8)                          :: mass_demand        ! total mass demanded by the plant to achieve the stoichiometric
                                           !    targets of all the organs in the recruits. Used for both [kg per plant] and [kg per cohort]
+      real(r8)                          :: l2fr
       real(r8)                          :: stem_drop_fraction !
       real(r8)                          :: fnrt_drop_fraction !
       real(r8)                          :: sdlng2sap_par      ! running mean of PAR at the seedling layer [MJ/m2/day]
@@ -2562,6 +2563,7 @@ contains
             height             = EDPftvarcon_inst%hgt_min(ft)
             stem_drop_fraction = prt_params%phen_stem_drop_fraction(ft)
             fnrt_drop_fraction = prt_params%phen_fnrt_drop_fraction(ft)
+            l2fr               = currentSite%rec_l2fr(ft, currentPatch%ncl)
 
             crowndamage        = 1 ! new recruits are undamaged
 
@@ -2609,7 +2611,7 @@ contains
             ! calculate live pools
             call bleaf(dbh, ft, crowndamage, init_recruit_trim, efleaf_coh,    &
                c_leaf)
-            call bfineroot(dbh, ft, init_recruit_trim, prt_params%allom_l2fr(ft), effnrt_coh, c_fnrt)
+            call bfineroot(dbh, ft, init_recruit_trim, l2fr, effnrt_coh, c_fnrt)
             call bsap_allom(dbh, ft, crowndamage, init_recruit_trim,           &
                efstem_coh, a_sapw, c_sapw)
             call bagw_allom(dbh, ft, crowndamage, efstem_coh, c_agw)
@@ -3332,7 +3334,7 @@ contains
 
   end subroutine CWDOut
 
-  subroutine UpdateRecruitVmax(csite)
+  subroutine UpdateRecruitVmaxL2FR(csite)
 
     ! When CNP is active, the maximum uptake capacity per tissue (vmax)
     ! is dynamic. We therefore update what the vmax for recruits
@@ -3345,6 +3347,7 @@ contains
     type(fates_cohort_type), pointer :: ccohort
 
     real(r8) :: rec_n(maxpft,nclmax)     ! plant count
+    real(r8) :: rec_l2fr0(maxpft,nclmax)
     real(r8) :: rec_vmax0_nh4(maxpft,nclmax)
     real(r8) :: rec_vmax0_no3(maxpft,nclmax)
     real(r8) :: rec_vmax0_po4(maxpft,nclmax)
@@ -3364,7 +3367,7 @@ contains
     rec_vmax0_nh4(1:numpft,1:nclmax) = 0._r8
     rec_vmax0_no3(1:numpft,1:nclmax) = 0._r8
     rec_vmax0_po4(1:numpft,1:nclmax) = 0._r8
-
+    rec_l2fr(1:numpft,1:nclmax)      = 0._r8
     cpatch => csite%youngest_patch
     do while(associated(cpatch))
 
@@ -3383,6 +3386,7 @@ contains
                   ccohort%dbh-dbh_min < max_delta ) then
                 rec_count(ft,cl) = rec_count(ft,cl) + 1
                 rec_n(ft,cl) = rec_n(ft,cl) + ccohort%n
+                rec_l2fr0(ft,cl) = rec_l2fr0(ft,cl) + ccohort%n*ccohort%l2fr
                 rec_vmax0_nh4(ft,cl) = rec_vmax0_nh4(ft,cl) + ccohort%n*ccohort%vmax_nh4
                 rec_vmax0_no3(ft,cl) = rec_vmax0_no3(ft,cl) + ccohort%n*ccohort%vmax_no3
                 rec_vmax0_po4(ft,cl) = rec_vmax0_po4(ft,cl) + ccohort%n*ccohort%vmax_po4
@@ -3403,7 +3407,10 @@ contains
              rec_vmax0_nh4(ft,cl) = rec_vmax0_nh4(ft,cl) / rec_n(ft,cl)
              rec_vmax0_no3(ft,cl) = rec_vmax0_no3(ft,cl) / rec_n(ft,cl)
              rec_vmax0_po4(ft,cl) = rec_vmax0_po4(ft,cl) / rec_n(ft,cl)
+             rec_l2fr0(ft,cl)     = rec_l2fr0(ft,cl) / rec_n(ft,cl)
              
+             csite%rec_l2fr(ft,cl) = &
+                  (1._r8-smth_wgt)*csite%rec_l2fr(ft,cl) + smth_wgt*rec_l2fr0(ft,cl)
              csite%rec_vmax_nh4(ft,cl) = &
                   (1._r8-smth_wgt)*csite%rec_vmax_nh4(ft,cl) + smth_wgt*rec_vmax0_nh4(ft,cl)
              csite%rec_vmax_no3(ft,cl) = &
@@ -3416,8 +3423,8 @@ contains
     end do
 
     return
-  end subroutine UpdateRecruitVmax
-
+  end subroutine UpdateRecruitVmaxL2FR
+  
   ! ======================================================================
 
   subroutine UpdateRecruitStoich(csite)
@@ -3427,7 +3434,8 @@ contains
     type(fates_cohort_type), pointer :: ccohort
     integer  :: ft                       ! functional type index
     integer  :: cl                       ! canopy layer index
-
+    real(r8) :: rec_l2fr_pft
+    
     if(hlm_parteh_mode .ne. prt_cnp_flex_allom_hyp) return
 
     cpatch => csite%youngest_patch
@@ -3436,9 +3444,9 @@ contains
 
        do ft = 1,numpft
           cpatch%nitr_repro_stoich(ft) = &
-               NewRecruitTotalStoichiometry(ft,prt_params%allom_l2fr(ft),nitrogen_element)
+               NewRecruitTotalStoichiometry(ft, csite%rec_l2fr(ft,cl),nitrogen_element)
           cpatch%phos_repro_stoich(ft) = &
-               NewRecruitTotalStoichiometry(ft,prt_params%allom_l2fr(ft),phosphorus_element)
+               NewRecruitTotalStoichiometry(ft, csite%rec_l2fr(ft,cl),phosphorus_element)
        end do
 
        ccohort => cpatch%shortest
@@ -3456,7 +3464,7 @@ contains
 
   ! ======================================================================
 
-  subroutine SetRecruitVmax(csite)
+  subroutine SetRecruitVmaxL2FR(csite)
 
 
     type(ed_site_type) :: csite
@@ -3473,6 +3481,7 @@ contains
           if( ccohort%isnew ) then
              ft = ccohort%pft
              cl = ccohort%canopy_layer
+             ccohort%l2fr     = csite%rec_l2fr(ft,cl)
              ccohort%vmax_nh4 = csite%rec_vmax_nh4(ft,cl)
              ccohort%vmax_no3 = csite%rec_vmax_no3(ft,cl)
              ccohort%vmax_po4 = csite%rec_vmax_po4(ft,cl)
@@ -3485,6 +3494,6 @@ contains
     end do
 
     return
-  end subroutine SetRecruitVmax
+  end subroutine SetRecruitVmaxL2FR
 
 end module EDPhysiologyMod

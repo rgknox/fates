@@ -279,9 +279,8 @@ module FatesHistoryInterfaceMod
   integer :: ih_vmaxpo4_clpf
   integer :: ih_l2fr_si
   
-  !integer :: ih_l2fr_clscpf
-  !integer :: ih_recl2fr_canopy_pf
-  !integer :: ih_recl2fr_ustory_pf
+  integer :: ih_recl2fr_canopy_pf
+  integer :: ih_recl2fr_ustory_pf
   
   integer :: ih_nh4uptake_scpf
   integer :: ih_no3uptake_scpf
@@ -2986,9 +2985,7 @@ contains
 
                      this%hvars(ih_l2fr_si)%r81d(io_si) = &
                           this%hvars(ih_l2fr_si)%r81d(io_si) + &
-                          prt_params%allom_l2fr(ft) *ccohort%n * fnrt_m / m2_per_ha
-
-
+                          ccohort%l2fr *ccohort%n * fnrt_m / m2_per_ha
 
                   elseif(element_list(el).eq.nitrogen_element)then
 
@@ -4903,10 +4900,10 @@ contains
 
              end do
              
-             !do ft = 1,numpft
-             !   this%hvars(ih_recl2fr_canopy_pf)%r82d(io_si,ft) = sites(s)%rec_l2fr(ft,1)
-             !   this%hvars(ih_recl2fr_ustory_pf)%r82d(io_si,ft) = sites(s)%rec_l2fr(ft,2)
-             !end do
+             do ft = 1,numpft
+                this%hvars(ih_recl2fr_canopy_pf)%r82d(io_si,ft) = sites(s)%rec_l2fr(ft,1)
+                this%hvars(ih_recl2fr_ustory_pf)%r82d(io_si,ft) = sites(s)%rec_l2fr(ft,2)
+             end do
              
           enddo siteloop ! site loop
 
@@ -7836,24 +7833,18 @@ contains
 
 
           ! Output specific to the chemical species dynamics used (parteh)
-          !call this%set_history_var(vname='FATES_L2FR_CANOPY_REC_PF', units='kg kg-1', &
-          !     long='The leaf to fineroot biomass multiplier for recruits (canopy)',   & 
-          !     use_default='active', &
-          !     avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
-          !     ivar=ivar, initialize=initialize_variables, index = ih_recl2fr_canopy_pf)
+          call this%set_history_var(vname='FATES_L2FR_CANOPY_REC_PF', units='kg kg-1', &
+               long='The leaf to fineroot biomass multiplier for recruits (canopy)',   & 
+               use_default='active', &
+               avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
+               ivar=ivar, initialize=initialize_variables, index = ih_recl2fr_canopy_pf)
           
-          !call this%set_history_var(vname='FATES_L2FR_USTORY_REC_PF', units='kg kg-1',                   &
-          !     long='The leaf to fineroot biomass multiplier for recruits (understory)', & 
-          !     use_default='active', &
-          !     avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
-          !     ivar=ivar, initialize=initialize_variables, index = ih_recl2fr_ustory_pf)
+          call this%set_history_var(vname='FATES_L2FR_USTORY_REC_PF', units='kg kg-1',                   &
+               long='The leaf to fineroot biomass multiplier for recruits (understory)', & 
+               use_default='active', &
+               avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
+               ivar=ivar, initialize=initialize_variables, index = ih_recl2fr_ustory_pf)
           
-             !call this%set_history_var(vname='FATES_L2FR_CLSZPF', units='kg kg-1',                   &
-             !     long='The leaf to fineroot biomass multiplier for target allometry', & 
-             !     use_default='inactive', &
-             !     avgflag='A', vtype=site_clscpf_r8, hlms='CLM:ALM', upfreq=group_dyna_complx,    &
-             !     ivar=ivar, initialize=initialize_variables, index = ih_l2fr_clscpf)
-
           nitrogen_active_if1: if(any(element_list(:)==nitrogen_element)) then
 
              call this%set_history_var(vname='FATES_NH4UPTAKE_SZPF',                 &
