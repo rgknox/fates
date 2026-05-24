@@ -1,0 +1,27 @@
+{
+    "files_input": ["../parameter_files/fates_params_default.json","clm_params.cbgc.c07292018.nc"],
+    "files_output_pref":["fatesparams_lh","elmparams_lh"],
+    "n_samples": 5,
+    "notes":["Parameter metadata 'file' is indexed from 1 to 2, not 0 to 1, should match the file listed in 'files_input' above.",
+             "Parameter metadata 'log' can be either '10','natural' or 'none'",
+             "The value for min and max, if it is log scaled, is the ACTUAL VALUE, not the exponent!!!",
+             "2D example 'fates_stoich_nitr':{'file': 1, 'dim_id': [0,1], 'log': true, 'min':2.0e-10, 'max':2.0e-6}"],
+    "parameters":{
+        "fates_cnp_vmax_nh4":       {"file": 1, "dim_id": [0],   "log": true, "min":2.0e-10, "max":2.0e6},
+        "fates_cnp_vmax_no3":       {"file": 1, "dim_id": [0],   "log": true, "min":2.0e-10, "max":2.0e-6},
+        "fates_cnp_vmax_p":         {"file": 1, "dim_id": [0],   "log": true, "min":2.0e-11, "max":2.0e-7},
+        "fates_cnp_eca_vmax_ptase": {"file": 1, "dim_id": [0],   "log": true, "min":2.0e-11, "max":2.0e-6},
+        "fates_cnp_eca_km_nh4":     {"file": 1, "dim_id": [0],   "log": true, "min":0.01, "max":10},
+        "fates_cnp_eca_km_no3":     {"file": 1, "dim_id": [0],   "log": true, "min":0.01, "max":10},
+        "fates_cnp_eca_km_p":       {"file": 1, "dim_id": [0],   "log": true, "min":0.01, "max":10},
+        "fates_cnp_eca_km_ptase":   {"file": 1, "dim_id": [0],   "log": true, "min":0.01, "max":10},
+        "fates_cnp_nfix1":          {"file": 1, "dim_id": [0],   "log": false,"min":0.01, "max":0.4},
+        "fates_turnover_fnrt":      {"file": 1, "dim_id": [0],   "log": true, "min":0.5,  "max":3.0},
+        "fates_allom_l2fr":         {"file": 1, "dim_id": [0],   "log": true, "min":0.33, "max":3.0},
+        "KM_NIT":                   {"file": 2, "dim_id": 0,     "log": true, "min":0.01, "max":10.0},
+        "KM_DEN":                   {"file": 2, "dim_id": 0,     "log": true, "min":0.01, "max":10.0},
+        "KM_DECOMP_NH4":            {"file": 2, "dim_id": 0,     "log": true, "min":0.01, "max":10.0},
+        "KM_DECOMP_NO3":            {"file": 2, "dim_id": 0,     "log": true, "min":0.01, "max":10.0},
+        "KM_DECOMP_P":              {"file": 2, "dim_id": 0,     "log": true, "min":0.01, "max":10.0}
+    }
+}
