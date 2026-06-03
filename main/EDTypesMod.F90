@@ -383,6 +383,7 @@ module EDTypesMod
                                             ! in FatesSoilBGCFluxMod. Used solely to inform bc_out%ema_npp
                                             ! which is used for fixation
 
+     real(r8), allocatable :: rec_l2fr(:,:)     ! A running mean of the L2FR in the recruit class
      real(r8), allocatable :: rec_vmax_nh4(:,:) ! A running mean of the Vmax for NH4 in the recuit class
      real(r8), allocatable :: rec_vmax_no3(:,:) ! A running mean of the Vmax for NO3 in the recuit class
      real(r8), allocatable :: rec_vmax_po4(:,:) ! A running mean of the Vmax for PO4 in the recuit class

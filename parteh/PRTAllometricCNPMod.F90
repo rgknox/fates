@@ -454,6 +454,7 @@ contains
     ! Pointers to in-out bcs
     real(r8),pointer :: dbh          ! Diameter at breast height [cm]
     real(r8),pointer :: resp_excess   ! Respiration of any un-allocatable C
+    real(r8),pointer :: l2fr         ! leaf to fine-root ratio
 
     ! Input only bcs
     integer          :: ipft         ! Plant Functional Type index
@@ -811,6 +812,8 @@ contains
     real(r8) :: zeta_l2fr
     real(r8) :: obj_ratio
     real(r8) :: sobj_nh4_eff,sobj_no3_eff,sobj_po4_eff
+    real(r8) :: log_obj_ratio, nh4_log_obj_ratio
+    real(r8) :: no3_log_obj_ratio, po4_log_obj_ratio
     logical, parameter :: use_carbon_objfunc = .true.
     real(r8), parameter :: minmax_vmax_mult = 100._r8
     real(r8), parameter :: min_vmax = 1.e-13_r8
@@ -818,12 +821,13 @@ contains
 
     integer, parameter :: vmax_dyn_on  = 1
     integer, parameter :: vmax_dyn_off = 2
-    integer, parameter :: vmax_dyn = vmax_dyn_on
+    integer            :: vmax_dyn
     
     integer, parameter :: l2fr_dyn_vmax  = 1
     integer, parameter :: l2fr_dyn_store = 2
     integer, parameter :: l2fr_dyn_off   = 3
-    integer, parameter :: l2fr_dyn = l2fr_dyn_off
+    integer, parameter :: l2fr_dyn_default = l2fr_dyn_store
+    integer            :: l2fr_dyn
     
     associate( &
          ipft        => this%bc_in(acnp_bc_in_id_pft)%ival , &
@@ -848,9 +852,28 @@ contains
       
       if(leaf_status.eq.leaves_off) return
 
-      zeta_vmax = (2._r8**(1._r8/prt_params%vmax_timescale(ipft))-1._r8)/log(2._r8)
-      
-      zeta_l2fr = (2._r8**(1._r8/prt_params%l2fr_timescale(ipft))-1._r8)/log(2._r8)
+
+      if( abs(prt_params%vmax_timescale(ipft))<nearzero ) then
+         vmax_dyn = vmax_dyn_off
+      else
+         vmax_dyn = vmax_dyn_on
+         zeta_vmax = (2._r8**(1._r8/prt_params%vmax_timescale(ipft))-1._r8)/log(2._r8)
+      end if
+
+      if( abs(prt_params%l2fr_timescale(ipft))<nearzero ) then
+         l2fr_dyn = l2fr_dyn_off
+      else
+         ! if vmax is not adaptive, then l2fr cannot follow it
+         if(vmax_dyn==vmax_dyn_off .and. l2fr_dyn_default==l2fr_dyn_vmax)then
+             write(fates_log(),*) 'your values: ',prt_params%organ_param_id(:)
+             call endrun(msg=errMsg(sourcefile, __LINE__))
+         end if
+         l2fr_dyn = l2fr_dyn_default
+         zeta_l2fr = (2._r8**(1._r8/prt_params%l2fr_timescale(ipft))-1._r8)/log(2._r8)
+      end if
+
+      ! If both adaptations are turned off, leave the routine
+      if(vmax_dyn==vmax_dyn_off .and. l2fr_dyn==l2fr_dyn_off) return
       
       ! Step 1: Determine the current value of the objective function (storage ratio)
       ! Step 2: Smooth the objective function with an exponential moving average
@@ -888,7 +911,7 @@ contains
          ! resource is either low or in decline
          
          if( dnh4 < 0._r8  .or. nh4frac<minfrac) then
-            nh4_log_obj_ratio = min(0._r8, log_obj_ratio)
+            nh4_log_obj_ratio = min(0._r8, nh4_log_obj_ratio)
          end if
 
          if (vmax_dyn == vmax_dyn_on)then
@@ -905,7 +928,7 @@ contains
          ! resource is either low or in decline
          
          if( dno3 < 0._r8  .or. no3frac<minfrac) then
-            no3_log_obj_ratio = min(0._r8, log_obj_ratio)
+            no3_log_obj_ratio = min(0._r8, no3_log_obj_ratio)
          end if
 
          if(vmax_dyn == vmax_dyn_on)then
@@ -933,7 +956,7 @@ contains
          ! resource is either low or in decline
          
          if( dpo4 < 0._r8  .or. po4frac<minfrac) then
-            po4_log_obj_ratio = min(0._r8, log_obj_ratio)
+            po4_log_obj_ratio = min(0._r8, po4_log_obj_ratio)
          end if
 
          if(vmax_dyn==vmax_dyn_on)then
@@ -964,9 +987,11 @@ contains
       end if
 
       ! Update L2FR
-      if(abs(log_obj_ratio) > nearzero) then
-         l2fr = l2fr + prt_params%l2fr0(ipft)*zeta_l2fr*log_obj_ratio
-         call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_c(fnrt_organ),target_dcdd(fnrt_organ))
+      if(l2fr_dyn .ne. l2fr_dyn_off)then
+         if(abs(log_obj_ratio) > nearzero) then
+            l2fr = l2fr + prt_params%allom_l2fr(ipft)*zeta_l2fr*log_obj_ratio
+            call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_c(fnrt_organ),target_dcdd(fnrt_organ))
+         end if
       end if
       
     end associate

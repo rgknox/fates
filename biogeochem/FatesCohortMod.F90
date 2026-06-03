@@ -699,7 +699,7 @@ module FatesCohortMod
 
       ! PRT
       call copyCohort%prt%CopyPRTVartypes(this%prt)
-      copyCohort%l2fr                    = this%2lfr
+      copyCohort%l2fr                    = this%l2fr
       
       ! VEGETATION STRUCTURE
       copyCohort%pft                     = this%pft

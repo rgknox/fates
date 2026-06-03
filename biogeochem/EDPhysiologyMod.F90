@@ -2524,7 +2524,6 @@ contains
       real(r8)                          :: mass_avail         ! mass of each nutrient/carbon available in the seed_germination pool [kg]
       real(r8)                          :: mass_demand        ! total mass demanded by the plant to achieve the stoichiometric
                                           !    targets of all the organs in the recruits. Used for both [kg per plant] and [kg per cohort]
-      real(r8)                          :: l2fr
       real(r8)                          :: stem_drop_fraction !
       real(r8)                          :: fnrt_drop_fraction !
       real(r8)                          :: sdlng2sap_par      ! running mean of PAR at the seedling layer [MJ/m2/day]
@@ -3367,7 +3366,7 @@ contains
     rec_vmax0_nh4(1:numpft,1:nclmax) = 0._r8
     rec_vmax0_no3(1:numpft,1:nclmax) = 0._r8
     rec_vmax0_po4(1:numpft,1:nclmax) = 0._r8
-    rec_l2fr(1:numpft,1:nclmax)      = 0._r8
+    rec_l2fr0(1:numpft,1:nclmax)      = 0._r8
     cpatch => csite%youngest_patch
     do while(associated(cpatch))
 
@@ -3434,7 +3433,6 @@ contains
     type(fates_cohort_type), pointer :: ccohort
     integer  :: ft                       ! functional type index
     integer  :: cl                       ! canopy layer index
-    real(r8) :: rec_l2fr_pft
     
     if(hlm_parteh_mode .ne. prt_cnp_flex_allom_hyp) return
 
