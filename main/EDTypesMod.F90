@@ -85,7 +85,7 @@ module EDTypesMod
 
   integer, parameter, public  :: numWaterMem          = 10         ! watermemory saved as site level var
 
-  integer, parameter, public  :: numlevsoil_max       = 30         ! This is scratch space used for static arrays
+  integer, parameter, public  :: numlevsoil_max       = 20         ! This is scratch space used for static arrays
                                                                    ! The actual number of soil layers should not exceed this
 
 
