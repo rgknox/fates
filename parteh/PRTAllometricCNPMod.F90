@@ -816,8 +816,8 @@ contains
     real(r8) :: no3_log_obj_ratio, po4_log_obj_ratio
     logical, parameter :: use_carbon_objfunc = .true.
     real(r8), parameter :: minmax_vmax_mult = 100._r8
-    real(r8), parameter :: min_vmax = 1.e-13_r8
-    real(r8), parameter :: minfrac  = 0.0001_r8   
+    real(r8), parameter :: min_rel = 0.02_r8
+    real(r8), parameter :: minfrac = 0.0001_r8   
 
     integer, parameter :: vmax_dyn_on  = 1
     integer, parameter :: vmax_dyn_off = 2
@@ -915,7 +915,7 @@ contains
          end if
 
          if (vmax_dyn == vmax_dyn_on)then
-            vmax_nh4 = max(min_vmax, vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta_vmax*nh4_log_obj_ratio)
+            vmax_nh4 = max(min_rel*prt_params%vmax0_nh4(ipft), vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta_vmax*nh4_log_obj_ratio)
          end if
          
          ! Until we have source side limitations, both NH4 and NO3 react the same
@@ -932,7 +932,7 @@ contains
          end if
 
          if(vmax_dyn == vmax_dyn_on)then
-            vmax_no3 = max(min_vmax, vmax_no3 + prt_params%vmax0_no3(ipft)*zeta_vmax*no3_log_obj_ratio)
+            vmax_no3 = max(min_rel*prt_params%vmax0_no3(ipft), vmax_no3 + prt_params%vmax0_no3(ipft)*zeta_vmax*no3_log_obj_ratio)
          end if
          
       end if
@@ -960,7 +960,7 @@ contains
          end if
 
          if(vmax_dyn==vmax_dyn_on)then
-            vmax_po4 = max(min_vmax, vmax_po4 + prt_params%vmax0_po4(ipft)*zeta_vmax*po4_log_obj_ratio)
+            vmax_po4 = max(min_rel*prt_params%vmax0_po4(ipft), vmax_po4 + prt_params%vmax0_po4(ipft)*zeta_vmax*po4_log_obj_ratio)
          end if
          
       end if
@@ -975,21 +975,37 @@ contains
          ! if l2fr is based off of vmax, then we use the vmax for the ion
          ! that is largest.  Note we don't need to filter out supplementation
          ! period etc, because we already vilter vmax on that logic
-         
-         log_obj_ratio = log(max(vmax_no3/prt_params%vmax0_no3(ipft), &
-                                 vmax_nh4/prt_params%vmax0_nh4(ipft), &
-                                 vmax_po4/prt_params%vmax0_po4(ipft)))
+         if(n_uptake_mode.ne.prescribed_n_uptake .and. hlm_nitrogen_suppl.eq.ifalse)then
+            log_obj_ratio = max(vmax_no3/prt_params%vmax0_no3(ipft), &
+                                vmax_nh4/prt_params%vmax0_nh4(ipft))
+            if(p_uptake_mode.ne.prescribed_p_uptake .and. hlm_phosphorus_suppl.eq.ifalse)then
+               log_obj_ratio = max(log_obj_ratio,vmax_po4/prt_params%vmax0_po4(ipft))
+            end if
+            log_obj_ratio = log(log_obj_ratio)
+         else
+            if(p_uptake_mode.ne.prescribed_p_uptake .and. hlm_phosphorus_suppl.eq.ifalse)then
+               log_obj_ratio = log(vmax_po4/prt_params%vmax0_po4(ipft))
+            end if
+         end if
                   
       elseif(l2fr_dyn == l2fr_dyn_store) then
-         
-         log_obj_ratio = max(nh4_log_obj_ratio,no3_log_obj_ratio,po4_log_obj_ratio)
 
+         if(n_uptake_mode.ne.prescribed_n_uptake .and. hlm_nitrogen_suppl.eq.ifalse)then
+            log_obj_ratio = max(nh4_log_obj_ratio,no3_log_obj_ratio)
+            if(p_uptake_mode.ne.prescribed_p_uptake .and. hlm_phosphorus_suppl.eq.ifalse)then
+               log_obj_ratio = max(log_obj_ratio,po4_log_obj_ratio)
+            end if
+         else
+            if(p_uptake_mode.ne.prescribed_p_uptake .and. hlm_phosphorus_suppl.eq.ifalse)then
+               log_obj_ratio = po4_log_obj_ratio
+            end if
+         end if
       end if
 
       ! Update L2FR
       if(l2fr_dyn .ne. l2fr_dyn_off)then
          if(abs(log_obj_ratio) > nearzero) then
-            l2fr = l2fr + prt_params%allom_l2fr(ipft)*zeta_l2fr*log_obj_ratio
+            l2fr = max(min_rel*prt_params%allom_l2fr(ipft),l2fr + prt_params%allom_l2fr(ipft)*zeta_l2fr*log_obj_ratio)
             call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_c(fnrt_organ),target_dcdd(fnrt_organ))
          end if
       end if
@@ -1256,9 +1272,6 @@ contains
     ! Phosphorus
     call ProportionalNutrAllocation(this,deficit_p(1:n_curpri_org), &
          p_gain, phosphorus_element, curpri_org(1:n_curpri_org))
-
-
-
 
     
     ! -----------------------------------------------------------------------------------
@@ -2010,9 +2023,14 @@ contains
        target_n = this%GetNutrientTarget(nitrogen_element,l2g_organ_list(i),stoich_growth_min)
        target_p = this%GetNutrientTarget(phosphorus_element,l2g_organ_list(i),stoich_growth_min)
 
+       ! We store nutrients at the target while
+       ! supplementing to prevent a shocks that occur when we allow vmax/l2fr plasticity
+       ! Its possible if the nutrient stores are artificially high, the plants will crash
+       ! there fine-root and vmax when the supplementation ends
+       
        if(l2g_organ_list(i)==store_organ)then
-          target_n = target_n * (1._r8 + prt_params%store_ovrflw_frac(ipft))
-          target_p = target_p * (1._r8 + prt_params%store_ovrflw_frac(ipft))
+          if(hlm_nitrogen_suppl.eq.ifalse) target_n = target_n * (1._r8 + prt_params%store_ovrflw_frac(ipft))
+          if(hlm_phosphorus_suppl.eq.ifalse) target_p = target_p * (1._r8 + prt_params%store_ovrflw_frac(ipft))
        end if
 
        deficit_n(i) = max(0._r8,this%GetDeficit(nitrogen_element,l2g_organ_list(i),target_n))
@@ -2251,6 +2269,7 @@ contains
                fnrt_c_target*prt_params%nitr_stoich_p1(ipft,prt_params%organ_param_id(fnrt_organ)), &
                sapw_c_target*prt_params%nitr_stoich_p1(ipft,prt_params%organ_param_id(sapw_organ)), &
                struct_c_target*prt_params%nitr_stoich_p1(ipft,prt_params%organ_param_id(struct_organ)))
+          
        else
 
           target_m = StorageNutrientTarget(ipft, element_id, &
