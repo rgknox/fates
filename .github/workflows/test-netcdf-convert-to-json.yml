@@ -1,0 +1,39 @@
+name: Test NetCDF to JSON Conversion script
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'tools/netcdf_to_json.py'
+
+jobs:
+  build-and-convert:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install NetCDF tools
+      run: sudo apt-get update && sudo apt-get install -y netcdf-bin
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install Python dependencies
+      run: pip install xarray numpy
+
+    - name: Generate NetCDF from CDL
+      run: ncgen -o fates_params_test.nc testing/fates_parameter_test.cdl
+
+    - name: Validate NetCDF file
+      run: ncdump -h fates_params_test.nc
+
+    - name: Convert NetCDF to JSON
+      run: python tools/netcdf_to_json.py fates_params_test.nc fates_params_test.json
+
+    - name: Check JSON output exists
+      run: ls -la fates_params_test.json
