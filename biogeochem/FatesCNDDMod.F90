@@ -11,7 +11,8 @@ module FatesCNDDMod
   use EDPftvarcon,       only: pft_param => EDPftvarcon_inst
   use FatesInterfaceTypesMod, only: numpft
   use FatesLitterMod,    only: litter_type
-  
+  use EDParamsMod,       only: dev_arbitrary
+
   implicit none
   private
   
@@ -125,8 +126,9 @@ module FatesCNDDMod
     real(r8) :: cndd_ts
     real(r8), parameter :: alpha = 1._r8
     
-    cndd_ts = CNDDMM(exp(alpha*(cndd_share-cndd_target)))
-
+    !cndd_ts = CNDDMM(exp(alpha*(cndd_share-cndd_target)))
+    cndd_ts = CNDDMM(exp(dev_arbitrary*(cndd_share-cndd_target)))
+    
   end function CNDDRFunc1
   
   ! ============================================================================
