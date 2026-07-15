@@ -82,7 +82,9 @@ module EDPftvarcon
                                                      !     the same amounts initialized if all pfts
                                                      !     present at a site
      real(r8), allocatable :: seed_suppl(:)          ! seeds that come from outside the gridbox.
-
+     real(r8), allocatable :: cndd_frac(:)           ! Fraction of the canopy associated with each
+                                                     ! pft. Meaning is algorithm specific, will not exceed 1.
+                                                     ! Zero signals that CNDD is not active for that PFT
      real(r8), allocatable :: lf_flab(:)             ! Leaf litter labile fraction [-]
      real(r8), allocatable :: lf_fcel(:)             ! Leaf litter cellulose fraction [-]
      real(r8), allocatable :: lf_flig(:)             ! Leaf litter lignin fraction [-]
@@ -358,6 +360,10 @@ contains
     param_p => pstruct%GetParamFromName('fates_recruit_init_seed')
     allocate(EDPftvarcon_inst%init_seed(numpft))
     EDPftvarcon_inst%init_seed(:) = param_p%r_data_1d(:)
+
+    param_p => pstruct%GetParamFromName('fates_cndd_fraction')
+    allocate(EDPftvarcon_inst%cndd_frac(numpft))
+    EDPftvarcon_inst%cndd_frac(:) = param_p%r_data_1d(:)
     
     param_p => pstruct%GetParamFromName('fates_recruit_seed_supplement')
     allocate(EDPftvarcon_inst%seed_suppl(numpft))
@@ -860,6 +866,7 @@ contains
         write(fates_log(),fmt0) 'initdbh = ',EDPftvarcon_inst%initdbh
         write(fates_log(),fmt0) 'init_seed = ',EDPftvarcon_inst%init_seed
         write(fates_log(),fmt0) 'seed_suppl = ',EDPftvarcon_inst%seed_suppl
+        write(fates_log(),fmt0) 'cndd_fraction = ',EDPftvarcon_inst%cndd_frac
         write(fates_log(),fmt0) 'lf_flab = ',EDPftvarcon_inst%lf_flab
         write(fates_log(),fmt0) 'lf_fcel = ',EDPftvarcon_inst%lf_fcel
         write(fates_log(),fmt0) 'lf_flig = ',EDPftvarcon_inst%lf_flig

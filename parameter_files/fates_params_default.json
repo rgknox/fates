@@ -394,6 +394,13 @@
       "units": "ratio",
       "data": [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
     },
+    "fates_cndd_fraction": {
+	"dtype": "float",
+	"dims": ["fates_pft"],
+	"long_name": "Fraction of presence associated with each PFT, used for CNDD, algorithm specific. Zero turns of CNDD.",
+	"units": "fraction",
+	"data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
     "fates_cnp_eca_alpha_ptase": {
       "dtype": "float",
       "dims": ["fates_pft"],
