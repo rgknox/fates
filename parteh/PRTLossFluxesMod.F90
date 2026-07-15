@@ -629,7 +629,7 @@ contains
 
    ! ====================================================================================
    
-   subroutine PRTMaintTurnover(prt,ipft,icanlayer,is_drought)
+   subroutine PRTMaintTurnover(prt,ipft,icanlayer,is_drought,cndd_ts)
       
       ! ---------------------------------------------------------------------------------
       ! Generic subroutine (wrapper) calling specialized routines handling
@@ -640,8 +640,9 @@ contains
       integer,intent(in)  :: icanlayer
       logical,intent(in)  :: is_drought  ! Is this plant/cohort operating in a drought
                                          ! stress context?
+      real(r8),intent(in) :: cndd_ts     ! CNDD turnover scaler
       
-      call MaintTurnoverSimpleRetranslocation(prt,ipft,icanlayer,is_drought)
+      call MaintTurnoverSimpleRetranslocation(prt,ipft,icanlayer,is_drought,cndd_ts)
       
       
       return
@@ -649,7 +650,7 @@ contains
 
    ! ===================================================================================
    
-   subroutine MaintTurnoverSimpleRetranslocation(prt,ipft,icanlayer,is_drought)
+   subroutine MaintTurnoverSimpleRetranslocation(prt,ipft,icanlayer,is_drought,cndd_ts)
 
       ! ---------------------------------------------------------------------------------
       ! This subroutine removes biomass from all applicable pools due to 
@@ -673,6 +674,7 @@ contains
       integer, intent(in)  :: icanlayer
       logical, intent(in)  :: is_drought   ! Is this plant/cohort operating in a drought
                                            ! stress context?
+      real(r8),intent(in) :: cndd_ts       ! CNDD turnover scaler
       
       integer  :: i_var            ! the variable index
       integer  :: element_id       ! the element associated w/ each variable
@@ -747,11 +749,11 @@ contains
          ! The last index of the leaf longevity array contains the turnover
          ! timescale for the senescent pool.
          aclass_sen_id = size(prt_params%leaf_long(ipft,:))
-         leaf_long = prt_params%leaf_long(ipft,aclass_sen_id)
+         leaf_long = prt_params%leaf_long(ipft,aclass_sen_id)/cndd_ts
       else
          
          aclass_sen_id = size(prt_params%leaf_long_ustory(ipft,:))
-         leaf_long = prt_params%leaf_long_ustory(ipft,aclass_sen_id)
+         leaf_long = prt_params%leaf_long_ustory(ipft,aclass_sen_id)/cndd_ts
       end if
          
       ! Only evergreens have maintenance turnover (must also change trimming logic

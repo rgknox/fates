@@ -148,6 +148,8 @@ module FatesPatchMod
     integer  :: nleaf(nclmax,maxpft)                        ! number of total leaf layers for each canopy layer and pft
     real(r8) :: c_stomata                                   ! mean stomatal conductance of all leaves in the patch   [umol/m2/s]
     real(r8) :: c_lblayer                                   ! mean boundary layer conductance of all leaves in the patch [umol/m2/s]
+
+    real(r8),allocatable :: cndd_ts(:)                      ! Conspecific Negative Density Dependence Turnover Scaler 
     
     real(r8),allocatable :: nrmlzd_parprof_pft_dir_z(:,:,:) ! nclmax,maxpft,nlevleaf)
     real(r8),allocatable :: nrmlzd_parprof_pft_dif_z(:,:,:) ! nclmax,maxpft,nlevleaf)
@@ -296,6 +298,7 @@ module FatesPatchMod
       allocate(this%sabs_dif(num_swb))
       allocate(this%fragmentation_scaler(num_levsoil))
       allocate(this%co_scr(max_cohort_per_patch))
+      allocate(this%cndd_ts(numpft))
       
       ! initialize all values to nan
       call this%NanValues()
@@ -499,6 +502,7 @@ module FatesPatchMod
       this%sabs_dir(:)                  = nan 
       this%sabs_dif(:)                  = nan 
       
+      
       ! ROOTS
       this%btran_ft(:)                  = nan 
       this%bstress_sal_ft(:)            = nan 
@@ -506,7 +510,10 @@ module FatesPatchMod
       ! EXTERNAL SEED RAIN 
       this%nitr_repro_stoich(:)         = nan 
       this%phos_repro_stoich(:)         = nan 
-  
+
+      ! Conspecific Negative Density Dependence Turnover Scaler
+      this%cndd_ts(:)                   = nan
+      
       ! DISTURBANCE 
       this%disturbance_rates(:)         = nan
       this%fract_ldist_not_harvested    = nan
@@ -908,6 +915,7 @@ module FatesPatchMod
                  this%sabs_dif,                 &
                  this%fragmentation_scaler,     &
                  this%co_scr,                   &
+                 this%cndd_ts,                  &
                  stat=istat, errmsg=smsg)
 
       ! These arrays are allocated via a call from EDCanopyStructureMod

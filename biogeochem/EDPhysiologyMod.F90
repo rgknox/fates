@@ -466,8 +466,10 @@ contains
     ! Calculate the fragmentation rates
     call fragmentation_scaler(currentPatch, bc_in)
 
+    
+    
     do el = 1, num_elements
-
+       
        associate( litt => currentPatch%litter(el), &
                   site_mass => currentSite%mass_balance(el), &
                   diag => currentSite%flux_diags%elem(el))
@@ -2274,7 +2276,7 @@ contains
 
           ! Default seed decay (TRS is off)
           litt%seed_decay(pft) = litt%seed(pft) * &
-               EDPftvarcon_inst%seed_decay_rate(pft)*years_per_day
+               EDPftvarcon_inst%seed_decay_rate(pft)*years_per_day*currentPatch%cndd_ts(pft)
 
        end if
 
@@ -2905,8 +2907,6 @@ contains
        store_m_turnover  = currentCohort%prt%GetTurnover(store_organ,element_id)
        fnrt_m_turnover   = currentCohort%prt%GetTurnover(fnrt_organ,element_id)
        repro_m_turnover  = currentCohort%prt%GetTurnover(repro_organ,element_id)
-
-
 
        store_m         = currentCohort%prt%GetState(store_organ,element_id)
        fnrt_m          = currentCohort%prt%GetState(fnrt_organ,element_id)

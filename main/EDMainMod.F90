@@ -111,7 +111,8 @@ module EDMainMod
   use EDPftvarcon,            only : EDPftvarcon_inst
   use FatesHistoryInterfaceMod, only : fates_hist
   use FatesLandUseChangeMod,  only: FatesGrazing
-
+  use FatesCNDDMod,           only: CNDDPatch
+  
   ! CIME Globals
   use shr_log_mod         , only : errMsg => shr_log_errMsg
   use shr_infnan_mod      , only : nan => shr_infnan_nan, assignment(=)
@@ -462,6 +463,11 @@ contains
        currentPatch%age_class = get_age_class_index(currentPatch%age)
 
 
+       ! Assess conspecific negative density dependence
+       ! effects and quantify PFT level seed and
+       ! leaf turnover scaler %cndd_ts(p)
+       call CNDDPatch(currentPatch)
+       
        ! Within this loop, we may be creating new cohorts, which
        ! are copies of pre-existing cohorts with reduced damage classes.
        ! If that is true, we want to bypass some of the things in
@@ -567,7 +573,7 @@ contains
                 is_drought = .true.
              end if
 
-             call PRTMaintTurnover(currentCohort%prt,ft, currentCohort%canopy_layer,is_drought)
+             call PRTMaintTurnover(currentCohort%prt,ft, currentCohort%canopy_layer,is_drought,currentPatch%cndd_ts(ft))
              
              ! -----------------------------------------------------------------------------------
              ! Call the routine that advances leaves in age.
