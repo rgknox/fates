@@ -35,7 +35,7 @@ module FatesCNDDMod
     integer, parameter :: height_filter = 1
     integer, parameter :: layer_filter = 2
     integer, parameter :: no_filter = 3
-    integer, parameter :: cndd_filter = layer_filter
+    integer, parameter :: cndd_filter = no_filter
     real(r8),parameter :: height_crit = 10._r8
 
     ! The fraction of seed biomass that can be extrapolated
