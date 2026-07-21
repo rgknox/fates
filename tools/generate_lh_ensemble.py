@@ -224,6 +224,8 @@ def main():
                         if(i==(pobj['dim_id'][0]-1) or pobj['dim_id'][0]==0):
                             if(file_type[pobj['file']-1]==json_type):
                                 json_obj['parameters'][pname]['data'][i] = pvalue
+                                #if(len(json_obj['parameters'][pname]['data'])>1):
+                                #    json_obj['parameters'][pname]['data'][1] = 1.0-pvalue
                             else:
                                 nc_var[i] = pvalue
             else:
