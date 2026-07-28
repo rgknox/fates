@@ -1824,7 +1824,7 @@ contains
  end subroutine define_restart_vars
 
  ! =====================================================================================
- 
+
  subroutine DefineRSummRestartVar(this,vname,vtype,long_name,units,initialize,ivar,index)
 
    class(fates_restart_interface_type) :: this
@@ -1835,8 +1835,7 @@ contains
    logical, intent(in)          :: initialize
    integer,intent(inout)        :: ivar
    integer,intent(inout)        :: index
-
-   integer :: dummy_index
+   integer                      :: dummy_index
    
    call this%set_restart_var(vname= trim(vname)//'_cmean', vtype=vtype, &
         long_name=long_name//' current mean', &
@@ -1847,32 +1846,31 @@ contains
         long_name=long_name//' latest mean', &
         units=units, flushval = flushzero, &
         hlms='CLM:ALM', initialize=initialize, ivar=ivar, index = dummy_index )
-   
-   call this%set_restart_var(vname= trim(vname)//'_cminimum', vtype=vtype, &
+
+   call this%set_restart_var(vname= trim(vname)//'_cmin', vtype=vtype, &
         long_name=long_name//' current minimum', &
         units=units, flushval = flushzero, &
-        hlms='CLM:ALM', initialize=initialize, ivar=ivar, index = index )
+        hlms='CLM:ALM', initialize=initialize, ivar=ivar, index = dummy_index )
 
-   call this%set_restart_var(vname= trim(vname)//'_lminimum', vtype=vtype, &
+   call this%set_restart_var(vname= trim(vname)//'_lmin', vtype=vtype, &
         long_name=long_name//' latest minimum', &
         units=units, flushval = flushzero, &
         hlms='CLM:ALM', initialize=initialize, ivar=ivar, index = dummy_index )
    
-   call this%set_restart_var(vname= trim(vname)//'_cmaximum', vtype=vtype, &
+   call this%set_restart_var(vname= trim(vname)//'_cmax', vtype=vtype, &
         long_name=long_name//' current maximum', &
         units=units, flushval = flushzero, &
-        hlms='CLM:ALM', initialize=initialize, ivar=ivar, index = index )
+        hlms='CLM:ALM', initialize=initialize, ivar=ivar, index = dummy_index )
 
-   call this%set_restart_var(vname= trim(vname)//'_lmaximum', vtype=vtype, &
+   call this%set_restart_var(vname= trim(vname)//'_lmax', vtype=vtype, &
         long_name=long_name//' latest maximum', &
         units=units, flushval = flushzero, &
         hlms='CLM:ALM', initialize=initialize, ivar=ivar, index = dummy_index )
-   
-   call this%set_restart_var(vname= trim(vname)//'_cindex', vtype=vtype, &
+
+   call this%set_restart_var(vname= trim(vname)//'_cid', vtype=vtype, &
         long_name=long_name//' index', &
         units='index', flushval = flushzero, &
         hlms='CLM:ALM', initialize=initialize, ivar=ivar, index = dummy_index )
-
    
    return
  end subroutine DefineRSummRestartVar
@@ -1895,7 +1893,7 @@ contains
     rsumm_var%c_mean  = this%rvars(ir_var_index)%r81d(position_index)
      
     rsumm_var%l_mean  = this%rvars(ir_var_index+1)%r81d(position_index)
-    
+
     rsumm_var%c_minimum  = this%rvars(ir_var_index+2)%r81d(position_index)
      
     rsumm_var%l_minimum  = this%rvars(ir_var_index+3)%r81d(position_index)
@@ -1903,7 +1901,7 @@ contains
     rsumm_var%c_maximum  = this%rvars(ir_var_index+4)%r81d(position_index)
      
     rsumm_var%l_maximum  = this%rvars(ir_var_index+5)%r81d(position_index)
-    
+
     rsumm_var%c_index = nint(this%rvars(ir_var_index+6)%r81d(position_index))
     
     return
