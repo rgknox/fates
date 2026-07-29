@@ -235,7 +235,8 @@ module FatesRestartInterfaceMod
   integer :: ir_litter_moisture_pa_nfsc
 
   integer :: ir_btran24_pa_pft
-
+  integer :: ir_btran_pa_pft
+  
   ! Site level
   integer :: ir_dd_status_sift
   integer :: ir_dleafondate_sift
@@ -1115,6 +1116,10 @@ contains
             hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_litter_moisture_pa_nfsc)
     end if
 
+    call this%set_restart_var(vname='fates_btran_pa_pft', vtype=cohort_r8, &
+         long_name='patch transpiration wetness factor', units='m', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_btran_pa_pft)
+    
     call this%DefineRSummRestartVar(vname='fates_btran24_pa_pft',vtype=cohort_r8, &
          long_name='24-hour patch transpiration wetness factor', &
          units='1', initialize=initialize_variables,ivar=ivar, index = ir_btran24_pa_pft)
@@ -2854,6 +2859,7 @@ contains
 
              io_idx_pa_pft  = io_idx_co_1st
              do i_pft = 1, numpft
+                this%rvars(ir_btran_pa_pft)%r81d(io_idx_pa_pft) = cpatch%btran_ft(i_pft)
                 call this%SetRSummRestartVar(cpatch%btran24_ft(i_pft)%p, ir_btran24_pa_pft,io_idx_pa_pft)
                 io_idx_pa_pft = io_idx_pa_pft + 1
              end do
@@ -3916,7 +3922,8 @@ contains
 
              ! Daily summary for btran
              io_idx_pa_pft  = io_idx_co_1st
-             do pft = 1, numpft 
+             do pft = 1, numpft
+                cpatch%btran_ft(pft) = this%rvars(ir_btran_pa_pft)%r81d(io_idx_pa_pft)
                 call this%GetRSummRestartVar(cpatch%btran24_ft(pft)%p, ir_btran24_pa_pft, io_idx_pa_pft)
                 io_idx_pa_pft      = io_idx_pa_pft + 1
              enddo

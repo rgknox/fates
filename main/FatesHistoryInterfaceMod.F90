@@ -661,6 +661,7 @@ module FatesHistoryInterfaceMod
   integer :: ih_dleafon_si_pft
   integer :: ih_meanbtran24_si_pft
   integer :: ih_minbtran24_si_pft
+  integer :: ih_btran_si_pft
   integer :: ih_meanliqvol_si_pft
   integer :: ih_meansmp_si_pft
   integer :: ih_elong_factor_si_pft
@@ -3371,6 +3372,7 @@ contains
              hio_dleafon_si_pft                   => this%hvars(ih_dleafon_si_pft)%r82d, &
              hio_meanbtran24_si_pft               => this%hvars(ih_meanbtran24_si_pft)%r82d, &
              hio_minbtran24_si_pft                => this%hvars(ih_minbtran24_si_pft)%r82d, &
+             hio_btran_si_pft                     => this%hvars(ih_btran_si_pft)%r82d, &
              hio_meanliqvol_si_pft                => this%hvars(ih_meanliqvol_si_pft)%r82d, &
              hio_meansmp_si_pft                   => this%hvars(ih_meansmp_si_pft)%r82d, &
              hio_elong_factor_si_pft              => this%hvars(ih_elong_factor_si_pft)%r82d, &
@@ -3518,6 +3520,10 @@ contains
                    endif
 
                    if(cpatch%nocomp_pft_label.ne.nocomp_bareground)then
+
+                      hio_btran_si_pft(io_si,ft) = hio_btran_si_pft(io_si,ft) + &
+                           cpatch%btran_ft(ft) * cpatch%area * AREA_INV
+                      
                       ! 24hr mean btran
                       hio_meanbtran24_si_pft(io_si,ft) = hio_meanbtran24_si_pft(io_si,ft) + &
                            cpatch%btran24_ft(ft)%p%GetMean() * cpatch%area * AREA_INV
@@ -7543,6 +7549,14 @@ contains
                upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables,                    &
                index=ih_dleafon_si_pft)
 
+          
+          call this%set_history_var(vname='FATES_BTRAN_PF',                          &
+		units='1',                                                               &
+		long='PFT-level mean transpiration wetness factor (btran)',         &
+		use_default='active', avgflag='A', vtype=site_pft_r8, hlms='CLM:ALM',    &
+		upfreq=group_dyna_complx, ivar=ivar, initialize=initialize_variables,                    &
+		index=ih_btran_si_pft)
+          
           call this%set_history_var(vname='FATES_MEANBTRAN24_PF',                       &
                units='1',                                                               &
                long='PFT-level 24hr mean transpiration wetness factor (btran)',         &
