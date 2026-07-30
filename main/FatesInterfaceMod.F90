@@ -942,7 +942,7 @@ contains
          ! These values are used to define the restart file allocations and general structure
          ! of memory for the cohort arrays
          if(hlm_use_sp.eq.itrue) then
-            fates_maxElementsPerPatch = num_swb
+            fates_maxElementsPerPatch = max(num_swb, numpft, nclmax)
          else
             fates_maxElementsPerPatch = max(num_swb,max_cohort_per_patch, ndcmpy*hlm_maxlevsoil ,ncwd*hlm_maxlevsoil)
          end if
