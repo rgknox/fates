@@ -1,6 +1,21 @@
 {
   "attributes":{
-    "history": "02/05/26, manual resolution with NorESMhub/fates#52  2026-07-30 09:03: sort_parameters.py--fin fates_params_default.json --fout fates_params_default_sorted.json."
+    "history": "02/05/26, manual resolution with NorESMhub/fates#52  2026-07-30 10:13: sort_parameters.py--fin fates_params_default.json --fout fates_params_default_sorted.json."
+  },
+  "dimensions":{
+    "fates_NCWD": 4,
+    "fates_history_age_bins": 19,
+    "fates_history_coage_bins": 2,
+    "fates_history_damage_bins": 2,
+    "fates_history_height_bins": 6,
+    "fates_history_size_bins": 13,
+    "fates_hlm_pftno": 14,
+    "fates_hydr_organs": 4,
+    "fates_landuseclass": 5,
+    "fates_leafage_class": 1,
+    "fates_litterclass": 6,
+    "fates_pft": 15,
+    "fates_plant_organs": 4
   },
   "parameters":{
     "fates_history_ageclass_bin_edges":{
@@ -2229,20 +2244,5 @@
       "units": "unitless",
       "data": [1.25]
     }
-  },
-  "dimensions":{
-    "fates_NCWD": 4,
-    "fates_history_age_bins": 19,
-    "fates_history_coage_bins": 2,
-    "fates_history_damage_bins": 2,
-    "fates_history_height_bins": 6,
-    "fates_history_size_bins": 13,
-    "fates_hlm_pftno": 14,
-    "fates_hydr_organs": 4,
-    "fates_landuseclass": 5,
-    "fates_leafage_class": 1,
-    "fates_litterclass": 6,
-    "fates_pft": 15,
-    "fates_plant_organs": 4
   }
 }
