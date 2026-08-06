@@ -573,7 +573,7 @@ contains
                 is_drought = .true.
              end if
 
-             call PRTMaintTurnover(currentCohort%prt,ft, currentCohort%canopy_layer,is_drought,1._r8) !currentPatch%cndd_ts(ft))
+             call PRTMaintTurnover(currentCohort%prt,ft, currentCohort%canopy_layer,is_drought,currentPatch%cndd_ts(ft))
              
              ! -----------------------------------------------------------------------------------
              ! Call the routine that advances leaves in age.
