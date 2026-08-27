@@ -3216,7 +3216,7 @@ contains
              years_per_day * SF_val_max_decomp(fuel_classes%dead_leaves()) * fragmentation_scaler(soil_layer_index)
 
        do ilyr = 1,nlev_eff_decomp
-           litt%root_fines_frag(dcmpy,ilyr) = litt%root_fines(dcmpy,ilyr) * &
+           litt%root_fines_frag(dcmpy,ilyr) = litt%root_fines_frag(dcmpy,ilyr) + litt%root_fines(dcmpy,ilyr) * &
                  years_per_day *  SF_val_max_decomp(fuel_classes%dead_leaves()) * fragmentation_scaler(ilyr)
        end do
     enddo
