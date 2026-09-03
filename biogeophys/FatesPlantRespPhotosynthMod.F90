@@ -61,8 +61,7 @@ module FATESPlantRespPhotosynthMod
   use FatesCohortMod,    only : fates_cohort_type
   use FatesConstantsMod, only : lmrmodel_ryan_1991
   use FatesConstantsMod, only : lmrmodel_atkin_etal_2017
-  use PRTGenericMod,     only : prt_carbon_allom_hyp
-  use PRTGenericMod,     only : prt_cnp_flex_allom_hyp
+  use PRTGenericMod,     only : carbon_only
   use PRTGenericMod,     only : carbon12_element
   use PRTGenericMod,     only : nitrogen_element
   use PRTGenericMod,     only : leaf_organ
@@ -274,8 +273,6 @@ contains
                                                  ! of applying to gs1, this would scale the whole non-intercept
                                                  ! portion of the conductance equation
     real(r8)               :: vmol_cf            ! velocity to molar conductance conversion (m/s) -> (umol/m2/s)
-    real(r8) :: leaf_c                           ! Leaf carbon (kgC/plant)
-    real(r8) :: leaf_n                           ! leaf nitrogen content (kgN/plant)
     integer  :: cl,iv,ft,uft,ift,ico                 ! indices
     integer  :: nv                               ! number of leaf layers
     integer  :: solve_iter                       ! number of iterations required for photosynthesis solve
@@ -457,7 +454,7 @@ contains
                     (hlm_use_planthydro.eq.itrue) .or. &
                     (hlm_radiation_model .eq. twostr_solver ) .or. &
                     (nleafage > 1) .or. &
-                    (hlm_parteh_mode .ne. prt_carbon_allom_hyp )   ) then
+                    (hlm_parteh_mode .ne. carbon_only )   ) then
 
                   ! These values are incremented, therefore since
                   ! sometimes we re-do layers, we need to re-zero them as well

@@ -28,8 +28,8 @@ module EDMainMod
   use FatesInterfaceTypesMod        , only : numpft
   use FatesInterfaceTypesMod        , only : hlm_use_nocomp
   use FatesInterfaceTypesMod        , only : ZeroBCOutCarbonFluxes
-  use PRTGenericMod            , only : prt_carbon_allom_hyp
-  use PRTGenericMod            , only : prt_cnp_flex_allom_hyp
+  use PRTGenericMod            , only : carbon_only
+  use PRTGenericMod            , only : carbon_nitrogen_phosphorus
   use PRTGenericMod            , only : nitrogen_element
   use PRTGenericMod            , only : phosphorus_element
   use EDCohortDynamicsMod      , only : terminate_cohorts
@@ -111,6 +111,7 @@ module EDMainMod
   use EDPftvarcon,            only : EDPftvarcon_inst
   use FatesHistoryInterfaceMod, only : fates_hist
   use FatesLandUseChangeMod,  only: FatesGrazing
+  use FatesCumulativeMemoryMod, only : UpdateCumulativeMemoryVars
 
   ! CIME Globals
   use shr_log_mod         , only : errMsg => shr_log_errMsg
@@ -173,6 +174,10 @@ contains
     end do
     call currentSite%flux_diags%ZeroFluxDiags()
 
+    ! Call a routine that will compute cumulative variables and "memory" averages for 
+    ! a suite of variables. These variables are mostly used for leaf phenology, but they
+    ! may be useful for other components (disturbances, mortality, management).
+    call UpdateCumulativeMemoryVars(currentSite,bc_in)
     
     ! Call a routine that simply identifies if logging should occur
     ! This is limited to a global event until more structured event handling is enabled
@@ -555,7 +560,9 @@ contains
              
 
              ! allow herbivores to graze
-             call FatesGrazing(currentCohort%prt, ft, currentPatch%land_use_label, currentCohort%height)
+             
+             call FatesGrazing(currentCohort%prt, ft, currentPatch%land_use_label, currentCohort%height,currentCohort%npp_acc, &
+                  currentCohort%treelai)
 
              ! Conduct Maintenance Turnover (parteh)
              if(debug) call currentCohort%prt%CheckMassConservation(ft,3)
@@ -739,7 +746,7 @@ contains
    ! Update history diagnostics related to Nutrients (if any)
    ! -----------------------------------------------------------------------------
    select case(hlm_parteh_mode)
-   case (prt_cnp_flex_allom_hyp)
+   case (carbon_nitrogen_phosphorus)
       call fates_hist%update_history_nutrflux(currentSite)
    end select
    

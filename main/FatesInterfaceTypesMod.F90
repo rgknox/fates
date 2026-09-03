@@ -111,6 +111,10 @@ module FatesInterfaceTypesMod
                                                          ! If 1, it automatically sets
                                                          ! hlm_use_logging to 1
 
+   integer, public :: hlm_lu_transition_logic    ! This flag signals which logic to use in transitions between land use classes
+                                                 ! See the FATES user guide for full description of options
+   
+
    integer, public :: hlm_num_lu_harvest_cats    ! number of hlm harvest categories (e.g. primary forest harvest, secondary young forest harvest, etc.)
                                                          ! this is the first dimension of:
                                                          ! harvest_rates in dynHarvestMod
@@ -206,6 +210,11 @@ module FatesInterfaceTypesMod
                                                                     ! there locations and their formats
                                                                     ! This need only be defined when
                                                                     ! hlm_use_inventory_init = 1
+
+   integer, public :: hlm_use_dbh_init                              ! Flag to use fates_recruit_init_dbh
+                                                                    ! instead of fates_recruit_init_density
+                                                                    ! only works in nocomp mode
+                                                                    !  1 = TRUE, 0 = FALSE 
 
   integer, public ::  hlm_use_fixed_biogeog                         !  Flag to use FATES fixed biogeography mode
                                                                     !  1 = TRUE, 0 = FALSE 
@@ -567,6 +576,13 @@ module FatesInterfaceTypesMod
       real(r8),allocatable :: hksat_sisl(:)        ! hydraulic conductivity at saturation (mm H2O /s)
       real(r8),allocatable :: h2o_liq_sisl(:)      ! Liquid water mass in each layer (kg/m2)
       real(r8) :: smpmin_si                        ! restriction for min of soil potential (mm)
+
+      ! Diagnostic quantities for outputting FATES patch-resolved
+      real(r8),allocatable :: lhflux_pa(:)         ! latent heat flux
+      real(r8),allocatable :: shflux_pa(:)         ! sensible heat flux
+      real(r8),allocatable :: swabs_pa(:)          ! shortwave absorbed radiation
+      real(r8),allocatable :: netlw_pa(:)          ! longwave net radiation
+      real(r8),allocatable :: t2m_pa(:)            ! 2m air temeprature
 
       ! Land use
       ! ---------------------------------------------------------------------------------
