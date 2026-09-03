@@ -47,6 +47,7 @@ module FatesSoilBGCFluxMod
   use FatesPatchMod     , only : fates_patch_type
   use FatesCohortMod      , only : fates_cohort_type
   use EDTypesMod          , only : AREA,AREA_INV
+  use EDTypesMod          , only : elem_diag_type
   use FatesInterfaceTypesMod, only    : bc_in_type
   use FatesInterfaceTypesMod, only    : bc_out_type
   use FatesInterfaceTypesMod, only    : numpft
@@ -561,6 +562,7 @@ contains
     integer :: j                            ! soil layer loop index
     real(r8), pointer :: efflux_ptr         ! pointer to cohort efflux
     type(litter_type), pointer     :: litt
+    type(elem_diag_type), pointer :: elflux_diags
     
     call set_root_fraction(csite%rootfrac_scr, &
          ccohort%pft, csite%zi_soil, &
@@ -585,13 +587,24 @@ contains
        end select
 
        litt => cpatch%litter(el)
-       
+
+       !elflux_diags => csite%flux_diags%elem(el)
+       !
+       !elflux_diags%root_litter_input(ccohort%pft) = &
+       !     elflux_diags%root_litter_input(ccohort%pft) +  &
+       !     efflux_ptr * cohort%n
+
        do j = 1,csite%nlevsoil
 
           ! kg/m2/day
           litt%root_fines_frag(ilabile,j) = litt%root_fines_frag(ilabile,j) + &
                efflux_ptr * ccohort%n * AREA_INV * csite%rootfrac_scr(j)
 
+          ! kg/site/day
+          
+               (fnrt_m_turnover + store_m_turnover ) * currentCohort%n
+
+          
           ! Note: we do not increment the site-level mass flux checking
           ! variable site_mass%frag_out  This will be incremented later
           ! in the call sequence, and we don't want to double count.
