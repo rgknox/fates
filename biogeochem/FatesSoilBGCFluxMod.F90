@@ -600,11 +600,6 @@ contains
           litt%root_fines_frag(ilabile,j) = litt%root_fines_frag(ilabile,j) + &
                efflux_ptr * ccohort%n * AREA_INV * csite%rootfrac_scr(j)
 
-          ! kg/site/day
-          
-               (fnrt_m_turnover + store_m_turnover ) * currentCohort%n
-
-          
           ! Note: we do not increment the site-level mass flux checking
           ! variable site_mass%frag_out  This will be incremented later
           ! in the call sequence, and we don't want to double count.
