@@ -12,8 +12,8 @@ module FatesCohortMod
   use FatesGlobals,               only : fates_log
   use PRTGenericMod,              only : max_nleafage
   use PRTGenericMod,              only : prt_vartypes
-  use PRTGenericMod,              only : prt_carbon_allom_hyp
-  use PRTGenericMod,              only : prt_cnp_flex_allom_hyp
+  use PRTGenericMod,              only : carbon_only
+  use PRTGenericMod,              only : carbon_nitrogen_phosphorus
   use PRTGenericMod,              only : leaf_organ, fnrt_organ, sapw_organ
   use PRTGenericMod,              only : repro_organ, store_organ, struct_organ
   use PRTGenericMod,              only : carbon12_element
@@ -156,7 +156,6 @@ module FatesCohortMod
     real(r8) :: npp_acc
     real(r8) :: npp_acc_hold
 
-    real(r8) :: resp_m_tstep              ! Maintenance respiration (see above *)
     real(r8) :: resp_m_acc
     real(r8) :: resp_m_acc_hold
     real(r8) :: resp_g_acc_hold
@@ -187,7 +186,6 @@ module FatesCohortMod
                                           !   in soil [kgN/plant/day]
 
     real(r8) :: sym_nfix_daily            ! accumulated symbiotic N fixation from the roots [kgN/indiv/day]
-    real(r8) :: sym_nfix_tstep            ! symbiotic N fixation from the roots for the time-step [kgN/indiv/timestep]
 
     real(r8) :: daily_n_gain              ! sum of fixation and uptake of mineralized NH4/NO3 in solution as well as 
                                           !   symbiotic fixation
@@ -215,12 +213,6 @@ module FatesCohortMod
                                  ! to aid in reporting a more accurate sub-daily
                                  ! NEP
 
-    real(r8) :: resp_m_unreduced ! diagnostic-only unreduced maintenance respiration [kgC/indiv/timestep]
-    real(r8) :: livestem_mr      ! aboveground live stem maintenance respiration [kgC/indiv/s]
-    real(r8) :: livecroot_mr     ! belowground live stem maintenance respiration [kgC/indiv/s]
-    real(r8) :: froot_mr         ! live fine root maintenance respiration [kgC/indiv/s]
-    real(r8) :: froot_mr_vmax    ! Net maintenance respiration due to change in Vmax [kgC/indiv/s]
-    
     !---------------------------------------------------------------------------
 
     ! DAMAGE
@@ -397,7 +389,6 @@ module FatesCohortMod
       this%gpp_acc_hold            = nan
       this%npp_acc                 = nan 
       this%npp_acc_hold            = nan
-      this%resp_m_tstep            = nan 
       this%resp_m_acc              = nan 
       this%resp_m_acc_hold         = nan
       this%resp_g_acc_hold         = nan
@@ -412,7 +403,6 @@ module FatesCohortMod
       this%daily_nh4_uptake        = nan
       this%daily_no3_uptake        = nan
       this%sym_nfix_daily          = nan
-      this%sym_nfix_tstep          = nan
       this%daily_n_gain            = nan
       this%daily_p_gain            = nan
       this%daily_c_efflux          = nan
@@ -429,14 +419,8 @@ module FatesCohortMod
       this%seed_prod               = nan
    
       ! RESPIRATION COMPONENTS
-      !this%rdark                   = nan
-      this%resp_m_unreduced        = nan 
       this%resp_excess_hold        = nan 
-      this%livestem_mr             = nan 
-      this%livecroot_mr            = nan 
-      this%froot_mr                = nan 
-      this%froot_mr_vmax           = nan
-      
+
       ! DAMAGE
       this%branch_frac             = nan 
    
@@ -500,7 +484,6 @@ module FatesCohortMod
       this%size_class_lasttimestep = 0
       this%gpp_acc                 = 0._r8
       this%npp_acc                 = 0._r8
-      this%resp_m_tstep            = 0._r8
       this%resp_m_acc              = 0._r8
 
       ! do not zero these, they are not built
@@ -536,13 +519,7 @@ module FatesCohortMod
       this%daily_n_demand          = -9._r8
       this%daily_p_demand          = -9._r8
       this%seed_prod               = 0._r8
-      !this%rdark                   = 0._r8
-      this%resp_m_unreduced        = 0._r8
-      this%livestem_mr             = 0._r8
-      this%livecroot_mr            = 0._r8
-      this%froot_mr                = 0._r8
-      this%froot_mr                = 0._r8
-      
+
       this%dmort                   = 0._r8
       this%lmort_direct            = 0._r8
       this%lmort_collateral        = 0._r8
@@ -632,13 +609,14 @@ module FatesCohortMod
       this%vmax_nh4 = prt_params%vmax0_nh4(pft)
       this%vmax_no3 = prt_params%vmax0_no3(pft)
       this%vmax_po4 = prt_params%vmax0_po4(pft)
-      
-      if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then
+      if (hlm_parteh_mode == carbon_nitrogen_phosphorus) then      
+
          ! Set thes log-smoothed objective functions to neutral, ie ln(1) = 0
          this%sobj_nh4 = 0._r8
          this%sobj_no3 = 0._r8
          this%sobj_po4 = 0._r8
          this%cnp_limiter = 0      ! Assume limitations are unknown
+
       end if
 
       ! This sets things like vcmax25top, that depend on the leaf age fractions 
@@ -735,7 +713,6 @@ module FatesCohortMod
       copyCohort%gpp_acc_hold            = this%gpp_acc_hold
       copyCohort%npp_acc                 = this%npp_acc
       copyCohort%npp_acc_hold            = this%npp_acc_hold
-      copyCohort%resp_m_tstep            = this%resp_m_tstep
       copyCohort%resp_m_acc              = this%resp_m_acc
       copyCohort%resp_m_acc_hold         = this%resp_m_acc_hold
       copyCohort%resp_g_acc_hold         = this%resp_g_acc_hold
@@ -752,7 +729,7 @@ module FatesCohortMod
       copyCohort%no3_demandfrac = this%no3_demandfrac
       copyCohort%po4_demandfrac = this%po4_demandfrac
 
-      if (hlm_parteh_mode .eq. prt_cnp_flex_allom_hyp) then 
+      if (hlm_parteh_mode == carbon_nitrogen_phosphorus) then
          copyCohort%sobj_nh4 = this%sobj_nh4
          copyCohort%sobj_no3 = this%sobj_no3
          copyCohort%sobj_po4 = this%sobj_po4
@@ -762,7 +739,6 @@ module FatesCohortMod
       copyCohort%daily_nh4_uptake        = this%daily_nh4_uptake
       copyCohort%daily_no3_uptake        = this%daily_no3_uptake
       copyCohort%sym_nfix_daily          = this%sym_nfix_daily
-      copyCohort%sym_nfix_tstep          = this%sym_nfix_tstep
       copyCohort%daily_n_gain            = this%daily_n_gain
       copyCohort%daily_p_gain            = this%daily_p_gain
       copyCohort%daily_c_efflux          = this%daily_c_efflux
@@ -773,13 +749,8 @@ module FatesCohortMod
       copyCohort%seed_prod               = this%seed_prod
 
       ! RESPIRATION COMPONENTS
-      copyCohort%resp_m_unreduced        = this%resp_m_unreduced
       copyCohort%resp_excess_hold        = this%resp_excess_hold
-      copyCohort%livestem_mr             = this%livestem_mr
-      copyCohort%livecroot_mr            = this%livecroot_mr
-      copyCohort%froot_mr                = this%froot_mr
-      copyCohort%froot_mr_vmax           = this%froot_mr_vmax
-      
+
       ! DAMAGE
       copyCohort%branch_frac             = this%branch_frac
 
@@ -882,7 +853,7 @@ module FatesCohortMod
       class(fates_cohort_type), intent(inout), target :: this
       
       select case(hlm_parteh_mode)
-      case (prt_carbon_allom_hyp)
+      case (carbon_only)
    
         ! Register boundary conditions for the Carbon Only Allometric Hypothesis
   
@@ -896,7 +867,7 @@ module FatesCohortMod
         call this%prt%RegisterBCIn(ac_bc_in_id_effnrt, bc_rval = this%effnrt_coh)
         call this%prt%RegisterBCIn(ac_bc_in_id_efstem, bc_rval = this%efstem_coh)
         
-      case (prt_cnp_flex_allom_hyp)
+      case (carbon_nitrogen_phosphorus)
    
         ! Register boundary conditions for the CNP Allometric Hypothesis
    
@@ -995,18 +966,20 @@ module FatesCohortMod
 
         this%kp25top = sum(param_derived%kp25top(ipft, 1:nleafage)*            &
           frac_leaf_aclass(1:nleafage))
-
-      else if (hlm_use_sp .eq. itrue) then
+      
+      ! This else branch used to only be the behaviour in sp-mode
+      ! if the if-statement was skipped because of no leaves in any
+      ! of the age classes, all variables were instead set to zero
+      ! which caused a restart bug and non b4b in certain spun-up cases
+      ! Therefore we choose the behaviour which sets these variables to
+      ! the values for the first leaf age_class
+      ! If leaf_ageclasses come into active use, this issue might need 
+      ! to be revisited
+      else
           
         this%vcmax25top = EDPftvarcon_inst%vcmax25top(ipft, 1)
         this%jmax25top = param_derived%jmax25top(ipft, 1)
         this%kp25top = param_derived%kp25top(ipft, 1)
-
-      else
-      
-        this%vcmax25top = 0._r8
-        this%jmax25top  = 0._r8
-        this%kp25top    = 0._r8
 
       end if
 
@@ -1122,14 +1095,10 @@ module FatesCohortMod
       write(fates_log(),*) 'cohort%gpp_acc                = ', this%gpp_acc
       write(fates_log(),*) 'cohort%npp_acc_hold           = ', this%npp_acc_hold
       write(fates_log(),*) 'cohort%npp_acc                = ', this%npp_acc
-      write(fates_log(),*) 'cohort%resp_m_tstep           = ', this%resp_m_tstep
       write(fates_log(),*) 'cohort%resp_m_acc             = ', this%resp_m_acc
       write(fates_log(),*) 'cohort%resp_m_acc_hold        = ', this%resp_m_acc_hold
       write(fates_log(),*) 'cohort%resp_g_acc_hold        = ', this%resp_g_acc_hold
-      write(fates_log(),*) 'cohort%livestem_mr            = ', this%livestem_mr
-      write(fates_log(),*) 'cohort%livecroot_mr           = ', this%livecroot_mr
-      write(fates_log(),*) 'cohort%froot_mr               = ', this%froot_mr
-      write(fates_log(),*) 'cohort%froot_mr_vmax          = ', this%froot_mr_vmax
+
       write(fates_log(),*) 'cohort%dgmort                 = ', this%dgmort
       write(fates_log(),*) 'cohort%treelai                = ', this%treelai
       write(fates_log(),*) 'cohort%treesai                = ', this%treesai

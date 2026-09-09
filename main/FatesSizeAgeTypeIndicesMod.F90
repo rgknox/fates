@@ -13,6 +13,7 @@ module FatesSizeAgeTypeIndicesMod
   use EDParamsMod,           only : ED_val_history_height_bin_edges
   use EDParamsMod,           only : ED_val_history_coageclass_bin_edges
   use EDParamsMod,           only : ED_val_history_damage_bin_edges
+  use FatesConstantsMod,     only : n_landuse_cats
   
   implicit none
   private ! Modules are private by default
@@ -32,6 +33,7 @@ module FatesSizeAgeTypeIndicesMod
   public :: get_agefuel_class_index
   public :: get_layersizetype_class_index
   public :: get_layertype_class_index
+  public :: get_landusepft_class_index
   
 contains
 
@@ -274,6 +276,20 @@ contains
    
    age_by_fuel_class = age_class + (fuel-1) * nlevage
 
-end function get_agefuel_class_index
+  end function get_agefuel_class_index
+
+  ! =====================================================================================
+
+  function get_landusepft_class_index(landuse_label,pft) result(landusepft_class)
+
+   ! Arguments
+   integer,intent(in)  :: landuse_label
+   integer,intent(in)  :: pft
+
+   integer             :: landusepft_class
+
+   landusepft_class = landuse_label + n_landuse_cats * (pft-1)
+
+  end function get_landusepft_class_index
 
 end module FatesSizeAgeTypeIndicesMod

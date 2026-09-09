@@ -12,7 +12,7 @@ module FatesPatchMod
   use FatesUtilsMod,          only : check_hlm_list
   use FatesUtilsMod,          only : check_var_real
   use FatesCohortMod,         only : fates_cohort_type
-  use FatesRunningMeanMod,    only : rmean_type, rmean_arr_type
+  use FatesRunningSummMod,    only : rsumm_type, rsumm_arr_type
   use FatesLitterMod,         only : litter_type
   use FatesFuelMod,           only : fuel_type
   use PRTGenericMod,          only : num_elements
@@ -24,9 +24,9 @@ module FatesPatchMod
   use EDParamsMod,            only : nlevleaf, nclmax, maxpft,max_cohort_per_patch
   use FatesConstantsMod,      only : n_dbh_bins, n_dist_types
   use FatesConstantsMod,      only : t_water_freeze_k_1atm
-  use FatesRunningMeanMod,    only : ema_24hr, fixed_24hr, ema_lpa, ema_longterm
-  use FatesRunningMeanMod,    only : ema_sdlng_emerg_h2o, ema_sdlng_mort_par
-  use FatesRunningMeanMod,    only : ema_sdlng2sap_par, ema_sdlng_mdd
+  use FatesRunningSummMod,    only : ema_24hr, fixed_24hr, ema_lpa, ema_longterm
+  use FatesRunningSummMod,    only : ema_sdlng_emerg_h2o, ema_sdlng_mort_par
+  use FatesRunningSummMod,    only : ema_sdlng2sap_par, ema_sdlng_mdd
   use TwoStreamMLPEMod,       only : twostream_type
   use FatesRadiationMemMod,   only : num_swb
   use FatesRadiationMemMod,   only : num_rad_stream_types
@@ -69,7 +69,7 @@ module FatesPatchMod
 
      integer :: ncohorts ! Number of cohorts on this patch
      
-     ! Cohort Arrays
+     ! Inputs to photosynthesis
      real(r8),allocatable :: vcmax25top(:)          ! vcmax @ 25C top of canopy [umol/m2/s]
      real(r8),allocatable :: jmax25top(:)           ! jmax @ 25C top of canopy [umol/m2/s]
      real(r8),allocatable :: kp25top(:)             ! initial slope co2-curve  @ 25C ...
@@ -82,23 +82,39 @@ module FatesPatchMod
      real(r8),allocatable :: treelai(:)             ! leaf area index of the plant [m2/m2]
      real(r8),allocatable :: height(:)              ! plant height [m]
      real(r8),allocatable :: mr_reduction_factor(:) ! reduction factor for maint resp
+     real(r8),allocatable :: crown_reduction        ! reduction in crown biomass from damage
      real(r8),allocatable :: lnc_top(:)             ! leaf nitrogen conc at the top [gn/m2]
      real(r8),allocatable :: kn_leafn(:)            ! leaf nitrogen vertical decay coeff
      real(r8),allocatable :: kn_atk(:)              ! atkin respiration vertical decay coeff
      integer,allocatable  :: twostr_col(:)          ! this cohorts position index in the two-stream data
      real(r8),allocatable :: btran(:)               ! plant water stress response function [0-1]
 
+     ! Inputs to organ respiration (fnrt,coarse root and above-ground stem) (i.e. nitrogen mass in kg)
+     real(r8),allocatable :: live_stem_n(:)
+     real(r8),allocatable :: live_croot_n(:)
+     real(r8),allocatable :: fnrt_n(:)
+     
      !Hydro only
      real(r8),allocatable :: leaf_psi(:)    !leaf suction [Mpa]
      
-     ! Outputs
+     ! Photosynthesis Outputs
      real(r8),allocatable :: gpp_tstep(:)     ! GPP [kgC/indiv/s]
-     real(r8),allocatable :: rdark(:)         ! dark respiration [kgC/indiv/s]
+     real(r8),allocatable :: rdark_tstep(:)   ! dark respiration [kgC/indiv/s]
      real(r8),allocatable :: c13disc_clm(:)   ! carbon 13 discrimination [ppm]
      real(r8),allocatable :: g_sb_laweight(:) ! total conductance (stomata +
                                               ! boundary layer) of the cohort
                                               ! weighted by its leaf area [m/s]*[m2]
 
+     ! Maintenance Respiration Outputs [kgC/indiv/s]
+     real(r8),allocatable :: livestem_mr(:)     ! live stem MR
+     real(r8),allocatable :: froot_mr(:)        ! fine root MR
+     real(r8),allocatable :: nfix_mr(:)         ! respiration driving fixation
+     real(r8),allocatable :: sym_nfix_tstep(:)  ! Symbiotic fixation rate kgN/plant/s
+     real(r8),allocatable :: livecroot_mr(:)    ! live coarse root MR
+     real(r8),allocatable :: resp_m_tstep(:)    ! total MR rate of plant (includes dark)
+     real(r8),allocatable :: resp_m_unreduced(:)! unreduced MR rate
+     real(r8),allocatable :: froot_mr_vmax(:)    ! Net maintenance respiration due to change in Vmax [kgC/indiv/s]
+     
      ! Cohort x leaf-layer
      real(r8),allocatable :: ts_net_uptake(:,:) ! Net photosynthesis [kgC/m2/timestep]
 
@@ -156,23 +172,24 @@ module FatesPatchMod
     !---------------------------------------------------------------------------
 
     ! RUNNING MEANS
-    !class(rmean_type),    pointer :: t2m                  ! place-holder for 2m air temperature (variable window-size)
-    class(rmean_type),     pointer :: tveg24               ! 24-hour mean vegetation temperature [K]
-    class(rmean_type),     pointer :: tveg_lpa             ! running mean of vegetation temperature at the
+    !class(rsumm_type),    pointer :: t2m                  ! place-holder for 2m air temperature (variable window-size)
+    class(rsumm_type),     pointer :: tveg24               ! 24-hour summary vegetation temperature [K]
+    class(rsumm_type),     pointer :: tveg_lpa             ! running mean of vegetation temperature at the
                                                            !   leaf photosynthesis acclimation timescale [K]
-    class(rmean_type),     pointer :: tveg_longterm        ! long-term running mean of vegetation temperature at the
+    class(rsumm_type),     pointer :: tveg_longterm        ! long-term running mean of vegetation temperature at the
                                                            !   leaf photosynthesis acclimation timescale [K] (i.e T_home)
-    class(rmean_type),     pointer :: seedling_layer_par24 ! 24-hour mean of photosynthetically active radiation at seedling layer [W/m2]
-    class(rmean_arr_type), pointer :: sdlng_emerg_smp(:)   ! running mean of soil matric potential at the seedling
+    class(rsumm_arr_type), pointer :: btran24_ft(:)        ! 24-hour summary of transpiration wetness factor (aka btran)
+    class(rsumm_type),     pointer :: seedling_layer_par24 ! 24-hour summary of photosynthetically active radiation at seedling layer [W/m2]
+    class(rsumm_arr_type), pointer :: sdlng_emerg_smp(:)   ! running mean of soil matric potential at the seedling
                                                            !   rooting depth at the H2O seedling emergence timescale (see sdlng_emerg_h2o_timescale parameter)
-    class(rmean_type),     pointer :: sdlng_mort_par       ! running mean of photosythetically active radiation
+    class(rsumm_type),     pointer :: sdlng_mort_par       ! running mean of photosythetically active radiation
                                                            ! at the seedling layer and at the par-based seedling  
                                                            ! mortality timescale (sdlng_mort_par_timescale)
-    class(rmean_arr_type), pointer :: sdlng_mdd(:)         ! running mean of moisture deficit days
+    class(rsumm_arr_type), pointer :: sdlng_mdd(:)         ! running mean of moisture deficit days
                                                            ! at the seedling layer and at the mdd-based seedling  
                                                            ! mortality timescale (sdlng_mdd_timescale) 
                                                            ! (sdlng2sap_par_timescale)
-    class(rmean_type), pointer :: sdlng2sap_par            ! running mean of photosythetically active radiation
+    class(rsumm_type), pointer :: sdlng2sap_par            ! running mean of photosythetically active radiation
                                                            ! at the seedling layer and at the par-based seedling  
                                                            ! to sapling transition timescale 
                                                            ! (sdlng2sap_par_timescale)
@@ -509,11 +526,25 @@ module FatesPatchMod
             deallocate(this%coarrays%twostr_col)
             deallocate(this%coarrays%btran)
             deallocate(this%coarrays%leaf_psi)
+            deallocate(this%coarrays%live_stem_n)
+            deallocate(this%coarrays%live_croot_n)
+            deallocate(this%coarrays%fnrt_n)
+     
             deallocate(this%coarrays%gpp_tstep)
-            deallocate(this%coarrays%rdark)
+            deallocate(this%coarrays%rdark_tstep)
             deallocate(this%coarrays%c13disc_clm)
             deallocate(this%coarrays%g_sb_laweight)
             deallocate(this%coarrays%ts_net_uptake)
+            
+            deallocate(this%coarrays%livestem_mr)
+            deallocate(this%coarrays%froot_mr)
+            deallocate(this%coarrays%froot_mr_vmax)
+            deallocate(this%coarrays%nfix_mr)
+            deallocate(this%coarrays%sym_nfix_tstep)
+            deallocate(this%coarrays%livecroot_mr)
+            deallocate(this%coarrays%resp_m_tstep)
+            deallocate(this%coarrays%resp_m_unreduced)
+
          else
             re_allocate = .false.
          end if
@@ -538,12 +569,23 @@ module FatesPatchMod
          allocate(this%coarrays%twostr_col(ncohorts+2))
          allocate(this%coarrays%btran(ncohorts+2))
          allocate(this%coarrays%leaf_psi(ncohorts+2))
+         allocate(this%coarrays%live_stem_n(ncohorts+2))
+         allocate(this%coarrays%live_croot_n(ncohorts+2))
+         allocate(this%coarrays%fnrt_n(ncohorts+2))
          allocate(this%coarrays%gpp_tstep(ncohorts+2))
-         allocate(this%coarrays%rdark(ncohorts+2))
+         allocate(this%coarrays%rdark_tstep(ncohorts+2))
          allocate(this%coarrays%c13disc_clm(ncohorts+2))
          allocate(this%coarrays%g_sb_laweight(ncohorts+2))
+         allocate(this%coarrays%livestem_mr(ncohorts+2))
+         allocate(this%coarrays%froot_mr(ncohorts+2))
+         allocate(this%coarrays%froot_mr_vmax(ncohorts+2))
+         allocate(this%coarrays%nfix_mr(ncohorts+2))
+         allocate(this%coarrays%sym_nfix_tstep(ncohorts+2))
+         allocate(this%coarrays%livecroot_mr(ncohorts+2))
+         allocate(this%coarrays%resp_m_tstep(ncohorts+2))
+         allocate(this%coarrays%resp_m_unreduced(ncohorts+2))
          allocate(this%coarrays%ts_net_uptake(nveg+2,ncohorts+2))
-
+         
          this%coarrays%ncohorts = ncohorts
          
       end if
@@ -791,18 +833,28 @@ module FatesPatchMod
       ! Until bc's are pointed to by sites give veg a default temp [K]
       real(r8), parameter :: temp_init_veg     = 15._r8 + t_water_freeze_k_1atm
       real(r8), parameter :: init_seedling_par = 5.0_r8      ! arbitrary initialization for seedling layer [MJ m-2 d-1]
-      real(r8), parameter :: init_seedling_smp = -26652.0_r8 ! abitrary initialization of smp [mm]
+      real(r8), parameter :: init_seedling_smp = -26652.0_r8 ! arbitrary initialization of smp [mm]
+      real(r8), parameter :: init_btran        = 1.0_r8      ! arbitrary initial value for btran [fraction]
       integer             :: pft                             ! pft looping index
 
       allocate(this%tveg24)
       allocate(this%tveg_lpa)
       allocate(this%tveg_longterm)
+      allocate(this%btran24_ft(numpft))
 
-      ! set initial values for running means
-      call this%tveg24%InitRMean(fixed_24hr, init_value=temp_init_veg,         &
+      ! set initial values for running summaries
+      call this%tveg24%InitRSumm(fixed_24hr, init_value=temp_init_veg,         &
         init_offset=real(current_tod, r8))
-      call this%tveg_lpa%InitRmean(ema_lpa, init_value=temp_init_veg)
-      call this%tveg_longterm%InitRmean(ema_longterm, init_value=temp_init_veg)
+      call this%tveg_lpa%InitRSumm(ema_lpa, init_value=temp_init_veg)
+      call this%tveg_longterm%InitRSumm(ema_longterm, init_value=temp_init_veg)
+
+      do pft = 1,numpft
+         allocate(this%btran24_ft(pft)%p)
+
+         call this%btran24_ft(pft)%p%InitRSumm(fixed_24hr,init_value=init_btran, &
+            init_offset=real(current_tod, r8))
+      end do
+
 
       if (regeneration_model == TRS_regeneration) then
         allocate(this%seedling_layer_par24)
@@ -811,20 +863,20 @@ module FatesPatchMod
         allocate(this%sdlng_mort_par)
         allocate(this%sdlng2sap_par)
 
-        call this%seedling_layer_par24%InitRMean(fixed_24hr,                   &
+        call this%seedling_layer_par24%InitRSumm(fixed_24hr,                   &
           init_value=init_seedling_par, init_offset=real(current_tod, r8))
-        call this%sdlng_mort_par%InitRMean(ema_sdlng_mort_par,                 &
+        call this%sdlng_mort_par%InitRSumm(ema_sdlng_mort_par,                 &
           init_value=temp_init_veg)
-        call this%sdlng2sap_par%InitRMean(ema_sdlng2sap_par,                   &
+        call this%sdlng2sap_par%InitRSumm(ema_sdlng2sap_par,                   &
           init_value=init_seedling_par)
 
         do pft = 1,numpft
           allocate(this%sdlng_mdd(pft)%p)
           allocate(this%sdlng_emerg_smp(pft)%p)
 
-          call this%sdlng_mdd(pft)%p%InitRMean(ema_sdlng_mdd,             &
+          call this%sdlng_mdd(pft)%p%InitRSumm(ema_sdlng_mdd,             &
             init_value=0.0_r8)
-          call this%sdlng_emerg_smp(pft)%p%InitRMean(ema_sdlng_emerg_h2o, &
+          call this%sdlng_emerg_smp(pft)%p%InitRSumm(ema_sdlng_emerg_h2o, &
             init_value=init_seedling_smp)
         end do
      end if
@@ -1092,10 +1144,21 @@ module FatesPatchMod
          deallocate(this%coarrays%btran)
          deallocate(this%coarrays%twostr_col)
          deallocate(this%coarrays%leaf_psi)
+         deallocate(this%coarrays%live_stem_n)
+         deallocate(this%coarrays%live_croot_n)
+         deallocate(this%coarrays%fnrt_n)
          deallocate(this%coarrays%gpp_tstep)
-         deallocate(this%coarrays%rdark)
+         deallocate(this%coarrays%rdark_tstep)
          deallocate(this%coarrays%c13disc_clm)
          deallocate(this%coarrays%g_sb_laweight)
+         deallocate(this%coarrays%livestem_mr)
+         deallocate(this%coarrays%froot_mr)
+         deallocate(this%coarrays%froot_mr_vmax)
+         deallocate(this%coarrays%nfix_mr)
+         deallocate(this%coarrays%sym_nfix_tstep)
+         deallocate(this%coarrays%livecroot_mr)
+         deallocate(this%coarrays%resp_m_tstep)
+         deallocate(this%coarrays%resp_m_unreduced)
          deallocate(this%coarrays%ts_net_uptake)
       end if
 
@@ -1120,7 +1183,7 @@ module FatesPatchMod
         call endrun(msg=errMsg(sourcefile, __LINE__))
       endif
       
-      ! deallocate running means
+      ! deallocate running summaries
       deallocate(this%tveg24, stat=istat, errmsg=smsg)
       if (istat/=0) then
         write(fates_log(),*) 'dealloc011: fail on deallocate(this%tveg24):'//trim(smsg)
@@ -1136,6 +1199,12 @@ module FatesPatchMod
         write(fates_log(),*) 'dealloc013: fail on deallocate(this%tveg_longterm):'//trim(smsg)
         call endrun(msg=errMsg(sourcefile, __LINE__))
       endif
+
+      do pft = 1, numpft 
+         deallocate(this%btran24_ft(pft)%p)
+      end do 
+      deallocate(this%btran24_ft)
+
 
       if (regeneration_model == TRS_regeneration) then 
         deallocate(this%seedling_layer_par24)

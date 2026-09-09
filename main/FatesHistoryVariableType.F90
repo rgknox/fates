@@ -18,6 +18,7 @@ module FatesHistoryVariableType
   use FatesIOVariableKindMod, only : site_elcwd_r8, site_elage_r8
   use FatesIOVariableKindMod, only : iotype_index, site_agefuel_r8, site_clscpf_r8
   use FatesIOVariableKindMod, only : site_landuse_r8, site_lulu_r8, site_clpf_r8
+  use FatesIOVariableKindMod, only : site_lupft_r8
   use shr_log_mod           , only : errMsg => shr_log_errMsg
   
 
@@ -229,6 +230,10 @@ contains
       allocate(this%r82d(lb1:ub1, lb2:ub2))
       this%r82d(:,:) = flushval
 
+   case(site_lupft_r8)
+      allocate(this%r82d(lb1:ub1, lb2:ub2))
+      this%r82d(:,:) = flushval
+
    case(site_clscpf_r8)
       allocate(this%r82d(lb1:ub1, lb2:ub2))
       this%r82d(:,:) = flushval
@@ -364,6 +369,8 @@ contains
    case(site_landuse_r8)
        this%r82d(lb1:ub1, lb2:ub2) = this%flushval
    case(site_lulu_r8)
+       this%r82d(lb1:ub1, lb2:ub2) = this%flushval
+   case(site_lupft_r8)
        this%r82d(lb1:ub1, lb2:ub2) = this%flushval
 
     case default
