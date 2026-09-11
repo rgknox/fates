@@ -890,8 +890,12 @@ contains
        currentPatch => currentPatch%younger
     enddo
 
-    ! Only need to do this if parallel...
-    call PatchLoads(currentSite,bc_out)
+    ! Placeholder
+    ! PatchLoads is support for load balancing
+    ! in a shared multithreaded environment. This helps
+    ! to determine how to spread out resources so hardware
+    ! threads have a similar number of cohorts on them
+    ! call PatchLoads(currentSite,bc_out)
     
     ! Check to see if the time integrated fluxes match the state
     ! Dont call this if we are restarting, it will double count the flux

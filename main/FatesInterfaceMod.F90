@@ -239,9 +239,6 @@ contains
     type(bc_pconst_type), intent(inout) :: bc_pconst
     integer             , intent(in)    :: nlevdecomp 
 
-    !allocate(bc_pconst%vmax_nh4(numpft))
-    !allocate(bc_pconst%vmax_no3(numpft))    
-    !allocate(bc_pconst%vmax_p(numpft))
     allocate(bc_pconst%eca_km_nh4(numpft))
     allocate(bc_pconst%eca_km_no3(numpft))
     allocate(bc_pconst%eca_km_p(numpft))
@@ -261,10 +258,6 @@ contains
     type(bc_pconst_type), intent(inout) :: bc_pconst
     integer             , intent(in)    :: nlevdecomp 
     integer                             :: j
-    
-    !bc_pconst%vmax_nh4(1:numpft)         = EDPftvarcon_inst%vmax_nh4(1:numpft)
-    !bc_pconst%vmax_no3(1:numpft)         = EDPftvarcon_inst%vmax_no3(1:numpft)
-    !bc_pconst%vmax_p(1:numpft)           = EDPftvarcon_inst%vmax_p(1:numpft)
     
     bc_pconst%eca_km_nh4(1:numpft)       = EDPftvarcon_inst%eca_km_nh4(1:numpft)
     bc_pconst%eca_km_no3(1:numpft)       = EDPftvarcon_inst%eca_km_no3(1:numpft)
@@ -849,10 +842,6 @@ contains
             write(fates_log(),*) '============ End FATES Parameter Info ========='
          end if
 
-         ! This call assigns a global named integer index to each parameter
-         ! so that we can access the datasets quickly without performing a lookup
-         call SetParameterIndices()
-         
          ! This call transfers parameters from the pstruct data-structure
          ! into the specific datastructures where parameters have there
          ! own primitive arrays

@@ -40,7 +40,7 @@ module EDTypesMod
   private               ! By default everything is private
   save
               
-  real(r8), parameter, public :: init_recruit_trim = 1.0_r8    ! This is the initial trimming value that
+  real(r8), parameter, public :: init_recruit_trim = 0.8_r8    ! This is the initial trimming value that
                                                                ! new recruits start with
 
   ! -------------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ module EDTypesMod
 
   integer, parameter, public  :: numWaterMem          = 10         ! watermemory saved as site level var
 
-  integer, parameter, public  :: numlevsoil_max       = 20         ! This is scratch space used for static arrays
+  integer, parameter, public  :: numlevsoil_max       = 30         ! This is scratch space used for static arrays
                                                                    ! The actual number of soil layers should not exceed this
 
 
