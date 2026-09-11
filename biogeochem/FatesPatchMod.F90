@@ -105,6 +105,10 @@ module FatesPatchMod
                                               ! boundary layer) of the cohort
                                               ! weighted by its leaf area [m/s]*[m2]
 
+     ! Nutrient Regulation
+     real(r8),allocatable :: vmax_scaler(:)   ! root respiration increase
+                                              ! due to vmax variability [-]
+     
      ! Maintenance Respiration Outputs [kgC/indiv/s]
      real(r8),allocatable :: livestem_mr(:)     ! live stem MR
      real(r8),allocatable :: froot_mr(:)        ! fine root MR
@@ -535,7 +539,7 @@ module FatesPatchMod
             deallocate(this%coarrays%c13disc_clm)
             deallocate(this%coarrays%g_sb_laweight)
             deallocate(this%coarrays%ts_net_uptake)
-            
+            deallocate(this%coarrays%vmax_scaler)
             deallocate(this%coarrays%livestem_mr)
             deallocate(this%coarrays%froot_mr)
             deallocate(this%coarrays%froot_mr_vmax)
@@ -576,6 +580,7 @@ module FatesPatchMod
          allocate(this%coarrays%rdark_tstep(ncohorts+2))
          allocate(this%coarrays%c13disc_clm(ncohorts+2))
          allocate(this%coarrays%g_sb_laweight(ncohorts+2))
+         allocate(this%coarrays%vmax_scaler(ncohorts+2))
          allocate(this%coarrays%livestem_mr(ncohorts+2))
          allocate(this%coarrays%froot_mr(ncohorts+2))
          allocate(this%coarrays%froot_mr_vmax(ncohorts+2))
@@ -1151,6 +1156,7 @@ module FatesPatchMod
          deallocate(this%coarrays%rdark_tstep)
          deallocate(this%coarrays%c13disc_clm)
          deallocate(this%coarrays%g_sb_laweight)
+         deallocate(this%coarrays%vmax_scaler)
          deallocate(this%coarrays%livestem_mr)
          deallocate(this%coarrays%froot_mr)
          deallocate(this%coarrays%froot_mr_vmax)

@@ -170,7 +170,7 @@ contains
       clayer, crowndamage, spread, patchptr%canopy_layer_tlai, elongf_leaf, elongf_fnrt,    &
       elongf_stem)
 
-    if(hlm_parteh_mode.eq.prt_cnp_flex_allom_hyp)then
+    if(hlm_parteh_mode.eq.carbon_nitrogen_phosphorus)then
        newCohort%vmax_nh4 = currentSite%rec_vmax_nh4(pft,clayer)
        newCohort%vmax_no3 = currentSite%rec_vmax_no3(pft,clayer)
        newCohort%vmax_po4 = currentSite%rec_vmax_po4(pft,clayer)
