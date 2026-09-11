@@ -737,18 +737,6 @@ module FatesInterfaceTypesMod
       real(r8), pointer :: vmax_no3(:)       ! Vmax for NO3 of each competitor (gN/gC/s)
       real(r8), pointer :: vmax_po4(:)       ! Vmax for PO4 of each competitor (gP/gC/s)
 
-      ! RD Nutrient Boundary Conditions
-      ! ---------------------------------------------------------------------------------
-
-      !real(r8), pointer :: n_demand(:)       ! Nitrogen demand from each competitor
-      !                                       ! for use in ELMs CTC/RD [g/m2/s] 
-      !real(r8), pointer :: p_demand(:)       ! Phosophorus demand from each competitor
-      !                                       ! for use in ELMs CTC/RD [g/m2/s] 
-
-
-
-
-      
       ! CH4 Boundary Conditions
       ! -----------------------------------------------------------------------------------
       real(r8), pointer :: annavg_agnpp_pa(:)    ! annual average patch npp above ground (gC/m2/s)
@@ -838,11 +826,6 @@ module FatesInterfaceTypesMod
        
        integer           :: max_plant_comps
 
-       ! These are now dynamic
-       !real(r8), pointer :: vmax_nh4(:)
-       !real(r8), pointer :: vmax_no3(:)
-       !real(r8), pointer :: vmax_p(:)
-       
        real(r8), pointer :: eca_km_nh4(:)
        real(r8), pointer :: eca_km_no3(:)
        real(r8), pointer :: eca_km_p(:)
