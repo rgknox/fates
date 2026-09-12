@@ -648,7 +648,7 @@ module FatesCohortMod
 
       call tree_lai_sai(leaf_c, this%pft, this%c_area, this%n,           &
            this%canopy_layer, can_tlai, this%vcmax25top, this%dbh, this%crowndamage,          &
-           this%canopy_trim, this%efstem_coh, this%treelai, treesai)
+           this%canopy_trim, this%efstem_coh, 2, this%treelai, treesai)
 
       if (hlm_use_sp .eq. ifalse) then
          this%treesai = treesai
