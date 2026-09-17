@@ -2,7 +2,7 @@
     "notes":"This parameter dataset was created by Jennifer Kowalczyk and Marcos Longo. Please contact if using in published work. This is based off of TRY V1 and other calibration excercises to generate an estimate of Early and Late successional Broadleaf Tropical Evergeen trees in South America. Namelist Switches:    use_fates_daylength_factor = .true.    fates_hydro_solver = '2D_Picard'        fates_leafresp_model = 'atkin2017'      fates_cstarvation_model = 'exponential'       fates_radiation_model = 'norman'         fates_regeneration_model = 'default'. Includes stoichiometries from BCI.  JUL072026: Added VMax nutrient uptake rates from Craig et al 2025.",
     "usage":"This file should be passed as input to the batch patch python script in fates, from the parameter_files directory:, like so: (cd parameter_files;python tools/batch_patch_params.py --fin patch_2BTE_tryv1_LongoKowalczyk_corrSLA_vcmax4055.json)",
     "base_file":"fates_params_default.json",
-    "new_file":"fates_params_2BTE_tryv1_LongoKowalczyk_corrSLA_vcmax4055_BCIstoich_Craig.json",
+    "new_file":"fates_params_2BTE_tryv1_LongoKowalczyk_corrSLA_vcmax4055_BCIstoich_Craig_API46.json",
     "pft_trim_list": [1,1],
     "parameters":{
 	"pft_parameters":{
