@@ -2323,18 +2323,27 @@ contains
          end do
 
          if(any(element_list(:)==nitrogen_element))then
-            this%hvars(ih_nh4demandfrac_si)%r81d(io_si) = &
-                 this%hvars(ih_nh4demandfrac_si)%r81d(io_si)/site_fnrt_c
+            if(site_fnrt_c>nearzero)then
+               this%hvars(ih_nh4demandfrac_si)%r81d(io_si) = &
+                    this%hvars(ih_nh4demandfrac_si)%r81d(io_si)/site_fnrt_c
             
-            this%hvars(ih_no3demandfrac_si)%r81d(io_si) = &
-                 this%hvars(ih_no3demandfrac_si)%r81d(io_si)/site_fnrt_c
+               this%hvars(ih_no3demandfrac_si)%r81d(io_si) = &
+                    this%hvars(ih_no3demandfrac_si)%r81d(io_si)/site_fnrt_c
+            else
+               this%hvars(ih_nh4demandfrac_si)%r81d(io_si) = hlm_hio_ignore_val
+               this%hvars(ih_no3demandfrac_si)%r81d(io_si) = hlm_hio_ignore_val
+            end if
          end if
          if(any(element_list(:)==phosphorus_element))then
-            this%hvars(ih_po4demandfrac_si)%r81d(io_si) = &
-                 this%hvars(ih_po4demandfrac_si)%r81d(io_si)/site_fnrt_c
+            if(site_fnrt_c>nearzero)then
+               this%hvars(ih_po4demandfrac_si)%r81d(io_si) = &
+                    this%hvars(ih_po4demandfrac_si)%r81d(io_si)/site_fnrt_c
+            else
+               this%hvars(ih_po4demandfrac_si)%r81d(io_si) = hlm_hio_ignore_val
+            end if
          end if
          
-    end if if_dynam1
+      end if if_dynam1
 
     ! Process multiplexed variables
     ! ---------------------------------------------------------------------------------------------

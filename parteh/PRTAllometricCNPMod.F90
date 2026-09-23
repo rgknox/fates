@@ -815,9 +815,10 @@ contains
     real(r8) :: log_obj_ratio, nh4_log_obj_ratio
     real(r8) :: no3_log_obj_ratio, po4_log_obj_ratio
     logical, parameter :: use_carbon_objfunc = .true.
-    real(r8), parameter :: minmax_vmax_mult = 100._r8
-    real(r8), parameter :: min_rel = 0.02_r8
-    real(r8), parameter :: minfrac = 0.0001_r8   
+    real(r8), parameter :: min_rel = 0.01_r8   ! relative floor on vmax & L2FR
+    real(r8), parameter :: max_rel = 100.0_r8  ! relative ceiling on vmax & L2FR
+    real(r8), parameter :: minfrac = 0.0001_r8 ! aquisition can not upregulate
+                                               ! when resources are below this threshold
 
     integer, parameter :: vmax_dyn_on  = 1
     integer, parameter :: vmax_dyn_off = 2
@@ -915,7 +916,9 @@ contains
          end if
 
          if (vmax_dyn == vmax_dyn_on)then
-            vmax_nh4 = max(min_rel*prt_params%vmax0_nh4(ipft), vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta_vmax*nh4_log_obj_ratio)
+            vmax_nh4 = min(max_rel*prt_params%vmax0_nh4(ipft), &
+                 max(min_rel*prt_params%vmax0_nh4(ipft), &
+                 vmax_nh4 + prt_params%vmax0_nh4(ipft)*zeta_vmax*nh4_log_obj_ratio))
          end if
          
          ! Until we have source side limitations, both NH4 and NO3 react the same
@@ -932,7 +935,9 @@ contains
          end if
 
          if(vmax_dyn == vmax_dyn_on)then
-            vmax_no3 = max(min_rel*prt_params%vmax0_no3(ipft), vmax_no3 + prt_params%vmax0_no3(ipft)*zeta_vmax*no3_log_obj_ratio)
+            vmax_no3 = min(max_rel*prt_params%vmax0_no3(ipft), &
+                 max(min_rel*prt_params%vmax0_no3(ipft), &
+                 vmax_no3 + prt_params%vmax0_no3(ipft)*zeta_vmax*no3_log_obj_ratio))
          end if
          
       end if
@@ -960,7 +965,9 @@ contains
          end if
 
          if(vmax_dyn==vmax_dyn_on)then
-            vmax_po4 = max(min_rel*prt_params%vmax0_po4(ipft), vmax_po4 + prt_params%vmax0_po4(ipft)*zeta_vmax*po4_log_obj_ratio)
+            vmax_po4 = min(max_rel*prt_params%vmax0_po4(ipft), &
+                 max(min_rel*prt_params%vmax0_po4(ipft), &
+                 vmax_po4 + prt_params%vmax0_po4(ipft)*zeta_vmax*po4_log_obj_ratio))
          end if
          
       end if
@@ -1005,7 +1012,9 @@ contains
       ! Update L2FR
       if(l2fr_dyn .ne. l2fr_dyn_off)then
          if(abs(log_obj_ratio) > nearzero) then
-            l2fr = max(min_rel*prt_params%allom_l2fr(ipft),l2fr + prt_params%allom_l2fr(ipft)*zeta_l2fr*log_obj_ratio)
+            l2fr = min(max_rel*prt_params%allom_l2fr(ipft), &
+                 max(min_rel*prt_params%allom_l2fr(ipft), &
+                 l2fr + prt_params%allom_l2fr(ipft)*zeta_l2fr*log_obj_ratio))
             call bfineroot(dbh,ipft,canopy_trim, l2fr, elongf_fnrt, target_c(fnrt_organ),target_dcdd(fnrt_organ))
          end if
       end if
