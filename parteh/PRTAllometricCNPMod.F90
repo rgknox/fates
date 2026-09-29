@@ -1684,6 +1684,7 @@ contains
        mask_gorgans(n_mask_organs) = repro_organ
     else
        state_mask(repro_id)            = .false.
+       repro_c_frac                    = 0._r8
     end if
 
     ! Calculate the total CARBON allocation rate per diameter increment
@@ -1703,6 +1704,16 @@ contains
        total_dcostdd = total_dcostdd + target_dcdd(i_org)
     end do
 
+    ! Its possible that the only organs that are allowed
+    ! to grow, have overshot for some reason, and thus
+    ! nothing masked in has a non-zero derivative. In this
+    ! situation we allocate to reproduction, and let respiration
+    ! get things back on-allometry.
+    if(total_dcostdd<nearzero)then
+       repro_c_frac = 1._r8
+    end if
+    
+    
     ! We can either proceed with stature growth by using all of the carbon
     ! available, or we can try to estimate the limitations of N and P
     ! and thereby reduce the amount of C we are willing to use to try
@@ -1716,7 +1727,7 @@ contains
        limiter = 0
     elseif (grow_lim_type == grow_lim_estNP) then
 
-       call EstimateGrowthNC(this,target_c,target_dcdd,state_mask,avg_nc,avg_pc)
+       call EstimateGrowthNC(this,target_c,target_dcdd,state_mask,repro_c_frac,avg_nc,avg_pc)
 
        neq_cgain = n_gain/avg_nc
        peq_cgain = p_gain/avg_pc
@@ -2615,7 +2626,7 @@ contains
    ! =====================================================================================
 
 
-   subroutine EstimateGrowthNC(this,target_c,target_dcdd,state_mask,avg_nc,avg_pc)
+   subroutine EstimateGrowthNC(this,target_c,target_dcdd,state_mask,repro_c_frac,avg_nc,avg_pc)
 
      ! This routine predicts the effective nutrient/carbon allocation ratio
      ! for the forthcoming growth step. This helps the growth step predict
@@ -2639,37 +2650,6 @@ contains
           ipft        => this%bc_in(acnp_bc_in_id_pft)%ival, &
           nc_repro    => this%bc_in(acnp_bc_in_id_nc_repro)%rval, &
           pc_repro    => this%bc_in(acnp_bc_in_id_pc_repro)%rval)
-
-     if(state_mask(repro_id)) then
-
-        ! If the TRS is switched off then we use FATES's default reproductive allocation.
-        if ( hlm_regeneration_model == default_regeneration .or. &
-             prt_params%allom_dbh_maxheight(ipft) < min_max_dbh_for_trees ) then ! The Tree Recruitment Scheme
-                                                                                 ! is only for trees
-           if (dbh <= prt_params%dbh_repro_threshold(ipft)) then
-              repro_c_frac = prt_params%seed_alloc(ipft)
-           else
-              repro_c_frac = prt_params%seed_alloc(ipft) + prt_params%seed_alloc_mature(ipft)
-           end if
-
-        ! If the TRS is switched on (with or w/o seedling dynamics) then reproductive allocation is
-        ! a pft-specific function of dbh. This allows for the representation of different
-        ! reproductive schedules (Wenk and Falster, 2015)
-        else if ( any(hlm_regeneration_model == [TRS_regeneration, TRS_no_seedling_dyn]) .and. &
-                  prt_params%allom_dbh_maxheight(ipft) > min_max_dbh_for_trees ) then
-
-           repro_c_frac = prt_params%seed_alloc(ipft) * &
-           (exp(prt_params%repro_alloc_b(ipft) + prt_params%repro_alloc_a(ipft)*dbh*mm_per_cm) / &
-           (1 + exp(prt_params%repro_alloc_b(ipft) + prt_params%repro_alloc_a(ipft)*dbh*mm_per_cm)))
-        else
-           write(fates_log(),*) 'unknown seed allocation and regeneration model, exiting'
-           write(fates_log(),*) 'hlm_regeneration_model: ',hlm_regeneration_model
-           call endrun(msg=errMsg(sourcefile, __LINE__))
-        end if ! regeneration switch
-
-     else ! state mask
-        repro_c_frac = 0._r8
-     end if ! state mask
 
      ! Estimate the total weight
      total_w = 0._r8
@@ -2716,10 +2696,11 @@ contains
         ! repro_w * (1 - repro_c_frac) = total_w*repro_c_frac
         ! repro_w = total_w * repro_c_frac/(1-repro_c_frac)
 
-        if(1._r8 - repro_c_frac < nearzero) then
+        if((1._r8 - repro_c_frac) < nearzero) then
            repro_w = repro_c_frac
         else
-           repro_w = total_w * repro_c_frac/(1._r8 - repro_c_frac)
+           repro_w = 1._r8
+           total_w = 0._r8
         end if
 
         total_w = total_w  + repro_w
