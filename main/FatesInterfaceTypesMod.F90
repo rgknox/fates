@@ -464,10 +464,6 @@ module FatesInterfaceTypesMod
       real(r8), pointer :: plant_p_uptake_flux(:,:)   ! Phosphorus input flux for
                                                       ! each competitor [gP/m2/day]
 
-      real(r8), pointer :: nh4_prof(:)  ! Ammonium profile (used for optimization) [gN/m3]
-      real(r8), pointer :: no3_prof(:)  ! Nitrate profile (used for optimization) [gN/m3]
-      real(r8), pointer :: po4_prof(:)  ! Phosphate profile (used for optimization) [gN/m3]
-      
       ! Photosynthesis variables
       ! ---------------------------------------------------------------------------------
 
@@ -714,11 +710,6 @@ module FatesInterfaceTypesMod
 
       integer               :: num_plant_comps ! Number of unique competitors
 
-      real(r8), allocatable :: source_nh4(:) ! FATES generated source of ammonium to the mineralized N pool
-                                             ! in the BGC model [gN/m3]
-      real(r8), allocatable :: source_p(:)   ! FATES generated source of phosphorus to mineralized P
-                                             ! pool in the BGC model [gP/m3]
-      
       real(r8), pointer :: veg_rootc(:,:)    ! Total fine-root carbon of each competitor
                                              ! [gC/m3 of site area]  
                                              ! (maxcohort_per_site x nlevdecomp)

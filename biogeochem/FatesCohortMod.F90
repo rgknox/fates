@@ -82,9 +82,9 @@ module FatesCohortMod
     real(r8)                     :: dnh4     ! Root profile weighted change in NH4 [g/m2/day]
     real(r8)                     :: dno3     ! Root profile weighted change in NO3 [g/m2/day]
     real(r8)                     :: dpo4     ! Root profile weighted change in PO4 [g/m2/day]
-    real(r8)                     :: nh4_demandfrac
-    real(r8)                     :: no3_demandfrac
-    real(r8)                     :: po4_demandfrac
+    real(r8)                     :: nh4_demandfrac  ! Fraction of NH4 uptake demand aquired by plant [/]
+    real(r8)                     :: no3_demandfrac  ! "" NO3 [/]
+    real(r8)                     :: po4_demandfrac  ! "" PO4 [/]
     !---------------------------------------------------------------------------
 
     ! VEGETATION STRUCTURE
@@ -507,7 +507,12 @@ module FatesCohortMod
       this%sym_nfix_daily          = 0._r8
       this%daily_n_gain            = 0._r8
       this%daily_p_gain            = 0._r8
-   
+
+      ! 
+      this%nh4_demandfrac = 0._r8
+      this%no3_demandfrac = 0._r8
+      this%po4_demandfrac = 0._r8
+      
       ! daily nutrient fluxes are INTEGRATED over the course of the day.  
       !     These variables MUST be zerod upon creation AND after allocation. 
       !     These variables exist in carbon-only mode but are not used.

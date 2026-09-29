@@ -2260,18 +2260,27 @@ contains
 
                   case (nitrogen_element) 
 
+                     ! Vmax
+                     this%hvars(ih_vmaxnh4_si)%r81d(io_si) = &
+                          this%hvars(ih_vmaxnh4_si)%r81d(io_si) + &
+                          ccohort%vmax_nh4 *ccohort%n * fnrt_c
+
+                     this%hvars(ih_vmaxno3_si)%r81d(io_si) = &
+                          this%hvars(ih_vmaxno3_si)%r81d(io_si) + &
+                          ccohort%vmax_no3 *ccohort%n * fnrt_c
+                     
                      ! Mineralized uptake of NH4, NO3
-                     fates_hist%hvars(ih_nh4uptake_si)%r81d(io_si) =       &
-                          fates_hist%hvars(ih_nh4uptake_si)%r81d(io_si)  + &
+                     this%hvars(ih_nh4uptake_si)%r81d(io_si) =       &
+                          this%hvars(ih_nh4uptake_si)%r81d(io_si)  + &
                           ccohort%daily_nh4_uptake*uconv
 
-                     fates_hist%hvars(ih_no3uptake_si)%r81d(io_si) =       &
-                          fates_hist%hvars(ih_no3uptake_si)%r81d(io_si)  + &
+                     this%hvars(ih_no3uptake_si)%r81d(io_si) =       &
+                          this%hvars(ih_no3uptake_si)%r81d(io_si)  + &
                           ccohort%daily_no3_uptake*uconv
 
                      ! Symbiotic Fixation
-                     fates_hist%hvars(ih_nfix_si)%r81d(io_si) = &
-                          fates_hist%hvars(ih_nfix_si)%r81d(io_si) + &
+                     this%hvars(ih_nfix_si)%r81d(io_si) = &
+                          this%hvars(ih_nfix_si)%r81d(io_si) + &
                           ccohort%sym_nfix_daily*uconv
 
                      ! Efflux/exudation
@@ -2294,9 +2303,13 @@ contains
 
                   case (phosphorus_element)
 
+                     this%hvars(ih_vmaxpo4_si)%r81d(io_si) = &
+                          this%hvars(ih_vmaxpo4_si)%r81d(io_si) + &
+                          ccohort%vmax_po4 *ccohort%n * fnrt_c
+                     
                      ! Mineralized uptake of PO4
-                     fates_hist%hvars(ih_puptake_si)%r81d(io_si) =       &
-                          fates_hist%hvars(ih_puptake_si)%r81d(io_si)  + &
+                     this%hvars(ih_puptake_si)%r81d(io_si) =       &
+                          this%hvars(ih_puptake_si)%r81d(io_si)  + &
                           ccohort%daily_p_gain*uconv
 
                      ! Efflux
@@ -2322,6 +2335,22 @@ contains
             cpatch => cpatch%older
          end do
 
+
+         ! Normalize site-level diagnostics that were weighted by fine-root mass
+         if(site_fnrt_c>nearzero)then
+            this%hvars(ih_vmaxnh4_si)%r81d(io_si) = &
+                 this%hvars(ih_vmaxnh4_si)%r81d(io_si)/site_fnrt_c
+            this%hvars(ih_vmaxno3_si)%r81d(io_si) = &
+                 this%hvars(ih_vmaxno3_si)%r81d(io_si)/site_fnrt_c
+            this%hvars(ih_vmaxpo4_si)%r81d(io_si) = &
+                 this%hvars(ih_vmaxpo4_si)%r81d(io_si)/site_fnrt_c
+         else
+            this%hvars(ih_vmaxnh4_si)%r81d(io_si) = hlm_hio_ignore_val
+            this%hvars(ih_vmaxno3_si)%r81d(io_si) = hlm_hio_ignore_val
+            this%hvars(ih_vmaxpo4_si)%r81d(io_si) = hlm_hio_ignore_val
+         end if
+
+         
          if(any(element_list(:)==nitrogen_element))then
             if(site_fnrt_c>nearzero)then
                this%hvars(ih_nh4demandfrac_si)%r81d(io_si) = &
@@ -2402,17 +2431,17 @@ contains
                   case (nitrogen_element) 
                      
                      ! Mineralized uptake of NH4, NO3
-                     fates_hist%hvars(ih_nh4uptake_scpf)%r82d(io_si,iscpf) =           &
-                          fates_hist%hvars(ih_nh4uptake_scpf)%r82d(io_si,iscpf) +      &
+                     this%hvars(ih_nh4uptake_scpf)%r82d(io_si,iscpf) =           &
+                          this%hvars(ih_nh4uptake_scpf)%r82d(io_si,iscpf) +      &
                           ccohort%daily_nh4_uptake*uconv
 
-                     fates_hist%hvars(ih_no3uptake_scpf)%r82d(io_si,iscpf) =           &
-                          fates_hist%hvars(ih_no3uptake_scpf)%r82d(io_si,iscpf) +      &
+                     this%hvars(ih_no3uptake_scpf)%r82d(io_si,iscpf) =           &
+                          this%hvars(ih_no3uptake_scpf)%r82d(io_si,iscpf) +      &
                           ccohort%daily_no3_uptake*uconv
 
                      ! Fixation
-                     fates_hist%hvars(ih_nfix_scpf)%r82d(io_si,iscpf) =           &
-                          fates_hist%hvars(ih_nfix_scpf)%r82d(io_si,iscpf) +      &
+                     this%hvars(ih_nfix_scpf)%r82d(io_si,iscpf) =           &
+                          this%hvars(ih_nfix_scpf)%r82d(io_si,iscpf) +      &
                           ccohort%sym_nfix_daily*uconv
 
                      ! Efflux/exudation
@@ -2428,8 +2457,8 @@ contains
                   case (phosphorus_element)
                      
                      ! Mineralized uptake of PO4
-                     fates_hist%hvars(ih_puptake_scpf)%r82d(io_si,iscpf) =             &
-                          fates_hist%hvars(ih_puptake_scpf)%r82d(io_si,iscpf) +        &
+                     this%hvars(ih_puptake_scpf)%r82d(io_si,iscpf) =             &
+                          this%hvars(ih_puptake_scpf)%r82d(io_si,iscpf) +        &
                           ccohort%daily_p_gain*uconv
 
                      ! Efflux
@@ -2986,16 +3015,6 @@ contains
                      hio_agb_si(io_si) = hio_agb_si(io_si) + n_perm2 *            &
                           ( leaf_m + (sapw_m + struct_m + store_m) * prt_params%allom_agb_frac(ccohort%pft) )
 
-                     if(ccohort%vmax_nh4.ne.ccohort%vmax_nh4 .or. &
-                          ccohort%vmax_no3.ne.ccohort%vmax_no3 .or. &
-                          ccohort%vmax_po4.ne.ccohort%vmax_po4 ) then
-
-                        write(fates_log(),*)'bad vmaxs'
-                        write(fates_log(),*) ccohort%vmax_nh4
-                        write(fates_log(),*) ccohort%vmax_no3
-                        write(fates_log(),*) ccohort%vmax_po4
-                        call endrun(msg=errMsg(sourcefile, __LINE__))
-                     end if
                      
                      if (hlm_parteh_mode == carbon_nitrogen_phosphorus) then
                         this%hvars(ih_l2fr_si)%r81d(io_si) = &
@@ -3004,25 +3023,9 @@ contains
                      else
                         this%hvars(ih_l2fr_si)%r81d(io_si) = &
                              this%hvars(ih_l2fr_si)%r81d(io_si) + &
-                             prt_params%allom_l2fr(ft) *ccohort%n * fnrt_m / m2_per_ha
+                             prt_params%allom_l2fr(ft) *ccohort%n * fnrt_m / m2_per_ha                        
                      end if
                      
-                     this%hvars(ih_vmaxnh4_si)%r81d(io_si) = &
-                          this%hvars(ih_vmaxnh4_si)%r81d(io_si) + &
-                          ccohort%vmax_nh4 *ccohort%n * fnrt_m / m2_per_ha
-
-                     this%hvars(ih_vmaxno3_si)%r81d(io_si) = &
-                          this%hvars(ih_vmaxno3_si)%r81d(io_si) + &
-                          ccohort%vmax_no3 *ccohort%n * fnrt_m / m2_per_ha
-
-                     this%hvars(ih_vmaxpo4_si)%r81d(io_si) = &
-                          this%hvars(ih_vmaxpo4_si)%r81d(io_si) + &
-                          ccohort%vmax_po4 *ccohort%n * fnrt_m / m2_per_ha
-
-                     this%hvars(ih_l2fr_si)%r81d(io_si) = &
-                          this%hvars(ih_l2fr_si)%r81d(io_si) + &
-                          ccohort%l2fr *ccohort%n * fnrt_m / m2_per_ha
-
                   elseif(element_list(el).eq.nitrogen_element)then
 
                      store_max = ccohort%prt%GetNutrientTarget(element_list(el),store_organ,stoich_growth_min)
@@ -3243,24 +3246,8 @@ contains
             this%hvars(ih_l2fr_si)%r81d(io_si) = &
                  this%hvars(ih_l2fr_si)%r81d(io_si) / &
                  this%hvars(ih_fnrtc_si)%r81d(io_si)
-            
-            this%hvars(ih_vmaxnh4_si)%r81d(io_si) = &
-                 this%hvars(ih_vmaxnh4_si)%r81d(io_si) / &
-                 this%hvars(ih_fnrtc_si)%r81d(io_si)
-            
-            this%hvars(ih_vmaxno3_si)%r81d(io_si) = &
-                 this%hvars(ih_vmaxno3_si)%r81d(io_si) / &
-                 this%hvars(ih_fnrtc_si)%r81d(io_si)
-            
-            this%hvars(ih_vmaxpo4_si)%r81d(io_si) = &
-                 this%hvars(ih_vmaxpo4_si)%r81d(io_si) / &
-                 this%hvars(ih_fnrtc_si)%r81d(io_si)
-            
          else
             this%hvars(ih_l2fr_si)%r81d(io_si) = hlm_hio_ignore_val
-            this%hvars(ih_vmaxnh4_si)%r81d(io_si) = hlm_hio_ignore_val
-            this%hvars(ih_vmaxno3_si)%r81d(io_si) = hlm_hio_ignore_val
-            this%hvars(ih_vmaxpo4_si)%r81d(io_si) = hlm_hio_ignore_val
          end if
          
          ! zero the site-level termination carbon flux variable
@@ -7151,24 +7138,6 @@ contains
             upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,                 &
             index = ih_growth_resp_si)
 
-       call this%set_history_var(vname='FATES_VMAXNH4', units='kg m-2 s-1',  &
-            long='maximum ammonium uptake rate by plants in kg N per m2 per second', &
-            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
-            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,              &
-            index = ih_vmaxnh4_si)
-
-       call this%set_history_var(vname='FATES_VMAXNO3', units='kg m-2 s-1',  &
-            long='maximum nitrate uptake rate by plants in kg N per m2 per second', &
-            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
-            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,              &
-            index = ih_vmaxno3_si)
-       
-       call this%set_history_var(vname='FATES_VMAXPO4', units='kg m-2 s-1',  &
-            long='maximum phosphate uptake rate by plants in kg P per m2 per second', &
-            use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
-            upfreq=group_dyna_simple, ivar=ivar, initialize=initialize_variables,              &
-            index = ih_vmaxpo4_si)
-       
        ! Output specific to the chemical species dynamics used (parteh)
        call this%set_history_var(vname='FATES_L2FR', units='kg kg-1',                   &
             long='The leaf to fineroot biomass multiplier for target allometry', & 
@@ -7178,6 +7147,19 @@ contains
 
        nitrogen_active_if0: if(any(element_list(:)==nitrogen_element)) then
 
+          call this%set_history_var(vname='FATES_VMAXNH4', units='kg m-2 s-1',  &
+               long='maximum ammonium uptake rate by plants in kg N per m2 per second', &
+               use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+               upfreq=group_nflx_simple, ivar=ivar, initialize=initialize_variables,              &
+               index = ih_vmaxnh4_si)
+          
+          call this%set_history_var(vname='FATES_VMAXNO3', units='kg m-2 s-1',  &
+               long='maximum nitrate uptake rate by plants in kg N per m2 per second', &
+               use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+               upfreq=group_nflx_simple, ivar=ivar, initialize=initialize_variables,              &
+               index = ih_vmaxno3_si)
+          
+          
           call this%set_history_var(vname='FATES_NH4UPTAKE', units='kg m-2 s-1',  &
                long='ammonium uptake rate by plants in kg NH4 per m2 per second', &
                use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
@@ -7259,6 +7241,14 @@ contains
        end if nitrogen_active_if0
 
        phosphorus_active_if0: if(any(element_list(:)==phosphorus_element)) then
+
+          
+          call this%set_history_var(vname='FATES_VMAXPO4', units='kg m-2 s-1',  &
+               long='maximum phosphate uptake rate by plants in kg P per m2 per second', &
+               use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
+               upfreq=group_nflx_simple, ivar=ivar, initialize=initialize_variables,              &
+               index = ih_vmaxpo4_si)
+          
           call this%set_history_var(vname='FATES_STOREP', units='kg m-2',         &
                long='total phosphorus in live plant storage',                     &
                use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',  &
@@ -9621,7 +9611,7 @@ contains
             units = 'kg m-2 s-1',                                                &
             long='fine root maintenance autotrophic due to fluxtuation in vmax', &
             use_default='active', avgflag='A', vtype=site_r8, hlms='CLM:ALM',    &
-            upfreq=group_hifr_simple, ivar=ivar, initialize=initialize_variables,                &
+            upfreq=group_hifr_simple, ivar=ivar, initialize=initialize_variables,&
             index = ih_froot_mr_netvmax_si)
 
        call this%set_history_var(vname='FATES_CROOTMAINTAR',                      &

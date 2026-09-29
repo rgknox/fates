@@ -338,10 +338,6 @@ contains
 
     ! MIMIC litter quality, always initialize to unset
     fates%bc_out(s)%litt_flux_ligc_per_n = fates_unset_r8
-
-    fates%bc_in(s)%nh4_prof(:) = fates_unset_r8
-    fates%bc_in(s)%no3_prof(:) = fates_unset_r8
-    fates%bc_in(s)%po4_prof(:) = fates_unset_r8
     
     ! Fates -> BGC fragmentation mass fluxes
     select case(hlm_parteh_mode) 
@@ -360,8 +356,6 @@ contains
        fates%bc_in(s)%plant_nh4_uptake_flux(:,:) = 0._r8
        fates%bc_in(s)%plant_no3_uptake_flux(:,:) = 0._r8
        fates%bc_in(s)%plant_p_uptake_flux(:,:) = 0._r8
-       fates%bc_out(s)%source_p(:)           = 0._r8
-       fates%bc_out(s)%source_nh4(:)         = 0._r8
        fates%bc_out(s)%litt_flux_cel_c_si(:) = 0._r8
        fates%bc_out(s)%litt_flux_lig_c_si(:) = 0._r8
        fates%bc_out(s)%litt_flux_lab_c_si(:) = 0._r8
@@ -506,9 +500,6 @@ contains
          allocate(bc_in%plant_no3_uptake_flux(1,1))
          allocate(bc_in%plant_p_uptake_flux(1,1))
       end if
-      allocate(bc_in%nh4_prof(nlevdecomp_in))
-      allocate(bc_in%no3_prof(nlevdecomp_in))
-      allocate(bc_in%po4_prof(nlevdecomp_in))
          
       allocate(bc_in%zi_sisl(0:nlevsoil_in))
       allocate(bc_in%dz_sisl(nlevsoil_in))
@@ -730,8 +721,6 @@ contains
          allocate(bc_out%litt_flux_cel_p_si(nlevdecomp_in))
          allocate(bc_out%litt_flux_lig_p_si(nlevdecomp_in))
          allocate(bc_out%litt_flux_lab_p_si(nlevdecomp_in))
-         allocate(bc_out%source_nh4(nlevdecomp_in))
-         allocate(bc_out%source_p(nlevdecomp_in))
       case default
          write(fates_log(), *) 'An unknown parteh hypothesis was passed'
          write(fates_log(), *) 'to the site level output boundary conditions'

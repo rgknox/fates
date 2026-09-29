@@ -135,7 +135,8 @@ contains
     type(fates_patch_type), pointer  :: cpatch        ! current patch pointer
     type(fates_cohort_type), pointer :: ccohort       ! current cohort pointer
     real(r8) :: fnrt_c                             ! fine-root carbon [kg]
-    real(r8) :: store_c_target                   
+    real(r8) :: store_c_target
+    real(r8) :: nh4_demandfrac,no3_demandfrac,po4_demandfrac
     integer                       :: nlevsoil      ! number of soil layers
     
     ! FATES needs to know the supplementation status of N and P in the soils
@@ -172,23 +173,6 @@ contains
 
        nlevsoil = bc_in(s)%nlevsoil
        
-       do j = 1,nlevsoil
-
-          sites(s)%dnh4_prof(j) = (sites(s)%dnh4_prof(j)*sobj_timescale + &
-               (bc_in(s)%nh4_prof(j)-sites(s)%nh4_prof_prev(j)) )/(sobj_timescale+1._r8)
-
-          sites(s)%dno3_prof(j) = (sites(s)%dno3_prof(j)*sobj_timescale + &
-               (bc_in(s)%no3_prof(j)-sites(s)%no3_prof_prev(j)) )/(sobj_timescale+1._r8)
-           
-          sites(s)%dpo4_prof(j) = (sites(s)%dpo4_prof(j)*sobj_timescale + &
-               (bc_in(s)%po4_prof(j)-sites(s)%po4_prof_prev(j)) )/(sobj_timescale+1._r8)
-          
-          !sites(s)%dno3_prof(j) = bc_in(s)%no3_prof(j)-sites(s)%no3_prof_prev(j)
-          !sites(s)%dpo4_prof(j) = bc_in(s)%po4_prof(j)-sites(s)%po4_prof_prev(j)
-          sites(s)%nh4_prof_prev(j) = bc_in(s)%nh4_prof(j)
-          sites(s)%no3_prof_prev(j) = bc_in(s)%no3_prof(j)
-          sites(s)%po4_prof_prev(j) = bc_in(s)%po4_prof(j)
-       end do
        
        ! If the plant is in "prescribed uptake mode"
        ! then we are not coupling with the soil bgc model.
@@ -233,22 +217,17 @@ contains
                 ccohort%daily_nh4_uptake = bc_in(s)%plant_nh4_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
                 ccohort%daily_no3_uptake = bc_in(s)%plant_no3_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
 
-                ! Used for uptake regulation
-                ccohort%dnh4 = sum(sites(s)%dnh4_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
-                ccohort%dno3 = sum(sites(s)%dno3_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
-                ccohort%nh4_demandfrac =  ccohort%daily_nh4_uptake / ( fnrt_c * ccohort%vmax_nh4 * sec_per_day)
-                ccohort%no3_demandfrac =  ccohort%daily_no3_uptake / ( fnrt_c * ccohort%vmax_no3 * sec_per_day)
+                nh4_demandfrac =  ccohort%daily_nh4_uptake / ( fnrt_c * ccohort%vmax_nh4 * sec_per_day)
+                no3_demandfrac =  ccohort%daily_no3_uptake / ( fnrt_c * ccohort%vmax_no3 * sec_per_day)
+
+                ccohort%dnh4 = nh4_demandfrac - ccohort%nh4_demandfrac
+                ccohort%dno3 = no3_demandfrac - ccohort%no3_demandfrac
+
+                ccohort%nh4_demandfrac = nh4_demandfrac
+                ccohort%no3_demandfrac = no3_demandfrac
                 
                 ccohort => ccohort%shorter
              end do
-
-     !        if(associated(cpatch,sites(s)%oldest_patch))then
-     !           ccohort => cpatch%tallest
-     !           print*,"tallest demandfrac: ",ccohort%nh4_demandfrac,ccohort%no3_demandfrac
-     !           ccohort => cpatch%shortest
-     !           print*,"shortest demandfrac: ",ccohort%nh4_demandfrac,ccohort%no3_demandfrac
-     !        end if
-             
              cpatch => cpatch%younger
           end do
 
@@ -287,8 +266,9 @@ contains
                 ccohort%daily_p_gain = bc_in(s)%plant_p_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
 
                 ! Used for uptake regulation
-                ccohort%po4_demandfrac =  ccohort%daily_p_gain / ( fnrt_c * ccohort%vmax_po4 * sec_per_day)
-                ccohort%dpo4 = sum(sites(s)%dpo4_prof(1:nlevsoil) * sites(s)%rootfrac_scr(1:nlevsoil))
+                po4_demandfrac =  ccohort%daily_p_gain / ( fnrt_c * ccohort%vmax_po4 * sec_per_day)
+                ccohort%dpo4 = po4_demandfrac - ccohort%po4_demandfrac
+                ccohort%po4_demandfrac = po4_demandfrac
                 
                 ccohort => ccohort%shorter
              end do
@@ -504,7 +484,7 @@ contains
     ! Whether this is a trivial or coupled run,
     ! the following variables get initialized in the same way
     bc_out%veg_rootc(:,:) = 0._r8
-    bc_out%ft_index(:)    = -1
+    bc_out%ft_index(:)    = 1
     bc_out%vmax_nh4(:)    = 0._r8
     bc_out%vmax_no3(:)    = 0._r8
     bc_out%vmax_po4(:)    = 0._r8

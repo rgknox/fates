@@ -135,6 +135,9 @@ module FatesRestartInterfaceMod
   integer :: ir_nh4_prev_sisl,ir_no3_prev_sisl,ir_po4_prev_sisl
   
   integer :: ir_cnplimiter_co
+  integer :: ir_nh4_demandfrac_co
+  integer :: ir_no3_demandfrac_co
+  integer :: ir_po4_demandfrac_co
   integer :: ir_daily_nh4_uptake_co
   integer :: ir_daily_no3_uptake_co
   integer :: ir_daily_n_fixation_co
@@ -881,6 +884,22 @@ contains
             long_name='ed cohort - cnp limiter index', units='index', flushval = flushzero, &
             hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_cnplimiter_co )
 
+
+       call this%set_restart_var(vname='fates_nh4_demandfrac', vtype=cohort_r8, &
+            long_name='fates cohort- daily ammonium [NH4] uptake fraction of demand', &
+            units='kg/plant/day', flushval = flushzero, &
+	    hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_nh4_demandfrac_co )
+
+       call this%set_restart_var(vname='fates_no3_demandfrac', vtype=cohort_r8, &
+            long_name='fates cohort- daily nitrate [NO3] uptake fraction of demand', &
+            units='kg/plant/day', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_no3_demandfrac_co )
+
+       call this%set_restart_var(vname='fates_po4_demandfrac', vtype=cohort_r8, &
+            long_name='fates cohort- daily phosphate [PO4] uptake fraction of demand', &
+            units='kg/plant/day', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_po4_demandfrac_co )
+       
        call this%set_restart_var(vname='fates_daily_nh4_uptake', vtype=cohort_r8, &
             long_name='fates cohort- daily ammonium [NH4] uptake', &
             units='kg/plant/day', flushval = flushzero, &
@@ -2829,6 +2848,12 @@ contains
                    this%rvars(ir_daily_n_fixation_co)%r81d(io_idx_co) = ccohort%sym_nfix_daily
                    this%rvars(ir_daily_n_demand_co)%r81d(io_idx_co) = ccohort%daily_n_demand
                    this%rvars(ir_daily_p_demand_co)%r81d(io_idx_co) = ccohort%daily_p_demand
+
+                   this%rvars(ir_nh4_demandfrac_co)%r81d(io_idx_co) = ccohort%nh4_demandfrac
+		   this%rvars(ir_no3_demandfrac_co)%r81d(io_idx_co) = ccohort%no3_demandfrac
+		   this%rvars(ir_po4_demandfrac_co)%r81d(io_idx_co) = ccohort%po4_demandfrac
+
+                   
                    icomp=icomp+1
                    this%rvars(ir_nh4uptakeflux_co)%r81d(io_idx_co) = bc_in(s)%plant_nh4_uptake_flux(icomp,1)
                    this%rvars(ir_no3uptakeflux_co)%r81d(io_idx_co) = bc_in(s)%plant_no3_uptake_flux(icomp,1)
@@ -3906,6 +3931,11 @@ contains
                    ccohort%daily_p_gain = this%rvars(ir_daily_p_uptake_co)%r81d(io_idx_co)
                    ccohort%daily_n_demand = this%rvars(ir_daily_n_demand_co)%r81d(io_idx_co)
                    ccohort%daily_p_demand = this%rvars(ir_daily_p_demand_co)%r81d(io_idx_co)
+
+                   ccohort%nh4_demandfrac = this%rvars(ir_nh4_demandfrac_co)%r81d(io_idx_co)
+                   ccohort%no3_demandfrac = this%rvars(ir_no3_demandfrac_co)%r81d(io_idx_co)
+                   ccohort%po4_demandfrac = this%rvars(ir_po4_demandfrac_co)%r81d(io_idx_co)
+                   
                    icomp=icomp+1
                    bc_in(s)%plant_nh4_uptake_flux(icomp,1) = this%rvars(ir_nh4uptakeflux_co)%r81d(io_idx_co)
                    bc_in(s)%plant_no3_uptake_flux(icomp,1) = this%rvars(ir_no3uptakeflux_co)%r81d(io_idx_co)
