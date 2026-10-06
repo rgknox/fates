@@ -241,7 +241,6 @@ module FatesRestartInterfaceMod
   integer :: ir_bgcwd_frag_litt
   integer :: ir_lfines_frag_litt
   integer :: ir_rfines_frag_litt
-  integer :: ir_efflux_litt
 
   integer :: ir_scorch_ht_pa_pft
   integer :: ir_litter_moisture_pa_nfsc
@@ -1238,11 +1237,6 @@ contains
             units='kg/m2/day', veclength=num_elements, flushval = flushzero, &
             hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_lfines_frag_litt)
 
-       call this%RegisterCohortVector(symbol_base='fates_efflux', vtype=cohort_r8, &
-            long_name_base='efflux from plants directly to soil labile pool',  &
-            units='kg/m2/day', veclength=num_elements, flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_efflux_litt)
-       
        call this%RegisterCohortVector(symbol_base='fates_rfines_frag', vtype=cohort_r8, &
             long_name_base='frag flux from froot fines',  &
             units='kg/m2/day', veclength=num_elements, flushval = flushzero, &
@@ -3003,7 +2997,6 @@ contains
                    do i = 1,ndcmpy
                       this%rvars(ir_leaf_litt+el)%r81d(io_idx_pa_dc) = litt%leaf_fines(i)
                       this%rvars(ir_lfines_frag_litt+el)%r81d(io_idx_pa_dc) = litt%leaf_fines_frag(i)
-                      this%rvars(ir_efflux_litt+el)%r81d(io_idx_pa_dc) = litt%efflux(i)
                       io_idx_pa_dc = io_idx_pa_dc + 1
                       do ilyr=1,sites(s)%nlevsoil
                          this%rvars(ir_fnrt_litt+el)%r81d(io_idx_pa_dcsl) = litt%root_fines(i,ilyr)
@@ -4083,7 +4076,6 @@ contains
                    do i = 1,ndcmpy
                       litt%leaf_fines(i) = this%rvars(ir_leaf_litt+el)%r81d(io_idx_pa_dc)
                       litt%leaf_fines_frag(i) = this%rvars(ir_lfines_frag_litt+el)%r81d(io_idx_pa_dc)
-                      litt%efflux(i) = this%rvars(ir_efflux_litt+el)%r81d(io_idx_pa_dc)
                       io_idx_pa_dc = io_idx_pa_dc + 1
                       do ilyr=1,nlevsoil
                          litt%root_fines(i,ilyr)      = this%rvars(ir_fnrt_litt+el)%r81d(io_idx_pa_dcsl)
