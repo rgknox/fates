@@ -131,13 +131,13 @@ module FatesRestartInterfaceMod
   integer :: ir_vmax_no3_co,ir_sobj_no3_co
   integer :: ir_vmax_po4_co,ir_sobj_po4_co
 
-  integer :: ir_dnh4_prof_sisl,ir_dno3_prof_sisl,ir_dpo4_prof_sisl
-  integer :: ir_nh4_prev_sisl,ir_no3_prev_sisl,ir_po4_prev_sisl
-  
   integer :: ir_cnplimiter_co
   integer :: ir_nh4_demandfrac_co
   integer :: ir_no3_demandfrac_co
   integer :: ir_po4_demandfrac_co
+  integer :: ir_dnh4_co
+  integer :: ir_dno3_co
+  integer :: ir_dpo4_co
   integer :: ir_daily_nh4_uptake_co
   integer :: ir_daily_no3_uptake_co
   integer :: ir_daily_n_fixation_co
@@ -246,7 +246,6 @@ module FatesRestartInterfaceMod
   integer :: ir_bgcwd_frag_litt
   integer :: ir_lfines_frag_litt
   integer :: ir_rfines_frag_litt
-  integer :: ir_efflux_litt
 
   integer :: ir_scorch_ht_pa_pft
   integer :: ir_litter_moisture_pa_nfsc
@@ -268,6 +267,12 @@ module FatesRestartInterfaceMod
   integer :: ir_rec_vmaxnh4_sipfcl
   integer :: ir_rec_vmaxno3_sipfcl
   integer :: ir_rec_vmaxpo4_sipfcl
+  integer :: ir_rec_nh4df_sipfcl
+  integer :: ir_rec_no3df_sipfcl
+  integer :: ir_rec_po4df_sipfcl
+  integer :: ir_rec_dnh4_sipfcl
+  integer :: ir_rec_dno3_sipfcl
+  integer :: ir_rec_dpo4_sipfcl
   
   integer :: ir_vegtempmem_sitm
   integer :: ir_seed_bank_sift
@@ -895,7 +900,6 @@ contains
             long_name='ed cohort - cnp limiter index', units='index', flushval = flushzero, &
             hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_cnplimiter_co )
 
-
        call this%set_restart_var(vname='fates_nh4_demandfrac', vtype=cohort_r8, &
             long_name='fates cohort- daily ammonium [NH4] uptake fraction of demand', &
             units='kg/plant/day', flushval = flushzero, &
@@ -910,6 +914,21 @@ contains
             long_name='fates cohort- daily phosphate [PO4] uptake fraction of demand', &
             units='kg/plant/day', flushval = flushzero, &
             hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_po4_demandfrac_co )
+
+       call this%set_restart_var(vname='fates_dnh4', vtype=cohort_r8, &
+	    long_name='fates cohort- daily ammonium uptake fraction derivative', &
+            units='kg/plant/day', flushval = flushzero, &
+            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_dnh4_co )
+       
+       call this%set_restart_var(vname='fates_dno3', vtype=cohort_r8, &
+	    long_name='fates cohort- daily nitrate uptake fraction derivative', &
+            units='kg/plant/day', flushval = flushzero, &
+	    hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_dno3_co )
+       
+       call this%set_restart_var(vname='fates_dpo4', vtype=cohort_r8, &
+	    long_name='fates cohort- daily phosphate uptake fraction derivative', &
+            units='kg/plant/day', flushval = flushzero, &
+	    hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_dpo4_co )
        
        call this%set_restart_var(vname='fates_daily_nh4_uptake', vtype=cohort_r8, &
             long_name='fates cohort- daily ammonium [NH4] uptake', &
@@ -1266,11 +1285,6 @@ contains
             units='kg/m2/day', veclength=num_elements, flushval = flushzero, &
             hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_lfines_frag_litt)
 
-       call this%RegisterCohortVector(symbol_base='fates_efflux', vtype=cohort_r8, &
-            long_name_base='efflux from plants directly to soil labile pool',  &
-            units='kg/m2/day', veclength=num_elements, flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_efflux_litt)
-       
        call this%RegisterCohortVector(symbol_base='fates_rfines_frag', vtype=cohort_r8, &
             long_name_base='frag flux from froot fines',  &
             units='kg/m2/day', veclength=num_elements, flushval = flushzero, &
@@ -1320,36 +1334,6 @@ contains
             long_name_base='Mass flux of burn loss to the atmosphere at site level', &
             units='kg/ha/day', veclength=num_elements, flushval = flushzero, &
             hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_burn_flux_to_atm_si)
-
-       call this%RegisterCohortVector(symbol_base='dnh4_prof', vtype=site_r8, &
-	    long_name_base='Smoothed change in NH4 from last timestep', &
-            units='kg/m2', veclength=numlevsoil_max, flushval = flushzero, &
-	    hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_dnh4_prof_sisl)
-
-       call this%RegisterCohortVector(symbol_base='dno3_prof', vtype=site_r8, &
-            long_name_base='Smoothed change in NO3 from last timestep', &
-            units='kg/m2', veclength=numlevsoil_max, flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_dno3_prof_sisl)
-
-       call this%RegisterCohortVector(symbol_base='dpo4_prof', vtype=site_r8, &
-            long_name_base='Smoothed change in PO4 from last timestep', &
-            units='kg/m2', veclength=numlevsoil_max, flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_dpo4_prof_sisl)
-
-       call this%RegisterCohortVector(symbol_base='nh4_prev', vtype=site_r8, &
-            long_name_base='NH4 from previous timestep', &
-            units='kg/m2', veclength=numlevsoil_max, flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_nh4_prev_sisl)
-
-       call this%RegisterCohortVector(symbol_base='no3_prev', vtype=site_r8, &
-            long_name_base='NO3 from previous timestep', &
-            units='kg/m2', veclength=numlevsoil_max, flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_no3_prev_sisl)
-
-       call this%RegisterCohortVector(symbol_base='po4_prev', vtype=site_r8, &
-            long_name_base='PO4	from previous timestep', &
-            units='kg/m2', veclength=numlevsoil_max, flushval = flushzero, &
-            hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_po4_prev_sisl)
        
        ! Time integrated mass balance accounting [kg/m2]
        call this%RegisterCohortVector(symbol_base='fates_liveveg_intflux', vtype=site_r8, &
@@ -1533,6 +1517,36 @@ contains
          long_name='site-level mean recruit vmax_po4, by pft x canopy layer', &
          units='-', flushval = flushzero, &
          hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_vmaxpo4_sipfcl)
+
+    call this%set_restart_var(vname='fates_recruit_nh4df', vtype=cohort_r8, &
+	 long_name='site-level mean recruit nh4 demand frac, by pft x canopy layer', &
+	 units='-', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_nh4df_sipfcl)
+
+    call this%set_restart_var(vname='fates_recruit_no3df', vtype=cohort_r8, &
+         long_name='site-level mean recruit nh4 demand frac, by pft x canopy layer', &
+         units='-', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_no3df_sipfcl)
+
+    call this%set_restart_var(vname='fates_recruit_po4df', vtype=cohort_r8, &
+         long_name='site-level mean recruit nh4 demand frac, by pft x canopy layer', &
+         units='-', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_po4df_sipfcl)
+
+    call this%set_restart_var(vname='fates_recruit_dnh4', vtype=cohort_r8, &
+         long_name='site-level mean recruit dnh4, by pft x canopy layer', &
+         units='-', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_dnh4_sipfcl)
+
+    call this%set_restart_var(vname='fates_recruit_dno3', vtype=cohort_r8, &
+         long_name='site-level mean recruit dno3, by pft x canopy layer', &
+         units='-', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_dno3_sipfcl)
+
+    call this%set_restart_var(vname='fates_recruit_dpo4', vtype=cohort_r8, &
+         long_name='site-level mean recruit dpo4, by pft x canopy layer', &
+         units='-', flushval = flushzero, &
+         hlms='CLM:ALM', initialize=initialize_variables, ivar=ivar, index = ir_rec_dpo4_sipfcl)
     
     call this%set_restart_var(vname='fates_liqvol_memory', vtype=cohort_r8, &
          long_name='last 10 days of volumetric soil water, by site x day-index', &
@@ -2773,15 +2787,6 @@ contains
              end do
           end do
 
-          do j = 1, sites(s)%nlevsoil
-             this%rvars(ir_dnh4_prof_sisl+j-1)%r81d(io_idx_si) = sites(s)%dnh4_prof(j)
-             this%rvars(ir_dno3_prof_sisl+j-1)%r81d(io_idx_si) = sites(s)%dno3_prof(j)
-             this%rvars(ir_dpo4_prof_sisl+j-1)%r81d(io_idx_si) = sites(s)%dpo4_prof(j)
-             this%rvars(ir_nh4_prev_sisl+j-1)%r81d(io_idx_si) = sites(s)%nh4_prof_prev(j)
-             this%rvars(ir_no3_prev_sisl+j-1)%r81d(io_idx_si) = sites(s)%no3_prof_prev(j)
-             this%rvars(ir_po4_prev_sisl+j-1)%r81d(io_idx_si) = sites(s)%po4_prof_prev(j)
-          end do
-          
           if(hlm_use_sp.eq.ifalse)then
              do el = 1, num_elements
 
@@ -2915,8 +2920,10 @@ contains
 
                    this%rvars(ir_nh4_demandfrac_co)%r81d(io_idx_co) = ccohort%nh4_demandfrac
 		   this%rvars(ir_no3_demandfrac_co)%r81d(io_idx_co) = ccohort%no3_demandfrac
-		   this%rvars(ir_po4_demandfrac_co)%r81d(io_idx_co) = ccohort%po4_demandfrac
-
+                   this%rvars(ir_po4_demandfrac_co)%r81d(io_idx_co) = ccohort%po4_demandfrac
+                   this%rvars(ir_dnh4_co)%r81d(io_idx_co) = ccohort%dnh4
+                   this%rvars(ir_dno3_co)%r81d(io_idx_co) = ccohort%dno3
+	           this%rvars(ir_dpo4_co)%r81d(io_idx_co) = ccohort%dpo4
                    
                    icomp=icomp+1
                    this%rvars(ir_nh4uptakeflux_co)%r81d(io_idx_co) = bc_in(s)%plant_nh4_uptake_flux(icomp,1)
@@ -3094,7 +3101,6 @@ contains
                    do i = 1,ndcmpy
                       this%rvars(ir_leaf_litt+el)%r81d(io_idx_pa_dc) = litt%leaf_fines(i)
                       this%rvars(ir_lfines_frag_litt+el)%r81d(io_idx_pa_dc) = litt%leaf_fines_frag(i)
-                      this%rvars(ir_efflux_litt+el)%r81d(io_idx_pa_dc) = litt%efflux(i)
                       io_idx_pa_dc = io_idx_pa_dc + 1
                       do ilyr=1,sites(s)%nlevsoil
                          this%rvars(ir_fnrt_litt+el)%r81d(io_idx_pa_dcsl) = litt%root_fines(i,ilyr)
@@ -3257,6 +3263,12 @@ contains
                 rio_rec_vmaxnh4_sipfcl(io_idx_si_pfcl ) = sites(s)%rec_vmax_nh4(i_pft,i)
                 rio_rec_vmaxno3_sipfcl(io_idx_si_pfcl ) = sites(s)%rec_vmax_no3(i_pft,i)
                 rio_rec_vmaxpo4_sipfcl(io_idx_si_pfcl ) = sites(s)%rec_vmax_po4(i_pft,i)
+                this%rvars(ir_rec_nh4df_sipfcl)%r81d(io_idx_si_pfcl) = sites(s)%rec_nh4df(i_pft,i)
+                this%rvars(ir_rec_no3df_sipfcl)%r81d(io_idx_si_pfcl) = sites(s)%rec_no3df(i_pft,i)
+                this%rvars(ir_rec_po4df_sipfcl)%r81d(io_idx_si_pfcl) = sites(s)%rec_po4df(i_pft,i)
+                this%rvars(ir_rec_dnh4_sipfcl)%r81d(io_idx_si_pfcl) = sites(s)%rec_dnh4(i_pft,i)
+                this%rvars(ir_rec_dno3_sipfcl)%r81d(io_idx_si_pfcl) = sites(s)%rec_dno3(i_pft,i)
+                this%rvars(ir_rec_dpo4_sipfcl)%r81d(io_idx_si_pfcl) = sites(s)%rec_dpo4(i_pft,i)
                 io_idx_si_pfcl = io_idx_si_pfcl + 1
              end do
           end do
@@ -3877,15 +3889,6 @@ contains
              end do
           end do
 
-          do j = 1, sites(s)%nlevsoil
-             sites(s)%dnh4_prof(j) = this%rvars(ir_dnh4_prof_sisl+j-1)%r81d(io_idx_si)
-             sites(s)%dno3_prof(j) = this%rvars(ir_dno3_prof_sisl+j-1)%r81d(io_idx_si)
-             sites(s)%dpo4_prof(j) = this%rvars(ir_dpo4_prof_sisl+j-1)%r81d(io_idx_si)
-             sites(s)%nh4_prof_prev(j) = this%rvars(ir_nh4_prev_sisl+j-1)%r81d(io_idx_si)
-             sites(s)%no3_prof_prev(j) = this%rvars(ir_no3_prev_sisl+j-1)%r81d(io_idx_si)
-             sites(s)%po4_prof_prev(j) = this%rvars(ir_po4_prev_sisl+j-1)%r81d(io_idx_si)
-          end do
-          
           ! Mass balance and diagnostics across elements at the site level
           if(hlm_use_sp.eq.ifalse)then
              do el = 1, num_elements
@@ -4019,6 +4022,10 @@ contains
                    ccohort%nh4_demandfrac = this%rvars(ir_nh4_demandfrac_co)%r81d(io_idx_co)
                    ccohort%no3_demandfrac = this%rvars(ir_no3_demandfrac_co)%r81d(io_idx_co)
                    ccohort%po4_demandfrac = this%rvars(ir_po4_demandfrac_co)%r81d(io_idx_co)
+
+                   ccohort%dnh4 = this%rvars(ir_dnh4_co)%r81d(io_idx_co)
+                   ccohort%dno3 = this%rvars(ir_dno3_co)%r81d(io_idx_co)
+                   ccohort%dpo4 = this%rvars(ir_dpo4_co)%r81d(io_idx_co)
                    
                    icomp=icomp+1
                    bc_in(s)%plant_nh4_uptake_flux(icomp,1) = this%rvars(ir_nh4uptakeflux_co)%r81d(io_idx_co)
@@ -4194,7 +4201,6 @@ contains
                    do i = 1,ndcmpy
                       litt%leaf_fines(i) = this%rvars(ir_leaf_litt+el)%r81d(io_idx_pa_dc)
                       litt%leaf_fines_frag(i) = this%rvars(ir_lfines_frag_litt+el)%r81d(io_idx_pa_dc)
-                      litt%efflux(i) = this%rvars(ir_efflux_litt+el)%r81d(io_idx_pa_dc)
                       io_idx_pa_dc = io_idx_pa_dc + 1
                       do ilyr=1,nlevsoil
                          litt%root_fines(i,ilyr)      = this%rvars(ir_fnrt_litt+el)%r81d(io_idx_pa_dcsl)
@@ -4270,6 +4276,12 @@ contains
                 sites(s)%rec_vmax_nh4(i_pft,i) = rio_rec_vmaxnh4_sipfcl(io_idx_si_pfcl )
                 sites(s)%rec_vmax_no3(i_pft,i) = rio_rec_vmaxno3_sipfcl(io_idx_si_pfcl )
                 sites(s)%rec_vmax_po4(i_pft,i) = rio_rec_vmaxpo4_sipfcl(io_idx_si_pfcl )
+                sites(s)%rec_nh4df(i_pft,i) = this%rvars(ir_rec_nh4df_sipfcl)%r81d(io_idx_si_pfcl)
+                sites(s)%rec_no3df(i_pft,i) = this%rvars(ir_rec_no3df_sipfcl)%r81d(io_idx_si_pfcl)
+                sites(s)%rec_po4df(i_pft,i) = this%rvars(ir_rec_po4df_sipfcl)%r81d(io_idx_si_pfcl)
+                sites(s)%rec_dnh4(i_pft,i) = this%rvars(ir_rec_dnh4_sipfcl)%r81d(io_idx_si_pfcl)
+                sites(s)%rec_dno3(i_pft,i) = this%rvars(ir_rec_dno3_sipfcl)%r81d(io_idx_si_pfcl)
+                sites(s)%rec_dpo4(i_pft,i) = this%rvars(ir_rec_dpo4_sipfcl)%r81d(io_idx_si_pfcl)
                 io_idx_si_pfcl = io_idx_si_pfcl + 1
              end do
           end do

@@ -3268,12 +3268,18 @@ contains
     real(r8) :: rec_vmax0_nh4(maxpft,nclmax)
     real(r8) :: rec_vmax0_no3(maxpft,nclmax)
     real(r8) :: rec_vmax0_po4(maxpft,nclmax)
+    real(r8) :: rec_nh4df(maxpft,nclmax)
+    real(r8) :: rec_no3df(maxpft,nclmax)
+    real(r8) :: rec_po4df(maxpft,nclmax)
+    real(r8) :: rec_dnh4(maxpft,nclmax)
+    real(r8) :: rec_dno3(maxpft,nclmax)
+    real(r8) :: rec_dpo4(maxpft,nclmax)
     integer  :: rec_count(maxpft,nclmax) ! sample count
     integer  :: ft                       ! functional type index
     integer  :: cl                       ! canopy layer index
     real(r8) :: dbh_min                  ! the dbh of a recruit
     real(r8), parameter :: max_delta = 5.0_r8  ! dbh tolerance, cm, consituting a recruit
-    real(r8), parameter :: smth_wgt = 1._r8/300.0_r8
+    real(r8), parameter :: smth_wgt = 0.2_r8   ! 1._r8/300.0_r8
     integer, parameter :: max_count = 3
 
     ! Difference in dbh (cm) to consider a plant was recruited fairly recently
@@ -3284,7 +3290,14 @@ contains
     rec_vmax0_nh4(1:numpft,1:nclmax) = 0._r8
     rec_vmax0_no3(1:numpft,1:nclmax) = 0._r8
     rec_vmax0_po4(1:numpft,1:nclmax) = 0._r8
-    rec_l2fr0(1:numpft,1:nclmax)      = 0._r8
+    rec_l2fr0(1:numpft,1:nclmax)     = 0._r8
+    rec_nh4df(1:numpft,1:nclmax) = 0._r8
+    rec_no3df(1:numpft,1:nclmax) = 0._r8
+    rec_po4df(1:numpft,1:nclmax) = 0._r8
+    rec_dnh4(1:numpft,1:nclmax) = 0._r8
+    rec_dno3(1:numpft,1:nclmax) = 0._r8
+    rec_dpo4(1:numpft,1:nclmax) = 0._r8
+    
     cpatch => csite%youngest_patch
     do while(associated(cpatch))
 
@@ -3307,6 +3320,12 @@ contains
                 rec_vmax0_nh4(ft,cl) = rec_vmax0_nh4(ft,cl) + ccohort%n*ccohort%vmax_nh4
                 rec_vmax0_no3(ft,cl) = rec_vmax0_no3(ft,cl) + ccohort%n*ccohort%vmax_no3
                 rec_vmax0_po4(ft,cl) = rec_vmax0_po4(ft,cl) + ccohort%n*ccohort%vmax_po4
+                rec_nh4df(ft,cl) = rec_nh4df(ft,cl) + ccohort%n*ccohort%nh4_demandfrac
+                rec_no3df(ft,cl) = rec_no3df(ft,cl) + ccohort%n*ccohort%no3_demandfrac
+                rec_po4df(ft,cl) = rec_po4df(ft,cl) + ccohort%n*ccohort%po4_demandfrac
+                rec_dnh4(ft,cl) = rec_dnh4(ft,cl) + ccohort%n*ccohort%dnh4
+                rec_dno3(ft,cl) = rec_dno3(ft,cl) + ccohort%n*ccohort%dno3
+                rec_dpo4(ft,cl) = rec_dpo4(ft,cl) + ccohort%n*ccohort%dpo4
              end if
 
           end if
@@ -3325,7 +3344,13 @@ contains
              rec_vmax0_no3(ft,cl) = rec_vmax0_no3(ft,cl) / rec_n(ft,cl)
              rec_vmax0_po4(ft,cl) = rec_vmax0_po4(ft,cl) / rec_n(ft,cl)
              rec_l2fr0(ft,cl)     = rec_l2fr0(ft,cl) / rec_n(ft,cl)
-             
+             rec_nh4df(ft,cl)     = rec_nh4df(ft,cl) / rec_n(ft,cl)
+             rec_no3df(ft,cl)     = rec_no3df(ft,cl)/rec_n(ft,cl)
+             rec_po4df(ft,cl) 	  = rec_po4df(ft,cl)/rec_n(ft,cl)
+             rec_dnh4(ft,cl)      = rec_dnh4(ft,cl)/rec_n(ft,cl)
+             rec_dno3(ft,cl)      = rec_dno3(ft,cl)/rec_n(ft,cl)
+             rec_dpo4(ft,cl)      = rec_dpo4(ft,cl)/rec_n(ft,cl)
+
              csite%rec_l2fr(ft,cl) = &
                   (1._r8-smth_wgt)*csite%rec_l2fr(ft,cl) + smth_wgt*rec_l2fr0(ft,cl)
              csite%rec_vmax_nh4(ft,cl) = &
@@ -3334,7 +3359,18 @@ contains
                   (1._r8-smth_wgt)*csite%rec_vmax_no3(ft,cl) + smth_wgt*rec_vmax0_no3(ft,cl)
              csite%rec_vmax_po4(ft,cl) = &
                   (1._r8-smth_wgt)*csite%rec_vmax_po4(ft,cl) + smth_wgt*rec_vmax0_po4(ft,cl)
-             
+             csite%rec_nh4df(ft,cl)    = &
+                  (1._r8-smth_wgt)*csite%rec_nh4df(ft,cl) + smth_wgt*rec_nh4df(ft,cl)
+             csite%rec_no3df(ft,cl)   	= &
+                  (1._r8-smth_wgt)*csite%rec_no3df(ft,cl) + smth_wgt*rec_no3df(ft,cl)
+             csite%rec_po4df(ft,cl)   	= &
+                  (1._r8-smth_wgt)*csite%rec_po4df(ft,cl) + smth_wgt*rec_po4df(ft,cl)
+             csite%rec_dnh4(ft,cl)   	= &
+                  (1._r8-smth_wgt)*csite%rec_dnh4(ft,cl) + smth_wgt*rec_dnh4(ft,cl)
+             csite%rec_dno3(ft,cl)      = &
+                  (1._r8-smth_wgt)*csite%rec_dno3(ft,cl) + smth_wgt*rec_dno3(ft,cl)
+             csite%rec_dpo4(ft,cl)      = &
+                  (1._r8-smth_wgt)*csite%rec_dpo4(ft,cl) + smth_wgt*rec_dpo4(ft,cl)
           end if
        end do
     end do
@@ -3405,6 +3441,12 @@ contains
              ccohort%vmax_nh4 = csite%rec_vmax_nh4(ft,cl)
              ccohort%vmax_no3 = csite%rec_vmax_no3(ft,cl)
              ccohort%vmax_po4 = csite%rec_vmax_po4(ft,cl)
+             ccohort%nh4_demandfrac = csite%rec_nh4df(ft,cl)
+             ccohort%no3_demandfrac = csite%rec_no3df(ft,cl)
+             ccohort%po4_demandfrac = csite%rec_po4df(ft,cl)
+             ccohort%dnh4 = csite%rec_dnh4(ft,cl)
+             ccohort%dno3 = csite%rec_dno3(ft,cl)
+             ccohort%dpo4 = csite%rec_dpo4(ft,cl)
           end if
 
           ccohort => ccohort%taller

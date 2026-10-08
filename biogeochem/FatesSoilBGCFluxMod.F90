@@ -138,6 +138,8 @@ contains
     real(r8) :: store_c_target
     real(r8) :: nh4_demandfrac,no3_demandfrac,po4_demandfrac
     integer                       :: nlevsoil      ! number of soil layers
+
+    real(r8) :: ema_wgt = 0.25   ! Weight of new information in exponential smoother
     
     ! FATES needs to know the supplementation status of N and P in the soils
     ! If both are supplemented, then FATES doesn't activate dynamic roots
@@ -207,8 +209,6 @@ contains
                 icomp = icomp+1
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
-                call set_root_fraction(sites(s)%rootfrac_scr, ccohort%pft, sites(s)%zi_soil, &
-                     bc_in(s)%max_rooting_depth_index_col )
 
                 ccohort%daily_n_demand = fnrt_c * &
                      (ccohort%vmax_nh4+ccohort%vmax_no3) * sec_per_day
@@ -220,9 +220,16 @@ contains
                 nh4_demandfrac =  ccohort%daily_nh4_uptake / ( fnrt_c * ccohort%vmax_nh4 * sec_per_day)
                 no3_demandfrac =  ccohort%daily_no3_uptake / ( fnrt_c * ccohort%vmax_no3 * sec_per_day)
 
-                ccohort%dnh4 = nh4_demandfrac - ccohort%nh4_demandfrac
-                ccohort%dno3 = no3_demandfrac - ccohort%no3_demandfrac
-
+                ! CHeck if this is initialized, assume no change because there is no
+                ! previous demandfrac to compare against
+                !if(abs(ccohort%dnh4)<nearzero)then
+                !   ccohort%dnh4 = -1.e-15_r8
+                !   ccohort%dno3 = -1.e-15_r8
+                !else
+                ccohort%dnh4 = (1._r8-ema_wgt)*ccohort%dnh4 + ema_wgt*(nh4_demandfrac - ccohort%nh4_demandfrac)
+                ccohort%dno3 = (1._r8-ema_wgt)*ccohort%dno3 + ema_wgt*(no3_demandfrac - ccohort%no3_demandfrac)
+                !end if
+                
                 ccohort%nh4_demandfrac = nh4_demandfrac
                 ccohort%no3_demandfrac = no3_demandfrac
                 
@@ -258,16 +265,21 @@ contains
                 icomp = icomp+1
                 pft = ccohort%pft
                 fnrt_c = ccohort%prt%GetState(fnrt_organ, carbon12_element)
-                call set_root_fraction(sites(s)%rootfrac_scr, ccohort%pft, sites(s)%zi_soil, &
-                     bc_in(s)%max_rooting_depth_index_col )                
+                !call set_root_fraction(sites(s)%rootfrac_scr, ccohort%pft, sites(s)%zi_soil, &
+                !     bc_in(s)%max_rooting_depth_index_col )                
                 
                 ccohort%daily_p_demand = fnrt_c * ccohort%vmax_po4 * sec_per_day
+
                 ! P Uptake:  Convert g/m2/day -> kg/plant/day
                 ccohort%daily_p_gain = bc_in(s)%plant_p_uptake_flux(icomp,1)*kg_per_g*AREA/ccohort%n
 
                 ! Used for uptake regulation
                 po4_demandfrac =  ccohort%daily_p_gain / ( fnrt_c * ccohort%vmax_po4 * sec_per_day)
-                ccohort%dpo4 = po4_demandfrac - ccohort%po4_demandfrac
+                !if(abs(ccohort%dpo4)<nearzero)then
+                !   ccohort%dpo4 = -1.e-15_r8
+                !else
+                ccohort%dpo4 = (1._r8-ema_wgt)*ccohort%dpo4 + ema_wgt*(po4_demandfrac - ccohort%po4_demandfrac)
+                !end if
                 ccohort%po4_demandfrac = po4_demandfrac
                 
                 ccohort => ccohort%shorter
@@ -837,9 +849,6 @@ contains
 
              end do
           end do
-
-
-
           
           ! leaf and fine root fragmentation fluxes
 

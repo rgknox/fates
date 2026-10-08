@@ -168,11 +168,8 @@ module PRTAllometricCNPMod
   integer, public, parameter :: acnp_bc_inout_id_vmax_nh4    = 5
   integer, public, parameter :: acnp_bc_inout_id_vmax_no3    = 6
   integer, public, parameter :: acnp_bc_inout_id_vmax_po4    = 7
-  integer, public, parameter :: acnp_bc_inout_id_sobj_nh4    = 8
-  integer, public, parameter :: acnp_bc_inout_id_sobj_no3    = 9
-  integer, public, parameter :: acnp_bc_inout_id_sobj_po4    = 10
-  integer, public, parameter :: acnp_bc_inout_id_l2fr        = 11
-  integer, public, parameter :: num_bc_inout                 = 11
+  integer, public, parameter :: acnp_bc_inout_id_l2fr        = 8
+  integer, public, parameter :: num_bc_inout                 = 8
 
   ! -------------------------------------------------------------------------------------
   ! Input only Boundary Indices (These are public)
@@ -205,7 +202,6 @@ module PRTAllometricCNPMod
   integer, public, parameter :: acnp_bc_out_id_nefflux = 2  ! Daily exudation of N  [kg]
   integer, public, parameter :: acnp_bc_out_id_pefflux = 3  ! Daily exudation of P  [kg]
   integer, public, parameter :: acnp_bc_out_id_limiter = 4  ! The minimum of the Nutrient ratio over c ratio
-
   integer, parameter         :: num_bc_out             = 4  ! Total number of
 
 
@@ -811,13 +807,12 @@ contains
     real(r8) :: zeta_vmax
     real(r8) :: zeta_l2fr
     real(r8) :: obj_ratio
-    real(r8) :: sobj_nh4_eff,sobj_no3_eff,sobj_po4_eff
     real(r8) :: log_obj_ratio, nh4_log_obj_ratio
     real(r8) :: no3_log_obj_ratio, po4_log_obj_ratio
     logical, parameter :: use_carbon_objfunc = .true.
-    real(r8), parameter :: min_rel = 0.01_r8   ! relative floor on vmax & L2FR
-    real(r8), parameter :: max_rel = 100.0_r8  ! relative ceiling on vmax & L2FR
-    real(r8), parameter :: minfrac = 0.0001_r8 ! aquisition can not upregulate
+    real(r8), parameter :: min_rel = 0.001_r8   ! relative floor on vmax & L2FR
+    real(r8), parameter :: max_rel = 1000.0_r8  ! relative ceiling on vmax & L2FR
+    real(r8), parameter :: minfrac = 0.001_r8 ! aquisition can not upregulate
                                                ! when resources are below this threshold
 
     integer, parameter :: vmax_dyn_on  = 1
@@ -827,7 +822,7 @@ contains
     integer, parameter :: l2fr_dyn_vmax  = 1
     integer, parameter :: l2fr_dyn_store = 2
     integer, parameter :: l2fr_dyn_off   = 3
-    integer, parameter :: l2fr_dyn_default = l2fr_dyn_store
+    integer, parameter :: l2fr_dyn_default = l2fr_dyn_off
     integer            :: l2fr_dyn
     
     associate( &
@@ -840,9 +835,6 @@ contains
          vmax_nh4    => this%bc_inout(acnp_bc_inout_id_vmax_nh4)%rval , &
          vmax_no3    => this%bc_inout(acnp_bc_inout_id_vmax_no3)%rval , &
          vmax_po4    => this%bc_inout(acnp_bc_inout_id_vmax_po4)%rval , &
-         sobj_nh4    => this%bc_inout(acnp_bc_inout_id_sobj_nh4)%rval , &
-         sobj_no3    => this%bc_inout(acnp_bc_inout_id_sobj_no3)%rval , &
-         sobj_po4    => this%bc_inout(acnp_bc_inout_id_sobj_po4)%rval,  &
          dnh4        => this%bc_in(acnp_bc_in_id_dnh4)%rval, &
          dno3        => this%bc_in(acnp_bc_in_id_dno3)%rval, &
          dpo4        => this%bc_in(acnp_bc_in_id_dpo4)%rval, &
@@ -882,7 +874,7 @@ contains
       ! -------------------------------------------------------------------------
 
       store_c_max = target_c(store_organ)
-      store_c_act = max(0.001_r8*store_c_max,this%GetState(store_organ, carbon12_element))
+      store_c_act = max(0.01_r8*store_c_max,this%GetState(store_organ, carbon12_element))
 
       ! Initialize the log objective function to "no change", which is zero
       nh4_log_obj_ratio = 0._r8
@@ -897,7 +889,7 @@ contains
 
          store_nut_max = this%GetNutrientTarget(nitrogen_element,store_organ,stoich_growth_min)
 
-         store_nut_act = max(0.001_r8*store_nut_max, &
+         store_nut_act = max(0.01_r8*store_nut_max, &
               this%GetState(store_organ, nitrogen_element))
 
          if(use_carbon_objfunc)then
@@ -906,7 +898,7 @@ contains
             obj_ratio = store_nut_max/store_nut_act
          end if
          
-         nh4_log_obj_ratio = log(min(2._r8,max(0.5_r8,obj_ratio)))
+         nh4_log_obj_ratio = log(min(5._r8,max(0.2_r8,obj_ratio)))
 
          ! source side constraint (no increase in aquisition affinity if
          ! resource is either low or in decline
@@ -925,7 +917,7 @@ contains
          ! because they have the same elemental sink imposed (nitrogen)
          ! (recalculate non-source-limited objective function)
          
-         no3_log_obj_ratio = log(min(2._r8,max(0.5_r8,obj_ratio)))
+         no3_log_obj_ratio = log(min(5._r8,max(0.2_r8,obj_ratio)))
 
          ! source side constraint (no increase in aquisition affinity if
          ! resource is either low or in decline
@@ -946,7 +938,7 @@ contains
 
          store_nut_max = this%GetNutrientTarget(phosphorus_element,store_organ,stoich_growth_min)
          
-         store_nut_act = max(0.001_r8*store_nut_max, &
+         store_nut_act = max(0.01_r8*store_nut_max, &
               this%GetState(store_organ, phosphorus_element))
 
          if(use_carbon_objfunc)then
@@ -955,7 +947,7 @@ contains
             obj_ratio = store_nut_max/store_nut_act
          end if
          
-         po4_log_obj_ratio = log(min(2._r8,max(0.5_r8,obj_ratio)))
+         po4_log_obj_ratio = log(min(5._r8,max(0.2_r8,obj_ratio)))
 
          ! source side constraint (no increase in aquisition affinity if
          ! resource is either low or in decline
@@ -2071,16 +2063,6 @@ contains
     call ProportionalNutrAllocation(this,deficit_p(1:num_organs), &
          p_gain, phosphorus_element, l2g_organ_list(1:num_organs))
 
-    
-    ! turn on the dynamic vmvax and/or L2FR if either nutrient in not being supplemented
-    limiting_p = ((p_uptake_mode .eq. coupled_p_uptake) .and. (hlm_phosphorus_suppl .eq. ifalse))
-    limiting_n = ((n_uptake_mode .eq. coupled_n_uptake) .and. (hlm_nitrogen_suppl .eq. ifalse))
-    
-    if (limiting_p .or. limiting_n) then
-       call this%UpdateVmaxL2FR(target_c,target_dcdd)
-    end if
-
-    
     ! -----------------------------------------------------------------------------------
     ! If carbon is still available, lets cram some into storage overflow
     ! We will do this last, because we wanted the non-overflow storage
@@ -2130,6 +2112,15 @@ contains
 
     end if
 
+    ! turn on the dynamic vmvax and/or L2FR if either nutrient in not being supplemented
+    limiting_p = ((p_uptake_mode .eq. coupled_p_uptake) .and. (hlm_phosphorus_suppl .eq. ifalse))
+    limiting_n = ((n_uptake_mode .eq. coupled_n_uptake) .and. (hlm_nitrogen_suppl .eq. ifalse))
+    if (limiting_p .or. limiting_n) then
+       ! Update the smoothed overflow...       
+       call this%UpdateVmaxL2FR(target_c,target_dcdd)
+    end if
+
+    
     ! If we had some poor numerical precision resulting
     ! in negative gains, use storage to get them back to zero
     ! they should be very very small

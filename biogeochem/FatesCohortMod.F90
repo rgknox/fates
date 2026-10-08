@@ -44,9 +44,8 @@ module FatesCohortMod
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_netdn, acnp_bc_inout_id_netdp
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_l2fr
   use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_nh4,acnp_bc_inout_id_vmax_no3
-  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_po4,acnp_bc_inout_id_sobj_nh4
-  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_sobj_no3,acnp_bc_inout_id_sobj_po4
-  use PRTAllometricCNPMod,        only : acnp_bc_out_id_cefflux, acnp_bc_out_id_nefflux
+  use PRTAllometricCNPMod,        only : acnp_bc_inout_id_vmax_po4
+    use PRTAllometricCNPMod,        only : acnp_bc_out_id_cefflux, acnp_bc_out_id_nefflux
   use PRTAllometricCNPMod,        only : acnp_bc_out_id_pefflux, acnp_bc_out_id_limiter
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_efleaf
   use PRTAllometricCNPMod,        only : acnp_bc_in_id_effnrt
@@ -508,7 +507,10 @@ module FatesCohortMod
       this%daily_n_gain            = 0._r8
       this%daily_p_gain            = 0._r8
 
-      ! 
+      !
+      this%dnh4 = 0._r8
+      this%dno3 = 0._r8
+      this%dpo4 = 0._r8
       this%nh4_demandfrac = 0._r8
       this%no3_demandfrac = 0._r8
       this%po4_demandfrac = 0._r8
@@ -610,19 +612,16 @@ module FatesCohortMod
       ! This works in the nutrient enabled case because cohorts are also 
       ! initialized with full stores, which match with minimum fineroot biomass
       this%l2fr = prt_params%allom_l2fr(pft)
-      
       this%vmax_nh4 = prt_params%vmax0_nh4(pft)
       this%vmax_no3 = prt_params%vmax0_no3(pft)
       this%vmax_po4 = prt_params%vmax0_po4(pft)
-      if (hlm_parteh_mode == carbon_nitrogen_phosphorus) then      
-
+      !if (hlm_parteh_mode == carbon_nitrogen_phosphorus) then      
          ! Set thes log-smoothed objective functions to neutral, ie ln(1) = 0
-         this%sobj_nh4 = 0._r8
-         this%sobj_no3 = 0._r8
-         this%sobj_po4 = 0._r8
-         this%cnp_limiter = 0      ! Assume limitations are unknown
-
-      end if
+         !this%sobj_nh4 = 0._r8
+         !this%sobj_no3 = 0._r8
+         !this%sobj_po4 = 0._r8
+         !this%cnp_limiter = 0      ! Assume limitations are unknown
+      !end if
 
       ! This sets things like vcmax25top, that depend on the leaf age fractions 
       ! (which are defined by PARTEH)
@@ -733,12 +732,15 @@ module FatesCohortMod
       copyCohort%nh4_demandfrac = this%nh4_demandfrac
       copyCohort%no3_demandfrac = this%no3_demandfrac
       copyCohort%po4_demandfrac = this%po4_demandfrac
+      copyCohort%dnh4 = this%dnh4
+      copyCohort%dno3 =	this%dno3
+      copyCohort%dpo4 =	this%dpo4
 
-      if (hlm_parteh_mode == carbon_nitrogen_phosphorus) then
-         copyCohort%sobj_nh4 = this%sobj_nh4
-         copyCohort%sobj_no3 = this%sobj_no3
-         copyCohort%sobj_po4 = this%sobj_po4
-      end if 
+      !if (hlm_parteh_mode == carbon_nitrogen_phosphorus) then
+      !   copyCohort%sobj_nh4 = this%sobj_nh4
+      !   copyCohort%sobj_no3 = this%sobj_no3
+      !   copyCohort%sobj_po4 = this%sobj_po4
+      !end if 
 
       copyCohort%nc_repro                = this%nc_repro
       copyCohort%daily_nh4_uptake        = this%daily_nh4_uptake
@@ -903,9 +905,9 @@ module FatesCohortMod
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_nh4, bc_rval=this%vmax_nh4)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_no3, bc_rval=this%vmax_no3)
         call this%prt%RegisterBCInOut(acnp_bc_inout_id_vmax_po4, bc_rval=this%vmax_po4)
-        call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_nh4, bc_rval=this%sobj_nh4)
-        call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_no3, bc_rval=this%sobj_no3)
-        call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_po4, bc_rval=this%sobj_po4)
+        !call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_nh4, bc_rval=this%sobj_nh4)
+        !call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_no3, bc_rval=this%sobj_no3)
+        !call this%prt%RegisterBCInOut(acnp_bc_inout_id_sobj_po4, bc_rval=this%sobj_po4)
         
         
         call this%prt%RegisterBCOut(acnp_bc_out_id_cefflux, bc_rval=this%daily_c_efflux)

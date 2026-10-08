@@ -171,12 +171,16 @@ contains
       elongf_stem)
 
     if(hlm_parteh_mode.eq.carbon_nitrogen_phosphorus)then
+       newCohort%l2fr = currentSite%rec_l2fr(pft,clayer)
        newCohort%vmax_nh4 = currentSite%rec_vmax_nh4(pft,clayer)
        newCohort%vmax_no3 = currentSite%rec_vmax_no3(pft,clayer)
        newCohort%vmax_po4 = currentSite%rec_vmax_po4(pft,clayer)
-       newCohort%sobj_nh4 = 0
-       newCohort%sobj_no3 = 0
-       newCohort%sobj_po4 = 0
+       newCohort%nh4_demandfrac = currentSite%rec_nh4df(pft,clayer)
+       newCohort%no3_demandfrac = currentSite%rec_no3df(pft,clayer)
+       newCohort%po4_demandfrac = currentSite%rec_po4df(pft,clayer)
+       newCohort%dnh4 = currentSite%rec_dnh4(pft,clayer)
+       newCohort%dno3 = currentSite%rec_dno3(pft,clayer)
+       newCohort%dpo4 = currentSite%rec_dpo4(pft,clayer)
     end if
        
     ! Allocate running mean functions
@@ -1062,14 +1066,23 @@ contains
                                          currentCohort%vmax_po4 = (currentCohort%n*currentCohort%vmax_po4 &
                                               + nextc%n*nextc%vmax_po4)/newn
 
-                                         currentCohort%sobj_nh4 = (currentCohort%n*currentCohort%sobj_nh4 &
-                                              + nextc%n*nextc%sobj_nh4)/newn
-                                         
-                                         currentCohort%sobj_no3 = (currentCohort%n*currentCohort%sobj_no3 &
-                                              + nextc%n*nextc%sobj_no3)/newn
-                                         
-                                         currentCohort%sobj_po4 = (currentCohort%n*currentCohort%sobj_po4 &
-                                              + nextc%n*nextc%sobj_po4)/newn
+                                         currentCohort%nh4_demandfrac = (currentCohort%n*currentCohort%nh4_demandfrac &
+                                              + nextc%n*nextc%nh4_demandfrac)/newn
+
+                                         currentCohort%no3_demandfrac = (currentCohort%n*currentCohort%no3_demandfrac &
+                                              + nextc%n*nextc%no3_demandfrac)/newn
+
+                                         currentCohort%po4_demandfrac = (currentCohort%n*currentCohort%po4_demandfrac &
+                                              + nextc%n*nextc%po4_demandfrac)/newn
+
+                                         currentCohort%dnh4 = (currentCohort%n*currentCohort%dnh4 &
+                                              + nextc%n*nextc%dnh4)/newn
+
+                                         currentCohort%dno3 = (currentCohort%n*currentCohort%dno3 &
+                                              + nextc%n*nextc%dno3)/newn
+
+                                         currentCohort%dpo4 = (currentCohort%n*currentCohort%dpo4 &
+                                              + nextc%n*nextc%dpo4)/newn
                                          
                                          if(nextc%n > currentCohort%n) currentCohort%cnp_limiter = nextc%cnp_limiter
 

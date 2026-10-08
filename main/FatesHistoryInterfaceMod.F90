@@ -2334,40 +2334,33 @@ contains
 
             cpatch => cpatch%older
          end do
-
-
-         ! Normalize site-level diagnostics that were weighted by fine-root mass
-         if(site_fnrt_c>nearzero)then
-            this%hvars(ih_vmaxnh4_si)%r81d(io_si) = &
-                 this%hvars(ih_vmaxnh4_si)%r81d(io_si)/site_fnrt_c
-            this%hvars(ih_vmaxno3_si)%r81d(io_si) = &
-                 this%hvars(ih_vmaxno3_si)%r81d(io_si)/site_fnrt_c
-            this%hvars(ih_vmaxpo4_si)%r81d(io_si) = &
-                 this%hvars(ih_vmaxpo4_si)%r81d(io_si)/site_fnrt_c
-         else
-            this%hvars(ih_vmaxnh4_si)%r81d(io_si) = hlm_hio_ignore_val
-            this%hvars(ih_vmaxno3_si)%r81d(io_si) = hlm_hio_ignore_val
-            this%hvars(ih_vmaxpo4_si)%r81d(io_si) = hlm_hio_ignore_val
-         end if
-
          
+         ! Normalize site-level diagnostics that were weighted by fine-root mass
          if(any(element_list(:)==nitrogen_element))then
             if(site_fnrt_c>nearzero)then
+               this%hvars(ih_vmaxnh4_si)%r81d(io_si) = &
+                    this%hvars(ih_vmaxnh4_si)%r81d(io_si)/site_fnrt_c
+               this%hvars(ih_vmaxno3_si)%r81d(io_si) = &
+                    this%hvars(ih_vmaxno3_si)%r81d(io_si)/site_fnrt_c
                this%hvars(ih_nh4demandfrac_si)%r81d(io_si) = &
                     this%hvars(ih_nh4demandfrac_si)%r81d(io_si)/site_fnrt_c
-            
                this%hvars(ih_no3demandfrac_si)%r81d(io_si) = &
                     this%hvars(ih_no3demandfrac_si)%r81d(io_si)/site_fnrt_c
             else
+               this%hvars(ih_vmaxnh4_si)%r81d(io_si) = hlm_hio_ignore_val
+               this%hvars(ih_vmaxno3_si)%r81d(io_si) = hlm_hio_ignore_val
                this%hvars(ih_nh4demandfrac_si)%r81d(io_si) = hlm_hio_ignore_val
                this%hvars(ih_no3demandfrac_si)%r81d(io_si) = hlm_hio_ignore_val
             end if
          end if
          if(any(element_list(:)==phosphorus_element))then
             if(site_fnrt_c>nearzero)then
+               this%hvars(ih_vmaxpo4_si)%r81d(io_si) = &
+                    this%hvars(ih_vmaxpo4_si)%r81d(io_si)/site_fnrt_c
                this%hvars(ih_po4demandfrac_si)%r81d(io_si) = &
                     this%hvars(ih_po4demandfrac_si)%r81d(io_si)/site_fnrt_c
             else
+               this%hvars(ih_vmaxpo4_si)%r81d(io_si) = hlm_hio_ignore_val
                this%hvars(ih_po4demandfrac_si)%r81d(io_si) = hlm_hio_ignore_val
             end if
          end if
@@ -2411,18 +2404,6 @@ contains
                ! unit conversion factor to get x/plant/day -> x/m2/sec
                uconv = ccohort%n * ha_per_m2 * days_per_sec
 
-!               this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) = &
-!                    this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) + &
-!                    ccohort%vmax_nh4 *ccohort%n * fnrt_c / m2_per_ha
-               
-!               this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) = &
-!                    this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) + &
-!                    ccohort%vmax_no3 *ccohort%n * fnrt_c / m2_per_ha
-
-!               this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) = &
-!                    this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) + &
-!                    ccohort%vmax_po4 *ccohort%n * fnrt_c / m2_per_ha
-               
                ! Loop over the different elements. 
                do el = 1, num_elements
 
@@ -2480,25 +2461,6 @@ contains
             cpatch => cpatch%older
          end do
 
-!         do iclpf = 1,nclmax*numpft
-!            if(fnrt_c_clpf(iclpf)>nearzero)then
-!               this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) = &
-!                    this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) / &
-!                    fnrt_c_clpf(iclpf)
-!               this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) = &
-!                    this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) / &
-!                    fnrt_c_clpf(iclpf)
-!               this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) = &
-!                    this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) / &
-!                    fnrt_c_clpf(iclpf)
-!            else
-!               this%hvars(ih_vmaxnh4_clpf)%r82d(io_si,iclpf) = hlm_hio_ignore_val
-!               this%hvars(ih_vmaxno3_clpf)%r82d(io_si,iclpf) = hlm_hio_ignore_val
-!               this%hvars(ih_vmaxpo4_clpf)%r82d(io_si,iclpf) = hlm_hio_ignore_val
-!            end if
-!         end do
-         
-         
     end if if_dynam2
     
     return
