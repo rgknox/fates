@@ -822,7 +822,7 @@ contains
     integer, parameter :: l2fr_dyn_vmax  = 1
     integer, parameter :: l2fr_dyn_store = 2
     integer, parameter :: l2fr_dyn_off   = 3
-    integer, parameter :: l2fr_dyn_default = l2fr_dyn_off
+    integer, parameter :: l2fr_dyn_default = l2fr_dyn_vmax
     integer            :: l2fr_dyn
     
     associate( &
