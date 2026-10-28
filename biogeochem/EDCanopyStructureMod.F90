@@ -1832,7 +1832,7 @@ contains
     real(r8) :: sapw_n_bgw                       ! nitrogen in belowground portion of sapwood
     real(r8) :: sapw_n_agw                       ! nitrogen in aboveground portion of sapwood
     real(r8) :: sapw_n_undamaged                 ! nitrogen in sapwood of undamaged tree
-
+    real(r8) :: beta  ! vmax response exponent
     associate(coarr => patch%coarrays)
     
     ico = 0
@@ -1961,10 +1961,11 @@ contains
              
           end if
 
+          beta = 1.5_r8
           coarr%vmax_scaler(ico) = 1._r8 + &
-                prt_params%vmax_resp_factor(1) * (cohort%vmax_nh4/prt_params%vmax0_nh4(ft)-1._r8) + &
-                prt_params%vmax_resp_factor(2) * (cohort%vmax_no3/prt_params%vmax0_no3(ft)-1._r8) + &
-                prt_params%vmax_resp_factor(3) * (cohort%vmax_po4/prt_params%vmax0_po4(ft)-1._r8)
+                prt_params%vmax_resp_factor(1) * ((cohort%vmax_nh4/prt_params%vmax0_nh4(ft))**beta-1._r8) + &
+                prt_params%vmax_resp_factor(2) * ((cohort%vmax_no3/prt_params%vmax0_no3(ft))**beta-1._r8) + &
+                prt_params%vmax_resp_factor(3) * ((cohort%vmax_po4/prt_params%vmax0_po4(ft))**beta-1._r8)
           
        case default
        end select

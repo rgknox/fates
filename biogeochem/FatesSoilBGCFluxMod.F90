@@ -139,7 +139,7 @@ contains
     real(r8) :: nh4_demandfrac,no3_demandfrac,po4_demandfrac
     integer                       :: nlevsoil      ! number of soil layers
 
-    real(r8) :: ema_wgt = 0.25   ! Weight of new information in exponential smoother
+    real(r8) :: ema_wgt = 0.2_r8   ! Weight of new information in exponential smoother
     
     ! FATES needs to know the supplementation status of N and P in the soils
     ! If both are supplemented, then FATES doesn't activate dynamic roots

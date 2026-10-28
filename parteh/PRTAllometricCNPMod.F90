@@ -809,6 +809,7 @@ contains
     real(r8) :: obj_ratio
     real(r8) :: log_obj_ratio, nh4_log_obj_ratio
     real(r8) :: no3_log_obj_ratio, po4_log_obj_ratio
+    real(r8) :: beta = 1.5_r8
     logical, parameter :: use_carbon_objfunc = .true.
     real(r8), parameter :: min_rel = 0.001_r8   ! relative floor on vmax & L2FR
     real(r8), parameter :: max_rel = 1000.0_r8  ! relative ceiling on vmax & L2FR
@@ -893,7 +894,7 @@ contains
               this%GetState(store_organ, nitrogen_element))
 
          if(use_carbon_objfunc)then
-            obj_ratio = (store_c_act/store_c_max)/(store_nut_act/store_nut_max)
+            obj_ratio = ((store_c_act/store_c_max)/(store_nut_act/store_nut_max))**beta
          else
             obj_ratio = store_nut_max/store_nut_act
          end if
@@ -942,7 +943,7 @@ contains
               this%GetState(store_organ, phosphorus_element))
 
          if(use_carbon_objfunc)then
-            obj_ratio = (store_c_act/store_c_max)/(store_nut_act/store_nut_max)
+            obj_ratio = ((store_c_act/store_c_max)/(store_nut_act/store_nut_max))**beta
          else
             obj_ratio = store_nut_max/store_nut_act
          end if
