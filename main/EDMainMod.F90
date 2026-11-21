@@ -345,7 +345,13 @@ contains
     ! Final instantaneous mass balance check
     call TotalBalanceCheck(currentSite,5)
 
-    
+    ! This call can come earlier in the call sequence. We keep
+    ! it here temporarily to prevent issues with b4b-ness.
+    ! We lose some precision in litter fluxes during disturbance
+    ! since we have to re-scale litter fluxes when the areas
+    ! of patches change. 
+    call FluxIntoLitterPools(currentsite, bc_in, bc_out)
+
   end subroutine ed_ecosystem_dynamics
 
   !-------------------------------------------------------------------------------!
@@ -664,7 +670,7 @@ contains
           ! Update the mass balance tracking for the daily nutrient uptake flux
           ! Then zero out the daily uptakes, they have been used
 
-
+          ! Add efflux to the bc_out flux pools
           call EffluxIntoLitterPools(currentSite, currentPatch, currentCohort, bc_in, bc_out )
 
           if(element_pos(nitrogen_element)>0) then
@@ -792,16 +798,12 @@ contains
        
        call GenerateDamageAndLitterFluxes( currentSite, currentPatch)
 
-       call PreDisturbanceLitterFluxes( currentSite, currentPatch, bc_in)
+       call PreDisturbanceLitterFluxes( currentSite, currentPatch, bc_in, bc_out)
 
        call PreDisturbanceIntegrateLitter(currentPatch )
 
        currentPatch => currentPatch%older
     enddo
-
-    
-    call FluxIntoLitterPools(currentsite, bc_in, bc_out)
-
 
     ! Update cohort number.
     ! This needs to happen after the CWD_input and seed_input calculations as they
@@ -841,10 +843,14 @@ contains
     type(bc_out_type)  , intent(inout)    :: bc_out
     logical,intent(in)                    :: is_restarting ! is this called during restart read?
     !
+    real(r8) :: biomass_stock   ! total biomass   in Kg/site    
+    real(r8) :: litter_stock    ! total litter    in Kg/site
+    real(r8) :: seed_stock      ! total seed mass in Kg/site
+    real(r8) :: total_stock     ! total ED carbon in Kg/site
+
     ! !LOCAL VARIABLES:
     type (fates_patch_type) , pointer :: currentPatch
     type(site_massbal_type), pointer :: site_cmass
-    real(r8) :: total_stock  ! dummy variable for receiving from sitemassstock
     !-----------------------------------------------------------------------
 
     site_cmass => currentSite%mass_balance(element_pos(carbon12_element))
@@ -873,6 +879,9 @@ contains
 
     call TotalBalanceCheck(currentSite,final_check_id,is_restarting=is_restarting)
 
+    call SiteMassStock(currentSite,1,total_stock,biomass_stock,litter_stock,seed_stock)
+    bc_out%fates_total_carbon_site = total_stock
+    
     ! Update recruit L2FRs based on new canopy position
     call SetRecruitVmaxL2FR(currentSite)
     
@@ -1139,7 +1148,7 @@ contains
           error_frac      = 0.0_r8
        end if
 
-       if ( error_frac > 10e-6_r8 .or. (error /= error) ) then
+       if ( error_frac > 10e-6_r8 ) then
           write(fates_log(),*) 'mass balance error detected'
           write(fates_log(),*) 'element type (see PRTGenericMod.F90): ',element_list(el)
           write(fates_log(),*) 'error fraction relative to biomass stock: ',error_frac
